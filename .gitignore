@@ -1,0 +1,14 @@
+# dependencies (bun install)
+node_modules
+
+# code coverage
+coverage
+
+# dotenv environment variable files
+.env.local
+
+# trigger.dev
+.trigger
+
+# Finder (MacOS) folder config
+.DS_Store

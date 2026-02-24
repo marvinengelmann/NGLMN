@@ -1,0 +1,47 @@
+{
+  "name": "anima",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "dev": "bunx trigger.dev@latest dev",
+    "db:generate": "bunx drizzle-kit generate",
+    "db:migrate": "bunx drizzle-kit migrate",
+    "db:seed": "bun run src/db/seed.ts",
+    "test": "vitest",
+    "test:run": "vitest run",
+    "test:coverage": "vitest run --coverage",
+    "e2b:build": "bun --env-file=.env.local e2b/build.ts anima",
+    "lint": "bunx biome lint src/",
+    "lint:fix": "bunx biome lint --fix src/",
+    "format": "bunx biome format --fix src/",
+    "check": "bunx biome check src/",
+    "check:fix": "bunx biome check --fix src/"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.78.0",
+    "@date-fns/tz": "^1.4.1",
+    "@neondatabase/serverless": "^1.0.2",
+    "@sentry/node": "^10.40.0",
+    "@trigger.dev/sdk": "4.4.1",
+    "@upstash/redis": "^1.36.2",
+    "@upstash/vector": "^1.2.2",
+    "date-fns": "^4.1.0",
+    "drizzle-orm": "^0.45.1",
+    "e2b": "^2.13.0",
+    "grammy": "^1.40.0",
+    "neverthrow": "^8.2.0",
+    "resend": "^6.9.2",
+    "zod": "^4.3.6"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^2.4.4",
+    "@trigger.dev/build": "4.4.1",
+    "@types/bun": "latest",
+    "@types/node": "^25.3.0",
+    "@vitest/coverage-v8": "^4.0.18",
+    "dotenv": "^17.3.1",
+    "drizzle-kit": "^0.31.9",
+    "typescript": "^5.9.3",
+    "vitest": "^4.0.18"
+  }
+}
