@@ -18,7 +18,7 @@ import { sleep } from "@/lib/time.ts"
 import { storeEpisode, storeRelationshipEpisode } from "@/memory/episodic.ts"
 import {
   clearConversationWaitToken,
-  clearPendingMessages,
+  clearProcessedMessages,
   getActiveConversation,
   getConversationBuffer,
   peekAllPendingMessages,
@@ -155,7 +155,7 @@ export const conversationHandlerTask = task({
             timestamp: formatISO(new Date(msg.date * 1000))
           })
         }
-        await clearPendingMessages()
+        await clearProcessedMessages(messages.length)
 
         await storeEpisode(
           `Received ${messages.length} message(s) but chose not to respond: ${triageResult.reason}`,
@@ -184,7 +184,7 @@ export const conversationHandlerTask = task({
 
       if (responderCallResult.isErr()) {
         log.warn("Responder call failed", { error: responderCallResult.error.message })
-        await clearPendingMessages()
+        await clearProcessedMessages(messages.length)
         break
       }
       const responderResponse = responderCallResult.value
@@ -219,7 +219,7 @@ export const conversationHandlerTask = task({
 
       if (validatedMessages.length === 0) {
         log.warn("All messages blocked by guardian")
-        await clearPendingMessages()
+        await clearProcessedMessages(messages.length)
         break
       }
 
@@ -255,7 +255,7 @@ export const conversationHandlerTask = task({
         }
       }
 
-      await clearPendingMessages()
+      await clearProcessedMessages(messages.length)
 
       const updatedEmotion = computeEmotionalUpdate(emotion, [
         { trigger: "message_sent", intensity: EMOTIONAL_THRESHOLDS.MESSAGE_SENT_INTENSITY },

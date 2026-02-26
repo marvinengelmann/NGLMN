@@ -35,7 +35,7 @@ vi.mock("@/integrations/telegram.ts", () => ({
 
 vi.mock("@/memory/working.ts", () => ({
   peekAllPendingMessages: vi.fn(),
-  clearPendingMessages: vi.fn(),
+  clearProcessedMessages: vi.fn(),
   getActiveConversation: vi.fn(),
   getConversationBuffer: vi.fn(),
   pushToActiveConversation: vi.fn(),

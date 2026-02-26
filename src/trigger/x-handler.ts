@@ -13,7 +13,7 @@ import { replyToTweet } from "@/integrations/x.ts"
 import { log } from "@/lib/logger.ts"
 import { captureError } from "@/lib/sentry.ts"
 import { storeEpisode } from "@/memory/episodic.ts"
-import { clearPendingMentions, peekAllPendingMentions, pushPendingMentions } from "@/memory/working.ts"
+import { clearProcessedMentions, peekAllPendingMentions, pushPendingMentions } from "@/memory/working.ts"
 import { getEffectivePersonality } from "@/personality/dna.ts"
 import { buildPersonalityPrompt } from "@/personality/expression.ts"
 import { getMbtiType } from "@/personality/mbti.ts"
@@ -136,7 +136,7 @@ export const xHandlerTask = task({
       await recordFailure("x_post")
     }
 
-    await clearPendingMentions()
+    await clearProcessedMentions(mentions.length)
     if (failedMentions.length > 0) {
       await pushPendingMentions(failedMentions)
       log.warn("Re-queued failed X mentions for retry", { count: failedMentions.length })

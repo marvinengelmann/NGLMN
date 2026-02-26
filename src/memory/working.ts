@@ -103,9 +103,10 @@ export async function peekAllPendingMessages(): Promise<PendingMessage[]> {
   return raw.map((item) => parseRedisJson(PendingMessage, item, KEYS.MESSAGES_PENDING))
 }
 
-/** Remove all pending messages from the queue. */
-export async function clearPendingMessages(): Promise<void> {
-  await redis.del(KEYS.MESSAGES_PENDING)
+/** Remove the first `count` pending messages from the queue, preserving any that arrived after the peek. */
+export async function clearProcessedMessages(count: number): Promise<void> {
+  if (count <= 0) return
+  await redis.ltrim(KEYS.MESSAGES_PENDING, count, -1)
 }
 
 /** Get the number of pending messages in the queue. */
@@ -402,9 +403,10 @@ export async function peekAllPendingEmails(): Promise<PendingEmail[]> {
   return raw.map((item) => parseRedisJson(PendingEmail, item, KEYS.EMAILS_PENDING))
 }
 
-/** Remove all pending emails from the queue. */
-export async function clearPendingEmails(): Promise<void> {
-  await redis.del(KEYS.EMAILS_PENDING)
+/** Remove the first `count` pending emails from the queue, preserving any that arrived after the peek. */
+export async function clearProcessedEmails(count: number): Promise<void> {
+  if (count <= 0) return
+  await redis.ltrim(KEYS.EMAILS_PENDING, count, -1)
 }
 
 /** Get the number of pending emails in the queue. */
@@ -479,9 +481,10 @@ export async function peekAllPendingMentions(): Promise<PendingMention[]> {
   return raw.map((item) => parseRedisJson(PendingMention, item, KEYS.X_MENTIONS_PENDING))
 }
 
-/** Remove all pending X mentions from the queue. */
-export async function clearPendingMentions(): Promise<void> {
-  await redis.del(KEYS.X_MENTIONS_PENDING)
+/** Remove the first `count` pending X mentions from the queue, preserving any that arrived after the peek. */
+export async function clearProcessedMentions(count: number): Promise<void> {
+  if (count <= 0) return
+  await redis.ltrim(KEYS.X_MENTIONS_PENDING, count, -1)
 }
 
 /** Get the number of pending X mentions in the queue. */

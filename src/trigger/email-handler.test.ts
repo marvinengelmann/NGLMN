@@ -65,7 +65,7 @@ vi.mock("@/memory/episodic.ts", () => ({
 }))
 
 vi.mock("@/memory/working.ts", () => ({
-  clearPendingEmails: vi.fn(),
+  clearProcessedEmails: vi.fn(),
   peekAllPendingEmails: vi.fn(),
   pushPendingEmails: vi.fn()
 }))

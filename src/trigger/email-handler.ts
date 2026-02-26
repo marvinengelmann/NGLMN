@@ -12,7 +12,7 @@ import { escapeTelegramMarkdown, sendGuardianAlert, sendToOperator } from "@/int
 import { log } from "@/lib/logger.ts"
 import { captureError } from "@/lib/sentry.ts"
 import { storeEpisode } from "@/memory/episodic.ts"
-import { clearPendingEmails, peekAllPendingEmails, pushPendingEmails } from "@/memory/working.ts"
+import { clearProcessedEmails, peekAllPendingEmails, pushPendingEmails } from "@/memory/working.ts"
 import { getEffectivePersonality } from "@/personality/dna.ts"
 import { buildPersonalityPrompt } from "@/personality/expression.ts"
 import { getMbtiType } from "@/personality/mbti.ts"
@@ -139,7 +139,7 @@ export const emailHandlerTask = task({
       await recordFailure("email_send")
     }
 
-    await clearPendingEmails()
+    await clearProcessedEmails(emails.length)
     if (failedEmails.length > 0) {
       await pushPendingEmails(failedEmails)
       log.warn("Re-queued failed emails for retry", { count: failedEmails.length })
