@@ -165,6 +165,23 @@ describe("buildSimpleContext", () => {
     expect(result).toContain("You (ANIMA)")
   })
 
+  it("shows message IDs as prefixes in conversation history", async () => {
+    mockGetConversationBuffer.mockResolvedValue([
+      makeConversationSlot({
+        messages: [
+          makeConversationMessage({ role: "operator", text: "Hey", messageId: 142 }),
+          makeConversationMessage({ role: "anima", text: "Hi there!", messageId: 143 })
+        ]
+      })
+    ])
+
+    const messages = [makePendingMessage({ text: "What's up?", messageId: 145 })]
+    const result = await buildSimpleContext(messages)
+    expect(result).toContain("[#142]")
+    expect(result).toContain("[#143]")
+    expect(result).toContain("[#145]")
+  })
+
   it("includes related episodes", async () => {
     mockQueryRelated.mockResolvedValue([
       { id: "ep1", score: 0.85, metadata: { category: "interaction", timestamp: "2026-01-01" } }

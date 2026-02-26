@@ -41,6 +41,7 @@ export function makeConversationMessage(overrides?: Partial<ConversationMessage>
     role: "operator",
     text: "Hello",
     timestamp: new Date().toISOString(),
+    messageId: 100,
     ...overrides
   }
 }

@@ -53,12 +53,13 @@ describe("telegram integration", () => {
   })
 
   describe("sendToOperator()", () => {
-    it("sends message to operator chat with Markdown parse mode", async () => {
+    it("sends message to operator chat with Markdown parse mode and returns message_id", async () => {
       mockSendMessage.mockResolvedValue({ message_id: 1 })
 
-      await sendToOperator("Hello operator")
+      const result = await sendToOperator("Hello operator")
 
       expect(mockSendMessage).toHaveBeenCalledWith("12345", "Hello operator", { parse_mode: "Markdown" })
+      expect(result).toBe(1)
     })
 
     it("propagates API errors", async () => {

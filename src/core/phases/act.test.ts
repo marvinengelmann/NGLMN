@@ -44,7 +44,7 @@ vi.mock("@/evolution/prompt-loader.ts", () => ({
 }))
 
 vi.mock("@/integrations/telegram.ts", () => ({
-  sendToOperator: vi.fn(),
+  sendToOperator: vi.fn(() => 42),
   sendGuardianAlert: vi.fn()
 }))
 

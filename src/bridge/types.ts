@@ -3,7 +3,8 @@ import * as z from "zod"
 export const ConversationMessage = z.object({
   role: z.enum(["operator", "anima"]),
   text: z.string(),
-  timestamp: z.string()
+  timestamp: z.string(),
+  messageId: z.number()
 })
 export type ConversationMessage = z.infer<typeof ConversationMessage>
 

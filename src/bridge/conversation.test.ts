@@ -115,7 +115,7 @@ describe("recallArchivedContext", () => {
 
   it("returns null when replyToText found in active conversations", async () => {
     const slot = makeConversationSlot({
-      messages: [{ role: "anima", text: "Original message", timestamp: new Date().toISOString() }]
+      messages: [{ role: "anima", text: "Original message", timestamp: new Date().toISOString(), messageId: 100 }]
     })
     const result = await recallArchivedContext("Original message", [slot])
     expect(result).toBeNull()

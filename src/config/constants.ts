@@ -136,6 +136,12 @@ export const X = {
   MAX_DAILY_PROACTIVE_TWEETS: 2
 } as const
 
+export const AFTERTHOUGHT = {
+  MAX_TOKENS: 256,
+  PAUSE_MIN_MS: 3000,
+  PAUSE_MAX_MS: 8000
+} as const
+
 export const REFLECTION = {
   COOLDOWN_HOURS: 4,
   INTENSITY_THRESHOLD: 0.35,

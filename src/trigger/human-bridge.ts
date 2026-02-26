@@ -1,6 +1,7 @@
 import { schedules } from "@trigger.dev/sdk"
 import { formatISO } from "date-fns"
 import { jsonrepair } from "jsonrepair"
+import { checkForAfterthought } from "@/bridge/afterthought.ts"
 import { archiveConversation, detectConversationBoundary, recallArchivedContext } from "@/bridge/conversation.ts"
 import { buildConversationResponsePrompt, computeFollowUpWait, parseStructuredResponse } from "@/bridge/handler.ts"
 import {
@@ -11,7 +12,14 @@ import {
   simulateTyping,
   splitIntoParagraphs
 } from "@/bridge/typing.ts"
-import { CONVERSATION, EMOTIONAL_THRESHOLDS, HUMAN_BRIDGE, MESSAGE_DELAY, TRIAGE_DEFAULTS } from "@/config/constants.ts"
+import {
+  AFTERTHOUGHT,
+  CONVERSATION,
+  EMOTIONAL_THRESHOLDS,
+  HUMAN_BRIDGE,
+  MESSAGE_DELAY,
+  TRIAGE_DEFAULTS
+} from "@/config/constants.ts"
 import { getMaxTokensForTier, selectModel } from "@/core/model-router.ts"
 import { TriageResult } from "@/core/types.ts"
 import { getEmotionalState, saveEmotionalState } from "@/emotion/state.ts"
@@ -22,6 +30,7 @@ import { fetchNewMessages, sendMessageWithReply, sendTypingAction } from "@/inte
 import { log } from "@/lib/logger.ts"
 import { sleep } from "@/lib/time.ts"
 import { storeEpisode, storeRelationshipEpisode } from "@/memory/episodic.ts"
+import { getOperatorLanguage } from "@/memory/semantic.ts"
 import {
   getActiveConversation,
   getConversationBuffer,
@@ -91,7 +100,8 @@ export const humanBridgeTask = schedules.task({
         messages.map((message) => ({
           role: "operator" as const,
           text: message.text,
-          timestamp: formatISO(new Date(message.date * 1000))
+          timestamp: formatISO(new Date(message.date * 1000)),
+          messageId: message.messageId ?? 0
         }))
       )
 
@@ -116,15 +126,17 @@ export const humanBridgeTask = schedules.task({
       const historyLines: string[] = []
       for (const slot of buffer) {
         for (const entry of slot.messages) {
-          historyLines.push(`[${entry.role === "operator" ? "Operator" : "ANIMA"}]: ${entry.text}`)
+          const idPrefix = entry.messageId ? `[#${entry.messageId}] ` : ""
+          historyLines.push(`${idPrefix}[${entry.role === "operator" ? "Operator" : "ANIMA"}]: ${entry.text}`)
         }
       }
       const historyBlock = historyLines.length > 0 ? historyLines.join("\n") : null
 
       const messagesBlock = messages
         .map((message) => {
+          const idPrefix = message.messageId ? `[#${message.messageId}] ` : ""
           const replyPrefix = message.replyToText ? `(replying to: "${message.replyToText.slice(0, 200)}") ` : ""
-          return `[Operator]: ${replyPrefix}${message.text}`
+          return `${idPrefix}[Operator]: ${replyPrefix}${message.text}`
         })
         .join("\n")
 
@@ -211,9 +223,11 @@ export const humanBridgeTask = schedules.task({
 
         for (const [p, paragraph] of paragraphs.entries()) {
           await simulateTyping(computeTypingDuration(paragraph), sendTypingAction)
-          await sendMessageWithReply(paragraph, p === 0 ? responseMessage.replyTo : undefined)
+          const sentMessageId = await sendMessageWithReply(paragraph, p === 0 ? responseMessage.replyTo : undefined)
 
-          await pushToActiveConversation([{ role: "anima", text: paragraph, timestamp: formatISO(new Date()) }])
+          await pushToActiveConversation([
+            { role: "anima", text: paragraph, timestamp: formatISO(new Date()), messageId: sentMessageId }
+          ])
           await pushRecentResponse(paragraph)
 
           if (p < paragraphs.length - 1) {
@@ -224,6 +238,39 @@ export const humanBridgeTask = schedules.task({
         if (i < structuredResponse.messages.length - 1) {
           await sleep(MESSAGE_DELAY.MIN_BETWEEN_MESSAGES_MS + Math.random() * MESSAGE_DELAY.MAX_JITTER_MS)
         }
+      }
+
+      const afterthoughtPause =
+        AFTERTHOUGHT.PAUSE_MIN_MS + Math.random() * (AFTERTHOUGHT.PAUSE_MAX_MS - AFTERTHOUGHT.PAUSE_MIN_MS)
+      await sleep(afterthoughtPause)
+
+      const operatorLanguage = await getOperatorLanguage()
+      const afterthoughtBuffer = await getConversationBuffer()
+      const afterthought = await checkForAfterthought(afterthoughtBuffer, personalityPrompt, operatorLanguage)
+
+      if (afterthought) {
+        const atThinkingTime = computeThinkingDuration("simple")
+        await sleep(atThinkingTime)
+
+        const atParagraphs = splitIntoParagraphs(afterthought.text)
+        for (const [p, paragraph] of atParagraphs.entries()) {
+          await simulateTyping(computeTypingDuration(paragraph), sendTypingAction)
+          const atSentId = await sendMessageWithReply(paragraph, p === 0 ? afterthought.replyTo : undefined)
+
+          await pushToActiveConversation([
+            { role: "anima", text: paragraph, timestamp: formatISO(new Date()), messageId: atSentId }
+          ])
+          await pushRecentResponse(paragraph)
+
+          if (p < atParagraphs.length - 1) {
+            await sleep(computeInterParagraphPause())
+          }
+        }
+
+        await storeEpisode(`Afterthought: ${afterthought.text.slice(0, 200)}`, "interaction", {
+          relevanceScore: 0.5
+        })
+        log.info("Afterthought sent", { textLength: afterthought.text.length })
       }
 
       const updatedEmotion = computeEmotionalUpdate(emotion, [

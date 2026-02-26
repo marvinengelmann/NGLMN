@@ -61,7 +61,8 @@ function formatConversationSlot(slot: ConversationSlot, label: string): string {
   const lines = [`${label}:`]
   for (const msg of slot.messages) {
     const role = msg.role === "operator" ? "Operator" : "You (ANIMA)"
-    lines.push(`  [${role}]: ${msg.text}`)
+    const idPrefix = msg.messageId ? `[#${msg.messageId}] ` : ""
+    lines.push(`  ${idPrefix}[${role}]: ${msg.text}`)
   }
   return lines.join("\n")
 }
@@ -85,7 +86,8 @@ function formatConversationBuffer(buffer: ConversationSlot[]): string {
         const lines = [`Earlier conversation (${slot.messages.length} messages, last 3):`]
         for (const msg of preview) {
           const role = msg.role === "operator" ? "Operator" : "You (ANIMA)"
-          lines.push(`  [${role}]: ${msg.text.slice(0, 200)}`)
+          const idPrefix = msg.messageId ? `[#${msg.messageId}] ` : ""
+          lines.push(`  ${idPrefix}[${role}]: ${msg.text.slice(0, 200)}`)
         }
         parts.push(lines.join("\n"))
       }
@@ -169,7 +171,8 @@ export async function buildTriageContext(): Promise<TriageContext> {
     const recentMessages = activeSlot.messages.slice(-5)
     for (const msg of recentMessages) {
       const label = msg.role === "operator" ? "Operator" : "ANIMA"
-      parts.push(`  [${label}]: ${msg.text.slice(0, 200)}`)
+      const idPrefix = msg.messageId ? `[#${msg.messageId}] ` : ""
+      parts.push(`  ${idPrefix}[${label}]: ${msg.text.slice(0, 200)}`)
     }
   }
 
@@ -245,7 +248,8 @@ export async function buildSimpleContext(messages: PendingMessage[], personality
   if (messages.length > 0) {
     parts.push("New messages to respond to:")
     for (const msg of messages) {
-      parts.push(`[${msg.from}]: ${msg.text}`)
+      const idPrefix = msg.messageId ? `[#${msg.messageId}] ` : ""
+      parts.push(`${idPrefix}[${msg.from}]: ${msg.text}`)
     }
   }
 
@@ -306,7 +310,8 @@ function formatMessageSection(messages: PendingMessage[]): string {
   if (messages.length === 0) return ""
   const lines = ["New messages to respond to:"]
   for (const msg of messages) {
-    lines.push(`[${msg.from}]: ${msg.text}`)
+    const idPrefix = msg.messageId ? `[#${msg.messageId}] ` : ""
+    lines.push(`${idPrefix}[${msg.from}]: ${msg.text}`)
   }
   return lines.join("\n")
 }

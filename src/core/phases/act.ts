@@ -78,13 +78,14 @@ async function handleMessageOperator(
     await sendGuardianAlert(guardianResult)
   }
 
-  await sendToOperator(content)
+  const sentMessageId = await sendToOperator(content)
   await pushRecentResponse(content)
   await pushToActiveConversation([
     {
       role: "anima",
       text: content,
-      timestamp: formatISO(new Date())
+      timestamp: formatISO(new Date()),
+      messageId: sentMessageId
     }
   ])
 

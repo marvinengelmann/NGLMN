@@ -4,7 +4,7 @@ vi.mock("@/integrations/anthropic.ts", async (importOriginal) => ({
 }))
 
 vi.mock("@/integrations/telegram.ts", () => ({
-  sendToOperator: vi.fn()
+  sendToOperator: vi.fn(() => 42)
 }))
 
 vi.mock("@/emotion/state.ts", () => ({

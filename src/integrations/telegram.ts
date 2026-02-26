@@ -12,8 +12,9 @@ const operatorChatId = env().TELEGRAM_OPERATOR_CHAT_ID
  * Send a Markdown-formatted message to the operator via Telegram.
  * @param text - The message text to send.
  */
-export async function sendToOperator(text: string): Promise<void> {
-  await bot.sendMessage(operatorChatId, text, { parse_mode: "Markdown" })
+export async function sendToOperator(text: string): Promise<number> {
+  const sent = await bot.sendMessage(operatorChatId, text, { parse_mode: "Markdown" })
+  return sent.message_id
 }
 
 /**

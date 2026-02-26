@@ -51,7 +51,7 @@ export async function sendMorningMessage(): Promise<void> {
     return
   }
 
-  await sendToOperator(message)
+  const sentMessageId = await sendToOperator(message)
 
   try {
     await storeEpisode(`Morning message sent: ${message.slice(0, 200)}`, "interaction", { relevanceScore: 0.8 })
@@ -65,7 +65,8 @@ export async function sendMorningMessage(): Promise<void> {
       {
         role: "anima",
         text: message,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
+        messageId: sentMessageId
       }
     ])
   } catch (e) {
