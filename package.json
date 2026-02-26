@@ -17,7 +17,8 @@
     "db:seed": "bun run src/db/seed.ts",
     "e2b:build": "bun --env-file=.env.local e2b/build.ts anima",
     "reinstall": "rm -rf node_modules bun.lock && bun install",
-    "nuclear-reset": "bun run scripts/nuclear-reset.ts"
+    "nuclear-reset": "bun run scripts/nuclear-reset.ts",
+    "x-auth": "bun run scripts/x-auth.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.78.0",
