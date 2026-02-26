@@ -24,9 +24,7 @@ vi.mock("@/config/env.ts", () => ({
 }))
 
 vi.mock("@/memory/working.ts", () => ({
-  getLastUpdateId: vi.fn(),
-  setLastUpdateId: vi.fn(),
-  pushPendingMessages: vi.fn()
+  getLastUpdateId: vi.fn()
 }))
 
 vi.mock("@/integrations/location.ts", () => ({
@@ -34,10 +32,10 @@ vi.mock("@/integrations/location.ts", () => ({
 }))
 
 import { storeOperatorLocationFromTelegram } from "@/integrations/location.ts"
-import { getLastUpdateId, pushPendingMessages, setLastUpdateId } from "@/memory/working.ts"
+import { getLastUpdateId } from "@/memory/working.ts"
 import {
+  fetchNewMessages,
   pingTelegram,
-  pollNewMessages,
   sendAlert,
   sendDriftAlert,
   sendGuardianAlert,
@@ -47,8 +45,6 @@ import {
 } from "./telegram.ts"
 
 const mockGetLastUpdateId = getLastUpdateId as ReturnType<typeof vi.fn>
-const mockSetLastUpdateId = setLastUpdateId as ReturnType<typeof vi.fn>
-const mockPushPendingMessages = pushPendingMessages as ReturnType<typeof vi.fn>
 const mockStoreLocation = storeOperatorLocationFromTelegram as ReturnType<typeof vi.fn>
 
 describe("telegram integration", () => {
@@ -211,30 +207,40 @@ describe("telegram integration", () => {
     })
   })
 
-  describe("pollNewMessages()", () => {
-    it("returns 0 when no updates", async () => {
+  describe("fetchNewMessages()", () => {
+    it("returns empty messages when no updates", async () => {
       mockGetLastUpdateId.mockResolvedValue(null)
       mockGetUpdates.mockResolvedValue([])
 
-      const count = await pollNewMessages()
+      const result = await fetchNewMessages(30)
 
-      expect(count).toBe(0)
+      expect(result.messages).toHaveLength(0)
+      expect(result.maxUpdateId).toBeNull()
     })
 
     it("fetches updates with offset when lastUpdateId exists", async () => {
       mockGetLastUpdateId.mockResolvedValue(100)
       mockGetUpdates.mockResolvedValue([])
 
-      await pollNewMessages()
+      await fetchNewMessages(30)
 
       expect(mockGetUpdates).toHaveBeenCalledWith({
         offset: 101,
-        timeout: 60,
+        timeout: 30,
         allowed_updates: ["message"]
       })
     })
 
-    it("processes text messages and pushes to pending queue", async () => {
+    it("passes configured timeout to getUpdates", async () => {
+      mockGetLastUpdateId.mockResolvedValue(null)
+      mockGetUpdates.mockResolvedValue([])
+
+      await fetchNewMessages(120)
+
+      expect(mockGetUpdates).toHaveBeenCalledWith(expect.objectContaining({ timeout: 120 }))
+    })
+
+    it("parses text messages and returns maxUpdateId without committing", async () => {
       mockGetLastUpdateId.mockResolvedValue(null)
       mockGetUpdates.mockResolvedValue([
         {
@@ -248,14 +254,12 @@ describe("telegram integration", () => {
           }
         }
       ])
-      mockSetLastUpdateId.mockResolvedValue(undefined)
-      mockPushPendingMessages.mockResolvedValue(undefined)
 
-      const count = await pollNewMessages()
+      const result = await fetchNewMessages(30)
 
-      expect(count).toBe(1)
-      expect(mockSetLastUpdateId).toHaveBeenCalledWith(200)
-      expect(mockPushPendingMessages).toHaveBeenCalledWith([
+      expect(result.messages).toHaveLength(1)
+      expect(result.maxUpdateId).toBe(200)
+      expect(result.messages[0]).toEqual(
         expect.objectContaining({
           updateId: 200,
           chatId: 12345,
@@ -263,7 +267,7 @@ describe("telegram integration", () => {
           text: "Hello there",
           messageId: 50
         })
-      ])
+      )
     })
 
     it("skips messages without text", async () => {
@@ -279,12 +283,11 @@ describe("telegram integration", () => {
           }
         }
       ])
-      mockSetLastUpdateId.mockResolvedValue(undefined)
-      mockPushPendingMessages.mockResolvedValue(undefined)
 
-      const count = await pollNewMessages()
+      const result = await fetchNewMessages(30)
 
-      expect(count).toBe(0)
+      expect(result.messages).toHaveLength(0)
+      expect(result.maxUpdateId).toBe(201)
     })
 
     it("stores location when operator sends location", async () => {
@@ -301,25 +304,21 @@ describe("telegram integration", () => {
           }
         }
       ])
-      mockSetLastUpdateId.mockResolvedValue(undefined)
-      mockPushPendingMessages.mockResolvedValue(undefined)
       mockStoreLocation.mockResolvedValue(undefined)
 
-      const count = await pollNewMessages()
+      const result = await fetchNewMessages(30)
 
-      expect(count).toBe(0)
+      expect(result.messages).toHaveLength(0)
       expect(mockStoreLocation).toHaveBeenCalledWith(49.4875, 8.466)
     })
 
     it("skips updates without message property", async () => {
       mockGetLastUpdateId.mockResolvedValue(null)
       mockGetUpdates.mockResolvedValue([{ update_id: 203 }])
-      mockSetLastUpdateId.mockResolvedValue(undefined)
-      mockPushPendingMessages.mockResolvedValue(undefined)
 
-      const count = await pollNewMessages()
+      const result = await fetchNewMessages(30)
 
-      expect(count).toBe(0)
+      expect(result.messages).toHaveLength(0)
     })
 
     it("uses 'Unknown' when from.first_name is missing", async () => {
@@ -335,16 +334,10 @@ describe("telegram integration", () => {
           }
         }
       ])
-      mockSetLastUpdateId.mockResolvedValue(undefined)
-      mockPushPendingMessages.mockResolvedValue(undefined)
 
-      await pollNewMessages()
+      const result = await fetchNewMessages(30)
 
-      expect(mockPushPendingMessages).toHaveBeenCalledWith([
-        expect.objectContaining({
-          from: "Unknown"
-        })
-      ])
+      expect(result.messages[0]?.from).toBe("Unknown")
     })
   })
 

@@ -41,8 +41,3 @@ export const HealthCheckResult = z.object({
   errors: z.array(z.string())
 })
 export type HealthCheckResult = z.infer<typeof HealthCheckResult>
-
-export const ConversationHandlerPayload = z.object({
-  triggerReason: z.enum(["new_messages", "follow_up_check"])
-})
-export type ConversationHandlerPayload = z.infer<typeof ConversationHandlerPayload>

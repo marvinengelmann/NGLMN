@@ -1,8 +1,6 @@
 vi.mock("@/memory/working.ts", () => ({
   getLastTickSummary: vi.fn(),
   getHealthCheck: vi.fn(),
-  getPendingMessageCount: vi.fn(),
-  peekAllPendingMessages: vi.fn(),
   getPendingEmailCount: vi.fn(),
   peekAllPendingEmails: vi.fn(),
   getOperatorLastActivity: vi.fn()
@@ -29,9 +27,7 @@ import {
   getLastTickSummary,
   getOperatorLastActivity,
   getPendingEmailCount,
-  getPendingMessageCount,
-  peekAllPendingEmails,
-  peekAllPendingMessages
+  peekAllPendingEmails
 } from "@/memory/working.ts"
 import {
   makeBudgetState,
@@ -44,8 +40,6 @@ import { readEmailActivity, readOwnState, readTelegramActivity, readWeatherData 
 
 const mockGetLastTickSummary = getLastTickSummary as ReturnType<typeof vi.fn>
 const mockGetHealthCheck = getHealthCheck as ReturnType<typeof vi.fn>
-const mockGetPendingMessageCount = getPendingMessageCount as ReturnType<typeof vi.fn>
-const mockPeekAllPendingMessages = peekAllPendingMessages as ReturnType<typeof vi.fn>
 const mockGetPendingEmailCount = getPendingEmailCount as ReturnType<typeof vi.fn>
 const mockPeekAllPendingEmails = peekAllPendingEmails as ReturnType<typeof vi.fn>
 const mockGetOperatorLastActivity = getOperatorLastActivity as ReturnType<typeof vi.fn>
@@ -57,8 +51,6 @@ beforeEach(() => {
   mockGetBudgetState.mockResolvedValue(makeBudgetState({ consumedToday: 2, remainingToday: 6 }))
   mockGetLastTickSummary.mockResolvedValue(makeTickSummary({ timestamp: new Date().toISOString() }))
   mockGetHealthCheck.mockResolvedValue({ overall: "healthy", errors: [] })
-  mockGetPendingMessageCount.mockResolvedValue(0)
-  mockPeekAllPendingMessages.mockResolvedValue([])
   mockGetPendingEmailCount.mockResolvedValue(0)
   mockPeekAllPendingEmails.mockResolvedValue([])
   mockGetOperatorLastActivity.mockResolvedValue(null)
@@ -102,28 +94,23 @@ describe("readOwnState", () => {
 })
 
 describe("readTelegramActivity", () => {
-  it("returns inactive with no triggers when no messages", async () => {
+  it("returns inactive with no triggers when no activity recorded", async () => {
     const result = await readTelegramActivity()
     expect(result.pendingCount).toBe(0)
     expect(result.operatorActive).toBe(false)
     expect(result.triggers).toHaveLength(0)
   })
 
-  it("generates message_received trigger for pending messages", async () => {
-    mockGetPendingMessageCount.mockResolvedValue(3)
-    mockPeekAllPendingMessages.mockResolvedValue([
-      { updateId: 1, chatId: 123, from: "op", text: "hi", date: Math.floor(Date.now() / 1000) },
-      { updateId: 2, chatId: 123, from: "op", text: "hey", date: Math.floor(Date.now() / 1000) },
-      { updateId: 3, chatId: 123, from: "op", text: "yo", date: Math.floor(Date.now() / 1000) }
-    ])
+  it("detects operator as active when last activity is recent", async () => {
+    mockGetOperatorLastActivity.mockResolvedValue(new Date().toISOString())
     const result = await readTelegramActivity()
-    expect(result.triggers.some((t: EmotionUpdateEvent) => t.trigger === "message_received")).toBe(true)
     expect(result.operatorActive).toBe(true)
+    expect(result.pendingCount).toBe(0)
   })
 
   it("generates operator_silence trigger for long silence", async () => {
-    const oldDate = Math.floor(Date.now() / 1000) - 5000
-    mockPeekAllPendingMessages.mockResolvedValue([{ updateId: 1, chatId: 123, from: "op", text: "hi", date: oldDate }])
+    const twoHoursAgo = new Date(Date.now() - 7200 * 1000).toISOString()
+    mockGetOperatorLastActivity.mockResolvedValue(twoHoursAgo)
     const result = await readTelegramActivity()
     expect(result.operatorActive).toBe(false)
     expect(result.triggers.some((t: EmotionUpdateEvent) => t.trigger === "operator_silence")).toBe(true)

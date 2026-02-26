@@ -7,7 +7,7 @@ import { EmotionalState } from "@/emotion/types.ts"
 import { ActiveEvolution } from "@/evolution/types.ts"
 import { OperatorLocation } from "@/integrations/location.ts"
 import { redis } from "@/integrations/redis.ts"
-import { PendingEmail, PendingMention, PendingMessage, WeatherData } from "@/integrations/types.ts"
+import { PendingEmail, PendingMention, WeatherData } from "@/integrations/types.ts"
 import { PerceptionSummary } from "@/perception/types.ts"
 import { PersonalityLayer } from "@/personality/types.ts"
 import { GuardianResult } from "@/security/types.ts"
@@ -32,7 +32,6 @@ async function getValidated<T>(key: string, schema: z.ZodType<T>): Promise<T | n
 const KEYS = {
   TICK_LAST: "working:tick:last",
   TICK_RUNNING: "working:tick:running",
-  MESSAGES_PENDING: "working:messages:pending",
   TELEGRAM_LAST_UPDATE_ID: "working:telegram:lastUpdateId",
   HEALTH_LAST_CHECK: "working:health:lastCheck",
   CONVERSATION_BUFFER: "working:conversation:buffer",
@@ -56,7 +55,6 @@ const KEYS = {
   WEATHER_LATEST: "working:weather:latest",
   OPERATOR_LOCATION: "working:operator:location",
   OPERATOR_LAST_ACTIVITY: "working:operator:lastActivity",
-  CONVERSATION_WAIT_TOKEN: "working:conversation:waitToken",
   EVOLUTION_COUNTER: "working:evolution:counter",
   PROACTIVE_LAST: "working:proactive:last",
   X_MENTIONS_PENDING: "working:x:mentions:pending",
@@ -90,29 +88,6 @@ export async function setTickRunning(running: boolean): Promise<void> {
   } else {
     await redis.del(KEYS.TICK_RUNNING)
   }
-}
-
-/** Append new messages to the pending queue. */
-export async function pushPendingMessages(messages: PendingMessage[]): Promise<void> {
-  if (messages.length === 0) return
-  await redis.rpush(KEYS.MESSAGES_PENDING, ...messages.map((m) => JSON.stringify(m)))
-}
-
-/** Read all pending messages without removing them. */
-export async function peekAllPendingMessages(): Promise<PendingMessage[]> {
-  const raw = await redis.lrange(KEYS.MESSAGES_PENDING, 0, -1)
-  return raw.map((item) => parseRedisJson(PendingMessage, item, KEYS.MESSAGES_PENDING))
-}
-
-/** Remove the first `count` pending messages from the queue, preserving any that arrived after the peek. */
-export async function clearProcessedMessages(count: number): Promise<void> {
-  if (count <= 0) return
-  await redis.ltrim(KEYS.MESSAGES_PENDING, count, -1)
-}
-
-/** Get the number of pending messages in the queue. */
-export async function getPendingMessageCount(): Promise<number> {
-  return redis.llen(KEYS.MESSAGES_PENDING)
 }
 
 /** Get the last processed Telegram update ID. */
@@ -189,22 +164,6 @@ export async function pushToActiveConversation(messages: ConversationMessage[]):
     active.lastActivityAt = message.timestamp
   }
   await setConversationBuffer(buffer)
-}
-
-/**
- * Acknowledge pending messages: push them into the active conversation buffer
- * and remove them from the pending queue in one logical operation.
- */
-export async function acknowledgePendingMessages(messages: PendingMessage[]): Promise<void> {
-  if (messages.length === 0) return
-  await pushToActiveConversation(
-    messages.map((message) => ({
-      role: "operator" as const,
-      text: message.text,
-      timestamp: formatISO(new Date(message.date * 1000))
-    }))
-  )
-  await clearProcessedMessages(messages.length)
 }
 
 /**
@@ -572,21 +531,6 @@ export async function setOperatorLastActivity(isoTimestamp: string): Promise<voi
 /** Get the ISO timestamp of the last operator activity. */
 export async function getOperatorLastActivity(): Promise<string | null> {
   return redis.get<string>(KEYS.OPERATOR_LAST_ACTIVITY)
-}
-
-/** Store the active conversation wait token for follow-up loop. */
-export async function setConversationWaitToken(token: string): Promise<void> {
-  await redis.set(KEYS.CONVERSATION_WAIT_TOKEN, token, { ex: 600 })
-}
-
-/** Get the active conversation wait token. */
-export async function getConversationWaitToken(): Promise<string | null> {
-  return redis.get<string>(KEYS.CONVERSATION_WAIT_TOKEN)
-}
-
-/** Clear the active conversation wait token. */
-export async function clearConversationWaitToken(): Promise<void> {
-  await redis.del(KEYS.CONVERSATION_WAIT_TOKEN)
 }
 
 /** Get the ISO timestamp of the last reflection (dream or ad-hoc). */

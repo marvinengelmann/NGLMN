@@ -1,7 +1,7 @@
 import { Api } from "grammy"
 import { env } from "@/config/env.ts"
 import { storeOperatorLocationFromTelegram } from "@/integrations/location.ts"
-import { getLastUpdateId, pushPendingMessages, setLastUpdateId } from "@/memory/working.ts"
+import { getLastUpdateId } from "@/memory/working.ts"
 import type { DriftReport, GuardianResult } from "@/security/types.ts"
 import type { AlertLevel, PendingMessage } from "./types.ts"
 
@@ -17,50 +17,51 @@ export async function sendToOperator(text: string): Promise<void> {
 }
 
 /**
- * Poll Telegram for new messages and push them to the pending queue.
- * @returns The number of new messages received.
+ * Fetch new messages from Telegram via long polling without committing the offset.
+ * @param timeout - Long poll timeout in seconds (Telegram holds the connection open).
+ * @returns Parsed messages and the highest update ID (caller decides when to commit offset).
  */
-export async function pollNewMessages(): Promise<number> {
+export async function fetchNewMessages(timeout: number): Promise<{
+  messages: PendingMessage[]
+  maxUpdateId: number | null
+}> {
   const lastUpdateId = await getLastUpdateId()
 
   const updates = await bot.getUpdates({
     offset: lastUpdateId != null ? lastUpdateId + 1 : undefined,
-    timeout: 60,
+    timeout,
     allowed_updates: ["message"]
   })
 
-  if (updates.length === 0) return 0
+  if (updates.length === 0) return { messages: [], maxUpdateId: null }
 
   const messages: PendingMessage[] = []
 
   for (const update of updates) {
-    const msg = update.message
-    if (!msg) continue
+    const telegramMessage = update.message
+    if (!telegramMessage) continue
 
-    if (msg.location && String(msg.chat.id) === operatorChatId) {
-      await storeOperatorLocationFromTelegram(msg.location.latitude, msg.location.longitude)
+    if (telegramMessage.location && String(telegramMessage.chat.id) === operatorChatId) {
+      await storeOperatorLocationFromTelegram(telegramMessage.location.latitude, telegramMessage.location.longitude)
       continue
     }
 
-    if (!msg.text) continue
+    if (!telegramMessage.text) continue
 
     messages.push({
       updateId: update.update_id,
-      chatId: msg.chat.id,
-      from: msg.from?.first_name ?? "Unknown",
-      text: msg.text,
-      date: msg.date,
-      messageId: msg.message_id,
-      replyToText: msg.reply_to_message?.text
+      chatId: telegramMessage.chat.id,
+      from: telegramMessage.from?.first_name ?? "Unknown",
+      text: telegramMessage.text,
+      date: telegramMessage.date,
+      messageId: telegramMessage.message_id,
+      replyToText: telegramMessage.reply_to_message?.text
     })
   }
 
-  const maxUpdateId = Math.max(...updates.map((u) => u.update_id))
-  await setLastUpdateId(maxUpdateId)
+  const maxUpdateId = Math.max(...updates.map((update) => update.update_id))
 
-  await pushPendingMessages(messages)
-
-  return messages.length
+  return { messages, maxUpdateId }
 }
 
 /**

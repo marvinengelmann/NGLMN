@@ -21,8 +21,8 @@ vi.mock("@/lib/logger.ts", () => ({
 }))
 
 import { redis } from "@/integrations/redis.ts"
-import { makePendingMessage } from "@/test/factories.ts"
-import { getRecentRollbackCount, peekAllPendingMessages, pingRedis } from "./working.ts"
+import { makePendingEmail } from "@/test/factories.ts"
+import { getRecentRollbackCount, peekAllPendingEmails, pingRedis } from "./working.ts"
 
 const mockRedis = vi.mocked(redis)
 
@@ -30,37 +30,37 @@ beforeEach(() => {
   vi.clearAllMocks()
 })
 
-describe("parseRedisJson (via peekAllPendingMessages)", () => {
+describe("parseRedisJson (via peekAllPendingEmails)", () => {
   it("parses valid JSON strings from Redis list", async () => {
-    const msg = makePendingMessage({ text: "Hello!" })
-    mockRedis.lrange.mockResolvedValue([JSON.stringify(msg)])
+    const email = makePendingEmail({ subject: "Hello!" })
+    mockRedis.lrange.mockResolvedValue([JSON.stringify(email)])
 
-    const result = await peekAllPendingMessages()
+    const result = await peekAllPendingEmails()
 
     expect(result).toHaveLength(1)
-    expect(result[0]?.text).toBe("Hello!")
+    expect(result[0]?.subject).toBe("Hello!")
   })
 
   it("parses already-deserialized objects from Redis list", async () => {
-    const msg = makePendingMessage({ text: "Already parsed" })
-    mockRedis.lrange.mockResolvedValue([msg as unknown as string])
+    const email = makePendingEmail({ subject: "Already parsed" })
+    mockRedis.lrange.mockResolvedValue([email as unknown as string])
 
-    const result = await peekAllPendingMessages()
+    const result = await peekAllPendingEmails()
 
     expect(result).toHaveLength(1)
-    expect(result[0]?.text).toBe("Already parsed")
+    expect(result[0]?.subject).toBe("Already parsed")
   })
 
   it("throws on invalid JSON strings", async () => {
     mockRedis.lrange.mockResolvedValue(["not-valid-json"])
 
-    await expect(peekAllPendingMessages()).rejects.toThrow()
+    await expect(peekAllPendingEmails()).rejects.toThrow()
   })
 
   it("throws on objects that don't match the schema", async () => {
     mockRedis.lrange.mockResolvedValue([JSON.stringify({ invalid: true })])
 
-    await expect(peekAllPendingMessages()).rejects.toThrow()
+    await expect(peekAllPendingEmails()).rejects.toThrow()
   })
 })
 

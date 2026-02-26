@@ -1,4 +1,5 @@
-import { TYPING } from "@/config/constants.ts"
+import { THINKING, TYPING } from "@/config/constants.ts"
+import type { TriageDecision } from "@/core/types.ts"
 import type { PendingMessage } from "@/integrations/types.ts"
 import { sleep } from "@/lib/time.ts"
 
@@ -27,6 +28,43 @@ export function computeReadTime(messages: PendingMessage[]): number {
   const baseMs = 1000 + Math.min(2000, totalChars * 3)
 
   return Math.round(baseMs)
+}
+
+/**
+ * Compute a tier-dependent "thinking" pause before ANIMA starts typing.
+ * Simple questions get a short pause, deep questions a longer one — with jitter for realism.
+ */
+export function computeThinkingDuration(tier: Exclude<TriageDecision, "idle">): number {
+  const baseMs = tier === "simple" ? THINKING.SIMPLE_MS : tier === "complex" ? THINKING.COMPLEX_MS : THINKING.DEEP_MS
+  const jitter = 1 + (Math.random() * 2 - 1) * THINKING.JITTER_FACTOR
+  return Math.round(baseMs * jitter)
+}
+
+/**
+ * Compute a short inter-paragraph pause (the moment between sending one message and starting to type the next).
+ */
+export function computeInterParagraphPause(): number {
+  return Math.round(
+    THINKING.INTER_PARAGRAPH_MIN_MS +
+      Math.random() * (THINKING.INTER_PARAGRAPH_MAX_MS - THINKING.INTER_PARAGRAPH_MIN_MS)
+  )
+}
+
+/**
+ * Split a longer message into natural paragraph chunks for sequential sending.
+ * Only splits messages that exceed MIN_SPLIT_LENGTH and contain paragraph breaks.
+ */
+export function splitIntoParagraphs(text: string): string[] {
+  if (text.length < THINKING.MIN_SPLIT_LENGTH) return [text]
+
+  const paragraphs = text
+    .split(/\n\n+/)
+    .map((p) => p.trim())
+    .filter((p) => p.length > 0)
+
+  if (paragraphs.length <= 1) return [text]
+
+  return paragraphs
 }
 
 /**

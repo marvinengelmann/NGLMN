@@ -1,31 +1,34 @@
-import { task, wait } from "@trigger.dev/sdk"
+import { schedules } from "@trigger.dev/sdk"
 import { formatISO } from "date-fns"
 import { jsonrepair } from "jsonrepair"
 import { archiveConversation, detectConversationBoundary, recallArchivedContext } from "@/bridge/conversation.ts"
 import { buildConversationResponsePrompt, computeFollowUpWait, parseStructuredResponse } from "@/bridge/handler.ts"
-import { computeReadTime, computeTypingDuration, simulateTyping } from "@/bridge/typing.ts"
-import { CONVERSATION, EMOTIONAL_THRESHOLDS, MESSAGE_DELAY, TRIAGE_DEFAULTS } from "@/config/constants.ts"
+import {
+  computeInterParagraphPause,
+  computeReadTime,
+  computeThinkingDuration,
+  computeTypingDuration,
+  simulateTyping,
+  splitIntoParagraphs
+} from "@/bridge/typing.ts"
+import { CONVERSATION, EMOTIONAL_THRESHOLDS, HUMAN_BRIDGE, MESSAGE_DELAY, TRIAGE_DEFAULTS } from "@/config/constants.ts"
 import { getMaxTokensForTier, selectModel } from "@/core/model-router.ts"
 import { TriageResult } from "@/core/types.ts"
 import { getEmotionalState, saveEmotionalState } from "@/emotion/state.ts"
 import { computeEmotionalUpdate } from "@/emotion/update.ts"
 import { loadPrompt } from "@/evolution/prompt-loader.ts"
 import { callClaude, callClaudeWithUsage, HAIKU } from "@/integrations/anthropic.ts"
-import { sendMessageWithReply, sendTypingAction } from "@/integrations/telegram.ts"
+import { fetchNewMessages, sendMessageWithReply, sendTypingAction } from "@/integrations/telegram.ts"
 import { log } from "@/lib/logger.ts"
-import { addBreadcrumb } from "@/lib/sentry.ts"
 import { sleep } from "@/lib/time.ts"
 import { storeEpisode, storeRelationshipEpisode } from "@/memory/episodic.ts"
 import {
-  acknowledgePendingMessages,
-  clearConversationWaitToken,
   getActiveConversation,
   getConversationBuffer,
-  peekAllPendingMessages,
   pushRecentResponse,
   pushToActiveConversation,
-  setConversationWaitToken,
-  setGuardianResult,
+  setLastUpdateId,
+  setOperatorLastActivity,
   startNewConversation
 } from "@/memory/working.ts"
 import { getEffectivePersonality } from "@/personality/dna.ts"
@@ -33,41 +36,43 @@ import { buildPersonalityPrompt } from "@/personality/expression.ts"
 import { getMbtiType } from "@/personality/mbti.ts"
 import { CONVERSATION_TRIAGE_SYSTEM_PROMPT } from "@/prompts/conversation.ts"
 import { RESPONDER_SYSTEM_PROMPT } from "@/prompts/responder.ts"
-import { validateOutput } from "@/security/guardian.ts"
-import type { ConversationHandlerPayload } from "@/trigger/types.ts"
 
 /**
- * Dedicated conversation handler — manages all message-based interactions.
- * Supports multi-message structured responses, typing simulation,
- * reply-to specific messages, follow-up waiting, and a 3-slot conversation buffer.
+ * Unified Human Bridge — polls Telegram and processes conversations in one atomic flow.
+ * Long polling serves as the natural wait mechanism.
  */
-export const conversationHandlerTask = task({
-  id: "conversation-handler",
+export const humanBridgeTask = schedules.task({
+  id: "human-bridge",
+  cron: "*/1 * * * *",
   queue: {
     concurrencyLimit: 1
   },
-  maxDuration: 300,
-  run: async (payload: ConversationHandlerPayload) => {
-    log.info("Conversation handler started", { reason: payload.triggerReason })
+  maxDuration: 600,
+  run: async () => {
+    const initialPoll = await fetchNewMessages(HUMAN_BRIDGE.INITIAL_TIMEOUT)
 
-    let continueConversation = true
+    if (initialPoll.messages.length === 0) {
+      log.info("Human bridge: no messages after initial poll")
+      return { rounds: 0 }
+    }
+
+    let messages = initialPoll.messages
+    if (initialPoll.maxUpdateId != null) {
+      await setLastUpdateId(initialPoll.maxUpdateId)
+    }
+    await setOperatorLastActivity(formatISO(new Date()))
+
     let roundCount = 0
 
-    while (continueConversation && roundCount < CONVERSATION.MAX_ROUNDS) {
+    while (roundCount < CONVERSATION.MAX_ROUNDS) {
       roundCount++
-
-      const messages = await peekAllPendingMessages()
-      if (messages.length === 0) {
-        log.info("No pending messages, ending conversation handler")
-        break
-      }
 
       const activeSlot = await getActiveConversation()
 
       if (activeSlot && activeSlot.messages.length > 0) {
         const boundary = await detectConversationBoundary(activeSlot, messages)
         if (boundary.isNewConversation) {
-          log.info("New conversation detected, starting new slot", { reason: boundary.reason })
+          log.info("New conversation detected", { reason: boundary.reason })
           const emotion = await getEmotionalState()
           const evicted = await startNewConversation()
           if (evicted) {
@@ -82,15 +87,25 @@ export const conversationHandlerTask = task({
         await startNewConversation()
       }
 
+      await pushToActiveConversation(
+        messages.map((message) => ({
+          role: "operator" as const,
+          text: message.text,
+          timestamp: formatISO(new Date(message.date * 1000))
+        }))
+      )
+
       let recalledContext: string | null = null
-      const replyMessages = messages.filter((m) => m.replyToText)
+      const replyMessages = messages.filter((message) => message.replyToText)
       if (replyMessages.length > 0) {
         const buffer = await getConversationBuffer()
-        for (const msg of replyMessages) {
-          if (msg.replyToText) {
-            recalledContext = await recallArchivedContext(msg.replyToText, buffer)
+        for (const replyMessage of replyMessages) {
+          if (replyMessage.replyToText) {
+            recalledContext = await recallArchivedContext(replyMessage.replyToText, buffer)
             if (recalledContext) {
-              log.info("Recalled archived context for reply", { replyToText: msg.replyToText.slice(0, 100) })
+              log.info("Recalled archived context for reply", {
+                replyToText: replyMessage.replyToText.slice(0, 100)
+              })
               break
             }
           }
@@ -100,16 +115,16 @@ export const conversationHandlerTask = task({
       const buffer = await getConversationBuffer()
       const historyLines: string[] = []
       for (const slot of buffer) {
-        for (const m of slot.messages) {
-          historyLines.push(`[${m.role === "operator" ? "Operator" : "ANIMA"}]: ${m.text}`)
+        for (const entry of slot.messages) {
+          historyLines.push(`[${entry.role === "operator" ? "Operator" : "ANIMA"}]: ${entry.text}`)
         }
       }
       const historyBlock = historyLines.length > 0 ? historyLines.join("\n") : null
 
       const messagesBlock = messages
-        .map((m) => {
-          const replyPrefix = m.replyToText ? `(replying to: "${m.replyToText.slice(0, 200)}") ` : ""
-          return `[Operator]: ${replyPrefix}${m.text}`
+        .map((message) => {
+          const replyPrefix = message.replyToText ? `(replying to: "${message.replyToText.slice(0, 200)}") ` : ""
+          return `[Operator]: ${replyPrefix}${message.text}`
         })
         .join("\n")
 
@@ -126,14 +141,13 @@ export const conversationHandlerTask = task({
       })
 
       if (triageCallResult.isErr()) {
-        log.warn("Triage call failed in conversation", { error: triageCallResult.error.message })
+        log.warn("Triage call failed", { error: triageCallResult.error.message })
         break
       }
-      const triageRaw = triageCallResult.value
 
       let triageResult: TriageResult
       try {
-        triageResult = TriageResult.parse(JSON.parse(jsonrepair(triageRaw)))
+        triageResult = TriageResult.parse(JSON.parse(jsonrepair(triageCallResult.value)))
       } catch {
         triageResult = {
           decision: "simple",
@@ -145,19 +159,14 @@ export const conversationHandlerTask = task({
 
       const emotion = await getEmotionalState()
 
-      await acknowledgePendingMessages(messages)
-
       if (triageResult.decision === "idle") {
         log.info("Triage decided no response needed", { reason: triageResult.reason })
-
         await storeEpisode(
           `Received ${messages.length} message(s) but chose not to respond: ${triageResult.reason}`,
           "interaction",
           { relevanceScore: triageResult.confidence }
         )
-
-        continueConversation = false
-        continue
+        break
       }
 
       const tier = triageResult.decision
@@ -184,68 +193,35 @@ export const conversationHandlerTask = task({
         )
         break
       }
-      const responderResponse = responderCallResult.value
 
-      const structuredResponse = parseStructuredResponse(responderResponse.text)
-      const responseMessages = structuredResponse.messages
+      const structuredResponse = parseStructuredResponse(responderCallResult.value.text)
       log.info("Parsed structured response", {
-        messageCount: responseMessages.length,
+        messageCount: structuredResponse.messages.length,
         expectsReply: structuredResponse.expectsReply
       })
-
-      const validatedMessages = []
-      for (const msg of responseMessages) {
-        const guardianResult = await validateOutput(msg.text)
-        await setGuardianResult(guardianResult)
-
-        if (guardianResult.verdict === "blocked") {
-          log.warn("Guardian blocked message", { reasons: guardianResult.reasons })
-          addBreadcrumb("guardian", "Blocked message in conversation", {
-            verdict: "blocked",
-            reasons: guardianResult.reasons
-          })
-          continue
-        }
-
-        if (guardianResult.verdict === "warning") {
-          log.warn("Guardian warning on message", { reasons: guardianResult.reasons })
-        }
-
-        validatedMessages.push(msg)
-      }
-
-      if (validatedMessages.length === 0) {
-        log.warn("All messages blocked by guardian")
-        await storeEpisode(
-          `Received ${messages.length} message(s) but all responses were blocked by guardian`,
-          "interaction",
-          { relevanceScore: 0.3 }
-        )
-        break
-      }
 
       const readTime = computeReadTime(messages)
       await sleep(readTime)
 
-      for (let i = 0; i < validatedMessages.length; i++) {
-        const msg = validatedMessages[i]
-        if (!msg) continue
+      const thinkingTime = computeThinkingDuration(tier)
+      await sleep(thinkingTime)
 
-        await simulateTyping(computeTypingDuration(msg.text), sendTypingAction)
+      for (const [i, responseMessage] of structuredResponse.messages.entries()) {
+        const paragraphs = splitIntoParagraphs(responseMessage.text)
 
-        await sendMessageWithReply(msg.text, msg.replyTo)
+        for (const [p, paragraph] of paragraphs.entries()) {
+          await simulateTyping(computeTypingDuration(paragraph), sendTypingAction)
+          await sendMessageWithReply(paragraph, p === 0 ? responseMessage.replyTo : undefined)
 
-        await pushToActiveConversation([
-          {
-            role: "anima",
-            text: msg.text,
-            timestamp: formatISO(new Date())
+          await pushToActiveConversation([{ role: "anima", text: paragraph, timestamp: formatISO(new Date()) }])
+          await pushRecentResponse(paragraph)
+
+          if (p < paragraphs.length - 1) {
+            await sleep(computeInterParagraphPause())
           }
-        ])
+        }
 
-        await pushRecentResponse(msg.text)
-
-        if (i < validatedMessages.length - 1) {
+        if (i < structuredResponse.messages.length - 1) {
           await sleep(MESSAGE_DELAY.MIN_BETWEEN_MESSAGES_MS + Math.random() * MESSAGE_DELAY.MAX_JITTER_MS)
         }
       }
@@ -256,7 +232,7 @@ export const conversationHandlerTask = task({
       ])
       await saveEmotionalState(updatedEmotion, "message_sent", `conv-${Date.now()}`)
 
-      const episodeSummary = `Responded to ${messages.length} message(s) via conversation handler (${tier} tier)`
+      const episodeSummary = `Responded to ${messages.length} message(s) via human bridge (${tier} tier)`
 
       if (updatedEmotion.connection > EMOTIONAL_THRESHOLDS.CONNECTION_HIGH) {
         await storeRelationshipEpisode(episodeSummary)
@@ -275,36 +251,37 @@ export const conversationHandlerTask = task({
       log.info("Conversation round complete", {
         round: roundCount,
         messagesProcessed: messages.length,
-        responsesSent: validatedMessages.length,
+        responsesSent: structuredResponse.messages.length,
         tier,
         model
       })
 
       if (!structuredResponse.expectsReply) {
         log.info("Response does not expect reply, ending conversation")
-        continueConversation = false
-      } else {
-        const followUpWait = computeFollowUpWait(updatedEmotion)
-        const { id: tokenId } = await wait.createToken({ timeout: `${followUpWait}s` })
-        await setConversationWaitToken(tokenId)
-
-        const followUpResult = await wait.forToken(tokenId)
-        await clearConversationWaitToken()
-
-        if (followUpResult.ok) {
-          log.info("Follow-up token completed, checking for new messages")
-        } else {
-          log.info("Follow-up wait timed out, ending conversation", { waitSeconds: followUpWait })
-          continueConversation = false
-        }
+        break
       }
+
+      const followUpTimeout = computeFollowUpWait(updatedEmotion)
+      const followUpPoll = await fetchNewMessages(followUpTimeout)
+
+      if (followUpPoll.messages.length === 0) {
+        log.info("Follow-up poll timed out, ending conversation", { waitSeconds: followUpTimeout })
+        break
+      }
+
+      messages = followUpPoll.messages
+      if (followUpPoll.maxUpdateId != null) {
+        await setLastUpdateId(followUpPoll.maxUpdateId)
+      }
+      await setOperatorLastActivity(formatISO(new Date()))
+      log.info("Follow-up messages received, continuing conversation", { count: messages.length })
     }
 
     if (roundCount >= CONVERSATION.MAX_ROUNDS) {
       log.warn("Conversation hit max rounds limit", { rounds: roundCount })
     }
 
-    log.info("Conversation handler finished", { rounds: roundCount })
+    log.info("Human bridge finished", { rounds: roundCount })
     return { rounds: roundCount }
   }
 })

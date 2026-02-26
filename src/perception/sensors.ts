@@ -13,10 +13,8 @@ import {
   getOperatorLastActivity,
   getPendingEmailCount,
   getPendingMentionCount,
-  getPendingMessageCount,
   peekAllPendingEmails,
-  peekAllPendingMentions,
-  peekAllPendingMessages
+  peekAllPendingMentions
 } from "@/memory/working.ts"
 import type { OverallStatus } from "@/trigger/types.ts"
 
@@ -74,6 +72,8 @@ export async function readOwnState(): Promise<{
 
 /**
  * Read Telegram activity and generate emotional triggers from it.
+ * Messages are processed atomically by the human bridge — no pending queue exists.
+ * Activity is tracked via operatorLastActivity timestamp set by the bridge.
  */
 export async function readTelegramActivity(): Promise<{
   pendingCount: number
@@ -81,32 +81,12 @@ export async function readTelegramActivity(): Promise<{
   operatorActive: boolean
   triggers: EmotionUpdateEvent[]
 }> {
-  const [pendingCount, messages, lastActivity] = await Promise.all([
-    getPendingMessageCount(),
-    peekAllPendingMessages(),
-    getOperatorLastActivity()
-  ])
+  const lastActivity = await getOperatorLastActivity()
 
-  let lastMessageAge: number
-  if (lastActivity) {
-    lastMessageAge = differenceInSeconds(new Date(), parseISO(lastActivity))
-  } else if (messages.length > 0) {
-    lastMessageAge = differenceInSeconds(new Date(), new Date(Math.max(...messages.map((m) => m.date * 1000))))
-  } else {
-    lastMessageAge = -1
-  }
-
+  const lastMessageAge = lastActivity ? differenceInSeconds(new Date(), parseISO(lastActivity)) : -1
   const operatorActive = lastMessageAge >= 0 && lastMessageAge < 600
 
   const triggers: EmotionUpdateEvent[] = []
-
-  if (pendingCount > 0) {
-    triggers.push({
-      trigger: "message_received",
-      intensity: Math.min(1, pendingCount * 0.3),
-      detail: `${pendingCount} pending message(s)`
-    })
-  }
 
   if (!operatorActive && lastMessageAge > 3600) {
     triggers.push({
@@ -116,7 +96,7 @@ export async function readTelegramActivity(): Promise<{
     })
   }
 
-  return { pendingCount, lastMessageAge, operatorActive, triggers }
+  return { pendingCount: 0, lastMessageAge, operatorActive, triggers }
 }
 
 /**

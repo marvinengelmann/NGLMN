@@ -112,9 +112,23 @@ export const FOLLOW_UP = {
   BOREDOM_PENALTY: 80
 } as const
 
+export const THINKING = {
+  SIMPLE_MS: 2000,
+  COMPLEX_MS: 4000,
+  DEEP_MS: 6000,
+  JITTER_FACTOR: 0.3,
+  INTER_PARAGRAPH_MIN_MS: 800,
+  INTER_PARAGRAPH_MAX_MS: 2500,
+  MIN_SPLIT_LENGTH: 200
+} as const
+
 export const MESSAGE_DELAY = {
   MIN_BETWEEN_MESSAGES_MS: 500,
   MAX_JITTER_MS: 1500
+} as const
+
+export const HUMAN_BRIDGE = {
+  INITIAL_TIMEOUT: 30
 } as const
 
 export const X = {
