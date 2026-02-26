@@ -11,9 +11,10 @@ An autonomously operating, self-evolving AI entity built on the Anthropic Claude
 - **Three-Layer Memory** — Working (Redis), Episodic (Vector), Semantic (Postgres) with relationship graph
 - **MBTI-Based Personality** — Ten-dimension two-layer model (base + adaptive) evolving through reflection
 - **Simulated Emotions** — 7-dimension state vector with decay, MBTI baselines, and metrics calibration
-- **Trust System** — Fear/confidence-based autonomy across 8 action types that grows through experience
-- **Passive Perception** — Multiple sensor sources with pattern-based goal detection
-- **Conversation Bridge** — Multi-round handler with boundary detection, typing simulation, and follow-ups
+- **Trust System** — Fear/confidence-based autonomy across 9 action types that grows through experience
+- **Passive Perception** — 6 sensor sources with pattern-based goal detection
+- **Human Bridge** — Unified Telegram polling and conversation handler with boundary detection, typing simulation, afterthought messages, and multi-round follow-ups
+- **X Integration** — Mention polling, trust-gated replies and proactive tweets
 - **Email Communication** — Resend-based processing with trust-gated responses and Guardian validation
 - **Dream Simulation** — Nightly consolidation, creative connections, Opus reflection, and morning messages
 - **Self-Evolution** — Three tiers: prompt and workflow evolution (DB), code modification (E2B sandbox)
@@ -29,13 +30,13 @@ The system consists of ten interlocking layers:
 |---|-------|----------|
 | 1 | External Protection | Watchdog, health checks |
 | 2 | Security Foundation | Guardian, rollback, injection defense |
-| 3 | Integrations | Telegram, Email, Weather, GitHub, APIs |
+| 3 | Integrations | Telegram, X, Email, Weather, GitHub, APIs |
 | 4 | Intelligence Core | Heartbeat, model routing, context builder, workflow engine |
 | 5 | Memory System | Working, episodic, semantic, goal tracking |
-| 6 | Passive Perception | 5 sensors, pattern-based goal detection |
+| 6 | Passive Perception | 6 sensors, pattern-based goal detection |
 | 7 | Dream Simulation | Consolidation, creativity, reflection, morning routine |
 | 8 | Personality | MBTI-derived DNA, expression, feedback loop |
-| 9 | Trust Levels | Fear, confidence, 8 action types, 4 autonomy levels |
+| 9 | Trust Levels | Fear, confidence, 9 action types, 4 autonomy levels |
 | 10 | Emotional System | 7-dimension state vector, decay, calibration |
 
 ### Tick Flow
@@ -60,6 +61,7 @@ Heartbeat (5-min cron)
 | Vector DB | [Upstash Vector](https://upstash.com) |
 | Sandbox Execution | [E2B](https://e2b.dev) (Firecracker microVMs) |
 | Communication | [Grammy](https://grammy.dev) (Telegram Bot API) |
+| Social | [X API](https://developer.x.com) |
 | Email | [Resend](https://resend.com) |
 | Weather | [OpenWeather](https://openweathermap.org) |
 | Error Tracking & Logs | [Sentry](https://sentry.io) |
@@ -72,6 +74,7 @@ Heartbeat (5-min cron)
 - [Upstash](https://upstash.com) Redis + Vector instances
 - [Anthropic](https://console.anthropic.com) API key
 - [Telegram Bot](https://core.telegram.org/bots#botfather) token
+- [X Developer](https://developer.x.com) app credentials
 - [Resend](https://resend.com) API key
 - [E2B](https://e2b.dev) API key
 - [GitHub](https://github.com) personal access token
@@ -113,6 +116,11 @@ Environment variables:
 | | **Telegram** |
 | `TELEGRAM_BOT_TOKEN` | Telegram bot token |
 | `TELEGRAM_OPERATOR_CHAT_ID` | Your Telegram chat ID |
+| | **X (Twitter)** |
+| `X_CLIENT_ID` | X OAuth 2.0 client ID |
+| `X_CLIENT_SECRET` | X OAuth 2.0 client secret |
+| `X_ACCESS_TOKEN` | X access token |
+| `X_REFRESH_TOKEN` | X refresh token |
 | | **Email (Resend)** |
 | `RESEND_API_KEY` | Resend API key |
 | `RESEND_FROM_EMAIL` | Email address ANIMA sends from |
@@ -131,6 +139,12 @@ Environment variables:
 | `OPENWEATHER_DEFAULT_LOCATION` | Default location (city name) |
 | | **Error Tracking** |
 | `SENTRY_DSN` | Sentry DSN |
+
+Generate the initial X tokens:
+
+```bash
+bun run x-auth
+```
 
 Build the E2B sandbox template (provides the `E2B_TEMPLATE_ID`):
 
@@ -171,21 +185,20 @@ ANIMA deploys automatically through Trigger.dev on every push to `master`. The s
 
 ```
 src/
-├── bridge/         # Conversation boundary detection, typing simulation, response handling
+├── bridge/         # Human Bridge — unified Telegram polling, conversation handling, typing simulation, afterthought
 ├── config/         # Environment validation, constants, error taxonomy, Result helpers, Sentry setup
 ├── core/           # Model router, context builder, budget tracking, workflow engine, heartbeat phases
 ├── db/             # Drizzle schema (11 tables), migrations, client, seed
 ├── dream/          # Dream orchestration, consolidation, creative connections, reflection, morning messages
 ├── emotion/        # 7-dimension state vector, update logic (decay + events), calibration, metrics check
 ├── evolution/      # Prompt/workflow/code evolution, curiosity engine, changelog, prompt loader
-├── integrations/   # Anthropic, Redis, Vector, Telegram (Grammy), GitHub, E2B, Resend, OpenWeather, Location
+├── integrations/   # Anthropic, Redis, Vector, Telegram (Grammy), X, GitHub, E2B, Resend, OpenWeather
 ├── lib/            # Shared utilities (math, time, logger, sentry)
 ├── memory/         # Working (Redis), episodic (Vector), semantic (Postgres), goal tracking
-├── perception/     # 5 passive sensors, pattern-based goal detection
+├── perception/     # 6 passive sensors, pattern-based goal detection
 ├── personality/    # MBTI system, personality DNA, expression prompts, operator feedback
-├── prompts/        # System prompts (triage, conversation, responder, proactive, dream, evolution, workflow)
+├── prompts/        # System prompts (triage, conversation, responder, proactive, afterthought, dream, evolution)
 ├── security/       # Guardian, rollback engine, injection defense
 ├── test/           # Test factories, mocks, and utilities
-└── trigger/        # Trigger.dev tasks (heartbeat, dream, conversation, email, evolution, health-check)
+└── trigger/        # Trigger.dev tasks (heartbeat, human-bridge, x-poll, dream, morning, email, evolution, health-check)
 ```
-
