@@ -2,6 +2,7 @@ import { getEmotionalState } from "@/emotion/state.ts"
 import { callClaude, SONNET } from "@/integrations/anthropic.ts"
 import { sendToOperator } from "@/integrations/telegram.ts"
 import { log } from "@/lib/logger.ts"
+import { captureError } from "@/lib/sentry.ts"
 import { storeEpisode } from "@/memory/episodic.ts"
 import { getOperatorLanguage } from "@/memory/semantic.ts"
 import { clearDreamInsights, getDreamInsights, pushToActiveConversation } from "@/memory/working.ts"
@@ -44,15 +45,31 @@ export async function composeMorningMessage(): Promise<string> {
 export async function sendMorningMessage(): Promise<void> {
   const message = await composeMorningMessage()
 
+  if (!message) {
+    log.warn("sendMorningMessage: empty message, skipping send")
+    await clearDreamInsights()
+    return
+  }
+
   await sendToOperator(message)
 
-  await storeEpisode(`Morning message sent: ${message.slice(0, 200)}`, "interaction", { relevanceScore: 0.8 })
+  try {
+    await storeEpisode(`Morning message sent: ${message.slice(0, 200)}`, "interaction", { relevanceScore: 0.8 })
+  } catch (e) {
+    log.error("sendMorningMessage: failed to store episode", { error: String(e) })
+    captureError(e, { phase: "morning_episode" })
+  }
 
-  await pushToActiveConversation({
-    role: "anima",
-    text: message,
-    timestamp: new Date().toISOString()
-  })
+  try {
+    await pushToActiveConversation({
+      role: "anima",
+      text: message,
+      timestamp: new Date().toISOString()
+    })
+  } catch (e) {
+    log.error("sendMorningMessage: failed to push to conversation buffer", { error: String(e) })
+    captureError(e, { phase: "morning_conversation_buffer" })
+  }
 
   await clearDreamInsights()
 }
