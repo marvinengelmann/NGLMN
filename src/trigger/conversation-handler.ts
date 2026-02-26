@@ -17,8 +17,8 @@ import { addBreadcrumb } from "@/lib/sentry.ts"
 import { sleep } from "@/lib/time.ts"
 import { storeEpisode, storeRelationshipEpisode } from "@/memory/episodic.ts"
 import {
+  acknowledgePendingMessages,
   clearConversationWaitToken,
-  clearProcessedMessages,
   getActiveConversation,
   getConversationBuffer,
   peekAllPendingMessages,
@@ -145,17 +145,10 @@ export const conversationHandlerTask = task({
 
       const emotion = await getEmotionalState()
 
+      await acknowledgePendingMessages(messages)
+
       if (triageResult.decision === "idle") {
         log.info("Triage decided no response needed", { reason: triageResult.reason })
-
-        for (const msg of messages) {
-          await pushToActiveConversation({
-            role: "operator",
-            text: msg.text,
-            timestamp: formatISO(new Date(msg.date * 1000))
-          })
-        }
-        await clearProcessedMessages(messages.length)
 
         await storeEpisode(
           `Received ${messages.length} message(s) but chose not to respond: ${triageResult.reason}`,
@@ -184,7 +177,11 @@ export const conversationHandlerTask = task({
 
       if (responderCallResult.isErr()) {
         log.warn("Responder call failed", { error: responderCallResult.error.message })
-        await clearProcessedMessages(messages.length)
+        await storeEpisode(
+          `Received ${messages.length} message(s) but responder failed: ${responderCallResult.error.message}`,
+          "interaction",
+          { relevanceScore: 0.3 }
+        )
         break
       }
       const responderResponse = responderCallResult.value
@@ -219,20 +216,16 @@ export const conversationHandlerTask = task({
 
       if (validatedMessages.length === 0) {
         log.warn("All messages blocked by guardian")
-        await clearProcessedMessages(messages.length)
+        await storeEpisode(
+          `Received ${messages.length} message(s) but all responses were blocked by guardian`,
+          "interaction",
+          { relevanceScore: 0.3 }
+        )
         break
       }
 
       const readTime = computeReadTime(messages)
       await sleep(readTime)
-
-      for (const msg of messages) {
-        await pushToActiveConversation({
-          role: "operator",
-          text: msg.text,
-          timestamp: formatISO(new Date(msg.date * 1000))
-        })
-      }
 
       for (let i = 0; i < validatedMessages.length; i++) {
         const msg = validatedMessages[i]
@@ -242,11 +235,13 @@ export const conversationHandlerTask = task({
 
         await sendMessageWithReply(msg.text, msg.replyTo)
 
-        await pushToActiveConversation({
-          role: "anima",
-          text: msg.text,
-          timestamp: formatISO(new Date())
-        })
+        await pushToActiveConversation([
+          {
+            role: "anima",
+            text: msg.text,
+            timestamp: formatISO(new Date())
+          }
+        ])
 
         await pushRecentResponse(msg.text)
 
@@ -254,8 +249,6 @@ export const conversationHandlerTask = task({
           await sleep(MESSAGE_DELAY.MIN_BETWEEN_MESSAGES_MS + Math.random() * MESSAGE_DELAY.MAX_JITTER_MS)
         }
       }
-
-      await clearProcessedMessages(messages.length)
 
       const updatedEmotion = computeEmotionalUpdate(emotion, [
         { trigger: "message_sent", intensity: EMOTIONAL_THRESHOLDS.MESSAGE_SENT_INTENSITY },

@@ -172,10 +172,11 @@ export async function getActiveConversation(): Promise<ConversationSlot | null> 
 }
 
 /**
- * Push a message to the active conversation slot.
+ * Push messages to the active conversation slot.
  * Creates a new slot if the buffer is empty.
  */
-export async function pushToActiveConversation(msg: ConversationMessage): Promise<void> {
+export async function pushToActiveConversation(messages: ConversationMessage[]): Promise<void> {
+  if (messages.length === 0) return
   const buffer = await getConversationBuffer()
   if (buffer.length === 0) {
     const now = formatISO(new Date())
@@ -183,9 +184,27 @@ export async function pushToActiveConversation(msg: ConversationMessage): Promis
   }
   const active = buffer[buffer.length - 1]
   if (!active) return
-  active.messages.push(msg)
-  active.lastActivityAt = msg.timestamp
+  for (const message of messages) {
+    active.messages.push(message)
+    active.lastActivityAt = message.timestamp
+  }
   await setConversationBuffer(buffer)
+}
+
+/**
+ * Acknowledge pending messages: push them into the active conversation buffer
+ * and remove them from the pending queue in one logical operation.
+ */
+export async function acknowledgePendingMessages(messages: PendingMessage[]): Promise<void> {
+  if (messages.length === 0) return
+  await pushToActiveConversation(
+    messages.map((message) => ({
+      role: "operator" as const,
+      text: message.text,
+      timestamp: formatISO(new Date(message.date * 1000))
+    }))
+  )
+  await clearProcessedMessages(messages.length)
 }
 
 /**

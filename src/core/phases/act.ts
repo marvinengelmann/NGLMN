@@ -80,11 +80,13 @@ async function handleMessageOperator(
 
   await sendToOperator(content)
   await pushRecentResponse(content)
-  await pushToActiveConversation({
-    role: "anima",
-    text: content,
-    timestamp: formatISO(new Date())
-  })
+  await pushToActiveConversation([
+    {
+      role: "anima",
+      text: content,
+      timestamp: formatISO(new Date())
+    }
+  ])
 
   log.info("Proactive message sent to operator", { model, tier })
   return { responseSent: true, responseText: content }

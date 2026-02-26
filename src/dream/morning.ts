@@ -61,11 +61,13 @@ export async function sendMorningMessage(): Promise<void> {
   }
 
   try {
-    await pushToActiveConversation({
-      role: "anima",
-      text: message,
-      timestamp: new Date().toISOString()
-    })
+    await pushToActiveConversation([
+      {
+        role: "anima",
+        text: message,
+        timestamp: new Date().toISOString()
+      }
+    ])
   } catch (e) {
     log.error("sendMorningMessage: failed to push to conversation buffer", { error: String(e) })
     captureError(e, { phase: "morning_conversation_buffer" })

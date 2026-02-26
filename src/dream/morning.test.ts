@@ -97,12 +97,12 @@ describe("sendMorningMessage", () => {
     expect(mockStoreEpisode).toHaveBeenCalledWith(expect.stringContaining("Morning message sent"), "interaction", {
       relevanceScore: 0.8
     })
-    expect(mockPushToActiveConversation).toHaveBeenCalledWith(
+    expect(mockPushToActiveConversation).toHaveBeenCalledWith([
       expect.objectContaining({
         role: "anima",
         text: "Good morning! Last night I thought about many things..."
       })
-    )
+    ])
   })
 
   it("clears dream insights after sending", async () => {
