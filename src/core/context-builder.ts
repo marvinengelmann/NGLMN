@@ -1,5 +1,5 @@
 import { differenceInMinutes, formatISO, parseISO } from "date-fns"
-import type { ConversationMessage } from "@/bridge/types.ts"
+import type { ConversationSlot } from "@/bridge/types.ts"
 import { TIERS } from "@/config/constants.ts"
 import type { TickSummary } from "@/core/types.ts"
 import { getEmotionHistory } from "@/emotion/state.ts"
@@ -10,7 +10,7 @@ import { queryRelated, queryRelationshipHistory } from "@/memory/episodic.ts"
 import { getGoalsByPriority } from "@/memory/goals.ts"
 import { getKnowledge, getOperatorLanguage } from "@/memory/semantic.ts"
 import {
-  getConversationHistory,
+  getConversationBuffer,
   getCurrentEmotion,
   getLastProactiveAction,
   getLastTickSummary,
@@ -54,16 +54,44 @@ export function truncateToTokenBudget(sections: ContextSection[], budgetTokens: 
 }
 
 /**
- * Format conversation history into a labeled text block.
+ * Format a single conversation slot into a labeled text block.
  */
-function formatConversationHistory(history: ConversationMessage[]): string {
-  if (history.length === 0) return ""
-  const lines = ["Conversation history:"]
-  for (const msg of history) {
-    const label = msg.role === "operator" ? "Operator" : "You (ANIMA)"
-    lines.push(`  [${label}]: ${msg.text}`)
+function formatConversationSlot(slot: ConversationSlot, label: string): string {
+  if (slot.messages.length === 0) return ""
+  const lines = [`${label}:`]
+  for (const msg of slot.messages) {
+    const role = msg.role === "operator" ? "Operator" : "You (ANIMA)"
+    lines.push(`  [${role}]: ${msg.text}`)
   }
   return lines.join("\n")
+}
+
+/**
+ * Format all conversation slots into context.
+ * Active conversation shown in full, older slots shown compactly.
+ */
+function formatConversationBuffer(buffer: ConversationSlot[]): string {
+  if (buffer.length === 0) return ""
+  const parts: string[] = []
+  for (let i = 0; i < buffer.length; i++) {
+    const slot = buffer[i]
+    if (!slot) continue
+    const isActive = i === buffer.length - 1
+    if (isActive) {
+      parts.push(formatConversationSlot(slot, "Current conversation"))
+    } else {
+      const preview = slot.messages.slice(-3)
+      if (preview.length > 0) {
+        const lines = [`Earlier conversation (${slot.messages.length} messages, last 3):`]
+        for (const msg of preview) {
+          const role = msg.role === "operator" ? "Operator" : "You (ANIMA)"
+          lines.push(`  [${role}]: ${msg.text.slice(0, 200)}`)
+        }
+        parts.push(lines.join("\n"))
+      }
+    }
+  }
+  return parts.join("\n\n")
 }
 
 export interface TriageContext {
@@ -114,9 +142,9 @@ function formatPerceptionBlock(perception: PerceptionSummary): string {
  */
 export async function buildTriageContext(): Promise<TriageContext> {
   const now = formatISO(new Date())
-  const [lastTick, conversationHistory, emotion, perception, lastProactive] = await Promise.all([
+  const [lastTick, conversationBuffer, emotion, perception, lastProactive] = await Promise.all([
     getLastTickSummary(),
-    getConversationHistory(),
+    getConversationBuffer(),
     getCurrentEmotion(),
     getPerceptionSummary(),
     getLastProactiveAction()
@@ -135,8 +163,14 @@ export async function buildTriageContext(): Promise<TriageContext> {
     parts.push("Last tick: none (first tick)")
   }
 
-  if (conversationHistory.length > 0) {
-    parts.push(`Active conversation: ${conversationHistory.length} messages in current session`)
+  const activeSlot = conversationBuffer.length > 0 ? conversationBuffer[conversationBuffer.length - 1] : null
+  if (activeSlot && activeSlot.messages.length > 0) {
+    parts.push(`Active conversation: ${activeSlot.messages.length} messages in current session`)
+    const recentMessages = activeSlot.messages.slice(-5)
+    for (const msg of recentMessages) {
+      const label = msg.role === "operator" ? "Operator" : "ANIMA"
+      parts.push(`  [${label}]: ${msg.text.slice(0, 200)}`)
+    }
   }
 
   if (emotion) {
@@ -174,8 +208,8 @@ export async function buildTriageContext(): Promise<TriageContext> {
  */
 export async function buildSimpleContext(messages: PendingMessage[], personalityPrompt?: string): Promise<string> {
   const now = formatISO(new Date())
-  const [conversationHistory, episodes, operatorLanguage] = await Promise.all([
-    getConversationHistory(),
+  const [conversationBuffer, episodes, operatorLanguage] = await Promise.all([
+    getConversationBuffer(),
     messages.length > 0
       ? queryRelated(messages.map((m) => m.text).join(" "), TIERS.simple.maxEpisodes)
       : Promise.resolve([]),
@@ -192,7 +226,7 @@ export async function buildSimpleContext(messages: PendingMessage[], personality
     parts.push("")
   }
 
-  const historyBlock = formatConversationHistory(conversationHistory)
+  const historyBlock = formatConversationBuffer(conversationBuffer)
   if (historyBlock) {
     parts.push(historyBlock)
     parts.push("")
@@ -291,7 +325,7 @@ export async function buildComplexContext(messages: PendingMessage[], personalit
     lastTick,
     episodes,
     knowledgeResult,
-    conversationHistory,
+    conversationBuffer,
     emotion,
     perception,
     relationships,
@@ -300,7 +334,7 @@ export async function buildComplexContext(messages: PendingMessage[], personalit
     getLastTickSummary(),
     queryRelated(queryText, config.maxEpisodes),
     getKnowledge(),
-    getConversationHistory(),
+    getConversationBuffer(),
     getCurrentEmotion(),
     getPerceptionSummary(),
     queryRelationshipHistory(config.maxRelationship),
@@ -316,7 +350,7 @@ export async function buildComplexContext(messages: PendingMessage[], personalit
     personalityPrompt ?? "",
     emotion ? `Emotional state: ${formatEmotionSummary(emotion)}` : "",
     perception ? formatPerceptionBlock(perception) : "",
-    formatConversationHistory(conversationHistory),
+    formatConversationBuffer(conversationBuffer),
     lastTick ? `Previous tick: ${lastTick.triageDecision} — ${lastTick.triageReason}` : "",
     formatEpisodeSection(episodes),
     formatRelationshipSection(relationships),

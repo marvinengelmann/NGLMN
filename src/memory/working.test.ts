@@ -20,10 +20,9 @@ vi.mock("@/lib/logger.ts", () => ({
   log: { trace: vi.fn(), debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn(), fatal: vi.fn() }
 }))
 
-import { subMinutes } from "date-fns"
 import { redis } from "@/integrations/redis.ts"
 import { makePendingMessage } from "@/test/factories.ts"
-import { detectConversationGap, getRecentRollbackCount, peekAllPendingMessages, pingRedis } from "./working.ts"
+import { getRecentRollbackCount, peekAllPendingMessages, pingRedis } from "./working.ts"
 
 const mockRedis = vi.mocked(redis)
 
@@ -62,62 +61,6 @@ describe("parseRedisJson (via peekAllPendingMessages)", () => {
     mockRedis.lrange.mockResolvedValue([JSON.stringify({ invalid: true })])
 
     await expect(peekAllPendingMessages()).rejects.toThrow()
-  })
-})
-
-describe("detectConversationGap", () => {
-  it("returns null when no new messages", async () => {
-    const result = await detectConversationGap([])
-
-    expect(result).toBeNull()
-  })
-
-  it("returns null when conversation history is empty", async () => {
-    mockRedis.lrange.mockResolvedValue([])
-
-    const result = await detectConversationGap([makePendingMessage()])
-
-    expect(result).toBeNull()
-  })
-
-  it("returns null when gap is less than threshold", async () => {
-    const recentTimestamp = new Date().toISOString()
-    const historyMsg = { role: "operator", text: "Hi", timestamp: recentTimestamp }
-    mockRedis.lrange.mockResolvedValue([JSON.stringify(historyMsg)])
-
-    const newMsg = makePendingMessage({ date: Math.floor(Date.now() / 1000) })
-
-    const result = await detectConversationGap([newMsg])
-
-    expect(result).toBeNull()
-  })
-
-  it("returns old history when gap exceeds threshold", async () => {
-    const oldTimestamp = subMinutes(new Date(), 45).toISOString()
-    const historyMsg = { role: "operator", text: "Old message", timestamp: oldTimestamp }
-    mockRedis.lrange.mockResolvedValue([JSON.stringify(historyMsg)])
-
-    const newMsg = makePendingMessage({ date: Math.floor(Date.now() / 1000) })
-
-    const result = await detectConversationGap([newMsg])
-
-    expect(result).not.toBeNull()
-    expect(result).toHaveLength(1)
-    expect(result?.[0]?.text).toBe("Old message")
-  })
-
-  it("uses the earliest new message time for gap calculation", async () => {
-    const oldTimestamp = subMinutes(new Date(), 35).toISOString()
-    const historyMsg = { role: "anima", text: "Response", timestamp: oldTimestamp }
-    mockRedis.lrange.mockResolvedValue([JSON.stringify(historyMsg)])
-
-    const nowEpoch = Math.floor(Date.now() / 1000)
-    const earlierMsg = makePendingMessage({ date: nowEpoch - 60, text: "Earlier" })
-    const laterMsg = makePendingMessage({ date: nowEpoch, text: "Later" })
-
-    const result = await detectConversationGap([laterMsg, earlierMsg])
-
-    expect(result).not.toBeNull()
   })
 })
 

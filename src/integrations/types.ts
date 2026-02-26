@@ -9,7 +9,8 @@ export const PendingMessage = z.object({
   from: z.string().max(256),
   text: z.string().max(10_000),
   date: z.number(),
-  messageId: z.number().optional()
+  messageId: z.number().optional(),
+  replyToText: z.string().max(10_000).optional()
 })
 export type PendingMessage = z.infer<typeof PendingMessage>
 

@@ -11,9 +11,10 @@ Process the gathered data according to the workflow instruction and produce outp
 
 ## Output Rules
 - For "telegram_send": Write a natural, personality-infused message in the operator's preferred language as specified in the context
-- For "store_episode": Write a concise summary of the processed information
-- For "create_goal": Write a JSON object with "title", "description", and "priority" (0.0-1.0)
-- For "log_only": Write a brief analysis or summary of the data
+- For "email_send": Write in English unless replying to the operator.
+- For "store_episode": Write a concise summary in English
+- For "create_goal": Write a JSON object with "title", "description", and "priority" (0.0-1.0) in English
+- For "log_only": Write a brief analysis or summary in English
 
 ## General Rules
 - Stay true to the workflow instruction — it defines your purpose for this execution

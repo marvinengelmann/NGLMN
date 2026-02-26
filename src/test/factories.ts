@@ -1,4 +1,4 @@
-import type { ConversationMessage } from "@/bridge/types.ts"
+import type { ConversationMessage, ConversationSlot } from "@/bridge/types.ts"
 import type { BudgetState } from "@/core/budget.ts"
 import type { ProactiveResult } from "@/core/phases/act.ts"
 import type { TickSummary, TriageResult, WorkflowDefinition, WorkflowExecutionResult } from "@/core/types.ts"
@@ -40,6 +40,17 @@ export function makeConversationMessage(overrides?: Partial<ConversationMessage>
     role: "operator",
     text: "Hello",
     timestamp: new Date().toISOString(),
+    ...overrides
+  }
+}
+
+export function makeConversationSlot(overrides?: Partial<ConversationSlot>): ConversationSlot {
+  const now = new Date().toISOString()
+  return {
+    id: crypto.randomUUID(),
+    messages: [makeConversationMessage()],
+    startedAt: now,
+    lastActivityAt: now,
     ...overrides
   }
 }

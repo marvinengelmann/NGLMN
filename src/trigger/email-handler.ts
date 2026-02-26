@@ -12,7 +12,6 @@ import { escapeTelegramMarkdown, sendGuardianAlert, sendToOperator } from "@/int
 import { log } from "@/lib/logger.ts"
 import { captureError } from "@/lib/sentry.ts"
 import { storeEpisode } from "@/memory/episodic.ts"
-import { getOperatorLanguage } from "@/memory/semantic.ts"
 import { clearPendingEmails, peekAllPendingEmails, pushPendingEmails } from "@/memory/working.ts"
 import { getEffectivePersonality } from "@/personality/dna.ts"
 import { buildPersonalityPrompt } from "@/personality/expression.ts"
@@ -46,11 +45,7 @@ export const emailHandlerTask = task({
       return { processed: 0, reason: "trust_blocked" }
     }
 
-    const [personality, emotion, operatorLanguage] = await Promise.all([
-      getEffectivePersonality(),
-      getEmotionalState(),
-      getOperatorLanguage()
-    ])
+    const [personality, emotion] = await Promise.all([getEffectivePersonality(), getEmotionalState()])
     const personalityPrompt = buildPersonalityPrompt(personality, emotion, getMbtiType())
     const responderPrompt = await loadPrompt("responder", RESPONDER_SYSTEM_PROMPT)
 
@@ -68,8 +63,10 @@ export const emailHandlerTask = task({
       for (const email of emails) {
         const emailContext = [
           `Current time: ${formatISO(new Date())}`,
-          `Operator's preferred language: ${operatorLanguage}`,
+          `Response language: English`,
           personalityPrompt,
+          "",
+          "IMPORTANT: Always respond in English when replying to external emails.",
           "",
           "Incoming email to respond to:",
           `From: ${wrapExternalData(email.from, "email_from", "external")}`,

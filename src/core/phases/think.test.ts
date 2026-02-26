@@ -12,8 +12,7 @@ vi.mock("@/lib/sentry.ts", () => ({
 
 vi.mock("@/integrations/anthropic.ts", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/integrations/anthropic.ts")>()),
-  callClaude: vi.fn(),
-  stripCodeFences: vi.fn((text: string) => text)
+  callClaude: vi.fn()
 }))
 
 vi.mock("@/memory/working.ts", () => ({

@@ -1,34 +1,32 @@
-import type { ConversationMessage } from "@/bridge/types.ts"
+import { jsonrepair } from "jsonrepair"
+import type { ConversationMessage, ConversationSlot } from "@/bridge/types.ts"
 import { EMOTIONAL_THRESHOLDS } from "@/config/constants.ts"
 import type { EmotionalState } from "@/emotion/types.ts"
-import { callClaude, HAIKU, stripCodeFences } from "@/integrations/anthropic.ts"
+import { callClaude, HAIKU } from "@/integrations/anthropic.ts"
 import type { PendingMessage } from "@/integrations/types.ts"
 import { log } from "@/lib/logger.ts"
-import { storeEpisode, storeRelationshipEpisode } from "@/memory/episodic.ts"
-import { clearConversationHistory } from "@/memory/working.ts"
+import { queryRelated, storeEpisode, storeRelationshipEpisode } from "@/memory/episodic.ts"
 import { CONVERSATION_BOUNDARY_PROMPT } from "@/prompts/conversation.ts"
 import { ConversationBoundary } from "./types.ts"
 
 /**
- * Detect whether new messages belong to an existing conversation or start a new one.
- * Uses Haiku for lightweight classification.
+ * Detect whether new messages belong to the active conversation or start a new one.
+ * Uses Haiku for lightweight classification. Defaults to continuation on failure.
  */
 export async function detectConversationBoundary(
-  history: ConversationMessage[],
+  activeSlot: ConversationSlot,
   newMessages: PendingMessage[]
 ): Promise<ConversationBoundary> {
-  if (history.length === 0) {
-    return {
-      isNewConversation: true,
-      reason: "no prior history"
-    }
+  if (activeSlot.messages.length === 0) {
+    return { isNewConversation: false, reason: "active slot is empty, continue filling it" }
   }
 
-  const historyText = history
-    .slice(-6)
+  const historyText = activeSlot.messages
+    .slice(-8)
     .map((m) => `[${m.role === "operator" ? "Operator" : "ANIMA"}]: ${m.text}`)
     .join("\n")
-  const newText = newMessages.map((m) => `[${m.from}]: ${m.text}`).join("\n")
+  const newText = newMessages.map((m) => `[Operator]: ${m.text}`).join("\n")
+
   const callResult = await callClaude({
     model: HAIKU,
     system: CONVERSATION_BOUNDARY_PROMPT,
@@ -40,33 +38,31 @@ export async function detectConversationBoundary(
     log.warn("Conversation boundary detection failed, assuming continuation", {
       error: callResult.error.message
     })
-    return {
-      isNewConversation: false,
-      reason: "LLM call failed, assuming continuation"
-    }
+    return { isNewConversation: false, reason: "LLM call failed, assuming continuation" }
   }
 
   try {
-    return ConversationBoundary.parse(JSON.parse(stripCodeFences(callResult.value)))
+    return ConversationBoundary.parse(JSON.parse(jsonrepair(callResult.value)))
   } catch (e) {
     log.warn("Conversation boundary parse failed, assuming continuation", { error: String(e) })
-    return {
-      isNewConversation: false,
-      reason: "parse failed, assuming continuation"
-    }
+    return { isNewConversation: false, reason: "parse failed, assuming continuation" }
   }
 }
 
 /**
- * Archive a conversation by summarizing it, storing as episode, and clearing history.
+ * Archive a conversation slot by summarizing its messages and storing as an episode.
+ * Does NOT modify the conversation buffer — the caller manages slot eviction.
  */
 export async function archiveConversation(
-  history: ConversationMessage[],
+  messages: ConversationMessage[],
   emotionalState: EmotionalState
 ): Promise<void> {
-  if (history.length === 0) return
+  if (messages.length === 0) return
 
-  const conversationText = history.map((m) => `[${m.role === "operator" ? "Operator" : "ANIMA"}]: ${m.text}`).join("\n")
+  const conversationText = messages
+    .map((m) => `[${m.role === "operator" ? "Operator" : "ANIMA"}]: ${m.text}`)
+    .join("\n")
+
   const summaryResult = await callClaude({
     model: HAIKU,
     system:
@@ -79,8 +75,6 @@ export async function archiveConversation(
     log.warn("Failed to summarize conversation for archival", {
       error: summaryResult.error.message
     })
-    await clearConversationHistory()
-
     return
   }
 
@@ -91,6 +85,24 @@ export async function archiveConversation(
       relevanceScore: EMOTIONAL_THRESHOLDS.RELEVANCE_DEFAULT
     })
   }
+}
 
-  await clearConversationHistory()
+/**
+ * Search episodic memory for context related to a reply that references an archived message.
+ * Returns formatted context string or null if nothing relevant found.
+ */
+export async function recallArchivedContext(
+  replyToText: string,
+  activeSlots: ConversationSlot[]
+): Promise<string | null> {
+  const foundInActive = activeSlots.some((slot) => slot.messages.some((m) => m.text === replyToText))
+  if (foundInActive) return null
+
+  const results = await queryRelated(replyToText, 3)
+  const relevant = results.filter((r) => r.score > 0.7)
+  if (relevant.length === 0) return null
+
+  return relevant
+    .map((r) => `[Recalled memory, relevance ${r.score.toFixed(2)}]: ${r.metadata?.category ?? "unknown"}`)
+    .join("\n")
 }

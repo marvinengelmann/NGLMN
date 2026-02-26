@@ -23,8 +23,7 @@ vi.mock("@/lib/time.ts", () => ({
 vi.mock("@/integrations/anthropic.ts", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/integrations/anthropic.ts")>()),
   callClaude: vi.fn(),
-  callClaudeWithUsage: vi.fn(),
-  stripCodeFences: vi.fn((text: string) => text)
+  callClaudeWithUsage: vi.fn()
 }))
 
 vi.mock("@/integrations/telegram.ts", () => ({
@@ -37,12 +36,14 @@ vi.mock("@/integrations/telegram.ts", () => ({
 vi.mock("@/memory/working.ts", () => ({
   peekAllPendingMessages: vi.fn(),
   clearPendingMessages: vi.fn(),
-  getConversationHistory: vi.fn(),
-  pushConversationMessage: vi.fn(),
+  getActiveConversation: vi.fn(),
+  getConversationBuffer: vi.fn(),
+  pushToActiveConversation: vi.fn(),
   pushRecentResponse: vi.fn(),
   setGuardianResult: vi.fn(),
   setConversationWaitToken: vi.fn(),
-  clearConversationWaitToken: vi.fn()
+  clearConversationWaitToken: vi.fn(),
+  startNewConversation: vi.fn()
 }))
 
 vi.mock("@/bridge/handler.ts", () => ({
@@ -53,7 +54,8 @@ vi.mock("@/bridge/handler.ts", () => ({
 
 vi.mock("@/bridge/conversation.ts", () => ({
   detectConversationBoundary: vi.fn(),
-  archiveConversation: vi.fn()
+  archiveConversation: vi.fn(),
+  recallArchivedContext: vi.fn()
 }))
 
 vi.mock("@/bridge/typing.ts", () => ({
@@ -67,13 +69,13 @@ vi.mock("@/security/guardian.ts", () => ({
 }))
 
 vi.mock("@/core/model-router.ts", () => ({
-  getModelForPhase: vi.fn(() => "haiku"),
   selectModel: vi.fn(() => "haiku"),
   getMaxTokensForTier: vi.fn(() => 200)
 }))
 
-vi.mock("@/prompts/triage.ts", () => ({
-  TRIAGE_SYSTEM_PROMPT: "mock triage prompt"
+vi.mock("@/prompts/conversation.ts", () => ({
+  CONVERSATION_TRIAGE_SYSTEM_PROMPT: "mock conversation triage prompt",
+  CONVERSATION_BOUNDARY_PROMPT: "mock boundary prompt"
 }))
 
 vi.mock("@/prompts/responder.ts", () => ({
@@ -115,14 +117,6 @@ vi.mock("@/personality/dna.ts", () => ({
 
 vi.mock("@/personality/expression.ts", () => ({
   buildPersonalityPrompt: vi.fn(() => "personality prompt")
-}))
-
-vi.mock("@/core/context-builder.ts", () => ({
-  buildTriageContext: vi.fn(() => ({
-    now: new Date().toISOString(),
-    lastTick: null,
-    userPrompt: "test"
-  }))
 }))
 
 vi.mock("@/memory/episodic.ts", () => ({

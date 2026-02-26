@@ -26,7 +26,7 @@ vi.mock("@/personality/mbti.ts", () => ({
 vi.mock("@/memory/working.ts", () => ({
   getDreamInsights: vi.fn(),
   clearDreamInsights: vi.fn(),
-  pushConversationMessage: vi.fn()
+  pushToActiveConversation: vi.fn()
 }))
 
 vi.mock("@/memory/episodic.ts", () => ({
@@ -42,7 +42,7 @@ import { getEmotionalState } from "@/emotion/state.ts"
 import { callClaude } from "@/integrations/anthropic.ts"
 import { sendToOperator } from "@/integrations/telegram.ts"
 import { storeEpisode } from "@/memory/episodic.ts"
-import { clearDreamInsights, getDreamInsights, pushConversationMessage } from "@/memory/working.ts"
+import { clearDreamInsights, getDreamInsights, pushToActiveConversation } from "@/memory/working.ts"
 import { getEffectivePersonality } from "@/personality/dna.ts"
 import { buildPersonalityPrompt } from "@/personality/expression.ts"
 import { makeEmotionalState, makePersonalityLayer } from "@/test/factories.ts"
@@ -55,7 +55,7 @@ const mockGetEffectivePersonality = getEffectivePersonality as ReturnType<typeof
 const mockBuildPersonalityPrompt = buildPersonalityPrompt as ReturnType<typeof vi.fn>
 const mockGetDreamInsights = getDreamInsights as ReturnType<typeof vi.fn>
 const mockClearDreamInsights = clearDreamInsights as ReturnType<typeof vi.fn>
-const mockPushConversationMessage = pushConversationMessage as ReturnType<typeof vi.fn>
+const mockPushToActiveConversation = pushToActiveConversation as ReturnType<typeof vi.fn>
 const mockStoreEpisode = storeEpisode as ReturnType<typeof vi.fn>
 
 beforeEach(() => {
@@ -67,7 +67,7 @@ beforeEach(() => {
   mockSendToOperator.mockResolvedValue(undefined)
   mockStoreEpisode.mockResolvedValue("ep-id")
   mockClearDreamInsights.mockResolvedValue(undefined)
-  mockPushConversationMessage.mockResolvedValue(undefined)
+  mockPushToActiveConversation.mockResolvedValue(undefined)
 })
 
 describe("composeMorningMessage", () => {
@@ -97,7 +97,7 @@ describe("sendMorningMessage", () => {
     expect(mockStoreEpisode).toHaveBeenCalledWith(expect.stringContaining("Morning message sent"), "interaction", {
       relevanceScore: 0.8
     })
-    expect(mockPushConversationMessage).toHaveBeenCalledWith(
+    expect(mockPushToActiveConversation).toHaveBeenCalledWith(
       expect.objectContaining({
         role: "anima",
         text: "Good morning! Last night I thought about many things..."

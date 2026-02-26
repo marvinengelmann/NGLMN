@@ -4,7 +4,7 @@ import { sendToOperator } from "@/integrations/telegram.ts"
 import { log } from "@/lib/logger.ts"
 import { storeEpisode } from "@/memory/episodic.ts"
 import { getOperatorLanguage } from "@/memory/semantic.ts"
-import { clearDreamInsights, getDreamInsights, pushConversationMessage } from "@/memory/working.ts"
+import { clearDreamInsights, getDreamInsights, pushToActiveConversation } from "@/memory/working.ts"
 import { getEffectivePersonality } from "@/personality/dna.ts"
 import { buildPersonalityPrompt } from "@/personality/expression.ts"
 import { getMbtiType } from "@/personality/mbti.ts"
@@ -48,7 +48,7 @@ export async function sendMorningMessage(): Promise<void> {
 
   await storeEpisode(`Morning message sent: ${message.slice(0, 200)}`, "interaction", { relevanceScore: 0.8 })
 
-  await pushConversationMessage({
+  await pushToActiveConversation({
     role: "anima",
     text: message,
     timestamp: new Date().toISOString()

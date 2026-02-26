@@ -1,3 +1,4 @@
+import { jsonrepair } from "jsonrepair"
 import type * as z from "zod"
 import { CONVERSATION, FOLLOW_UP } from "@/config/constants.ts"
 import { buildComplexContext, buildDeepContext, buildSimpleContext } from "@/core/context-builder.ts"
@@ -14,16 +15,25 @@ type ResponseTier = Exclude<TriageDecision, "idle">
 export async function buildConversationResponsePrompt(
   messages: PendingMessage[],
   personalityPrompt: string,
-  tier: ResponseTier
+  tier: ResponseTier,
+  recalledContext?: string | null
 ): Promise<string> {
+  let baseContext: string
   switch (tier) {
     case "simple":
-      return buildSimpleContext(messages, personalityPrompt)
+      baseContext = await buildSimpleContext(messages, personalityPrompt)
+      break
     case "complex":
-      return buildComplexContext(messages, personalityPrompt)
+      baseContext = await buildComplexContext(messages, personalityPrompt)
+      break
     case "deep":
-      return buildDeepContext(messages, personalityPrompt)
+      baseContext = await buildDeepContext(messages, personalityPrompt)
+      break
   }
+  if (recalledContext) {
+    return `${baseContext}\n\nRecalled context from earlier conversations:\n${recalledContext}`
+  }
+  return baseContext
 }
 
 /**
@@ -33,11 +43,8 @@ export async function buildConversationResponsePrompt(
  */
 export function parseStructuredResponse(raw: string): z.infer<typeof StructuredResponse> {
   try {
-    const cleaned = raw.replace(/^```(?:json)?\s*\n?/, "").replace(/\n?```\s*$/, "")
-    return StructuredResponse.parse(JSON.parse(cleaned))
-  } catch {
-    /* plain text fallback — expected when Claude doesn't return JSON */
-  }
+    return StructuredResponse.parse(JSON.parse(jsonrepair(raw)))
+  } catch {}
 
   return { messages: [{ text: raw.trim() }], expectsReply: true }
 }

@@ -178,54 +178,52 @@ async function seed() {
   const seedPersonality = mbtiToPersonality(mbtiType)
   const seedEmotion = mbtiToEmotionBaseline(mbtiType)
 
-  console.log("Seeding baseline data in a single transaction...")
+  console.log("Seeding baseline data...")
 
-  await db.transaction(async (tx) => {
-    for (const entry of baselineEntries) {
-      await tx
-        .insert(semanticMemory)
-        .values({
-          category: entry.category,
-          key: entry.key,
-          value: entry.value,
-          source: entry.source,
-          confidence: entry.confidence
-        })
-        .onConflictDoUpdate({
-          target: [semanticMemory.category, semanticMemory.key],
-          set: { value: entry.value, source: entry.source, confidence: entry.confidence, updatedAt: new Date() }
-        })
-      console.log(`  ✓ ${entry.category}/${entry.key}`)
-    }
-
-    console.log(`\nSeeding Personality DNA v1... (MBTI: ${mbtiType})`)
-    await tx.insert(personalityDna).values({
-      version: 1,
-      baseLayer: seedPersonality,
-      adaptiveLayer: seedPersonality,
-      changelog: `Initial personality DNA from MBTI type ${mbtiType}`
-    })
-    console.log(`  ✓ Personality DNA v1`)
-
-    console.log(`\nSeeding Trust Level baselines...`)
-    for (const entry of ACTION_TYPE_DEFAULTS) {
-      await tx.insert(trustLevels).values({
-        actionType: entry.actionType,
-        fear: entry.fear,
-        confidence: entry.confidence,
-        totalAttempts: 0,
-        successfulAttempts: 0
+  for (const entry of baselineEntries) {
+    await db
+      .insert(semanticMemory)
+      .values({
+        category: entry.category,
+        key: entry.key,
+        value: entry.value,
+        source: entry.source,
+        confidence: entry.confidence
       })
-      console.log(`  ✓ trust/${entry.actionType}`)
-    }
+      .onConflictDoUpdate({
+        target: [semanticMemory.category, semanticMemory.key],
+        set: { value: entry.value, source: entry.source, confidence: entry.confidence, updatedAt: new Date() }
+      })
+    console.log(`  ✓ ${entry.category}/${entry.key}`)
+  }
 
-    console.log(`\nSeeding initial emotional state...`)
-    await tx.insert(emotionHistory).values({
-      state: seedEmotion,
-      trigger: "tick_start"
-    })
-    console.log(`  ✓ Initial emotional state`)
+  console.log(`\nSeeding Personality DNA v1... (MBTI: ${mbtiType})`)
+  await db.insert(personalityDna).values({
+    version: 1,
+    baseLayer: seedPersonality,
+    adaptiveLayer: seedPersonality,
+    changelog: `Initial personality DNA from MBTI type ${mbtiType}`
   })
+  console.log(`  ✓ Personality DNA v1`)
+
+  console.log(`\nSeeding Trust Level baselines...`)
+  for (const entry of ACTION_TYPE_DEFAULTS) {
+    await db.insert(trustLevels).values({
+      actionType: entry.actionType,
+      fear: entry.fear,
+      confidence: entry.confidence,
+      totalAttempts: 0,
+      successfulAttempts: 0
+    })
+    console.log(`  ✓ trust/${entry.actionType}`)
+  }
+
+  console.log(`\nSeeding initial emotional state...`)
+  await db.insert(emotionHistory).values({
+    state: seedEmotion,
+    trigger: "tick_start"
+  })
+  console.log(`  ✓ Initial emotional state`)
 
   console.log(
     `\nDone! Seeded: ${baselineEntries.length} semantic entries, 1 personality DNA, ${ACTION_TYPE_DEFAULTS.length} trust levels, 1 emotion state.`

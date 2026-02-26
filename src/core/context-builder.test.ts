@@ -1,6 +1,6 @@
 vi.mock("@/memory/working.ts", () => ({
   getLastTickSummary: vi.fn(),
-  getConversationHistory: vi.fn(),
+  getConversationBuffer: vi.fn(),
   getCurrentEmotion: vi.fn(),
   getPerceptionSummary: vi.fn(),
   getLastProactiveAction: vi.fn()
@@ -41,19 +41,14 @@ import { getEmotionHistory } from "@/emotion/state.ts"
 import { queryRelated, queryRelationshipHistory } from "@/memory/episodic.ts"
 import { getGoalsByPriority } from "@/memory/goals.ts"
 import { getKnowledge, getOperatorLanguage } from "@/memory/semantic.ts"
-import {
-  getConversationHistory,
-  getCurrentEmotion,
-  getLastTickSummary,
-  getPerceptionSummary
-} from "@/memory/working.ts"
+import { getConversationBuffer, getCurrentEmotion, getLastTickSummary, getPerceptionSummary } from "@/memory/working.ts"
 import { loadPersonalityDna } from "@/personality/dna.ts"
-import { makeConversationMessage, makePendingMessage, makeTickSummary } from "@/test/factories.ts"
+import { makeConversationMessage, makeConversationSlot, makePendingMessage, makeTickSummary } from "@/test/factories.ts"
 import { getAllTrustLevels } from "@/trust/levels.ts"
 import { buildComplexContext, buildDeepContext, buildSimpleContext, buildTriageContext } from "./context-builder.ts"
 
 const mockGetLastTickSummary = getLastTickSummary as ReturnType<typeof vi.fn>
-const mockGetConversationHistory = getConversationHistory as ReturnType<typeof vi.fn>
+const mockGetConversationBuffer = getConversationBuffer as ReturnType<typeof vi.fn>
 const mockGetGoalsByPriority = getGoalsByPriority as ReturnType<typeof vi.fn>
 const mockQueryRelated = queryRelated as ReturnType<typeof vi.fn>
 const mockGetKnowledge = getKnowledge as ReturnType<typeof vi.fn>
@@ -69,7 +64,7 @@ describe("buildTriageContext", () => {
   beforeEach(() => {
     mockGetLastTickSummary.mockResolvedValue(null)
     mockGetGoalsByPriority.mockResolvedValue([])
-    mockGetConversationHistory.mockResolvedValue([])
+    mockGetConversationBuffer.mockResolvedValue([])
     mockGetCurrentEmotion.mockResolvedValue(null)
     mockGetPerceptionSummary.mockResolvedValue(null)
   })
@@ -100,9 +95,10 @@ describe("buildTriageContext", () => {
   })
 
   it("includes active conversation indicator", async () => {
-    mockGetConversationHistory.mockResolvedValue([
-      makeConversationMessage({ text: "hi" }),
-      makeConversationMessage({ text: "hello" })
+    mockGetConversationBuffer.mockResolvedValue([
+      makeConversationSlot({
+        messages: [makeConversationMessage({ text: "hi" }), makeConversationMessage({ text: "hello" })]
+      })
     ])
 
     const ctx = await buildTriageContext()
@@ -147,20 +143,24 @@ describe("buildTriageContext", () => {
 
 describe("buildSimpleContext", () => {
   beforeEach(() => {
-    mockGetConversationHistory.mockResolvedValue([])
+    mockGetConversationBuffer.mockResolvedValue([])
     mockQueryRelated.mockResolvedValue([])
     mockGetOperatorLanguage.mockResolvedValue("German")
   })
 
   it("includes conversation history", async () => {
-    mockGetConversationHistory.mockResolvedValue([
-      makeConversationMessage({ role: "operator", text: "Hey" }),
-      makeConversationMessage({ role: "anima", text: "Hello!" })
+    mockGetConversationBuffer.mockResolvedValue([
+      makeConversationSlot({
+        messages: [
+          makeConversationMessage({ role: "operator", text: "Hey" }),
+          makeConversationMessage({ role: "anima", text: "Hello!" })
+        ]
+      })
     ])
 
     const messages = [makePendingMessage({ text: "What's up?" })]
     const result = await buildSimpleContext(messages)
-    expect(result).toContain("Conversation history:")
+    expect(result).toContain("Current conversation:")
     expect(result).toContain("Operator")
     expect(result).toContain("You (ANIMA)")
   })
@@ -194,7 +194,7 @@ describe("buildComplexContext", () => {
     mockGetGoalsByPriority.mockResolvedValue([])
     mockQueryRelated.mockResolvedValue([])
     mockGetKnowledge.mockResolvedValue(ok([]))
-    mockGetConversationHistory.mockResolvedValue([])
+    mockGetConversationBuffer.mockResolvedValue([])
     mockGetCurrentEmotion.mockResolvedValue(null)
     mockGetPerceptionSummary.mockResolvedValue(null)
     mockQueryRelationshipHistory.mockResolvedValue([])
@@ -202,7 +202,9 @@ describe("buildComplexContext", () => {
   })
 
   it("includes all sections", async () => {
-    mockGetConversationHistory.mockResolvedValue([makeConversationMessage({ text: "Hi" })])
+    mockGetConversationBuffer.mockResolvedValue([
+      makeConversationSlot({ messages: [makeConversationMessage({ text: "Hi" })] })
+    ])
     mockGetLastTickSummary.mockResolvedValue(makeTickSummary({ triageDecision: "simple", triageReason: "greeting" }))
     mockQueryRelated.mockResolvedValue([
       { id: "ep1", score: 0.9, metadata: { category: "task", timestamp: "2026-01-01" } }
@@ -217,7 +219,7 @@ describe("buildComplexContext", () => {
     const messages = [makePendingMessage({ text: "Status update" })]
     const result = await buildComplexContext(messages)
 
-    expect(result).toContain("Conversation history:")
+    expect(result).toContain("Current conversation:")
     expect(result).toContain("Previous tick:")
     expect(result).toContain("Relevant memories")
     expect(result).toContain("Known context")
@@ -248,7 +250,7 @@ describe("buildDeepContext", () => {
     mockGetGoalsByPriority.mockResolvedValue([])
     mockQueryRelated.mockResolvedValue([])
     mockGetKnowledge.mockResolvedValue(ok([]))
-    mockGetConversationHistory.mockResolvedValue([])
+    mockGetConversationBuffer.mockResolvedValue([])
     mockGetCurrentEmotion.mockResolvedValue(null)
     mockGetPerceptionSummary.mockResolvedValue(null)
     mockQueryRelationshipHistory.mockResolvedValue([])

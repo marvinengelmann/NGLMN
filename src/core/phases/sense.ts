@@ -12,6 +12,7 @@ export interface TickContext {
   tickId: string
   startTime: number
   timestamp: string
+  actionRequested?: boolean
 }
 
 export interface SenseResult {

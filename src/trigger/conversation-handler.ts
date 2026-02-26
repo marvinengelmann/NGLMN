@@ -1,16 +1,16 @@
 import { task, wait } from "@trigger.dev/sdk"
 import { formatISO } from "date-fns"
-import { archiveConversation, detectConversationBoundary } from "@/bridge/conversation.ts"
+import { jsonrepair } from "jsonrepair"
+import { archiveConversation, detectConversationBoundary, recallArchivedContext } from "@/bridge/conversation.ts"
 import { buildConversationResponsePrompt, computeFollowUpWait, parseStructuredResponse } from "@/bridge/handler.ts"
 import { computeReadTime, computeTypingDuration, simulateTyping } from "@/bridge/typing.ts"
 import { CONVERSATION, EMOTIONAL_THRESHOLDS, MESSAGE_DELAY, TRIAGE_DEFAULTS } from "@/config/constants.ts"
-import { buildTriageContext } from "@/core/context-builder.ts"
-import { getMaxTokensForTier, getModelForPhase, selectModel } from "@/core/model-router.ts"
+import { getMaxTokensForTier, selectModel } from "@/core/model-router.ts"
 import { TriageResult } from "@/core/types.ts"
 import { getEmotionalState, saveEmotionalState } from "@/emotion/state.ts"
 import { computeEmotionalUpdate } from "@/emotion/update.ts"
 import { loadPrompt } from "@/evolution/prompt-loader.ts"
-import { callClaude, callClaudeWithUsage, stripCodeFences } from "@/integrations/anthropic.ts"
+import { callClaude, callClaudeWithUsage, HAIKU } from "@/integrations/anthropic.ts"
 import { sendMessageWithReply, sendTypingAction } from "@/integrations/telegram.ts"
 import { log } from "@/lib/logger.ts"
 import { addBreadcrumb } from "@/lib/sentry.ts"
@@ -19,25 +19,27 @@ import { storeEpisode, storeRelationshipEpisode } from "@/memory/episodic.ts"
 import {
   clearConversationWaitToken,
   clearPendingMessages,
-  getConversationHistory,
+  getActiveConversation,
+  getConversationBuffer,
   peekAllPendingMessages,
-  pushConversationMessage,
   pushRecentResponse,
+  pushToActiveConversation,
   setConversationWaitToken,
-  setGuardianResult
+  setGuardianResult,
+  startNewConversation
 } from "@/memory/working.ts"
 import { getEffectivePersonality } from "@/personality/dna.ts"
 import { buildPersonalityPrompt } from "@/personality/expression.ts"
 import { getMbtiType } from "@/personality/mbti.ts"
+import { CONVERSATION_TRIAGE_SYSTEM_PROMPT } from "@/prompts/conversation.ts"
 import { RESPONDER_SYSTEM_PROMPT } from "@/prompts/responder.ts"
-import { TRIAGE_SYSTEM_PROMPT } from "@/prompts/triage.ts"
 import { validateOutput } from "@/security/guardian.ts"
 import type { ConversationHandlerPayload } from "@/trigger/types.ts"
 
 /**
  * Dedicated conversation handler — manages all message-based interactions.
  * Supports multi-message structured responses, typing simulation,
- * reply-to specific messages, and follow-up waiting.
+ * reply-to specific messages, follow-up waiting, and a 3-slot conversation buffer.
  */
 export const conversationHandlerTask = task({
   id: "conversation-handler",
@@ -60,32 +62,66 @@ export const conversationHandlerTask = task({
         break
       }
 
-      const history = await getConversationHistory()
+      const activeSlot = await getActiveConversation()
 
-      if (history.length > 0 && messages.length > 0) {
-        const boundary = await detectConversationBoundary(history, messages)
+      if (activeSlot && activeSlot.messages.length > 0) {
+        const boundary = await detectConversationBoundary(activeSlot, messages)
         if (boundary.isNewConversation) {
-          log.info("New conversation detected, archiving old one", { reason: boundary.reason })
+          log.info("New conversation detected, starting new slot", { reason: boundary.reason })
           const emotion = await getEmotionalState()
-          await archiveConversation(history, emotion)
+          const evicted = await startNewConversation()
+          if (evicted) {
+            log.info("Buffer full, archiving oldest conversation", {
+              slotId: evicted.id,
+              messageCount: evicted.messages.length
+            })
+            await archiveConversation(evicted.messages, emotion)
+          }
+        }
+      } else if (!activeSlot) {
+        await startNewConversation()
+      }
+
+      let recalledContext: string | null = null
+      const replyMessages = messages.filter((m) => m.replyToText)
+      if (replyMessages.length > 0) {
+        const buffer = await getConversationBuffer()
+        for (const msg of replyMessages) {
+          if (msg.replyToText) {
+            recalledContext = await recallArchivedContext(msg.replyToText, buffer)
+            if (recalledContext) {
+              log.info("Recalled archived context for reply", { replyToText: msg.replyToText.slice(0, 100) })
+              break
+            }
+          }
         }
       }
 
-      const triageContext = await buildTriageContext()
-      const messagesBlock = messages.map((m) => `[${m.from}]: ${m.text}`).join("\n")
-      const conversationGuidance = [
-        "You are triaging in CONVERSATION context — pending messages from the operator are provided below.",
-        "Decide whether these messages warrant a response from ANIMA or not.",
-        '"idle" = no response needed (e.g. acknowledgments like "ok", "👍", repeated goodbyes after ANIMA already said goodbye, pure reactions).',
-        "Any other tier = ANIMA should respond at the appropriate depth."
-      ].join("\n")
-      const triageWithMessages = `${triageContext.userPrompt}\n\n${conversationGuidance}\n\nPending messages (${messages.length}):\n${messagesBlock}`
+      const buffer = await getConversationBuffer()
+      const historyLines: string[] = []
+      for (const slot of buffer) {
+        for (const m of slot.messages) {
+          historyLines.push(`[${m.role === "operator" ? "Operator" : "ANIMA"}]: ${m.text}`)
+        }
+      }
+      const historyBlock = historyLines.length > 0 ? historyLines.join("\n") : null
 
-      const triagePrompt = await loadPrompt("triage", TRIAGE_SYSTEM_PROMPT)
+      const messagesBlock = messages
+        .map((m) => {
+          const replyPrefix = m.replyToText ? `(replying to: "${m.replyToText.slice(0, 200)}") ` : ""
+          return `[Operator]: ${replyPrefix}${m.text}`
+        })
+        .join("\n")
+
+      const triageUserMessage = historyBlock
+        ? `Conversation history:\n${historyBlock}\n\nNew messages (${messages.length}):\n${messagesBlock}`
+        : `New messages (${messages.length}):\n${messagesBlock}`
+
+      const triagePrompt = await loadPrompt("conversation-triage", CONVERSATION_TRIAGE_SYSTEM_PROMPT)
       const triageCallResult = await callClaude({
-        model: getModelForPhase("triage"),
+        model: HAIKU,
         system: triagePrompt,
-        userMessage: triageWithMessages,
+        userMessage: triageUserMessage,
         maxTokens: getMaxTokensForTier("triage")
       })
 
@@ -97,7 +133,7 @@ export const conversationHandlerTask = task({
 
       let triageResult: TriageResult
       try {
-        triageResult = TriageResult.parse(JSON.parse(stripCodeFences(triageRaw)))
+        triageResult = TriageResult.parse(JSON.parse(jsonrepair(triageRaw)))
       } catch {
         triageResult = {
           decision: "simple",
@@ -113,7 +149,7 @@ export const conversationHandlerTask = task({
         log.info("Triage decided no response needed", { reason: triageResult.reason })
 
         for (const msg of messages) {
-          await pushConversationMessage({
+          await pushToActiveConversation({
             role: "operator",
             text: msg.text,
             timestamp: formatISO(new Date(msg.date * 1000))
@@ -136,7 +172,7 @@ export const conversationHandlerTask = task({
       const personality = await getEffectivePersonality()
       const personalityPrompt = buildPersonalityPrompt(personality, emotion, getMbtiType())
 
-      const contextPrompt = await buildConversationResponsePrompt(messages, personalityPrompt, tier)
+      const contextPrompt = await buildConversationResponsePrompt(messages, personalityPrompt, tier, recalledContext)
 
       const responderPrompt = await loadPrompt("responder", RESPONDER_SYSTEM_PROMPT)
       const responderCallResult = await callClaudeWithUsage({
@@ -191,7 +227,7 @@ export const conversationHandlerTask = task({
       await sleep(readTime)
 
       for (const msg of messages) {
-        await pushConversationMessage({
+        await pushToActiveConversation({
           role: "operator",
           text: msg.text,
           timestamp: formatISO(new Date(msg.date * 1000))
@@ -206,7 +242,7 @@ export const conversationHandlerTask = task({
 
         await sendMessageWithReply(msg.text, msg.replyTo)
 
-        await pushConversationMessage({
+        await pushToActiveConversation({
           role: "anima",
           text: msg.text,
           timestamp: formatISO(new Date())
@@ -235,6 +271,12 @@ export const conversationHandlerTask = task({
         await storeEpisode(episodeSummary, "interaction", {
           relevanceScore: triageResult.confidence
         })
+      }
+
+      if (structuredResponse.actionRequested) {
+        log.info("Action requested by operator, triggering heartbeat")
+        const { heartbeatRunTask } = await import("@/trigger/heartbeat.ts")
+        await heartbeatRunTask.trigger({ skipDreamCheck: true, actionRequested: true })
       }
 
       log.info("Conversation round complete", {

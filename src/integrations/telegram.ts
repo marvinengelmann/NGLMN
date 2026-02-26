@@ -50,7 +50,8 @@ export async function pollNewMessages(): Promise<number> {
       from: msg.from?.first_name ?? "Unknown",
       text: msg.text,
       date: msg.date,
-      messageId: msg.message_id
+      messageId: msg.message_id,
+      replyToText: msg.reply_to_message?.text
     })
   }
 
@@ -84,12 +85,20 @@ export async function sendTypingAction(): Promise<void> {
 /**
  * Send a message with optional reply-to and return the sent message ID.
  */
-export async function sendMessageWithReply(text: string, replyToMessageId?: number): Promise<number> {
+export async function sendMessageWithReply(text: string, replyToMessageId?: number | null): Promise<number> {
   const sent = await bot.sendMessage(operatorChatId, text, {
     parse_mode: "Markdown",
     ...(replyToMessageId ? { reply_parameters: { message_id: replyToMessageId } } : {})
   })
   return sent.message_id
+}
+
+/**
+ * Send a system notification to the operator in italic.
+ * Used for messages not consciously authored by ANIMA (trust blocks, errors, status updates).
+ */
+export async function sendSystemNotification(text: string): Promise<void> {
+  await bot.sendMessage(operatorChatId, `_${escapeTelegramMarkdown(text)}_`, { parse_mode: "Markdown" })
 }
 
 /**

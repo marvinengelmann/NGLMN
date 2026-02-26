@@ -1,5 +1,6 @@
+import { jsonrepair } from "jsonrepair"
 import { logAndCaptureError } from "@/config/result-helpers.ts"
-import { callClaude, SONNET, stripCodeFences } from "@/integrations/anthropic.ts"
+import { callClaude, SONNET } from "@/integrations/anthropic.ts"
 import { log } from "@/lib/logger.ts"
 import { downgradeEpisodes, queryRelated, summarizeOldEpisodes } from "@/memory/episodic.ts"
 import { storeKnowledge, storeRelation } from "@/memory/semantic.ts"
@@ -59,7 +60,7 @@ export async function consolidateMemories(): Promise<ConsolidationResult> {
     return { episodesProcessed: 0, semanticEntriesCreated: 0, connectionsFound: 0, downgraded: 0 }
   }
 
-  const parsed = JSON.parse(stripCodeFences(result.value)) as {
+  const parsed = JSON.parse(jsonrepair(result.value)) as {
     semanticEntries: Array<{
       category: string
       key: string

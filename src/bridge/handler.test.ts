@@ -1,8 +1,8 @@
 import { describe, expect, it, vi } from "vitest"
 
 vi.mock("@/memory/working.ts", () => ({
-  getConversationHistory: vi.fn(),
-  pushConversationMessage: vi.fn()
+  getConversationBuffer: vi.fn(),
+  pushToActiveConversation: vi.fn()
 }))
 
 vi.mock("@/core/context-builder.ts", () => ({

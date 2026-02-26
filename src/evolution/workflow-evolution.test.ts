@@ -54,7 +54,7 @@ vi.mock("@/emotion/state.ts", () => ({
 }))
 
 vi.mock("@/memory/working.ts", () => ({
-  getConversationHistory: vi.fn().mockResolvedValue([]),
+  getAllConversationMessages: vi.fn().mockResolvedValue([]),
   getPerceptionSummary: vi.fn().mockResolvedValue(null),
   getRecentTriageDecisions: vi.fn().mockResolvedValue([])
 }))

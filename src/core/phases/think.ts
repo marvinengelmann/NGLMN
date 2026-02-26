@@ -1,3 +1,4 @@
+import { jsonrepair } from "jsonrepair"
 import { TRIAGE_DEFAULTS } from "@/config/constants.ts"
 import { logAndCaptureError, trySafe } from "@/config/result-helpers.ts"
 import { buildTriageContext } from "@/core/context-builder.ts"
@@ -6,7 +7,7 @@ import type { WorkflowDefinition } from "@/core/types.ts"
 import { TriageResult } from "@/core/types.ts"
 import { checkWorkflowTriggers, getActiveWorkflows } from "@/core/workflow-engine.ts"
 import { loadPrompt } from "@/evolution/prompt-loader.ts"
-import { callClaude, stripCodeFences } from "@/integrations/anthropic.ts"
+import { callClaude } from "@/integrations/anthropic.ts"
 import { log } from "@/lib/logger.ts"
 import { addBreadcrumb, captureError, setTickContext } from "@/lib/sentry.ts"
 import { getRecentTriageDecisions, pushRecentTriageDecision } from "@/memory/working.ts"
@@ -37,6 +38,18 @@ export async function think(ctx: TickContext, senseResult: SenseResult): Promise
 
   const personality = await getEffectivePersonality()
   const personalityPrompt = buildPersonalityPrompt(personality, senseResult.emotion, getMbtiType())
+
+  if (ctx.actionRequested) {
+    log.info("Action requested by operator, skipping triage")
+    const triageResult: TriageResult = {
+      decision: "complex",
+      reason: "operator requested action via conversation",
+      confidence: 1.0,
+      estimatedTokens: 500
+    }
+    await pushRecentTriageDecision(triageResult.decision)
+    return { triageResult, personalityPrompt, triggeredWorkflows }
+  }
 
   const triageContext = await buildTriageContext()
 
@@ -72,7 +85,7 @@ export async function think(ctx: TickContext, senseResult: SenseResult): Promise
   }
 
   const triageParseResult = await trySafe("PARSE_ERROR", async () =>
-    TriageResult.parse(JSON.parse(stripCodeFences(triageRaw)))
+    TriageResult.parse(JSON.parse(jsonrepair(triageRaw)))
   )
 
   if (triageParseResult.isErr()) {

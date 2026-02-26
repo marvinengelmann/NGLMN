@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest"
 
 vi.mock("@trigger.dev/sdk", () => ({
+  task: vi.fn((config: Record<string, unknown>) => ({ ...config, trigger: vi.fn() })),
   schedules: { task: vi.fn((config: Record<string, unknown>) => ({ ...config, trigger: vi.fn() })) }
 }))
 

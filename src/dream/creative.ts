@@ -1,5 +1,6 @@
+import { jsonrepair } from "jsonrepair"
 import { logAndCaptureError } from "@/config/result-helpers.ts"
-import { callClaude, SONNET, stripCodeFences } from "@/integrations/anthropic.ts"
+import { callClaude, SONNET } from "@/integrations/anthropic.ts"
 import { log } from "@/lib/logger.ts"
 import { queryRelated, storeEpisode } from "@/memory/episodic.ts"
 import { createGoal } from "@/memory/goals.ts"
@@ -74,7 +75,7 @@ export async function findCreativeConnections(): Promise<{
     return { connectionsFound: 0, goalsCreated: 0, insightsStored: 0 }
   }
 
-  const parsed = JSON.parse(stripCodeFences(result.value)) as {
+  const parsed = JSON.parse(jsonrepair(result.value)) as {
     connections: Array<{
       sources: string[]
       insight: string

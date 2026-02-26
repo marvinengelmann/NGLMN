@@ -1,4 +1,5 @@
 import { formatISO } from "date-fns"
+import { jsonrepair } from "jsonrepair"
 import * as z from "zod"
 import { EMOTIONAL_THRESHOLDS } from "@/config/constants.ts"
 import { logAndCaptureError, trySafe } from "@/config/result-helpers.ts"
@@ -9,7 +10,7 @@ import { executeWorkflow } from "@/core/workflow-engine.ts"
 import { saveEmotionalState } from "@/emotion/state.ts"
 import { computeEmotionalUpdate } from "@/emotion/update.ts"
 import { loadPrompt } from "@/evolution/prompt-loader.ts"
-import { callClaudeWithUsage, stripCodeFences } from "@/integrations/anthropic.ts"
+import { callClaudeWithUsage } from "@/integrations/anthropic.ts"
 import { sendGuardianAlert, sendToOperator } from "@/integrations/telegram.ts"
 import { log } from "@/lib/logger.ts"
 import { setTickContext } from "@/lib/sentry.ts"
@@ -17,8 +18,8 @@ import { storeEpisode, storeRelationshipEpisode } from "@/memory/episodic.ts"
 import { updateGoalStatus } from "@/memory/goals.ts"
 import { GoalStatus } from "@/memory/types.ts"
 import {
-  pushConversationMessage,
   pushRecentResponse,
+  pushToActiveConversation,
   setGuardianResult,
   setLastProactiveAction
 } from "@/memory/working.ts"
@@ -73,7 +74,7 @@ async function handleMessageOperator(
 
   await sendToOperator(content)
   await pushRecentResponse(content)
-  await pushConversationMessage({
+  await pushToActiveConversation({
     role: "anima",
     text: content,
     timestamp: formatISO(new Date())
@@ -106,7 +107,8 @@ async function executeProactiveAction(
   guardianValidate: typeof validateOutput,
   ctx: TickContext,
   model: string,
-  tier: string
+  tier: string,
+  _actionRequested = false
 ): Promise<{ responseSent: boolean; responseText?: string }> {
   let responseSent = false
   let responseText: string | undefined
@@ -220,7 +222,7 @@ export async function act(ctx: TickContext, senseResult: SenseResult, thinkResul
   const proactiveRaw = proactiveCallResult.value
 
   const proactiveParseResult = await trySafe("PARSE_ERROR", async () =>
-    ProactiveResult.parse(JSON.parse(stripCodeFences(proactiveRaw.text)))
+    ProactiveResult.parse(JSON.parse(jsonrepair(proactiveRaw.text)))
   )
 
   if (proactiveParseResult.isErr()) {
@@ -236,7 +238,8 @@ export async function act(ctx: TickContext, senseResult: SenseResult, thinkResul
     validateOutput,
     ctx,
     model,
-    triageResult.decision
+    triageResult.decision,
+    ctx.actionRequested
   )
 
   await recordActOutcome(responseSent, triageResult, senseResult, ctx)

@@ -1,5 +1,6 @@
 import { subDays } from "date-fns"
 import { desc, eq, gte } from "drizzle-orm"
+import { jsonrepair } from "jsonrepair"
 import { logAndCaptureError } from "@/config/result-helpers.ts"
 import { getBudgetState } from "@/core/budget.ts"
 import { db } from "@/db/client.ts"
@@ -7,7 +8,7 @@ import { evolutionLog, personalityDna, tickLog } from "@/db/schema.ts"
 import { collectMetrics } from "@/emotion/metrics-check.ts"
 import { getEmotionalState, getEmotionHistory, saveEmotionalState } from "@/emotion/state.ts"
 import type { EmotionalState } from "@/emotion/types.ts"
-import { callClaude, OPUS, SONNET, stripCodeFences } from "@/integrations/anthropic.ts"
+import { callClaude, OPUS, SONNET } from "@/integrations/anthropic.ts"
 import { log } from "@/lib/logger.ts"
 import { storeEpisode } from "@/memory/episodic.ts"
 import { createGoal, getActiveGoals } from "@/memory/goals.ts"
@@ -102,7 +103,7 @@ export async function performReflection(input: ReflectionInput): Promise<Reflect
     return { insights: [], emotionalCorrections: {}, personalityDeltas: {}, newGoals: [] }
   }
 
-  const output = JSON.parse(stripCodeFences(result.value)) as ReflectionOutput
+  const output = JSON.parse(jsonrepair(result.value)) as ReflectionOutput
 
   if (output.personalityDeltas && Object.keys(output.personalityDeltas).length > 0) {
     const deltas: Partial<PersonalityLayer> = {}
@@ -226,7 +227,7 @@ Keep insights actionable and brief. No personality changes — this is a quick c
     return { insights: [], emotionalCorrections: {}, personalityDeltas: {}, newGoals: [] }
   }
 
-  const output = JSON.parse(stripCodeFences(miniResult.value)) as ReflectionOutput
+  const output = JSON.parse(jsonrepair(miniResult.value)) as ReflectionOutput
 
   for (const insight of output.insights) {
     await storeEpisode(`Ad-hoc reflection: ${insight}`, "dream", { relevanceScore: 0.75 })

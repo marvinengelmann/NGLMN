@@ -14,26 +14,24 @@ export function recordSuccess(actionType: ActionType): AnimaResultAsync<void> {
   return trySafe("DB_ERROR", async () => {
     await ensureTrustLevel(actionType)
 
-    await db.transaction(async (tx) => {
-      const rows = await tx.select().from(trustLevels).where(eq(trustLevels.actionType, actionType)).limit(1)
+    const rows = await db.select().from(trustLevels).where(eq(trustLevels.actionType, actionType)).limit(1)
 
-      const current = rows[0]
-      if (!current) {
-        throw new Error(`Expected trust level row not found for recordSuccess: ${actionType}`)
-      }
+    const current = rows[0]
+    if (!current) {
+      throw new Error(`Expected trust level row not found for recordSuccess: ${actionType}`)
+    }
 
-      await tx
-        .update(trustLevels)
-        .set({
-          fear: clamp01((current.fear ?? 0.8) - 0.05),
-          confidence: clamp01((current.confidence ?? 0.1) + 0.03),
-          totalAttempts: (current.totalAttempts ?? 0) + 1,
-          successfulAttempts: (current.successfulAttempts ?? 0) + 1,
-          lastAttemptAt: new Date(),
-          updatedAt: new Date()
-        })
-        .where(eq(trustLevels.actionType, actionType))
-    })
+    await db
+      .update(trustLevels)
+      .set({
+        fear: clamp01((current.fear ?? 0.8) - 0.05),
+        confidence: clamp01((current.confidence ?? 0.1) + 0.03),
+        totalAttempts: (current.totalAttempts ?? 0) + 1,
+        successfulAttempts: (current.successfulAttempts ?? 0) + 1,
+        lastAttemptAt: new Date(),
+        updatedAt: new Date()
+      })
+      .where(eq(trustLevels.actionType, actionType))
   })
 }
 
@@ -44,24 +42,22 @@ export function recordFailure(actionType: ActionType): AnimaResultAsync<void> {
   return trySafe("DB_ERROR", async () => {
     await ensureTrustLevel(actionType)
 
-    await db.transaction(async (tx) => {
-      const rows = await tx.select().from(trustLevels).where(eq(trustLevels.actionType, actionType)).limit(1)
+    const rows = await db.select().from(trustLevels).where(eq(trustLevels.actionType, actionType)).limit(1)
 
-      const current = rows[0]
-      if (!current) {
-        throw new Error(`Expected trust level row not found for recordFailure: ${actionType}`)
-      }
+    const current = rows[0]
+    if (!current) {
+      throw new Error(`Expected trust level row not found for recordFailure: ${actionType}`)
+    }
 
-      await tx
-        .update(trustLevels)
-        .set({
-          fear: clamp01((current.fear ?? 0.8) + 0.1),
-          confidence: clamp01((current.confidence ?? 0.1) - 0.05),
-          totalAttempts: (current.totalAttempts ?? 0) + 1,
-          lastAttemptAt: new Date(),
-          updatedAt: new Date()
-        })
-        .where(eq(trustLevels.actionType, actionType))
-    })
+    await db
+      .update(trustLevels)
+      .set({
+        fear: clamp01((current.fear ?? 0.8) + 0.1),
+        confidence: clamp01((current.confidence ?? 0.1) - 0.05),
+        totalAttempts: (current.totalAttempts ?? 0) + 1,
+        lastAttemptAt: new Date(),
+        updatedAt: new Date()
+      })
+      .where(eq(trustLevels.actionType, actionType))
   })
 }

@@ -14,13 +14,12 @@ vi.mock("@/core/workflow-engine.ts", () => ({
 
 vi.mock("@/integrations/anthropic.ts", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/integrations/anthropic.ts")>()),
-  callClaudeWithUsage: vi.fn(),
-  stripCodeFences: vi.fn((text: string) => text)
+  callClaudeWithUsage: vi.fn()
 }))
 
 vi.mock("@/memory/working.ts", () => ({
   pushRecentResponse: vi.fn(),
-  pushConversationMessage: vi.fn(),
+  pushToActiveConversation: vi.fn(),
   setGuardianResult: vi.fn(),
   setLastProactiveAction: vi.fn()
 }))

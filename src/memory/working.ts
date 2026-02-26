@@ -1,6 +1,6 @@
-import { differenceInMinutes, parseISO } from "date-fns"
-import type * as z from "zod"
-import { ConversationMessage } from "@/bridge/types.ts"
+import { formatISO } from "date-fns"
+import * as z from "zod"
+import { type ConversationMessage, ConversationSlot } from "@/bridge/types.ts"
 import { CONVERSATION } from "@/config/constants.ts"
 import { TickSummary } from "@/core/types.ts"
 import { EmotionalState } from "@/emotion/types.ts"
@@ -35,7 +35,7 @@ const KEYS = {
   MESSAGES_PENDING: "working:messages:pending",
   TELEGRAM_LAST_UPDATE_ID: "working:telegram:lastUpdateId",
   HEALTH_LAST_CHECK: "working:health:lastCheck",
-  CONVERSATION_MESSAGES: "working:conversation:messages",
+  CONVERSATION_BUFFER: "working:conversation:buffer",
   GUARDIAN_LAST_RESULT: "working:guardian:lastResult",
   GUARDIAN_RECENT_RESPONSES: "working:guardian:recentResponses",
   DRIFT_LAST_REPORT: "working:drift:lastReport",
@@ -140,53 +140,76 @@ export async function pingRedis(): Promise<boolean> {
 }
 
 /**
- * Get the full current conversation history.
+ * Get the full conversation buffer (up to MAX_BUFFER_SLOTS conversation slots).
  */
-export async function getConversationHistory(): Promise<ConversationMessage[]> {
-  const raw = await redis.lrange(KEYS.CONVERSATION_MESSAGES, 0, -1)
-  return raw.map((item) => parseRedisJson(ConversationMessage, item, KEYS.CONVERSATION_MESSAGES))
+export async function getConversationBuffer(): Promise<ConversationSlot[]> {
+  const raw = await redis.get(KEYS.CONVERSATION_BUFFER)
+  if (raw == null) return []
+  const parsed = typeof raw === "string" ? JSON.parse(raw) : raw
+  return z.array(ConversationSlot).parse(parsed)
 }
 
 /**
- * Push a message to the conversation history.
+ * Persist the conversation buffer to Redis.
  */
-export async function pushConversationMessage(msg: ConversationMessage): Promise<void> {
-  await redis.rpush(KEYS.CONVERSATION_MESSAGES, JSON.stringify(msg))
+export async function setConversationBuffer(slots: ConversationSlot[]): Promise<void> {
+  await redis.set(KEYS.CONVERSATION_BUFFER, JSON.stringify(slots))
 }
 
 /**
- * Clear the conversation history (after summarizing into episodic memory).
+ * Get the active (most recent) conversation slot.
  */
-export async function clearConversationHistory(): Promise<void> {
-  await redis.del(KEYS.CONVERSATION_MESSAGES)
+export async function getActiveConversation(): Promise<ConversationSlot | null> {
+  const buffer = await getConversationBuffer()
+  return buffer.length > 0 ? (buffer[buffer.length - 1] ?? null) : null
 }
 
 /**
- * Detect if there is a conversation gap — i.e., the last message in history
- * is older than CONVERSATION.GAP_MINUTES compared to the new incoming messages.
- *
- * Returns the old history if a gap is detected (so it can be summarized),
- * or null if the conversation is still active.
+ * Push a message to the active conversation slot.
+ * Creates a new slot if the buffer is empty.
  */
-export async function detectConversationGap(newMessages: PendingMessage[]): Promise<ConversationMessage[] | null> {
-  if (newMessages.length === 0) return null
-
-  const history = await getConversationHistory()
-  if (history.length === 0) return null
-
-  const lastHistoryMsg = history[history.length - 1]
-  if (!lastHistoryMsg) return null
-  const lastHistoryTime = parseISO(lastHistoryMsg.timestamp)
-
-  const earliestNewTime = new Date(Math.min(...newMessages.map((m) => m.date * 1000)))
-
-  const gapMinutes = differenceInMinutes(earliestNewTime, lastHistoryTime)
-
-  if (gapMinutes >= CONVERSATION.GAP_MINUTES) {
-    return history
+export async function pushToActiveConversation(msg: ConversationMessage): Promise<void> {
+  const buffer = await getConversationBuffer()
+  if (buffer.length === 0) {
+    const now = formatISO(new Date())
+    buffer.push({ id: crypto.randomUUID(), messages: [], startedAt: now, lastActivityAt: now })
   }
+  const active = buffer[buffer.length - 1]
+  if (!active) return
+  active.messages.push(msg)
+  active.lastActivityAt = msg.timestamp
+  await setConversationBuffer(buffer)
+}
 
-  return null
+/**
+ * Start a new conversation in the buffer.
+ * If the buffer is full, evicts and returns the oldest slot for archiving.
+ */
+export async function startNewConversation(): Promise<ConversationSlot | null> {
+  const buffer = await getConversationBuffer()
+  let evicted: ConversationSlot | null = null
+  if (buffer.length >= CONVERSATION.MAX_BUFFER_SLOTS) {
+    evicted = buffer.shift() ?? null
+  }
+  const now = formatISO(new Date())
+  buffer.push({ id: crypto.randomUUID(), messages: [], startedAt: now, lastActivityAt: now })
+  await setConversationBuffer(buffer)
+  return evicted
+}
+
+/**
+ * Get all messages across all conversation slots (for context building).
+ */
+export async function getAllConversationMessages(): Promise<ConversationMessage[]> {
+  const buffer = await getConversationBuffer()
+  return buffer.flatMap((slot) => slot.messages)
+}
+
+/**
+ * Clear the entire conversation buffer.
+ */
+export async function clearConversationBuffer(): Promise<void> {
+  await redis.del(KEYS.CONVERSATION_BUFFER)
 }
 
 /** Store the latest Guardian validation result. */

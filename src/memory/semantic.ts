@@ -63,20 +63,18 @@ export function getKnowledge(category?: SemanticCategory, key?: string): AnimaRe
     if (category) conditions.push(eq(semanticMemory.category, category))
     if (key) conditions.push(eq(semanticMemory.key, key))
 
-    return db.transaction(async (tx) => {
-      const rows = await tx
-        .select()
-        .from(semanticMemory)
-        .where(conditions.length > 0 ? and(...conditions) : undefined)
-        .orderBy(desc(semanticMemory.updatedAt))
+    const rows = await db
+      .select()
+      .from(semanticMemory)
+      .where(conditions.length > 0 ? and(...conditions) : undefined)
+      .orderBy(desc(semanticMemory.updatedAt))
 
-      if (rows.length > 0) {
-        const ids = rows.map((r) => r.id)
-        await tx.update(semanticMemory).set({ lastAccessedAt: new Date() }).where(inArray(semanticMemory.id, ids))
-      }
+    if (rows.length > 0) {
+      const ids = rows.map((r) => r.id)
+      await db.update(semanticMemory).set({ lastAccessedAt: new Date() }).where(inArray(semanticMemory.id, ids))
+    }
 
-      return rows
-    })
+    return rows
   })
 }
 
@@ -148,17 +146,15 @@ export function getRelatedEntities(
       conditions.push(eq(semanticRelations.relationType, relationType))
     }
 
-    return db.transaction(async (tx) => {
-      const relations = await tx
-        .select()
-        .from(semanticRelations)
-        .where(and(...conditions))
+    const relations = await db
+      .select()
+      .from(semanticRelations)
+      .where(and(...conditions))
 
-      const relatedIds = relations.map((r) => (r.sourceId === entityId ? r.targetId : r.sourceId))
+    const relatedIds = relations.map((r) => (r.sourceId === entityId ? r.targetId : r.sourceId))
 
-      if (relatedIds.length === 0) return []
+    if (relatedIds.length === 0) return []
 
-      return tx.select().from(semanticMemory).where(inArray(semanticMemory.id, relatedIds))
-    })
+    return db.select().from(semanticMemory).where(inArray(semanticMemory.id, relatedIds))
   })
 }

@@ -108,13 +108,3 @@ export function callClaudeWithUsage({
 export function callClaude(options: CallClaudeOptions): AnimaResultAsync<string> {
   return callClaudeWithUsage(options).map((r) => r.text)
 }
-
-/**
- * Strip markdown code fences (```json ... ```) from a Claude response for safe JSON.parse.
- */
-export function stripCodeFences(text: string): string {
-  return text
-    .replace(/```(?:json)?\s*/g, "")
-    .replace(/```/g, "")
-    .trim()
-}

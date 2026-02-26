@@ -22,7 +22,7 @@ import { nowLocal } from "@/lib/time.ts"
 import { queryRelated, storeEpisode } from "@/memory/episodic.ts"
 import { createGoal, getActiveGoals } from "@/memory/goals.ts"
 import { getKnowledge, getOperatorLanguage } from "@/memory/semantic.ts"
-import { getConversationHistory, getPerceptionSummary } from "@/memory/working.ts"
+import { getAllConversationMessages, getPerceptionSummary } from "@/memory/working.ts"
 import type { PerceptionSummary } from "@/perception/types.ts"
 import { getEffectivePersonality } from "@/personality/dna.ts"
 import { buildPersonalityPrompt } from "@/personality/expression.ts"
@@ -261,7 +261,7 @@ async function fetchSemanticKnowledgeData(): Promise<string[]> {
 }
 
 async function fetchConversationHistoryData(): Promise<string[]> {
-  const history = await getConversationHistory()
+  const history = await getAllConversationMessages()
   if (history.length === 0) return []
   const lines = ["## Conversation History"]
   for (const msg of history) {
@@ -309,7 +309,7 @@ export async function gatherWorkflowData(dataSources: string[]): Promise<string>
 }
 
 async function prepareWorkflowContext(workflow: WorkflowDefinition): Promise<string> {
-  const isOperatorFacing = workflow.outputAction === "telegram_send" || workflow.outputAction === "email_send"
+  const isOperatorFacing = workflow.outputAction === "telegram_send"
 
   const [data, personality, emotion, operatorLanguage] = await Promise.all([
     gatherWorkflowData(workflow.dataSources),
@@ -324,7 +324,7 @@ async function prepareWorkflowContext(workflow: WorkflowDefinition): Promise<str
     `## Workflow: ${workflow.name}`,
     workflow.description ? `Description: ${workflow.description}` : "",
     `Output action: ${workflow.outputAction}`,
-    operatorLanguage ? `Operator's preferred language: ${operatorLanguage}` : "",
+    operatorLanguage ? `Operator's preferred language: ${operatorLanguage}` : `Response language: English`,
     "",
     `## Instruction`,
     workflow.instruction,
