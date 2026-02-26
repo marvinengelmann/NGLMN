@@ -8,7 +8,13 @@ import type { EmotionalState, MetricsSnapshot } from "@/emotion/types.ts"
 import type { EvolutionType } from "@/evolution/changelog.ts"
 import { log } from "@/lib/logger.ts"
 import { nowLocal } from "@/lib/time.ts"
-import { getDreamState, setDreamInsights, setDreamLastRun, setDreamState } from "@/memory/working.ts"
+import {
+  getDreamState,
+  setDreamInsights,
+  setDreamLastRun,
+  setDreamState,
+  setReflectionLastAt
+} from "@/memory/working.ts"
 import { consolidateMemories } from "./consolidation.ts"
 import { findCreativeConnections } from "./creative.ts"
 import { buildReflectionInput, performReflection } from "./reflection.ts"
@@ -182,7 +188,9 @@ export async function runDreamCycle(): Promise<DreamCycleResult> {
     })
   }
 
-  await setDreamLastRun(formatISO(new Date()))
+  const nowIso = formatISO(new Date())
+  await setDreamLastRun(nowIso)
+  await setReflectionLastAt(nowIso)
   await setDreamState("waking")
 
   return {

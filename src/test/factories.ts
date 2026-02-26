@@ -2,6 +2,7 @@ import type { ConversationMessage, ConversationSlot } from "@/bridge/types.ts"
 import type { BudgetState } from "@/core/budget.ts"
 import type { ProactiveResult } from "@/core/phases/act.ts"
 import type { TickSummary, TriageResult, WorkflowDefinition, WorkflowExecutionResult } from "@/core/types.ts"
+import type { ReflectionContext } from "@/dream/reflection.ts"
 import type { ConsolidationResult, ReflectionInput, ReflectionOutput } from "@/dream/types.ts"
 import type { EmotionalState, EmotionUpdateEvent, MetricsSnapshot } from "@/emotion/types.ts"
 import { DEFAULT_EMOTIONAL_STATE } from "@/emotion/types.ts"
@@ -294,6 +295,15 @@ export function makeOperatorLocation(overrides?: Partial<OperatorLocation>): Ope
     cityName: "Mannheim",
     source: "telegram",
     updatedAt: new Date().toISOString(),
+    ...overrides
+  }
+}
+
+export function makeReflectionContext(overrides?: Partial<ReflectionContext>): ReflectionContext {
+  return {
+    emotion: makeEmotionalState(),
+    personality: makePersonalityLayer(),
+    lastReflectionAt: null,
     ...overrides
   }
 }

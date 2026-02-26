@@ -20,7 +20,8 @@ vi.mock("@/db/schema.ts", () => ({
 vi.mock("@/memory/working.ts", () => ({
   setLastTickSummary: vi.fn(),
   pushRecentTickDuration: vi.fn(),
-  getRecentRollbackCount: vi.fn(() => 0)
+  getEffectivePersonality: vi.fn(() => null),
+  getReflectionLastAt: vi.fn(() => null)
 }))
 
 vi.mock("@/security/guardian.ts", () => ({
@@ -32,24 +33,32 @@ vi.mock("@/integrations/telegram.ts", () => ({
 }))
 
 vi.mock("@/dream/reflection.ts", () => ({
-  shouldTriggerReflection: vi.fn(() => ({ trigger: false }))
+  shouldTriggerReflection: vi.fn(() => ({ trigger: false, reason: "No introspective urge" }))
 }))
 
 vi.mock("@/trigger/reflection.ts", () => ({
   adHocReflectionTask: { trigger: vi.fn() }
 }))
 
-vi.mock("@/core/budget.ts", () => ({
-  getBudgetState: vi.fn(() => ({ consumedToday: 2, dailyLimit: 8, remainingToday: 6 }))
+vi.mock("@/emotion/state.ts", () => ({
+  getEmotionalState: vi.fn(() => ({
+    curiosity: 0.5,
+    satisfaction: 0.5,
+    frustration: 0.5,
+    boredom: 0.5,
+    excitement: 0.5,
+    caution: 0.5,
+    connection: 0.5
+  }))
 }))
 
 import { db } from "@/db/client.ts"
 import { shouldTriggerReflection } from "@/dream/reflection.ts"
 import { sendDriftAlert } from "@/integrations/telegram.ts"
 import { addBreadcrumb } from "@/lib/sentry.ts"
-import { pushRecentTickDuration, setLastTickSummary } from "@/memory/working.ts"
+import { getEffectivePersonality, pushRecentTickDuration, setLastTickSummary } from "@/memory/working.ts"
 import { detectDrift } from "@/security/guardian.ts"
-import { makeDriftReport, makeTriageResult } from "@/test/factories.ts"
+import { makeDriftReport, makePersonalityLayer, makeTriageResult } from "@/test/factories.ts"
 import { adHocReflectionTask } from "@/trigger/reflection.ts"
 import type { ActResult } from "./act.ts"
 import { maintain } from "./maintain.ts"
@@ -64,6 +73,7 @@ const mockSetLastTickSummary = setLastTickSummary as ReturnType<typeof vi.fn>
 const mockPushRecentTickDuration = pushRecentTickDuration as ReturnType<typeof vi.fn>
 const mockAddBreadcrumb = addBreadcrumb as ReturnType<typeof vi.fn>
 const mockDbInsert = db.insert as ReturnType<typeof vi.fn>
+const mockGetEffectivePersonality = getEffectivePersonality as ReturnType<typeof vi.fn>
 
 const ctx: TickContext = {
   tickId: "tick-test",
@@ -87,7 +97,8 @@ describe("maintain phase", () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockDetectDrift.mockResolvedValue(makeDriftReport())
-    mockShouldTriggerReflection.mockReturnValue({ trigger: false })
+    mockShouldTriggerReflection.mockReturnValue({ trigger: false, reason: "No introspective urge" })
+    mockGetEffectivePersonality.mockResolvedValue(makePersonalityLayer())
   })
 
   it("sends drift alert when drift is unhealthy", async () => {
@@ -116,17 +127,26 @@ describe("maintain phase", () => {
     expect(mockSendDriftAlert).not.toHaveBeenCalled()
   })
 
-  it("triggers ad-hoc reflection when conditions met", async () => {
-    mockShouldTriggerReflection.mockReturnValue({ trigger: true, reason: "high failures" })
+  it("triggers ad-hoc reflection when emotional urge detected", async () => {
+    mockShouldTriggerReflection.mockReturnValue({
+      trigger: true,
+      reason: "Strong curiosity (high, 0.92) driving introspection"
+    })
 
     await maintain(ctx, thinkResult, actResult)
 
-    expect(mockAdHocReflectionTrigger).toHaveBeenCalledWith(
-      expect.objectContaining({
-        failures: 0,
-        rollbacks: 0
-      })
-    )
+    expect(mockAdHocReflectionTrigger).toHaveBeenCalledWith({
+      reason: "Strong curiosity (high, 0.92) driving introspection"
+    })
+  })
+
+  it("skips reflection check when personality not loaded", async () => {
+    mockGetEffectivePersonality.mockResolvedValue(null)
+
+    await maintain(ctx, thinkResult, actResult)
+
+    expect(mockShouldTriggerReflection).not.toHaveBeenCalled()
+    expect(mockAdHocReflectionTrigger).not.toHaveBeenCalled()
   })
 
   it("builds correct tick summary", async () => {

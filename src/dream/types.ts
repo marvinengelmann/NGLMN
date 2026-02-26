@@ -48,7 +48,7 @@ export type ReflectionInput = z.infer<typeof ReflectionInput>
 
 export const ReflectionOutput = z.object({
   insights: z.array(z.string()),
-  personalityDeltas: z.record(z.string(), z.number()).optional(),
+  personalityDeltas: z.record(z.string(), z.number()).nullish(),
   newGoals: z
     .array(
       z.object({
@@ -57,9 +57,9 @@ export const ReflectionOutput = z.object({
         priority: z.number()
       })
     )
-    .optional(),
-  morningMessageDraft: z.string().optional(),
-  emotionalCorrections: z.record(z.string(), z.number()).optional()
+    .nullish(),
+  morningMessageDraft: z.string().nullish(),
+  emotionalCorrections: z.record(z.string(), z.number()).nullish()
 })
 export type ReflectionOutput = z.infer<typeof ReflectionOutput>
 

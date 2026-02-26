@@ -1,13 +1,18 @@
 import { logAndCaptureError, trySafe } from "@/config/result-helpers.ts"
-import { getBudgetState } from "@/core/budget.ts"
 import type { TickSummary } from "@/core/types.ts"
 import { db } from "@/db/client.ts"
 import { tickLog } from "@/db/schema.ts"
 import { shouldTriggerReflection } from "@/dream/reflection.ts"
+import { getEmotionalState } from "@/emotion/state.ts"
 import { sendDriftAlert } from "@/integrations/telegram.ts"
 import { log } from "@/lib/logger.ts"
 import { addBreadcrumb } from "@/lib/sentry.ts"
-import { getRecentRollbackCount, pushRecentTickDuration, setLastTickSummary } from "@/memory/working.ts"
+import {
+  getEffectivePersonality,
+  getReflectionLastAt,
+  pushRecentTickDuration,
+  setLastTickSummary
+} from "@/memory/working.ts"
 import { detectDrift } from "@/security/guardian.ts"
 import type { DriftReport } from "@/security/types.ts"
 import { adHocReflectionTask } from "@/trigger/reflection.ts"
@@ -32,26 +37,21 @@ async function checkDrift(): Promise<DriftReport> {
   return driftReport
 }
 
-async function checkAdHocReflection(driftReport: DriftReport): Promise<void> {
+async function checkAdHocReflection(): Promise<void> {
   const result = await trySafe("UNKNOWN_ERROR", async () => {
-    const failureCount = driftReport.signals.filter((s) => s.severity === "high").length
-    const rollbackCount = await getRecentRollbackCount(24)
-    const budget = await getBudgetState()
-    const budgetPercent = (budget.consumedToday / budget.dailyLimit) * 100
+    const [emotion, personality, lastReflectionAt] = await Promise.all([
+      getEmotionalState(),
+      getEffectivePersonality(),
+      getReflectionLastAt()
+    ])
 
-    const reflectionCheck = shouldTriggerReflection({
-      failures: failureCount,
-      rollbacks: rollbackCount,
-      budgetPercent
-    })
+    if (!personality) return
+
+    const reflectionCheck = shouldTriggerReflection({ emotion, personality, lastReflectionAt })
 
     if (reflectionCheck.trigger) {
       log.info("Triggering ad-hoc reflection", { reason: reflectionCheck.reason })
-      await adHocReflectionTask.trigger({
-        failures: failureCount,
-        rollbacks: rollbackCount,
-        budgetPercent
-      })
+      await adHocReflectionTask.trigger({ reason: reflectionCheck.reason })
     }
   })
 
@@ -102,8 +102,8 @@ async function persistTickSummary(
 }
 
 export async function maintain(ctx: TickContext, thinkResult: ThinkResult, actResult: ActResult): Promise<TickSummary> {
-  const driftReport = await checkDrift()
-  await checkAdHocReflection(driftReport)
+  await checkDrift()
+  await checkAdHocReflection()
 
   const durationMs = Date.now() - ctx.startTime
   await pushRecentTickDuration(durationMs)

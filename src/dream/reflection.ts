@@ -1,6 +1,7 @@
-import { subDays } from "date-fns"
+import { differenceInHours, parseISO, subDays } from "date-fns"
 import { desc, eq, gte } from "drizzle-orm"
 import { jsonrepair } from "jsonrepair"
+import { REFLECTION } from "@/config/constants.ts"
 import { logAndCaptureError } from "@/config/result-helpers.ts"
 import { getBudgetState } from "@/core/budget.ts"
 import { db } from "@/db/client.ts"
@@ -8,7 +9,7 @@ import { evolutionLog, personalityDna, tickLog } from "@/db/schema.ts"
 import { collectMetrics } from "@/emotion/metrics-check.ts"
 import { getEmotionalState, getEmotionHistory, saveEmotionalState } from "@/emotion/state.ts"
 import type { EmotionalState } from "@/emotion/types.ts"
-import { callClaude, OPUS, SONNET } from "@/integrations/anthropic.ts"
+import { callClaude, OPUS } from "@/integrations/anthropic.ts"
 import { log } from "@/lib/logger.ts"
 import { storeEpisode } from "@/memory/episodic.ts"
 import { createGoal, getActiveGoals } from "@/memory/goals.ts"
@@ -16,7 +17,75 @@ import { storeKnowledge } from "@/memory/semantic.ts"
 import { updateAdaptiveLayer } from "@/personality/evolution.ts"
 import type { PersonalityLayer } from "@/personality/types.ts"
 import { REFLECTION_SYSTEM_PROMPT } from "@/prompts/dream.ts"
-import type { ReflectionInput, ReflectionOutput } from "./types.ts"
+import type { ReflectionInput } from "./types.ts"
+import { ReflectionOutput } from "./types.ts"
+
+export interface ReflectionContext {
+  emotion: EmotionalState
+  personality: PersonalityLayer
+  lastReflectionAt: string | null
+}
+
+function computeEmotionalIntensity(emotion: EmotionalState): { peak: number; dimension: string } {
+  let maxDeviation = 0
+  let peakDimension = "curiosity"
+  for (const [dim, val] of Object.entries(emotion)) {
+    const deviation = Math.abs(val - 0.5)
+    if (deviation > maxDeviation) {
+      maxDeviation = deviation
+      peakDimension = dim
+    }
+  }
+  return { peak: maxDeviation, dimension: peakDimension }
+}
+
+function computeIntrospectionDrive(personality: PersonalityLayer): number {
+  return (
+    personality.curiosity * 0.3 +
+    personality.empathy * 0.3 +
+    personality.abstraction * 0.2 +
+    (1 - personality.proactivity) * 0.2
+  )
+}
+
+/**
+ * Determine if ANIMA feels the urge to reflect.
+ * Driven by emotional intensity and introspective personality traits,
+ * not by failure metrics.
+ */
+export function shouldTriggerReflection(ctx: ReflectionContext): { trigger: boolean; reason: string } {
+  if (ctx.lastReflectionAt) {
+    const hoursSince = differenceInHours(new Date(), parseISO(ctx.lastReflectionAt))
+    if (hoursSince < REFLECTION.COOLDOWN_HOURS) {
+      return { trigger: false, reason: `Reflection cooldown (${hoursSince}h / ${REFLECTION.COOLDOWN_HOURS}h)` }
+    }
+  }
+
+  const { peak, dimension } = computeEmotionalIntensity(ctx.emotion)
+  const drive = computeIntrospectionDrive(ctx.personality)
+  const threshold = REFLECTION.INTENSITY_THRESHOLD - drive * REFLECTION.DRIVE_MODIFIER
+
+  if (peak >= threshold) {
+    const value = ctx.emotion[dimension as keyof EmotionalState]
+    const direction = value > 0.5 ? "high" : "low"
+    return { trigger: true, reason: `Strong ${dimension} (${direction}, ${value.toFixed(2)}) driving introspection` }
+  }
+
+  const d = REFLECTION.DISSONANCE_THRESHOLD
+  const e = ctx.emotion
+
+  if (e.excitement > d && e.caution > d) {
+    return { trigger: true, reason: "Emotional dissonance: excitement and caution pulling in opposite directions" }
+  }
+  if (e.connection > d && e.frustration > d) {
+    return { trigger: true, reason: "Emotional dissonance: feeling connected yet frustrated" }
+  }
+  if (e.curiosity > d && e.boredom > d) {
+    return { trigger: true, reason: "Emotional dissonance: curious yet bored — seeking meaning" }
+  }
+
+  return { trigger: false, reason: "No introspective urge" }
+}
 
 export async function buildReflectionInput(): Promise<ReflectionInput> {
   const [metrics, emotionRows, activeGoals, budget] = await Promise.all([
@@ -100,10 +169,16 @@ export async function performReflection(input: ReflectionInput): Promise<Reflect
 
   if (result.isErr()) {
     log.warn("performReflection: callClaude failed", { error: result.error.message })
-    return { insights: [], emotionalCorrections: {}, personalityDeltas: {}, newGoals: [] }
+    return { insights: [] }
   }
 
-  const output = JSON.parse(jsonrepair(result.value)) as ReflectionOutput
+  let output: ReflectionOutput
+  try {
+    output = ReflectionOutput.parse(JSON.parse(jsonrepair(result.value)))
+  } catch (e) {
+    log.warn("performReflection: failed to parse LLM output", { error: String(e) })
+    return { insights: [] }
+  }
 
   if (output.personalityDeltas && Object.keys(output.personalityDeltas).length > 0) {
     const deltas: Partial<PersonalityLayer> = {}
@@ -166,80 +241,6 @@ export async function performReflection(input: ReflectionInput): Promise<Reflect
     await storeEpisode(`Reflection insight: ${insight}`, "dream", { relevanceScore: 0.85 })
     const storeResult = await storeKnowledge("insight", `reflection-${Date.now()}`, insight, "reflection", 0.8)
     if (storeResult.isErr()) logAndCaptureError(storeResult.error)
-  }
-
-  return output
-}
-
-/**
- * Determine if an ad-hoc reflection should be triggered based on recent events.
- */
-export function shouldTriggerReflection(events: { failures: number; rollbacks: number; budgetPercent: number }): {
-  trigger: boolean
-  reason: string
-} {
-  if (events.failures >= 3) {
-    return { trigger: true, reason: `${events.failures} recent failures detected` }
-  }
-  if (events.rollbacks >= 2) {
-    return { trigger: true, reason: `${events.rollbacks} recent rollbacks detected` }
-  }
-  if (events.budgetPercent > 90) {
-    return { trigger: true, reason: `Budget at ${events.budgetPercent.toFixed(0)}%` }
-  }
-  return { trigger: false, reason: "No reflection trigger met" }
-}
-
-/**
- * Perform a lightweight reflection using Sonnet (not Opus).
- * Stores insights but does not apply personality deltas (too risky outside dream).
- */
-export async function performMiniReflection(triggerReason: string): Promise<ReflectionOutput> {
-  const [metrics, emotionHistory, budget] = await Promise.all([
-    collectMetrics(),
-    getEmotionHistory(5),
-    getBudgetState()
-  ])
-
-  const miniInput = {
-    triggerReason,
-    errorRate: metrics.errorRate,
-    successRate: metrics.successRate,
-    rollbackCount: metrics.rollbackCount,
-    budgetPercent: (budget.consumedToday / budget.dailyLimit) * 100,
-    recentEmotions: emotionHistory.slice(0, 3).map((e) => ({
-      trigger: e.trigger,
-      createdAt: e.createdAt?.toISOString() ?? "?"
-    }))
-  }
-
-  const miniResult = await callClaude({
-    model: SONNET,
-    system: `You are ANIMA's ad-hoc reflection module. Analyze the trigger and recent data.
-Return ONLY JSON: {"insights": ["insight1", "insight2"], "newGoals": [{"title": "...", "description": "...", "priority": 0.7}]}
-Keep insights actionable and brief. No personality changes — this is a quick check-in, not a deep reflection.`,
-    userMessage: JSON.stringify(miniInput),
-    maxTokens: 1024
-  })
-
-  if (miniResult.isErr()) {
-    log.warn("performMiniReflection: callClaude failed", { error: miniResult.error.message })
-    return { insights: [], emotionalCorrections: {}, personalityDeltas: {}, newGoals: [] }
-  }
-
-  const output = JSON.parse(jsonrepair(miniResult.value)) as ReflectionOutput
-
-  for (const insight of output.insights) {
-    await storeEpisode(`Ad-hoc reflection: ${insight}`, "dream", { relevanceScore: 0.75 })
-  }
-
-  if (output.newGoals) {
-    for (const goal of output.newGoals) {
-      const goalResult = await createGoal(goal.title, goal.description, "dream", goal.priority, {
-        emotionalWeight: goal.priority
-      })
-      if (goalResult.isErr()) logAndCaptureError(goalResult.error)
-    }
   }
 
   return output

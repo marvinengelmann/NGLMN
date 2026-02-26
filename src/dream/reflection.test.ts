@@ -46,10 +46,7 @@ vi.mock("@/personality/evolution.ts", () => ({
   updateAdaptiveLayer: vi.fn()
 }))
 
-vi.mock("@/memory/working.ts", () => ({
-  getRecentRollbackCount: vi.fn().mockResolvedValue(0)
-}))
-
+import { subHours } from "date-fns"
 import { ok } from "neverthrow"
 import { getEmotionalState, saveEmotionalState } from "@/emotion/state.ts"
 import { callClaude } from "@/integrations/anthropic.ts"
@@ -57,7 +54,12 @@ import { storeEpisode } from "@/memory/episodic.ts"
 import { createGoal } from "@/memory/goals.ts"
 import { storeKnowledge } from "@/memory/semantic.ts"
 import { updateAdaptiveLayer } from "@/personality/evolution.ts"
-import { makeEmotionalState, makeReflectionInput } from "@/test/factories.ts"
+import {
+  makeEmotionalState,
+  makePersonalityLayer,
+  makeReflectionContext,
+  makeReflectionInput
+} from "@/test/factories.ts"
 import { performReflection, shouldTriggerReflection } from "./reflection.ts"
 
 const mockCallClaude = callClaude as ReturnType<typeof vi.fn>
@@ -188,42 +190,132 @@ describe("performReflection", () => {
     await performReflection(makeReflectionInput())
     expect(mockUpdateAdaptiveLayer).toHaveBeenCalledWith({ curiosity: 0.02 }, expect.any(String))
   })
+
+  it("returns empty insights on malformed LLM output", async () => {
+    mockCallClaude.mockResolvedValue(ok("this is not json at all {{{"))
+
+    const output = await performReflection(makeReflectionInput())
+    expect(output.insights).toHaveLength(0)
+    expect(mockStoreEpisode).not.toHaveBeenCalled()
+  })
+
+  it("returns empty insights on structurally invalid output", async () => {
+    mockCallClaude.mockResolvedValue(ok(JSON.stringify({ insights: "not an array" })))
+
+    const output = await performReflection(makeReflectionInput())
+    expect(output.insights).toHaveLength(0)
+  })
 })
 
 describe("shouldTriggerReflection", () => {
-  it("triggers when failures >= 3", () => {
-    const result = shouldTriggerReflection({ failures: 3, rollbacks: 0, budgetPercent: 50 })
+  it("triggers on high emotional intensity for introspective personality", () => {
+    const ctx = makeReflectionContext({
+      emotion: makeEmotionalState({ curiosity: 0.9 }),
+      personality: makePersonalityLayer({ curiosity: 0.7, empathy: 0.75, abstraction: 0.6, proactivity: 0.3 })
+    })
+
+    const result = shouldTriggerReflection(ctx)
     expect(result.trigger).toBe(true)
-    expect(result.reason).toContain("3 recent failures")
+    expect(result.reason).toContain("curiosity")
+    expect(result.reason).toContain("high")
   })
 
-  it("triggers when rollbacks >= 2", () => {
-    const result = shouldTriggerReflection({ failures: 0, rollbacks: 2, budgetPercent: 50 })
+  it("triggers on low emotional intensity (far below neutral)", () => {
+    const ctx = makeReflectionContext({
+      emotion: makeEmotionalState({ satisfaction: 0.05 }),
+      personality: makePersonalityLayer({ curiosity: 0.7, empathy: 0.75, abstraction: 0.6, proactivity: 0.3 })
+    })
+
+    const result = shouldTriggerReflection(ctx)
     expect(result.trigger).toBe(true)
-    expect(result.reason).toContain("2 recent rollbacks")
+    expect(result.reason).toContain("satisfaction")
+    expect(result.reason).toContain("low")
   })
 
-  it("triggers when budget exceeds 90%", () => {
-    const result = shouldTriggerReflection({ failures: 0, rollbacks: 0, budgetPercent: 91 })
-    expect(result.trigger).toBe(true)
-    expect(result.reason).toContain("Budget at 91%")
-  })
+  it("does not trigger when emotions are near neutral", () => {
+    const ctx = makeReflectionContext({
+      emotion: makeEmotionalState()
+    })
 
-  it("does not trigger when all values are below thresholds", () => {
-    const result = shouldTriggerReflection({ failures: 2, rollbacks: 1, budgetPercent: 89 })
+    const result = shouldTriggerReflection(ctx)
     expect(result.trigger).toBe(false)
-    expect(result.reason).toBe("No reflection trigger met")
+    expect(result.reason).toBe("No introspective urge")
   })
 
-  it("prioritizes failures check over rollbacks", () => {
-    const result = shouldTriggerReflection({ failures: 3, rollbacks: 5, budgetPercent: 95 })
-    expect(result.trigger).toBe(true)
-    expect(result.reason).toContain("failures")
+  it("respects cooldown period", () => {
+    const ctx = makeReflectionContext({
+      emotion: makeEmotionalState({ curiosity: 0.95 }),
+      lastReflectionAt: new Date().toISOString()
+    })
+
+    const result = shouldTriggerReflection(ctx)
+    expect(result.trigger).toBe(false)
+    expect(result.reason).toContain("cooldown")
   })
 
-  it("checks rollbacks before budget when failures are below threshold", () => {
-    const result = shouldTriggerReflection({ failures: 1, rollbacks: 2, budgetPercent: 95 })
+  it("triggers after cooldown has passed", () => {
+    const ctx = makeReflectionContext({
+      emotion: makeEmotionalState({ curiosity: 0.95 }),
+      personality: makePersonalityLayer({ curiosity: 0.7, empathy: 0.7, abstraction: 0.5, proactivity: 0.3 }),
+      lastReflectionAt: subHours(new Date(), 5).toISOString()
+    })
+
+    const result = shouldTriggerReflection(ctx)
     expect(result.trigger).toBe(true)
-    expect(result.reason).toContain("rollbacks")
+  })
+
+  it("triggers on emotional dissonance: excitement + caution", () => {
+    const ctx = makeReflectionContext({
+      emotion: makeEmotionalState({ excitement: 0.75, caution: 0.75 })
+    })
+
+    const result = shouldTriggerReflection(ctx)
+    expect(result.trigger).toBe(true)
+    expect(result.reason).toContain("dissonance")
+    expect(result.reason).toContain("excitement")
+    expect(result.reason).toContain("caution")
+  })
+
+  it("triggers on emotional dissonance: connection + frustration", () => {
+    const ctx = makeReflectionContext({
+      emotion: makeEmotionalState({ connection: 0.75, frustration: 0.75 })
+    })
+
+    const result = shouldTriggerReflection(ctx)
+    expect(result.trigger).toBe(true)
+    expect(result.reason).toContain("connected")
+    expect(result.reason).toContain("frustrated")
+  })
+
+  it("triggers on emotional dissonance: curiosity + boredom", () => {
+    const ctx = makeReflectionContext({
+      emotion: makeEmotionalState({ curiosity: 0.75, boredom: 0.75 })
+    })
+
+    const result = shouldTriggerReflection(ctx)
+    expect(result.trigger).toBe(true)
+    expect(result.reason).toContain("curious")
+    expect(result.reason).toContain("bored")
+  })
+
+  it("requires higher intensity for less introspective personality", () => {
+    const lowDrivePersonality = makePersonalityLayer({
+      curiosity: 0.3,
+      empathy: 0.25,
+      abstraction: 0.2,
+      proactivity: 0.8
+    })
+
+    const notEnough = makeReflectionContext({
+      emotion: makeEmotionalState({ excitement: 0.75 }),
+      personality: lowDrivePersonality
+    })
+    expect(shouldTriggerReflection(notEnough).trigger).toBe(false)
+
+    const enough = makeReflectionContext({
+      emotion: makeEmotionalState({ excitement: 0.9 }),
+      personality: lowDrivePersonality
+    })
+    expect(shouldTriggerReflection(enough).trigger).toBe(true)
   })
 })

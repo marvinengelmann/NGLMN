@@ -1,31 +1,29 @@
 import { task } from "@trigger.dev/sdk"
+import { formatISO } from "date-fns"
 import { db } from "@/db/client.ts"
 import { dreamLog } from "@/db/schema.ts"
-import { performMiniReflection, shouldTriggerReflection } from "@/dream/reflection.ts"
+import { buildReflectionInput, performReflection } from "@/dream/reflection.ts"
 import { log } from "@/lib/logger.ts"
 import { captureError } from "@/lib/sentry.ts"
+import { setReflectionLastAt } from "@/memory/working.ts"
 
 export const adHocReflectionTask = task({
   id: "reflection",
   queue: {
     concurrencyLimit: 1
   },
-  run: async (payload: { failures: number; rollbacks: number; budgetPercent: number }) => {
-    const check = shouldTriggerReflection(payload)
-
-    if (!check.trigger) {
-      log.info("Ad-hoc reflection not needed", { reason: check.reason })
-      return { triggered: false, reason: check.reason }
-    }
-
-    log.info("Starting ad-hoc reflection", { reason: check.reason })
+  run: async (payload: { reason: string }) => {
+    log.info("Starting ad-hoc reflection", { reason: payload.reason })
 
     try {
-      const output = await performMiniReflection(check.reason)
+      const input = await buildReflectionInput()
+      const output = await performReflection(input)
+
+      await setReflectionLastAt(formatISO(new Date()))
 
       await db.insert(dreamLog).values({
         phase: "ad_hoc_reflection",
-        summary: `Ad-hoc reflection triggered: ${check.reason}. Generated ${output.insights.length} insights.`,
+        summary: `Ad-hoc reflection (${payload.reason}): ${output.insights.length} insights.`,
         insights: output
       })
 
@@ -34,11 +32,11 @@ export const adHocReflectionTask = task({
         goals: output.newGoals?.length ?? 0
       })
 
-      return { triggered: true, reason: check.reason, output }
+      return { reason: payload.reason, output }
     } catch (e) {
-      captureError(e, { phase: "ad_hoc_reflection", reason: check.reason })
+      captureError(e, { phase: "ad_hoc_reflection", reason: payload.reason })
       log.error("Ad-hoc reflection failed", { error: String(e) })
-      return { triggered: true, reason: check.reason, error: String(e) }
+      return { reason: payload.reason, error: String(e) }
     }
   }
 })

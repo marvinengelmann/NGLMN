@@ -17,7 +17,8 @@ vi.mock("@/memory/working.ts", () => ({
   getDreamState: vi.fn(),
   setDreamState: vi.fn(),
   setDreamLastRun: vi.fn(),
-  setDreamInsights: vi.fn()
+  setDreamInsights: vi.fn(),
+  setReflectionLastAt: vi.fn()
 }))
 
 vi.mock("./consolidation.ts", () => ({

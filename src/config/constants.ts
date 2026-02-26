@@ -122,6 +122,13 @@ export const X = {
   MAX_DAILY_PROACTIVE_TWEETS: 2
 } as const
 
+export const REFLECTION = {
+  COOLDOWN_HOURS: 4,
+  INTENSITY_THRESHOLD: 0.35,
+  DRIVE_MODIFIER: 0.15,
+  DISSONANCE_THRESHOLD: 0.7
+} as const
+
 export const EMAIL_DEFAULTS = {
   TRIAGE_DECISION: "complex" as const,
   TRIAGE_CONFIDENCE: 0.8,

@@ -63,7 +63,8 @@ const KEYS = {
   X_LAST_MENTION_ID: "working:x:lastMentionId",
   X_TOKEN_ACCESS: "working:x:token:access",
   X_TOKEN_REFRESH: "working:x:token:refresh",
-  X_DAILY_TWEET_COUNT: "working:x:dailyTweetCount"
+  X_DAILY_TWEET_COUNT: "working:x:dailyTweetCount",
+  REFLECTION_LAST_AT: "working:reflection:lastAt"
 } as const
 
 /** Get the summary of the last completed tick. */
@@ -567,4 +568,14 @@ export async function getConversationWaitToken(): Promise<string | null> {
 /** Clear the active conversation wait token. */
 export async function clearConversationWaitToken(): Promise<void> {
   await redis.del(KEYS.CONVERSATION_WAIT_TOKEN)
+}
+
+/** Get the ISO timestamp of the last reflection (dream or ad-hoc). */
+export async function getReflectionLastAt(): Promise<string | null> {
+  return redis.get<string>(KEYS.REFLECTION_LAST_AT)
+}
+
+/** Store the ISO timestamp of a completed reflection. */
+export async function setReflectionLastAt(isoTimestamp: string): Promise<void> {
+  await redis.set(KEYS.REFLECTION_LAST_AT, isoTimestamp)
 }
