@@ -23,6 +23,13 @@ export const PerceptionSummary = z.object({
       hasNewEmail: z.boolean()
     })
     .optional(),
+  xActivity: z
+    .object({
+      pendingCount: z.number(),
+      lastMentionAge: z.number(),
+      hasNewMention: z.boolean()
+    })
+    .optional(),
   weatherData: WeatherData.optional(),
   gitActivity: z
     .object({

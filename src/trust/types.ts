@@ -8,7 +8,8 @@ export const ActionType = z.enum([
   "deployment",
   "code_modification",
   "external_communication",
-  "email_send"
+  "email_send",
+  "x_post"
 ])
 export type ActionType = z.infer<typeof ActionType>
 

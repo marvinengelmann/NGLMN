@@ -427,6 +427,16 @@ async function performOutputAction(action: string, output: string, workflowName:
     case "email_send":
       await sendEmailToOperator(`ANIMA Workflow: ${workflowName}`, output)
       break
+    case "x_post": {
+      const { hasXConfig } = await import("@/config/env.ts")
+      if (!hasXConfig()) break
+      const { validatePublicOutput } = await import("@/security/guardian.ts")
+      const guardianResult = await validatePublicOutput(output)
+      if (guardianResult.verdict === "blocked") break
+      const { postTweet } = await import("@/integrations/x.ts")
+      await postTweet(output)
+      break
+    }
   }
 }
 

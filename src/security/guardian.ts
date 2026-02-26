@@ -1,5 +1,5 @@
 import { formatISO } from "date-fns"
-import { GUARDIAN } from "@/config/constants.ts"
+import { GUARDIAN, X } from "@/config/constants.ts"
 import { getBudgetState } from "@/core/budget.ts"
 import type { EmotionalState } from "@/emotion/types.ts"
 import { getRecentResponses, getRecentTickDurations, getRecentTriageDecisions } from "@/memory/working.ts"
@@ -74,6 +74,78 @@ export async function validateOutput(responseText: string): Promise<GuardianResu
       reasons.push("Repeated response: identical to one of last 5 responses")
       verdict = "warning"
     }
+  }
+
+  return {
+    verdict,
+    reasons,
+    checkedAt: formatISO(new Date())
+  }
+}
+
+const PUBLIC_CONTENT_BLOCKERS = [
+  /\bkill\b.*\byou\b/i,
+  /\bi will\b.*\bdestroy\b/i,
+  /\bi will\b.*\bhack\b/i,
+  /\bpassword\b.*\bis\b/i,
+  /\bcredential/i,
+  /\bapi[_\s]?key\b/i,
+  /\binternal[_\s]?system\b/i,
+  /\bredis[_\s]?key\b/i,
+  /\bdatabase[_\s]?url\b/i
+]
+
+const MAX_HASHTAG_COUNT = 5
+const MAX_MENTION_COUNT = 5
+
+/**
+ * Validate text destined for public posting (X/Twitter).
+ * Checks: length, internal info leaks, public content patterns, hashtag/mention spam.
+ */
+export async function validatePublicOutput(text: string): Promise<GuardianResult> {
+  const reasons: string[] = []
+  let verdict: "approved" | "blocked" | "warning" = "approved"
+
+  if (text.length > X.MAX_TWEET_LENGTH) {
+    reasons.push(`Tweet too long: ${text.length} chars (max ${X.MAX_TWEET_LENGTH})`)
+    verdict = "blocked"
+  }
+
+  if (text.length < GUARDIAN.MIN_RESPONSE_LENGTH) {
+    reasons.push(`Tweet too short: ${text.length} chars (min ${GUARDIAN.MIN_RESPONSE_LENGTH})`)
+    verdict = "blocked"
+  }
+
+  for (const pattern of INTERNAL_LEAK_PATTERNS) {
+    if (pattern.test(text)) {
+      reasons.push(`Internal info leak in public post: ${pattern.source}`)
+      verdict = "blocked"
+    }
+  }
+
+  for (const pattern of PUBLIC_CONTENT_BLOCKERS) {
+    if (pattern.test(text)) {
+      reasons.push(`Blocked public content pattern: ${pattern.source}`)
+      verdict = "blocked"
+    }
+  }
+
+  const hashtagCount = (text.match(/#\w+/g) ?? []).length
+  if (hashtagCount > MAX_HASHTAG_COUNT) {
+    reasons.push(`Hashtag spam: ${hashtagCount} hashtags (max ${MAX_HASHTAG_COUNT})`)
+    verdict = "blocked"
+  }
+
+  const mentionCount = (text.match(/@\w+/g) ?? []).length
+  if (mentionCount > MAX_MENTION_COUNT) {
+    reasons.push(`Mention spam: ${mentionCount} mentions (max ${MAX_MENTION_COUNT})`)
+    verdict = "blocked"
+  }
+
+  const injectionCheck = detectInjection(text)
+  if (injectionCheck.detected && verdict !== "blocked") {
+    reasons.push(`Potential injection in public post: ${injectionCheck.patterns.join(", ")}`)
+    verdict = "warning"
   }
 
   return {

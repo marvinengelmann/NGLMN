@@ -17,7 +17,8 @@ export const HealthCheckResult = z.object({
     postgres: ServiceStatus,
     telegram: ServiceStatus,
     vector: ServiceStatus,
-    resend: ServiceStatus.optional()
+    resend: ServiceStatus.optional(),
+    x: ServiceStatus.optional()
   }),
   process: z.object({
     lastTickRecency: ProcessStatus,

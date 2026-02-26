@@ -60,7 +60,14 @@ export const WorkflowDataSource = z.enum([
 ])
 export type WorkflowDataSource = z.infer<typeof WorkflowDataSource>
 
-export const WorkflowOutputAction = z.enum(["telegram_send", "store_episode", "create_goal", "log_only", "email_send"])
+export const WorkflowOutputAction = z.enum([
+  "telegram_send",
+  "store_episode",
+  "create_goal",
+  "log_only",
+  "email_send",
+  "x_post"
+])
 export type WorkflowOutputAction = z.infer<typeof WorkflowOutputAction>
 
 export const WorkflowDefinition = z.object({

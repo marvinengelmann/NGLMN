@@ -13,6 +13,7 @@ export type AnimaErrorTag =
   | "PERCEPTION_ERROR"
   | "EMOTION_ERROR"
   | "MEMORY_ERROR"
+  | "X_ERROR"
   | "CONFIG_ERROR"
   | "UNKNOWN_ERROR"
 

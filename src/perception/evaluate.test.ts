@@ -2,6 +2,7 @@ vi.mock("./sensors.ts", () => ({
   readOwnState: vi.fn(),
   readTelegramActivity: vi.fn(),
   readEmailActivity: vi.fn(),
+  readXActivity: vi.fn(),
   readWeatherData: vi.fn(),
   readGitActivity: vi.fn()
 }))
@@ -13,12 +14,20 @@ vi.mock("@/memory/working.ts", () => ({
 import { setPerceptionSummary } from "@/memory/working.ts"
 import { makeWeatherData } from "@/test/factories.ts"
 import { evaluatePerception } from "./evaluate.ts"
-import { readEmailActivity, readGitActivity, readOwnState, readTelegramActivity, readWeatherData } from "./sensors.ts"
+import {
+  readEmailActivity,
+  readGitActivity,
+  readOwnState,
+  readTelegramActivity,
+  readWeatherData,
+  readXActivity
+} from "./sensors.ts"
 
 const mockReadOwnState = readOwnState as ReturnType<typeof vi.fn>
 const mockReadTelegramActivity = readTelegramActivity as ReturnType<typeof vi.fn>
 const mockReadEmailActivity = readEmailActivity as ReturnType<typeof vi.fn>
 const mockReadWeatherData = readWeatherData as ReturnType<typeof vi.fn>
+const mockReadXActivity = readXActivity as ReturnType<typeof vi.fn>
 const mockReadGitActivity = readGitActivity as ReturnType<typeof vi.fn>
 const mockSetPerceptionSummary = setPerceptionSummary as ReturnType<typeof vi.fn>
 
@@ -41,6 +50,12 @@ describe("evaluatePerception", () => {
       pendingCount: 0,
       lastEmailAge: -1,
       hasNewEmail: false,
+      triggers: []
+    })
+    mockReadXActivity.mockResolvedValue({
+      pendingCount: 0,
+      lastMentionAge: -1,
+      hasNewMention: false,
       triggers: []
     })
     mockReadWeatherData.mockResolvedValue({

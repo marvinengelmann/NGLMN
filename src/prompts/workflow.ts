@@ -11,6 +11,7 @@ Process the gathered data according to the workflow instruction and produce outp
 
 ## Output Rules
 - For "telegram_send": Write a natural, personality-infused message in the operator's preferred language as specified in the context
+- For "x_post": Write in English. Max 280 characters. Be authentic, concise, and appropriate for a public audience.
 - For "email_send": Write in English unless replying to the operator.
 - For "store_episode": Write a concise summary in English
 - For "create_goal": Write a JSON object with "title", "description", and "priority" (0.0-1.0) in English

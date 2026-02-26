@@ -24,6 +24,17 @@ export const PendingEmail = z.object({
 })
 export type PendingEmail = z.infer<typeof PendingEmail>
 
+export const PendingMention = z.object({
+  tweetId: z.string(),
+  authorId: z.string(),
+  authorUsername: z.string(),
+  text: z.string().max(1000),
+  conversationId: z.string().optional(),
+  inReplyToTweetId: z.string().optional(),
+  createdAt: z.string()
+})
+export type PendingMention = z.infer<typeof PendingMention>
+
 export const WeatherData = z.object({
   temperature: z.number(),
   feelsLike: z.number(),

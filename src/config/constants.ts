@@ -76,7 +76,8 @@ export const TRUST = {
     deployment: 0.8,
     code_modification: 0.9,
     external_communication: 0.4,
-    email_send: 0.3
+    email_send: 0.3,
+    x_post: 0.5
   }
 } as const
 
@@ -98,6 +99,7 @@ export const EMOTIONAL_THRESHOLDS = {
   MESSAGE_SENT_INTENSITY: 0.7,
   TASK_SUCCESS_INTENSITY: 0.5,
   EMAIL_SENT_INTENSITY: 0.7,
+  TWEET_SENT_INTENSITY: 0.7,
   RELEVANCE_INTERACTION: 0.8,
   RELEVANCE_DEFAULT: 0.7,
   RELEVANCE_RELATIONSHIP: 0.85,
@@ -113,6 +115,11 @@ export const FOLLOW_UP = {
 export const MESSAGE_DELAY = {
   MIN_BETWEEN_MESSAGES_MS: 500,
   MAX_JITTER_MS: 1500
+} as const
+
+export const X = {
+  MAX_TWEET_LENGTH: 280,
+  MAX_DAILY_PROACTIVE_TWEETS: 2
 } as const
 
 export const EMAIL_DEFAULTS = {

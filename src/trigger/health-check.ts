@@ -135,6 +135,19 @@ export const healthCheckTask = schedules.task({
       errors.push(`Emotional state: ${e instanceof Error ? e.message : String(e)}`)
     }
 
+    let xStatus: ServiceStatus | undefined
+    try {
+      const { hasXConfig } = await import("@/config/env.ts")
+      if (hasXConfig()) {
+        const { pingX } = await import("@/integrations/x.ts")
+        xStatus = (await pingX()) ? "ok" : "error"
+      }
+    } catch (e) {
+      captureError(e, { service: "x" })
+      errors.push(`X: ${e instanceof Error ? e.message : String(e)}`)
+      xStatus = "error"
+    }
+
     const criticalDown = redisStatus === "error" || postgresStatus === "error"
     const processDead = lastTickRecency === "dead"
     const budgetExceeded = !budgetCompliant
@@ -146,6 +159,7 @@ export const healthCheckTask = schedules.task({
       telegramStatus === "error" ||
       vectorStatus === "error" ||
       resendStatus === "error" ||
+      xStatus === "error" ||
       lastTickRecency === "stale" ||
       semanticStatus === "error"
     ) {
@@ -160,7 +174,8 @@ export const healthCheckTask = schedules.task({
         postgres: postgresStatus,
         telegram: telegramStatus,
         vector: vectorStatus,
-        resend: resendStatus
+        resend: resendStatus,
+        x: xStatus
       },
       process: {
         lastTickRecency,

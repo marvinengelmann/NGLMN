@@ -7,7 +7,7 @@ import type { EmotionalState, EmotionUpdateEvent, MetricsSnapshot } from "@/emot
 import { DEFAULT_EMOTIONAL_STATE } from "@/emotion/types.ts"
 import type { SandboxResult } from "@/integrations/e2b.ts"
 import type { OperatorLocation } from "@/integrations/location.ts"
-import type { PendingEmail, PendingMessage, WeatherData } from "@/integrations/types.ts"
+import type { PendingEmail, PendingMention, PendingMessage, WeatherData } from "@/integrations/types.ts"
 import type { PerceptionSummary } from "@/perception/types.ts"
 import { PERSONALITY_CENTER, type PersonalityDna, type PersonalityLayer } from "@/personality/types.ts"
 import type { DriftReport, GuardianResult } from "@/security/types.ts"
@@ -122,6 +122,17 @@ export function makeTrustAssessment(overrides?: Partial<TrustAssessment>): Trust
     experienceFactor: 0.0,
     reason: "Default: no experience",
     autonomyLevel: "approval_required",
+    ...overrides
+  }
+}
+
+export function makePendingMention(overrides?: Partial<PendingMention>): PendingMention {
+  return {
+    tweetId: "tweet-001",
+    authorId: "author-001",
+    authorUsername: "testuser",
+    text: "Hey @hi_anima what do you think?",
+    createdAt: new Date().toISOString(),
     ...overrides
   }
 }

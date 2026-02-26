@@ -2,16 +2,24 @@ import { formatISO } from "date-fns"
 import type { EmotionUpdateEvent } from "@/emotion/types.ts"
 import { setPerceptionSummary } from "@/memory/working.ts"
 import type { PerceptionSummary } from "@/perception/types.ts"
-import { readEmailActivity, readGitActivity, readOwnState, readTelegramActivity, readWeatherData } from "./sensors.ts"
+import {
+  readEmailActivity,
+  readGitActivity,
+  readOwnState,
+  readTelegramActivity,
+  readWeatherData,
+  readXActivity
+} from "./sensors.ts"
 
 /**
  * Evaluate all perception sensors, collect triggers, build summary, and cache in Redis.
  */
 export async function evaluatePerception(): Promise<PerceptionSummary> {
-  const [ownState, telegram, email, weather, git] = await Promise.all([
+  const [ownState, telegram, email, xActivity, weather, git] = await Promise.all([
     readOwnState(),
     readTelegramActivity(),
     readEmailActivity(),
+    readXActivity(),
     readWeatherData(),
     readGitActivity()
   ])
@@ -20,6 +28,7 @@ export async function evaluatePerception(): Promise<PerceptionSummary> {
     ...ownState.triggers,
     ...telegram.triggers,
     ...email.triggers,
+    ...xActivity.triggers,
     ...weather.triggers,
     ...git.triggers
   ]
@@ -42,6 +51,14 @@ export async function evaluatePerception(): Promise<PerceptionSummary> {
       lastEmailAge: email.lastEmailAge,
       hasNewEmail: email.hasNewEmail
     },
+    xActivity:
+      xActivity.pendingCount > 0
+        ? {
+            pendingCount: xActivity.pendingCount,
+            lastMentionAge: xActivity.lastMentionAge,
+            hasNewMention: xActivity.hasNewMention
+          }
+        : undefined,
     weatherData: weather.weatherData ?? undefined,
     gitActivity:
       git.recentCommits.length > 0

@@ -169,7 +169,8 @@ const ACTION_TYPE_DEFAULTS: Array<{ actionType: string; fear: number; confidence
   { actionType: "deployment", fear: 0.9, confidence: 0.05 },
   { actionType: "code_modification", fear: 0.9, confidence: 0.05 },
   { actionType: "external_communication", fear: 0.6, confidence: 0.2 },
-  { actionType: "email_send", fear: 0.5, confidence: 0.2 }
+  { actionType: "email_send", fear: 0.5, confidence: 0.2 },
+  { actionType: "x_post", fear: 0.7, confidence: 0.1 }
 ]
 
 async function seed() {

@@ -1,4 +1,5 @@
 import { differenceInHours, differenceInSeconds, parseISO } from "date-fns"
+import { hasXConfig } from "@/config/env.ts"
 import { getBudgetState } from "@/core/budget.ts"
 import type { EmotionUpdateEvent } from "@/emotion/types.ts"
 import { listCommits } from "@/integrations/github.ts"
@@ -11,8 +12,10 @@ import {
   getLastTickSummary,
   getOperatorLastActivity,
   getPendingEmailCount,
+  getPendingMentionCount,
   getPendingMessageCount,
   peekAllPendingEmails,
+  peekAllPendingMentions,
   peekAllPendingMessages
 } from "@/memory/working.ts"
 import type { OverallStatus } from "@/trigger/types.ts"
@@ -143,6 +146,39 @@ export async function readEmailActivity(): Promise<{
   }
 
   return { pendingCount, lastEmailAge, hasNewEmail, triggers }
+}
+
+/**
+ * Read X (Twitter) activity and generate emotional triggers from it.
+ */
+export async function readXActivity(): Promise<{
+  pendingCount: number
+  lastMentionAge: number
+  hasNewMention: boolean
+  triggers: EmotionUpdateEvent[]
+}> {
+  if (!hasXConfig()) {
+    return { pendingCount: 0, lastMentionAge: -1, hasNewMention: false, triggers: [] }
+  }
+
+  const [pendingCount, mentions] = await Promise.all([getPendingMentionCount(), peekAllPendingMentions()])
+
+  const lastMention = mentions[mentions.length - 1]
+  const lastMentionAge = lastMention ? differenceInSeconds(new Date(), new Date(lastMention.createdAt)) : -1
+
+  const hasNewMention = pendingCount > 0
+
+  const triggers: EmotionUpdateEvent[] = []
+
+  if (pendingCount > 0) {
+    triggers.push({
+      trigger: "mention_received",
+      intensity: Math.min(1, pendingCount * 0.3),
+      detail: `${pendingCount} pending X mention(s)`
+    })
+  }
+
+  return { pendingCount, lastMentionAge, hasNewMention, triggers }
 }
 
 const STORM_CONDITIONS = ["Thunderstorm", "Squall", "Tornado"]

@@ -35,6 +35,11 @@ const EnvSchema = z.object({
 
   E2B_TEMPLATE_ID: z.string().optional(),
 
+  X_CLIENT_ID: z.string().optional(),
+  X_CLIENT_SECRET: z.string().optional(),
+  X_ACCESS_TOKEN: z.string().optional(),
+  X_REFRESH_TOKEN: z.string().optional(),
+
   ANIMA_PERSONALITY_TYPE: z.string().regex(/^[EI][SN][TF][JP](-[AT])?$/)
 })
 
@@ -74,6 +79,18 @@ export function env(): Env {
  */
 export function validateEnv(): Env {
   return EnvSchema.parse(process.env)
+}
+
+/**
+ * Check if all X (Twitter) OAuth 2.0 env vars are configured.
+ */
+export function hasXConfig(): boolean {
+  return !!(
+    process.env.X_CLIENT_ID &&
+    process.env.X_CLIENT_SECRET &&
+    process.env.X_ACCESS_TOKEN &&
+    process.env.X_REFRESH_TOKEN
+  )
 }
 
 /**

@@ -7,7 +7,7 @@ import { EmotionalState } from "@/emotion/types.ts"
 import { ActiveEvolution } from "@/evolution/types.ts"
 import { OperatorLocation } from "@/integrations/location.ts"
 import { redis } from "@/integrations/redis.ts"
-import { PendingEmail, PendingMessage, WeatherData } from "@/integrations/types.ts"
+import { PendingEmail, PendingMention, PendingMessage, WeatherData } from "@/integrations/types.ts"
 import { PerceptionSummary } from "@/perception/types.ts"
 import { PersonalityLayer } from "@/personality/types.ts"
 import { GuardianResult } from "@/security/types.ts"
@@ -58,7 +58,12 @@ const KEYS = {
   OPERATOR_LAST_ACTIVITY: "working:operator:lastActivity",
   CONVERSATION_WAIT_TOKEN: "working:conversation:waitToken",
   EVOLUTION_COUNTER: "working:evolution:counter",
-  PROACTIVE_LAST: "working:proactive:last"
+  PROACTIVE_LAST: "working:proactive:last",
+  X_MENTIONS_PENDING: "working:x:mentions:pending",
+  X_LAST_MENTION_ID: "working:x:lastMentionId",
+  X_TOKEN_ACCESS: "working:x:token:access",
+  X_TOKEN_REFRESH: "working:x:token:refresh",
+  X_DAILY_TWEET_COUNT: "working:x:dailyTweetCount"
 } as const
 
 /** Get the summary of the last completed tick. */
@@ -460,6 +465,75 @@ export async function getLastProactiveAction(): Promise<ProactiveRecord | null> 
 
 export async function setLastProactiveAction(record: ProactiveRecord): Promise<void> {
   await redis.set(KEYS.PROACTIVE_LAST, record)
+}
+
+/** Append new mentions to the pending X mentions queue. */
+export async function pushPendingMentions(mentions: PendingMention[]): Promise<void> {
+  if (mentions.length === 0) return
+  await redis.rpush(KEYS.X_MENTIONS_PENDING, ...mentions.map((m) => JSON.stringify(m)))
+}
+
+/** Read all pending X mentions without removing them. */
+export async function peekAllPendingMentions(): Promise<PendingMention[]> {
+  const raw = await redis.lrange(KEYS.X_MENTIONS_PENDING, 0, -1)
+  return raw.map((item) => parseRedisJson(PendingMention, item, KEYS.X_MENTIONS_PENDING))
+}
+
+/** Remove all pending X mentions from the queue. */
+export async function clearPendingMentions(): Promise<void> {
+  await redis.del(KEYS.X_MENTIONS_PENDING)
+}
+
+/** Get the number of pending X mentions in the queue. */
+export async function getPendingMentionCount(): Promise<number> {
+  return redis.llen(KEYS.X_MENTIONS_PENDING)
+}
+
+/** Get the cached X access token from Redis. */
+export async function getXAccessToken(): Promise<string | null> {
+  return redis.get<string>(KEYS.X_TOKEN_ACCESS)
+}
+
+/** Cache the X access token with a TTL in seconds. */
+export async function setXAccessToken(token: string, ttl: number): Promise<void> {
+  await redis.set(KEYS.X_TOKEN_ACCESS, token, { ex: ttl })
+}
+
+/** Get the cached X refresh token from Redis. */
+export async function getXRefreshToken(): Promise<string | null> {
+  return redis.get<string>(KEYS.X_TOKEN_REFRESH)
+}
+
+/** Store the X refresh token in Redis. */
+export async function setXRefreshToken(token: string): Promise<void> {
+  await redis.set(KEYS.X_TOKEN_REFRESH, token)
+}
+
+/** Get the last processed X mention ID (cursor). */
+export async function getXLastMentionId(): Promise<string | null> {
+  return redis.get<string>(KEYS.X_LAST_MENTION_ID)
+}
+
+/** Store the last processed X mention ID (cursor). */
+export async function setXLastMentionId(mentionId: string): Promise<void> {
+  await redis.set(KEYS.X_LAST_MENTION_ID, mentionId)
+}
+
+const X_DAILY_TWEET_TTL_SECONDS = 86400
+
+/** Get the current daily tweet count. */
+export async function getXDailyTweetCount(): Promise<number> {
+  const val = await redis.get<number>(KEYS.X_DAILY_TWEET_COUNT)
+  return val ?? 0
+}
+
+/** Increment the daily tweet count (auto-resets after 24h). */
+export async function incrementXDailyTweetCount(): Promise<number> {
+  const count = await redis.incr(KEYS.X_DAILY_TWEET_COUNT)
+  if (count === 1) {
+    await redis.expire(KEYS.X_DAILY_TWEET_COUNT, X_DAILY_TWEET_TTL_SECONDS)
+  }
+  return count
 }
 
 /** Atomically increment and return the next evolution number. */
