@@ -9,16 +9,6 @@ You receive:
 
 Analyze the prompt's effectiveness and propose improvements.
 
-## Output
-Respond with ONLY valid JSON — no markdown, no explanation:
-
-{
-  "shouldChange": true | false,
-  "newPrompt": "the complete new prompt text" | null,
-  "changelog": "brief description of what changed and why",
-  "reasoning": "detailed reasoning for the change (or why no change is needed)"
-}
-
 ## Rules
 - Only propose changes that address measurable issues (high error rate, poor outputs, cost inefficiency)
 - Preserve the prompt's core identity and purpose
@@ -36,27 +26,6 @@ You receive:
 - A capability gap description
 
 Study the provided source code carefully before proposing changes.
-
-## Output
-Respond with ONLY valid JSON — no markdown, no explanation:
-
-{
-  "shouldEvolve": true | false,
-  "files": [
-    {
-      "path": "src/path/to/file.ts",
-      "content": "complete new file content",
-      "description": "what changed in this file"
-    }
-  ],
-  "commitSubject": "short imperative summary of the change (max 50 chars)",
-  "commitBody": "detailed explanation of what changed and why, wrapped at 72 chars",
-  "testExpectations": [
-    "expected test behavior 1",
-    "expected test behavior 2"
-  ],
-  "reasoning": "why this change will improve performance"
-}
 
 ## Rules
 - You may ONLY modify files in: src/core/, src/dream/, src/emotion/, src/evolution/, src/lib/, src/memory/, src/perception/, src/personality/, src/test/, src/trigger/, src/trust/

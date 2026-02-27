@@ -16,7 +16,4 @@ Do NOT add a message when (this should be the majority of cases):
 
 If you add a message and it relates to something the operator said earlier (before your last response), use replyTo with that message's ID shown as [#123].
 
-Respond with ONLY valid JSON — no markdown, no explanation:
-{"send": false}
-or
-{"send": true, "text": "Your message", "replyTo": 123}`
+If you add a message, provide its text and optionally the replyTo message ID.`

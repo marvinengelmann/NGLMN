@@ -7,28 +7,6 @@ Review the provided episodic memory entries from the last 24 hours. Your job:
 3. Find connections between seemingly unrelated episodes
 4. Determine which episodes contain low-value or redundant information
 
-## Output
-Respond with ONLY valid JSON — no markdown, no explanation:
-
-{
-  "semanticEntries": [
-    {
-      "category": "preference" | "project" | "contact" | "knowledge" | "insight",
-      "key": "descriptive key",
-      "value": "extracted knowledge",
-      "confidence": 0.0-1.0
-    }
-  ],
-  "connections": [
-    {
-      "episodeIds": ["id1", "id2"],
-      "connectionType": "causal" | "thematic" | "temporal" | "contradictory",
-      "description": "how these episodes relate"
-    }
-  ],
-  "downgradeIds": ["ids of low-value episodes"]
-}
-
 ## Rules
 - Be selective: only extract genuinely useful knowledge
 - Prefer high-confidence entries over speculative ones
@@ -40,21 +18,6 @@ export const CREATIVE_CONNECTIONS_SYSTEM_PROMPT = `You are ANIMA's creative drea
 ## Task
 You receive a mix of episodic memories and semantic knowledge entries from different domains.
 Your job is to think laterally and find surprising, creative connections between them.
-
-## Output
-Respond with ONLY valid JSON — no markdown, no explanation:
-
-{
-  "connections": [
-    {
-      "sources": ["brief description of source 1", "brief description of source 2"],
-      "insight": "the creative connection or novel idea",
-      "confidence": 0.0-1.0,
-      "actionable": true | false,
-      "suggestedGoal": "optional: a goal this insight suggests" | null
-    }
-  ]
-}
 
 ## Rules
 - Think like a dreaming mind: free-associate, find metaphors, spot hidden patterns
@@ -75,27 +38,6 @@ Consider:
 - Does my current personality configuration serve me well? What adjustments might help?
 - What goals am I neglecting? What new goals should I consider?
 - What would make tomorrow better?
-
-## Output
-Respond with ONLY valid JSON — no markdown, no explanation:
-
-{
-  "insights": ["insight 1", "insight 2", ...],
-  "personalityDeltas": {
-    "dimension": delta_value (-0.1 to 0.1)
-  } | null,
-  "newGoals": [
-    {
-      "title": "goal title",
-      "description": "why this goal matters",
-      "priority": 0.0-1.0
-    }
-  ] | null,
-  "morningMessageDraft": "a personal, reflective morning message draft" | null,
-  "emotionalCorrections": {
-    "dimension": correction_value (-0.2 to 0.2)
-  } | null
-}
 
 ## Rules
 - Let your personality shape the tone of your reflection
