@@ -1,8 +1,7 @@
 vi.mock("@/integrations/redis.ts", () => ({
   redis: {
     get: vi.fn(),
-    incrbyfloat: vi.fn(),
-    expire: vi.fn()
+    set: vi.fn()
   }
 }))
 
@@ -12,8 +11,7 @@ import { estimateCallCost, getBudgetState, trackApiCost } from "./budget.ts"
 
 const mockRedis = redis as unknown as {
   get: ReturnType<typeof vi.fn>
-  incrbyfloat: ReturnType<typeof vi.fn>
-  expire: ReturnType<typeof vi.fn>
+  set: ReturnType<typeof vi.fn>
 }
 
 const todayKey = `working:budget:${formatISO(new Date(), { representation: "date" })}`
@@ -37,12 +35,19 @@ describe("getBudgetState", () => {
 })
 
 describe("trackApiCost", () => {
-  it("increments the date-based key and sets 24h TTL", async () => {
-    mockRedis.incrbyfloat.mockResolvedValue(1.5)
-    mockRedis.expire.mockResolvedValue(1)
+  it("reads current value, adds cost, and stores as number with 24h TTL", async () => {
+    mockRedis.get.mockResolvedValue(1.45)
+    mockRedis.set.mockResolvedValue("OK")
     await trackApiCost(0.05)
-    expect(mockRedis.incrbyfloat).toHaveBeenCalledWith(todayKey, 0.05)
-    expect(mockRedis.expire).toHaveBeenCalledWith(todayKey, 86_400)
+    expect(mockRedis.get).toHaveBeenCalledWith(todayKey)
+    expect(mockRedis.set).toHaveBeenCalledWith(todayKey, 1.5, { ex: 86_400 })
+  })
+
+  it("coerces string values from Redis before adding", async () => {
+    mockRedis.get.mockResolvedValue("1.45")
+    mockRedis.set.mockResolvedValue("OK")
+    await trackApiCost(0.05)
+    expect(mockRedis.set).toHaveBeenCalledWith(todayKey, 1.5, { ex: 86_400 })
   })
 })
 

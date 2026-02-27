@@ -4,9 +4,9 @@ import { BUDGET } from "@/config/constants.ts"
 import { redis } from "@/integrations/redis.ts"
 
 export const BudgetState = z.object({
-  consumedToday: z.number(),
-  dailyLimit: z.number(),
-  remainingToday: z.number()
+  consumedToday: z.coerce.number(),
+  dailyLimit: z.coerce.number(),
+  remainingToday: z.coerce.number()
 })
 export type BudgetState = z.infer<typeof BudgetState>
 
@@ -40,20 +40,27 @@ export function estimateCallCost(
   return (inputCost + outputCost + cacheReadCost + cacheWriteCost) / 1_000_000
 }
 
+async function getConsumedToday(): Promise<number> {
+  return z.coerce
+    .number()
+    .catch(0)
+    .parse(await redis.get(getBudgetKey()))
+}
+
 /**
  * Track API cost for budget awareness.
  */
 export async function trackApiCost(costUsd: number): Promise<void> {
   const key = getBudgetKey()
-  await redis.incrbyfloat(key, costUsd)
-  await redis.expire(key, TTL_SECONDS)
+  const current = await getConsumedToday()
+  await redis.set(key, current + costUsd, { ex: TTL_SECONDS })
 }
 
 /**
  * Get current budget state from Redis.
  */
 export async function getBudgetState(): Promise<BudgetState> {
-  const consumed = (await redis.get<number>(getBudgetKey())) ?? 0
+  const consumed = await getConsumedToday()
   return {
     consumedToday: consumed,
     dailyLimit: BUDGET.DAILY_LIMIT,

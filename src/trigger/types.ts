@@ -25,8 +25,8 @@ export const HealthCheckResult = z.object({
     lastTickAgeSeconds: z.number()
   }),
   budget: z.object({
-    consumed: z.number(),
-    limit: z.number(),
+    consumed: z.coerce.number(),
+    limit: z.coerce.number(),
     compliant: z.boolean()
   }),
   memory: z.object({
