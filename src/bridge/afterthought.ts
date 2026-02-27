@@ -1,8 +1,7 @@
-import { jsonrepair } from "jsonrepair"
 import * as z from "zod"
 import type { ConversationSlot } from "@/bridge/types.ts"
 import { AFTERTHOUGHT } from "@/config/constants.ts"
-import { callClaude, HAIKU } from "@/integrations/anthropic.ts"
+import { callIntelligence, FAST } from "@/core/intelligence.ts"
 import { log } from "@/lib/logger.ts"
 import { AFTERTHOUGHT_SYSTEM_PROMPT } from "@/prompts/afterthought.ts"
 
@@ -38,10 +37,11 @@ export async function checkForAfterthought(
     lines.push(`  ${idPrefix}[${role}]: ${msg.text}`)
   }
 
-  const result = await callClaude({
-    model: HAIKU,
+  const result = await callIntelligence({
+    model: FAST,
     system: AFTERTHOUGHT_SYSTEM_PROMPT,
     userMessage: lines.join("\n"),
+    schema: AfterthoughtResult,
     maxTokens: AFTERTHOUGHT.MAX_TOKENS
   })
 
@@ -50,15 +50,7 @@ export async function checkForAfterthought(
     return null
   }
 
-  try {
-    const parsed = AfterthoughtResult.parse(JSON.parse(jsonrepair(result.value)))
-    if (!parsed.send || !parsed.text) return null
-    return { text: parsed.text, replyTo: parsed.replyTo ?? undefined }
-  } catch (e) {
-    log.warn("Afterthought parse failed", {
-      raw: result.value.slice(0, 500),
-      error: e instanceof Error ? e.message : String(e)
-    })
-    return null
-  }
+  const parsed = result.value
+  if (!parsed.send || !parsed.text) return null
+  return { text: parsed.text, replyTo: parsed.replyTo ?? undefined }
 }

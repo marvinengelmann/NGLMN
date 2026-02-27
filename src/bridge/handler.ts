@@ -1,11 +1,8 @@
-import { jsonrepair } from "jsonrepair"
-import type * as z from "zod"
 import { CONVERSATION, FOLLOW_UP } from "@/config/constants.ts"
 import { buildComplexContext, buildDeepContext, buildSimpleContext } from "@/core/context-builder.ts"
 import type { TriageDecision } from "@/core/types.ts"
 import type { EmotionalState } from "@/emotion/types.ts"
 import type { PendingMessage } from "@/integrations/types.ts"
-import { StructuredResponse } from "./types.ts"
 
 type ResponseTier = Exclude<TriageDecision, "idle">
 
@@ -34,19 +31,6 @@ export async function buildConversationResponsePrompt(
     return `${baseContext}\n\nRecalled context from earlier conversations:\n${recalledContext}`
   }
   return baseContext
-}
-
-/**
- * Parse a structured multi-message response from Claude.
- * Expects JSON format: {"messages": [{"text": "...", "replyTo": 123}], "expectsReply": true}
- * Falls back to wrapping raw text as a single message with expectsReply true.
- */
-export function parseStructuredResponse(raw: string): z.infer<typeof StructuredResponse> {
-  try {
-    return StructuredResponse.parse(JSON.parse(jsonrepair(raw)))
-  } catch {}
-
-  return { messages: [{ text: raw.trim() }], expectsReply: true }
 }
 
 /**

@@ -1,12 +1,12 @@
-import { jsonrepair } from "jsonrepair"
 import { logAndCaptureError } from "@/config/result-helpers.ts"
-import { callClaude, SONNET } from "@/integrations/anthropic.ts"
+import { callIntelligence, REASONING } from "@/core/intelligence.ts"
 import { log } from "@/lib/logger.ts"
 import { queryRelated, storeEpisode } from "@/memory/episodic.ts"
 import { createGoal } from "@/memory/goals.ts"
 import { getKnowledge, storeKnowledge } from "@/memory/semantic.ts"
 import type { SemanticCategory } from "@/memory/types.ts"
 import { CREATIVE_CONNECTIONS_SYSTEM_PROMPT } from "@/prompts/dream.ts"
+import { CreativeConnectionsOutput } from "./types.ts"
 
 const DIVERSE_QUERIES = [
   "surprising discoveries and unexpected findings",
@@ -63,27 +63,20 @@ export async function findCreativeConnections(): Promise<{
     knowledge: semanticEntries.slice(0, 10)
   }
 
-  const result = await callClaude({
-    model: SONNET,
+  const result = await callIntelligence({
+    model: REASONING,
     system: CREATIVE_CONNECTIONS_SYSTEM_PROMPT,
     userMessage: JSON.stringify(input),
+    schema: CreativeConnectionsOutput,
     maxTokens: 2048
   })
 
   if (result.isErr()) {
-    log.warn("findCreativeConnections: callClaude failed", { error: result.error.message })
+    log.warn("findCreativeConnections: callIntelligence failed", { error: result.error.message })
     return { connectionsFound: 0, goalsCreated: 0, insightsStored: 0 }
   }
 
-  const parsed = JSON.parse(jsonrepair(result.value)) as {
-    connections: Array<{
-      sources: string[]
-      insight: string
-      confidence: number
-      actionable: boolean
-      suggestedGoal: string | null
-    }>
-  }
+  const parsed = result.value
 
   let goalsCreated = 0
   let insightsStored = 0

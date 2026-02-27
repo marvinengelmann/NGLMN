@@ -1,5 +1,5 @@
 import { formatISO, parseISO, subDays } from "date-fns"
-import { callClaude, HAIKU } from "@/integrations/anthropic.ts"
+import { callIntelligence, FAST, TextOutput } from "@/core/intelligence.ts"
 import { vectorIndex } from "@/integrations/vector.ts"
 import { log } from "@/lib/logger.ts"
 import type { EpisodeMetadata, EpisodicCategory } from "@/memory/types.ts"
@@ -125,7 +125,7 @@ export async function downgradeEpisodes(ids: string[], factor: number = 0.5): Pr
  */
 /**
  * Summarize old low-relevance episodes into compact summary episodes.
- * Groups by category, summarizes via Haiku, stores as new episodes, and downgrades originals.
+ * Groups by category, summarizes via LLM, stores as new episodes, and downgrades originals.
  */
 export async function summarizeOldEpisodes(
   daysThreshold: number = 7
@@ -164,11 +164,12 @@ export async function summarizeOldEpisodes(
 
     const episodeTexts = oldLowRelevance.map((r) => r.data ?? JSON.stringify(r.metadata)).join("\n---\n")
 
-    const summaryResult = await callClaude({
-      model: HAIKU,
+    const summaryResult = await callIntelligence({
+      model: FAST,
       system:
         "Summarize these related episodes into 1-2 concise sentences capturing the key information. Be factual and brief.",
       userMessage: episodeTexts,
+      schema: TextOutput,
       maxTokens: 200
     })
 
@@ -180,7 +181,7 @@ export async function summarizeOldEpisodes(
       })
       continue
     }
-    const summary = summaryResult.value
+    const summary = summaryResult.value.text
 
     await storeEpisode(`[Summary] ${summary}`, category, {
       relevanceScore: 0.7

@@ -1,8 +1,7 @@
-import { jsonrepair } from "jsonrepair"
 import type { ConversationMessage, ConversationSlot } from "@/bridge/types.ts"
 import { EMOTIONAL_THRESHOLDS } from "@/config/constants.ts"
+import { callIntelligence, FAST, TextOutput } from "@/core/intelligence.ts"
 import type { EmotionalState } from "@/emotion/types.ts"
-import { callClaude, HAIKU } from "@/integrations/anthropic.ts"
 import type { PendingMessage } from "@/integrations/types.ts"
 import { log } from "@/lib/logger.ts"
 import { queryRelated, storeEpisode, storeRelationshipEpisode } from "@/memory/episodic.ts"
@@ -11,7 +10,7 @@ import { ConversationBoundary } from "./types.ts"
 
 /**
  * Detect whether new messages belong to the active conversation or start a new one.
- * Uses Haiku for lightweight classification. Defaults to continuation on failure.
+ * Defaults to continuation on failure.
  */
 export async function detectConversationBoundary(
   activeSlot: ConversationSlot,
@@ -27,10 +26,11 @@ export async function detectConversationBoundary(
     .join("\n")
   const newText = newMessages.map((m) => `[Operator]: ${m.text}`).join("\n")
 
-  const callResult = await callClaude({
-    model: HAIKU,
+  const callResult = await callIntelligence({
+    model: FAST,
     system: CONVERSATION_BOUNDARY_PROMPT,
     userMessage: `Previous conversation:\n${historyText}\n\nNew messages:\n${newText}`,
+    schema: ConversationBoundary,
     maxTokens: 100
   })
 
@@ -41,12 +41,7 @@ export async function detectConversationBoundary(
     return { isNewConversation: false, reason: "LLM call failed, assuming continuation" }
   }
 
-  try {
-    return ConversationBoundary.parse(JSON.parse(jsonrepair(callResult.value)))
-  } catch (e) {
-    log.warn("Conversation boundary parse failed, assuming continuation", { error: String(e) })
-    return { isNewConversation: false, reason: "parse failed, assuming continuation" }
-  }
+  return callResult.value
 }
 
 /**
@@ -63,11 +58,12 @@ export async function archiveConversation(
     .map((m) => `[${m.role === "operator" ? "Operator" : "ANIMA"}]: ${m.text}`)
     .join("\n")
 
-  const summaryResult = await callClaude({
-    model: HAIKU,
+  const summaryResult = await callIntelligence({
+    model: FAST,
     system:
       "Summarize this conversation in 1-2 sentences. Focus on the key topics discussed and any outcomes. Be concise.",
     userMessage: conversationText,
+    schema: TextOutput,
     maxTokens: 150
   })
 
@@ -79,9 +75,9 @@ export async function archiveConversation(
   }
 
   if (emotionalState.connection > EMOTIONAL_THRESHOLDS.CONNECTION_HIGH) {
-    await storeRelationshipEpisode(summaryResult.value)
+    await storeRelationshipEpisode(summaryResult.value.text)
   } else {
-    await storeEpisode(summaryResult.value, "interaction", {
+    await storeEpisode(summaryResult.value.text, "interaction", {
       relevanceScore: EMOTIONAL_THRESHOLDS.RELEVANCE_DEFAULT
     })
   }

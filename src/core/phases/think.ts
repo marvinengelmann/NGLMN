@@ -1,13 +1,11 @@
-import { jsonrepair } from "jsonrepair"
 import { TRIAGE_DEFAULTS } from "@/config/constants.ts"
 import { logAndCaptureError, trySafe } from "@/config/result-helpers.ts"
 import { buildTriageContext } from "@/core/context-builder.ts"
-import { getMaxTokensForTier, getModelForPhase } from "@/core/model-router.ts"
+import { callIntelligence, FAST, getMaxTokensForTier } from "@/core/intelligence.ts"
 import type { WorkflowDefinition } from "@/core/types.ts"
 import { TriageResult } from "@/core/types.ts"
 import { checkWorkflowTriggers, getActiveWorkflows } from "@/core/workflow-engine.ts"
 import { loadPrompt } from "@/evolution/prompt-loader.ts"
-import { callClaude } from "@/integrations/anthropic.ts"
 import { log } from "@/lib/logger.ts"
 import { addBreadcrumb, captureError, setTickContext } from "@/lib/sentry.ts"
 import { getRecentTriageDecisions, pushRecentTriageDecision } from "@/memory/working.ts"
@@ -54,10 +52,11 @@ export async function think(ctx: TickContext, senseResult: SenseResult): Promise
   const triageContext = await buildTriageContext()
 
   const triagePrompt = await loadPrompt("triage", TRIAGE_SYSTEM_PROMPT)
-  const triageCallResult = await callClaude({
-    model: getModelForPhase("triage"),
+  const triageCallResult = await callIntelligence({
+    model: FAST,
     system: triagePrompt,
     userMessage: triageContext.userPrompt,
+    schema: TriageResult,
     maxTokens: getMaxTokensForTier("triage")
   })
 
@@ -75,24 +74,8 @@ export async function think(ctx: TickContext, senseResult: SenseResult): Promise
       triggeredWorkflows
     }
   }
-  const triageRaw = triageCallResult.value
 
-  const FALLBACK_TRIAGE: TriageResult = {
-    decision: "idle",
-    reason: "triage parse error",
-    confidence: TRIAGE_DEFAULTS.FALLBACK_CONFIDENCE,
-    estimatedTokens: TRIAGE_DEFAULTS.FALLBACK_ESTIMATED_TOKENS
-  }
-
-  const triageParseResult = await trySafe("PARSE_ERROR", async () =>
-    TriageResult.parse(JSON.parse(jsonrepair(triageRaw)))
-  )
-
-  if (triageParseResult.isErr()) {
-    logAndCaptureError(triageParseResult.error, { phase: "triage_parse", raw: triageRaw })
-  }
-
-  const triageResult = triageParseResult.unwrapOr(FALLBACK_TRIAGE)
+  const triageResult = triageCallResult.value
 
   log.info("Triage complete", triageResult)
   addBreadcrumb("triage", `Decision: ${triageResult.decision}`, {

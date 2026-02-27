@@ -2,9 +2,9 @@ import { desc, eq } from "drizzle-orm"
 import * as z from "zod"
 import type { AnimaResultAsync } from "@/config/result-helpers.ts"
 import { trySafe } from "@/config/result-helpers.ts"
+import { callIntelligence, REASONING, TextOutput } from "@/core/intelligence.ts"
 import { db } from "@/db/client.ts"
 import { evolutionLog } from "@/db/schema.ts"
-import { callClaude, SONNET } from "@/integrations/anthropic.ts"
 import { storeEpisode } from "@/memory/episodic.ts"
 
 export const EvolutionType = z.enum(["prompt", "workflow", "code"])
@@ -30,10 +30,11 @@ export function writeChangelogEntry(
   snapshotRef?: string
 ): AnimaResultAsync<string> {
   return trySafe("DB_ERROR", async () => {
-    const narrativeResult = await callClaude({
-      model: SONNET,
+    const narrativeResult = await callIntelligence({
+      model: REASONING,
       system: NARRATIVE_PROMPT,
       userMessage: `Type: ${type}\nDescription: ${description}\nOutcome: ${outcome}${diff ? `\nDiff: ${diff}` : ""}`,
+      schema: TextOutput,
       maxTokens: 256
     })
 
@@ -41,7 +42,7 @@ export function writeChangelogEntry(
       throw new Error(`Failed to generate changelog narrative: ${narrativeResult.error.message}`)
     }
 
-    const narrative = narrativeResult.value
+    const narrative = narrativeResult.value.text
 
     const rows = await db
       .insert(evolutionLog)

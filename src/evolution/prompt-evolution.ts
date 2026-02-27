@@ -1,20 +1,25 @@
 import { desc, eq } from "drizzle-orm"
+import * as z from "zod"
 import { logAndCaptureError } from "@/config/result-helpers.ts"
+import { callIntelligence, REASONING } from "@/core/intelligence.ts"
 import { db } from "@/db/client.ts"
 import { promptVersions } from "@/db/schema.ts"
 import type { MetricsSnapshot } from "@/emotion/types.ts"
-import { callClaude, SONNET } from "@/integrations/anthropic.ts"
 import { log } from "@/lib/logger.ts"
 import { PROMPT_EVOLUTION_SYSTEM_PROMPT } from "@/prompts/evolution.ts"
 import { canActAutonomously } from "@/trust/assessment.ts"
 import { recordSuccess } from "@/trust/history.ts"
 import { writeChangelogEntry } from "./changelog.ts"
 
-export interface PromptProposal {
-  shouldChange: boolean
-  newPrompt: string | null
-  changelog: string
-  reasoning: string
+export const PromptProposalOutput = z.object({
+  shouldChange: z.boolean(),
+  newPrompt: z.string().nullable(),
+  changelog: z.string(),
+  reasoning: z.string()
+})
+export type PromptProposalOutput = z.infer<typeof PromptProposalOutput>
+
+export interface PromptProposal extends PromptProposalOutput {
   autonomous: boolean
 }
 
@@ -49,8 +54,8 @@ export async function proposePromptChange(
 ): Promise<PromptProposal> {
   const trust = await canActAutonomously("prompt_modification")
 
-  const responseResult = await callClaude({
-    model: SONNET,
+  const responseResult = await callIntelligence({
+    model: REASONING,
     system: PROMPT_EVOLUTION_SYSTEM_PROMPT,
     userMessage: JSON.stringify({
       promptId,
@@ -58,6 +63,7 @@ export async function proposePromptChange(
       metrics,
       recentOutputs: recentOutputs.slice(0, 5)
     }),
+    schema: PromptProposalOutput,
     maxTokens: 4096
   })
 
@@ -72,22 +78,8 @@ export async function proposePromptChange(
     }
   }
 
-  let parsed: { shouldChange: boolean; newPrompt: string | null; changelog: string; reasoning: string }
-  try {
-    parsed = JSON.parse(responseResult.value)
-  } catch {
-    log.warn("Failed to parse prompt proposal JSON", { raw: responseResult.value.slice(0, 200) })
-    return {
-      shouldChange: false,
-      newPrompt: null,
-      changelog: "",
-      reasoning: `Invalid JSON response from LLM: ${responseResult.value.slice(0, 100)}`,
-      autonomous: false
-    }
-  }
-
   return {
-    ...parsed,
+    ...responseResult.value,
     autonomous: trust.canAct
   }
 }

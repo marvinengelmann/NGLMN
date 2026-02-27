@@ -2,6 +2,7 @@ import { differenceInHours, formatISO, getDay, getHours, getMinutes } from "date
 import { desc, eq } from "drizzle-orm"
 import { WORKFLOW } from "@/config/constants.ts"
 import { logAndCaptureError, trySafe } from "@/config/result-helpers.ts"
+import { BooleanOutput, callIntelligence, FAST, REASONING, TextOutput } from "@/core/intelligence.ts"
 import type { TickSummary, WorkflowExecutionResult } from "@/core/types.ts"
 import {
   TriageDecision,
@@ -15,7 +16,6 @@ import { db } from "@/db/client.ts"
 import { tickLog, workflows } from "@/db/schema.ts"
 import { getEmotionalState, getEmotionHistory } from "@/emotion/state.ts"
 import { EmotionalState } from "@/emotion/types.ts"
-import { type ClaudeModel, callClaude, HAIKU, SONNET } from "@/integrations/anthropic.ts"
 import { sendEmailToOperator } from "@/integrations/resend.ts"
 import { sendToOperator } from "@/integrations/telegram.ts"
 import { nowLocal } from "@/lib/time.ts"
@@ -30,9 +30,9 @@ import { getMbtiType } from "@/personality/mbti.ts"
 import { PERCEPTION_TRIGGER_EVAL_PROMPT, WORKFLOW_EXECUTION_SYSTEM_PROMPT } from "@/prompts/workflow.ts"
 import { recordFailure, recordSuccess } from "@/trust/history.ts"
 
-const MODEL_MAP: Record<string, ClaudeModel> = {
-  haiku: HAIKU,
-  sonnet: SONNET
+const MODEL_MAP: Record<string, string> = {
+  fast: FAST,
+  reasoning: REASONING
 }
 
 /**
@@ -181,15 +181,16 @@ async function evaluatePerceptionTrigger(
     JSON.stringify(perception)
   )
 
-  const callResult = await callClaude({
-    model: HAIKU,
-    system: "Respond with ONLY 'true' or 'false'.",
+  const callResult = await callIntelligence({
+    model: FAST,
+    system: "Evaluate whether the perception data matches the given condition.",
     userMessage: prompt,
+    schema: BooleanOutput,
     maxTokens: 10
   })
 
   if (callResult.isErr()) return false
-  return callResult.value.trim().toLowerCase() === "true"
+  return callResult.value.result
 }
 
 function evaluateIdleStreakTrigger(
@@ -367,7 +368,7 @@ function workflowFailure(workflow: WorkflowDefinition, errorMessage: string): Wo
  * Execute a single workflow: gather data, call LLM, perform action.
  */
 export async function executeWorkflow(workflow: WorkflowDefinition): Promise<WorkflowExecutionResult> {
-  const model = MODEL_MAP[workflow.model] ?? SONNET
+  const model = MODEL_MAP[workflow.model] ?? REASONING
 
   const dataResult = await trySafe("WORKFLOW_ERROR", () => prepareWorkflowContext(workflow))
 
@@ -376,10 +377,36 @@ export async function executeWorkflow(workflow: WorkflowDefinition): Promise<Wor
     return workflowFailure(workflow, dataResult.error.message)
   }
 
-  const callResult = await callClaude({
+  if (workflow.outputAction === "create_goal") {
+    const callResult = await callIntelligence({
+      model,
+      system: WORKFLOW_EXECUTION_SYSTEM_PROMPT,
+      userMessage: dataResult.value,
+      schema: WorkflowGoalOutput,
+      maxTokens: 2048
+    })
+
+    if (callResult.isErr()) {
+      ;(await recordFailure("workflow_creation")).mapErr(logAndCaptureError)
+      return workflowFailure(workflow, callResult.error.message)
+    }
+
+    const output = JSON.stringify(callResult.value)
+    const postResult = await trySafe("WORKFLOW_ERROR", () => finalizeWorkflow(workflow, output))
+    if (postResult.isErr()) {
+      ;(await recordFailure("workflow_creation")).mapErr(logAndCaptureError)
+      return workflowFailure(workflow, postResult.error.message)
+    }
+
+    ;(await recordSuccess("workflow_creation")).mapErr(logAndCaptureError)
+    return { workflowId: workflow.id, workflowName: workflow.name, success: true, output }
+  }
+
+  const callResult = await callIntelligence({
     model,
     system: WORKFLOW_EXECUTION_SYSTEM_PROMPT,
     userMessage: dataResult.value,
+    schema: TextOutput,
     maxTokens: 2048
   })
 
@@ -388,7 +415,7 @@ export async function executeWorkflow(workflow: WorkflowDefinition): Promise<Wor
     return workflowFailure(workflow, callResult.error.message)
   }
 
-  const output = callResult.value
+  const output = callResult.value.text
 
   const postResult = await trySafe("WORKFLOW_ERROR", () => finalizeWorkflow(workflow, output))
 

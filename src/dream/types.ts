@@ -63,6 +63,39 @@ export const ReflectionOutput = z.object({
 })
 export type ReflectionOutput = z.infer<typeof ReflectionOutput>
 
+export const ConsolidationOutput = z.object({
+  semanticEntries: z.array(
+    z.object({
+      category: z.string(),
+      key: z.string(),
+      value: z.string(),
+      confidence: z.number().min(0).max(1)
+    })
+  ),
+  connections: z.array(
+    z.object({
+      episodeIds: z.array(z.string()),
+      connectionType: z.string(),
+      description: z.string()
+    })
+  ),
+  downgradeIds: z.array(z.string())
+})
+export type ConsolidationOutput = z.infer<typeof ConsolidationOutput>
+
+export const CreativeConnectionsOutput = z.object({
+  connections: z.array(
+    z.object({
+      sources: z.array(z.string()),
+      insight: z.string(),
+      confidence: z.number().min(0).max(1),
+      actionable: z.boolean(),
+      suggestedGoal: z.string().nullable()
+    })
+  )
+})
+export type CreativeConnectionsOutput = z.infer<typeof CreativeConnectionsOutput>
+
 export const ConsolidationResult = z.object({
   episodesProcessed: z.number(),
   semanticEntriesCreated: z.number(),

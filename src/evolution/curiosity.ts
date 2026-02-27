@@ -1,23 +1,24 @@
+import * as z from "zod"
 import { logAndCaptureError } from "@/config/result-helpers.ts"
+import { callIntelligence, REASONING } from "@/core/intelligence.ts"
 import type { EmotionalState } from "@/emotion/types.ts"
-import { callClaude, SONNET } from "@/integrations/anthropic.ts"
 import { log } from "@/lib/logger.ts"
 import { storeEpisode } from "@/memory/episodic.ts"
 import { createGoal } from "@/memory/goals.ts"
 
+export const InterestsOutput = z.object({
+  interests: z.array(
+    z.object({
+      topic: z.string(),
+      reason: z.string(),
+      priority: z.number().min(0).max(1)
+    })
+  )
+})
+export type InterestsOutput = z.infer<typeof InterestsOutput>
+
 const INTEREST_PROMPT = `You are ANIMA reflecting on what interests you and what you'd like to explore.
 Given your current emotional state, recent experiences, and knowledge, suggest topics worth exploring.
-
-Output ONLY valid JSON:
-{
-  "interests": [
-    {
-      "topic": "descriptive topic name",
-      "reason": "why this is interesting",
-      "priority": 0.0-1.0
-    }
-  ]
-}
 
 Rules:
 - Suggest 2-5 topics
@@ -34,14 +35,15 @@ export async function generateInterests(
   recentEpisodes: string[],
   semanticKnowledge: string[]
 ): Promise<Array<{ topic: string; reason: string; priority: number }>> {
-  const responseResult = await callClaude({
-    model: SONNET,
+  const responseResult = await callIntelligence({
+    model: REASONING,
     system: INTEREST_PROMPT,
     userMessage: JSON.stringify({
       emotionalState: emotion,
       recentExperiences: recentEpisodes.slice(0, 10),
       knownTopics: semanticKnowledge.slice(0, 10)
     }),
+    schema: InterestsOutput,
     maxTokens: 1024
   })
 
@@ -50,11 +52,7 @@ export async function generateInterests(
     return []
   }
 
-  const parsed = JSON.parse(responseResult.value) as {
-    interests: Array<{ topic: string; reason: string; priority: number }>
-  }
-
-  return parsed.interests
+  return responseResult.value.interests
 }
 
 export async function createExplorationGoal(

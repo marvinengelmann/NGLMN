@@ -1,17 +1,15 @@
 import { formatISO } from "date-fns"
-import { jsonrepair } from "jsonrepair"
 import * as z from "zod"
 import { EMOTIONAL_THRESHOLDS, X } from "@/config/constants.ts"
 import { hasXConfig } from "@/config/env.ts"
 import { logAndCaptureError, trySafe } from "@/config/result-helpers.ts"
 import { buildComplexContext, buildDeepContext, buildSimpleContext } from "@/core/context-builder.ts"
-import { getMaxTokensForTier, selectModel } from "@/core/model-router.ts"
+import { callIntelligence, getMaxTokensForTier, selectModel } from "@/core/intelligence.ts"
 import type { TriageResult } from "@/core/types.ts"
 import { executeWorkflow } from "@/core/workflow-engine.ts"
 import { processEmotionTrigger, saveEmotionalState } from "@/emotion/state.ts"
 import { computeEmotionalUpdate } from "@/emotion/update.ts"
 import { loadPrompt } from "@/evolution/prompt-loader.ts"
-import { callClaudeWithUsage } from "@/integrations/anthropic.ts"
 import {
   escapeTelegramMarkdown,
   sendGuardianAlert,
@@ -293,7 +291,7 @@ export async function act(ctx: TickContext, senseResult: SenseResult, thinkResul
     return handleIdleTick(senseResult, ctx)
   }
 
-  const model = await selectModel(triageResult)
+  const model = selectModel(triageResult)
   setTickContext({ tickId: ctx.tickId, decision: triageResult.decision, tier: triageResult.decision, model })
 
   const tier = triageResult.decision as Exclude<typeof triageResult.decision, "idle">
@@ -315,10 +313,11 @@ export async function act(ctx: TickContext, senseResult: SenseResult, thinkResul
   }
 
   const proactivePrompt = await loadPrompt("proactive", PROACTIVE_SYSTEM_PROMPT)
-  const proactiveCallResult = await callClaudeWithUsage({
+  const proactiveCallResult = await callIntelligence({
     model,
     system: proactivePrompt,
     userMessage: contextPrompt,
+    schema: ProactiveResult,
     maxTokens: getMaxTokensForTier(triageResult.decision)
   })
 
@@ -331,17 +330,8 @@ export async function act(ctx: TickContext, senseResult: SenseResult, thinkResul
     )
     return { responseSent: false }
   }
-  const proactiveRaw = proactiveCallResult.value
 
-  const proactiveParseResult = await trySafe("PARSE_ERROR", async () =>
-    ProactiveResult.parse(JSON.parse(jsonrepair(proactiveRaw.text)))
-  )
-
-  if (proactiveParseResult.isErr()) {
-    logAndCaptureError(proactiveParseResult.error, { phase: "proactive_parse", raw: proactiveRaw.text })
-  }
-
-  const proactiveResult = proactiveParseResult.unwrapOr({ action: "nothing" as const })
+  const proactiveResult = proactiveCallResult.value
 
   log.info("Proactive action decided", { action: proactiveResult.action })
 

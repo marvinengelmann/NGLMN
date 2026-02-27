@@ -1,7 +1,15 @@
-import { callClaude, HAIKU } from "@/integrations/anthropic.ts"
+import * as z from "zod"
+import { callIntelligence, FAST } from "@/core/intelligence.ts"
 import { log } from "@/lib/logger.ts"
 import type { PersonalityLayer } from "@/personality/types.ts"
 import { updateAdaptiveLayer } from "./evolution.ts"
+
+export const FeedbackAnalysisOutput = z.object({
+  sentiment: z.enum(["positive", "negative", "neutral"]),
+  confidence: z.number().min(0).max(1),
+  dimension: z.enum(["warmth", "verbosity", "directness", "structure", "empathy", "abstraction"]).nullish()
+})
+export type FeedbackAnalysisOutput = z.infer<typeof FeedbackAnalysisOutput>
 
 export interface FeedbackAnalysis {
   sentiment: "positive" | "negative" | "neutral"
@@ -10,7 +18,7 @@ export interface FeedbackAnalysis {
 }
 
 /**
- * Analyze operator feedback sentiment using Haiku.
+ * Analyze operator feedback sentiment.
  */
 export async function analyzeOperatorFeedback(
   operatorMessages: string[],
@@ -23,15 +31,14 @@ export async function analyzeOperatorFeedback(
     animaResponse,
     "",
     "Operator then said:",
-    ...operatorMessages,
-    "",
-    'Respond with ONLY JSON: {"sentiment": "positive"|"negative"|"neutral", "confidence": 0.0-1.0, "dimension": "warmth"|"verbosity"|"directness"|"structure"|"empathy"|"abstraction"|null}'
+    ...operatorMessages
   ].join("\n")
 
-  const result = await callClaude({
-    model: HAIKU,
-    system: "You analyze conversation sentiment. Respond with ONLY valid JSON.",
+  const result = await callIntelligence({
+    model: FAST,
+    system: "You analyze conversation sentiment.",
     userMessage: prompt,
+    schema: FeedbackAnalysisOutput,
     maxTokens: 100
   })
 
@@ -40,14 +47,10 @@ export async function analyzeOperatorFeedback(
     return { sentiment: "neutral", confidence: 0 }
   }
 
-  try {
-    const cleaned = result.value
-      .replace(/```(?:json)?\s*/g, "")
-      .replace(/```/g, "")
-      .trim()
-    return JSON.parse(cleaned) as FeedbackAnalysis
-  } catch {
-    return { sentiment: "neutral", confidence: 0 }
+  return {
+    sentiment: result.value.sentiment,
+    confidence: result.value.confidence,
+    dimension: result.value.dimension ?? undefined
   }
 }
 

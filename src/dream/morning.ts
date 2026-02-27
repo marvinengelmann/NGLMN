@@ -1,5 +1,5 @@
+import { callIntelligence, REASONING, TextOutput } from "@/core/intelligence.ts"
 import { getEmotionalState } from "@/emotion/state.ts"
-import { callClaude, SONNET } from "@/integrations/anthropic.ts"
 import { sendToOperator } from "@/integrations/telegram.ts"
 import { log } from "@/lib/logger.ts"
 import { captureError } from "@/lib/sentry.ts"
@@ -27,19 +27,20 @@ export async function composeMorningMessage(): Promise<string> {
     currentMood: emotion
   }
 
-  const result = await callClaude({
-    model: SONNET,
+  const result = await callIntelligence({
+    model: REASONING,
     system: `${MORNING_MESSAGE_SYSTEM_PROMPT}\n\n${personalityPrompt}`,
     userMessage: JSON.stringify(context),
+    schema: TextOutput,
     maxTokens: 1024
   })
 
   if (result.isErr()) {
-    log.warn("composeMorningMessage: callClaude failed", { error: result.error.message })
+    log.warn("composeMorningMessage: callIntelligence failed", { error: result.error.message })
     return ""
   }
 
-  return result.value
+  return result.value.text
 }
 
 export async function sendMorningMessage(): Promise<void> {

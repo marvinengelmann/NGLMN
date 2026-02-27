@@ -1,12 +1,11 @@
-import { jsonrepair } from "jsonrepair"
 import { logAndCaptureError } from "@/config/result-helpers.ts"
-import { callClaude, SONNET } from "@/integrations/anthropic.ts"
+import { callIntelligence, REASONING } from "@/core/intelligence.ts"
 import { log } from "@/lib/logger.ts"
 import { downgradeEpisodes, queryRelated, summarizeOldEpisodes } from "@/memory/episodic.ts"
 import { storeKnowledge, storeRelation } from "@/memory/semantic.ts"
 import { type RelationType, RelationType as RelationTypeSchema, type SemanticCategory } from "@/memory/types.ts"
 import { CONSOLIDATION_SYSTEM_PROMPT } from "@/prompts/dream.ts"
-import type { ConsolidationResult } from "./types.ts"
+import { ConsolidationOutput, type ConsolidationResult } from "./types.ts"
 
 const QUERY_TEXTS = [
   "recent interactions and conversations",
@@ -48,32 +47,20 @@ export async function consolidateMemories(): Promise<ConsolidationResult> {
 
   const episodesForPrompt = allEpisodes.slice(0, 50)
 
-  const result = await callClaude({
-    model: SONNET,
+  const result = await callIntelligence({
+    model: REASONING,
     system: CONSOLIDATION_SYSTEM_PROMPT,
     userMessage: JSON.stringify(episodesForPrompt),
+    schema: ConsolidationOutput,
     maxTokens: 2048
   })
 
   if (result.isErr()) {
-    log.warn("consolidateMemories: callClaude failed", { error: result.error.message })
+    log.warn("consolidateMemories: callIntelligence failed", { error: result.error.message })
     return { episodesProcessed: 0, semanticEntriesCreated: 0, connectionsFound: 0, downgraded: 0 }
   }
 
-  const parsed = JSON.parse(jsonrepair(result.value)) as {
-    semanticEntries: Array<{
-      category: string
-      key: string
-      value: string
-      confidence: number
-    }>
-    connections: Array<{
-      episodeIds: string[]
-      connectionType: string
-      description: string
-    }>
-    downgradeIds: string[]
-  }
+  const parsed = result.value
 
   let semanticEntriesCreated = 0
   const createdEntryIds: string[] = []

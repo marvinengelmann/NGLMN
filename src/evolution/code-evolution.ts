@@ -1,6 +1,7 @@
 import { formatISO } from "date-fns"
+import * as z from "zod"
 import { logAndCaptureError } from "@/config/result-helpers.ts"
-import { callClaude, HAIKU, OPUS } from "@/integrations/anthropic.ts"
+import { callIntelligence, FAST, REASONING } from "@/core/intelligence.ts"
 import { validateInSandbox } from "@/integrations/e2b.ts"
 import {
   createBranch,
@@ -27,9 +28,28 @@ const MAX_RELEVANT_FILES = 5
 
 const FILE_SELECTION_SYSTEM_PROMPT = `You select relevant source code files for a code evolution task.
 You receive a repository file tree and a description of the change needed.
-Return ONLY a JSON array of file paths (max ${MAX_RELEVANT_FILES}) most relevant to the task.
-Example: ["src/core/router.ts", "src/lib/types.ts"]
-Return ONLY the JSON array — no markdown, no explanation.`
+Select the most relevant file paths (max ${MAX_RELEVANT_FILES}).`
+
+export const FileSelectionOutput = z.object({
+  paths: z.array(z.string()).max(MAX_RELEVANT_FILES)
+})
+export type FileSelectionOutput = z.infer<typeof FileSelectionOutput>
+
+export const CodeProposalOutput = z.object({
+  shouldEvolve: z.boolean(),
+  files: z.array(
+    z.object({
+      path: z.string(),
+      content: z.string(),
+      description: z.string()
+    })
+  ),
+  commitSubject: z.string(),
+  commitBody: z.string(),
+  testExpectations: z.array(z.string()),
+  reasoning: z.string()
+})
+export type CodeProposalOutput = z.infer<typeof CodeProposalOutput>
 
 export interface SourceFileContext {
   path: string
@@ -38,21 +58,22 @@ export interface SourceFileContext {
 }
 
 /**
- * Use Haiku to select relevant files from the repo tree, then load their contents within a token budget.
+ * Use LLM to select relevant files from the repo tree, then load their contents within a token budget.
  */
 export async function selectRelevantFiles(insight: string, capabilityGap: string): Promise<SourceFileContext[]> {
   const tree = await getRepoTree()
 
   const treeListing = tree.join("\n")
 
-  const selectionResult = await callClaude({
-    model: HAIKU,
+  const selectionResult = await callIntelligence({
+    model: FAST,
     system: FILE_SELECTION_SYSTEM_PROMPT,
     userMessage: JSON.stringify({
       insight,
       capabilityGap,
       files: treeListing
     }),
+    schema: FileSelectionOutput,
     maxTokens: 512
   })
 
@@ -61,12 +82,7 @@ export async function selectRelevantFiles(insight: string, capabilityGap: string
     return []
   }
 
-  let selectedPaths: string[]
-  try {
-    selectedPaths = JSON.parse(selectionResult.value) as string[]
-  } catch {
-    return []
-  }
+  const selectedPaths = selectionResult.value.paths
 
   const validPaths = selectedPaths.filter((p) => tree.includes(p)).slice(0, MAX_RELEVANT_FILES)
 
@@ -122,14 +138,15 @@ export async function proposeCodeChange(insight: string, capabilityGap: string):
       ? sourceFiles.map((f) => `--- ${f.path}${f.truncated ? " (truncated)" : ""} ---\n${f.content}`).join("\n\n")
       : "No source files could be loaded."
 
-  const responseResult = await callClaude({
-    model: OPUS,
+  const responseResult = await callIntelligence({
+    model: REASONING,
     system: CODE_EVOLUTION_SYSTEM_PROMPT,
     userMessage: JSON.stringify({
       insight,
       capabilityGap,
       sourceContext
     }),
+    schema: CodeProposalOutput,
     maxTokens: 8192
   })
 
@@ -146,17 +163,8 @@ export async function proposeCodeChange(insight: string, capabilityGap: string):
     }
   }
 
-  const parsed = JSON.parse(responseResult.value) as {
-    shouldEvolve: boolean
-    files: Array<{ path: string; content: string; description: string }>
-    commitSubject: string
-    commitBody: string
-    testExpectations: string[]
-    reasoning: string
-  }
-
   return {
-    ...parsed,
+    ...responseResult.value,
     autonomous: trust.canAct
   }
 }

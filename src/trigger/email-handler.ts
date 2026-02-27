@@ -1,12 +1,11 @@
 import { task } from "@trigger.dev/sdk"
 import { formatISO } from "date-fns"
 import { EMAIL_DEFAULTS, EMOTIONAL_THRESHOLDS } from "@/config/constants.ts"
-import { getMaxTokensForTier, selectModel } from "@/core/model-router.ts"
+import { callIntelligence, getMaxTokensForTier, selectModel, TextOutput } from "@/core/intelligence.ts"
 import type { TriageResult } from "@/core/types.ts"
 import { getEmotionalState, processEmotionTrigger, saveEmotionalState } from "@/emotion/state.ts"
 import { computeEmotionalUpdate } from "@/emotion/update.ts"
 import { loadPrompt } from "@/evolution/prompt-loader.ts"
-import { callClaude } from "@/integrations/anthropic.ts"
 import { sendEmail } from "@/integrations/resend.ts"
 import { escapeTelegramMarkdown, sendGuardianAlert, sendToOperator } from "@/integrations/telegram.ts"
 import { log } from "@/lib/logger.ts"
@@ -74,11 +73,12 @@ export const emailHandlerTask = task({
           `Body:\n${wrapExternalData(email.text, "email_body", "external")}`
         ].join("\n")
 
-        const model = await selectModel(triageForModel)
-        const emailReplyResult = await callClaude({
+        const model = selectModel(triageForModel)
+        const emailReplyResult = await callIntelligence({
           model,
           system: responderPrompt,
           userMessage: emailContext,
+          schema: TextOutput,
           maxTokens: getMaxTokensForTier("complex")
         })
 
@@ -92,7 +92,7 @@ export const emailHandlerTask = task({
           failedEmails.push(email)
           continue
         }
-        const emailReply = emailReplyResult.value
+        const emailReply = emailReplyResult.value.text
 
         const guardianResult = await validateOutput(emailReply)
         if (guardianResult.verdict === "blocked") {

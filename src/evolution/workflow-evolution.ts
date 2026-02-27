@@ -1,11 +1,13 @@
 import { eq } from "drizzle-orm"
+import * as z from "zod"
 import type { AnimaResultAsync } from "@/config/result-helpers.ts"
 import { logAndCaptureError, trySafe } from "@/config/result-helpers.ts"
-import type { TickSummary, WorkflowDefinition } from "@/core/types.ts"
+import { callIntelligence, REASONING } from "@/core/intelligence.ts"
+import type { TickSummary } from "@/core/types.ts"
+import { WorkflowDataSource, WorkflowOutputAction, WorkflowTrigger } from "@/core/types.ts"
 import { getActiveWorkflowCount, getActiveWorkflows, MAX_ACTIVE_WORKFLOWS } from "@/core/workflow-engine.ts"
 import { db } from "@/db/client.ts"
 import { workflows } from "@/db/schema.ts"
-import { callClaude, SONNET } from "@/integrations/anthropic.ts"
 import { log } from "@/lib/logger.ts"
 import { WORKFLOW_PROPOSAL_SYSTEM_PROMPT } from "@/prompts/workflow.ts"
 import { validateOutput } from "@/security/guardian.ts"
@@ -13,16 +15,20 @@ import { canActAutonomously } from "@/trust/assessment.ts"
 import { recordSuccess } from "@/trust/history.ts"
 import { writeChangelogEntry } from "./changelog.ts"
 
-export interface WorkflowProposal {
-  shouldCreate: boolean
-  reasoning: string
-  name: string
-  description: string
-  trigger: WorkflowDefinition["trigger"]
-  instruction: string
-  model: string
-  dataSources: WorkflowDefinition["dataSources"]
-  outputAction: WorkflowDefinition["outputAction"]
+export const WorkflowProposalOutput = z.object({
+  shouldCreate: z.boolean(),
+  reasoning: z.string(),
+  name: z.string(),
+  description: z.string(),
+  trigger: WorkflowTrigger,
+  instruction: z.string(),
+  model: z.string(),
+  dataSources: z.array(WorkflowDataSource),
+  outputAction: WorkflowOutputAction
+})
+export type WorkflowProposalOutput = z.infer<typeof WorkflowProposalOutput>
+
+export interface WorkflowProposal extends WorkflowProposalOutput {
   autonomous: boolean
 }
 
@@ -33,8 +39,8 @@ export async function proposeWorkflow(pattern: string, tickHistory: TickSummary[
   const trust = await canActAutonomously("workflow_creation")
   const existingWorkflows = await getActiveWorkflows()
 
-  const responseResult = await callClaude({
-    model: SONNET,
+  const responseResult = await callIntelligence({
+    model: REASONING,
     system: WORKFLOW_PROPOSAL_SYSTEM_PROMPT,
     userMessage: JSON.stringify({
       pattern,
@@ -45,6 +51,7 @@ export async function proposeWorkflow(pattern: string, tickHistory: TickSummary[
         outputAction: w.outputAction
       }))
     }),
+    schema: WorkflowProposalOutput,
     maxTokens: 2048
   })
 
@@ -64,10 +71,8 @@ export async function proposeWorkflow(pattern: string, tickHistory: TickSummary[
     }
   }
 
-  const parsed = JSON.parse(responseResult.value) as Omit<WorkflowProposal, "autonomous">
-
   return {
-    ...parsed,
+    ...responseResult.value,
     autonomous: trust.canAct
   }
 }
@@ -87,8 +92,9 @@ export function applyWorkflow(proposal: WorkflowProposal): AnimaResultAsync<stri
       throw new Error(`Guardian blocked workflow instruction: ${guardianResult.reasons.join(", ")}`)
     }
 
-    if (proposal.model === "opus") {
-      throw new Error("Workflows cannot use Opus model — it is reserved for deep thinking")
+    const allowedModels = ["fast", "reasoning"]
+    if (!allowedModels.includes(proposal.model)) {
+      throw new Error(`Invalid workflow model "${proposal.model}" — must be "fast" or "reasoning"`)
     }
 
     const rows = await db

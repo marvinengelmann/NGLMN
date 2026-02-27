@@ -1,9 +1,9 @@
 import { schedules } from "@trigger.dev/sdk"
 import { formatISO } from "date-fns"
-import { jsonrepair } from "jsonrepair"
 import { checkForAfterthought } from "@/bridge/afterthought.ts"
 import { archiveConversation, detectConversationBoundary, recallArchivedContext } from "@/bridge/conversation.ts"
-import { buildConversationResponsePrompt, computeFollowUpWait, parseStructuredResponse } from "@/bridge/handler.ts"
+import { buildConversationResponsePrompt, computeFollowUpWait } from "@/bridge/handler.ts"
+import { StructuredResponse } from "@/bridge/types.ts"
 import {
   computeInterParagraphPause,
   computeReadTime,
@@ -12,20 +12,12 @@ import {
   simulateTyping,
   splitIntoParagraphs
 } from "@/bridge/typing.ts"
-import {
-  AFTERTHOUGHT,
-  CONVERSATION,
-  EMOTIONAL_THRESHOLDS,
-  HUMAN_BRIDGE,
-  MESSAGE_DELAY,
-  TRIAGE_DEFAULTS
-} from "@/config/constants.ts"
-import { getMaxTokensForTier, selectModel } from "@/core/model-router.ts"
+import { AFTERTHOUGHT, CONVERSATION, EMOTIONAL_THRESHOLDS, HUMAN_BRIDGE, MESSAGE_DELAY } from "@/config/constants.ts"
+import { callIntelligence, FAST, getMaxTokensForTier, selectModel } from "@/core/intelligence.ts"
 import { TriageResult } from "@/core/types.ts"
 import { getEmotionalState, processEmotionTrigger, saveEmotionalState } from "@/emotion/state.ts"
 import { computeEmotionalUpdate } from "@/emotion/update.ts"
 import { loadPrompt } from "@/evolution/prompt-loader.ts"
-import { callClaude, callClaudeWithUsage, HAIKU } from "@/integrations/anthropic.ts"
 import { fetchNewMessages, sendMessageWithReply, sendTypingAction } from "@/integrations/telegram.ts"
 import { log } from "@/lib/logger.ts"
 import { sleep } from "@/lib/time.ts"
@@ -151,10 +143,11 @@ export const humanBridgeTask = schedules.task({
         : `New messages (${messages.length}):\n${messagesBlock}`
 
       const triagePrompt = await loadPrompt("conversation-triage", CONVERSATION_TRIAGE_SYSTEM_PROMPT)
-      const triageCallResult = await callClaude({
-        model: HAIKU,
+      const triageCallResult = await callIntelligence({
+        model: FAST,
         system: triagePrompt,
         userMessage: triageUserMessage,
+        schema: TriageResult,
         maxTokens: getMaxTokensForTier("triage")
       })
 
@@ -163,17 +156,7 @@ export const humanBridgeTask = schedules.task({
         break
       }
 
-      let triageResult: TriageResult
-      try {
-        triageResult = TriageResult.parse(JSON.parse(jsonrepair(triageCallResult.value)))
-      } catch {
-        triageResult = {
-          decision: "simple",
-          reason: "triage parse error — responding to be safe",
-          confidence: TRIAGE_DEFAULTS.FALLBACK_CONFIDENCE,
-          estimatedTokens: TRIAGE_DEFAULTS.OVERRIDE_ESTIMATED_TOKENS
-        }
-      }
+      const triageResult = triageCallResult.value
 
       const emotion = await getEmotionalState()
 
@@ -188,17 +171,18 @@ export const humanBridgeTask = schedules.task({
       }
 
       const tier = triageResult.decision
-      const model = await selectModel(triageResult)
+      const model = selectModel(triageResult)
       const personality = await getEffectivePersonality()
       const personalityPrompt = buildPersonalityPrompt(personality, emotion, getMbtiType())
 
       const contextPrompt = await buildConversationResponsePrompt(messages, personalityPrompt, tier, recalledContext)
 
       const responderPrompt = await loadPrompt("responder", RESPONDER_SYSTEM_PROMPT)
-      const responderCallResult = await callClaudeWithUsage({
+      const responderCallResult = await callIntelligence({
         model,
         system: responderPrompt,
         userMessage: contextPrompt,
+        schema: StructuredResponse,
         maxTokens: getMaxTokensForTier(tier)
       })
 
@@ -212,7 +196,7 @@ export const humanBridgeTask = schedules.task({
         break
       }
 
-      const structuredResponse = parseStructuredResponse(responderCallResult.value.text)
+      const structuredResponse = responderCallResult.value
       log.info("Parsed structured response", {
         messageCount: structuredResponse.messages.length,
         expectsReply: structuredResponse.expectsReply
