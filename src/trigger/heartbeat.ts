@@ -8,12 +8,21 @@ import { think } from "@/core/phases/think.ts"
 import { log } from "@/lib/logger.ts"
 import { setTickContext } from "@/lib/sentry.ts"
 import { nowLocal } from "@/lib/time.ts"
-import { isTickRunning, setTickRunning } from "@/memory/working.ts"
+import { isTickRunning, setLastTickSummary, setTickRunning } from "@/memory/working.ts"
 
 async function executeHeartbeat(skipDreamCheck = false, actionRequested = false) {
   const hour = getHours(nowLocal())
   if (hour < 6 && !skipDreamCheck) {
     log.info("Dream hours, skipping heartbeat", { hour })
+    await setLastTickSummary({
+      tickId: `tick-${Date.now()}`,
+      timestamp: formatISO(new Date()),
+      triageDecision: "idle",
+      triageReason: "dream_hours",
+      messagesProcessed: 0,
+      responseSent: false,
+      durationMs: 0
+    })
     return { skipped: true, reason: "dream_hours" }
   }
 

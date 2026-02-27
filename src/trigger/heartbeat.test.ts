@@ -24,6 +24,7 @@ vi.mock("@/lib/time.ts", () => ({
 
 vi.mock("@/memory/working.ts", () => ({
   isTickRunning: vi.fn(),
+  setLastTickSummary: vi.fn(),
   setTickRunning: vi.fn()
 }))
 
@@ -48,7 +49,7 @@ import { act } from "@/core/phases/act.ts"
 import { maintain } from "@/core/phases/maintain.ts"
 import { sense } from "@/core/phases/sense.ts"
 import { think } from "@/core/phases/think.ts"
-import { isTickRunning, setTickRunning } from "@/memory/working.ts"
+import { isTickRunning, setLastTickSummary, setTickRunning } from "@/memory/working.ts"
 import { heartbeatTask } from "./heartbeat.ts"
 
 const mockGetHours = getHours as ReturnType<typeof vi.fn>
@@ -57,18 +58,28 @@ const mockThink = think as ReturnType<typeof vi.fn>
 const mockAct = act as ReturnType<typeof vi.fn>
 const mockMaintain = maintain as ReturnType<typeof vi.fn>
 const mockIsTickRunning = isTickRunning as ReturnType<typeof vi.fn>
+const mockSetLastTickSummary = setLastTickSummary as ReturnType<typeof vi.fn>
 const mockSetTickRunning = setTickRunning as ReturnType<typeof vi.fn>
 
 const run = (heartbeatTask as unknown as Record<string, () => Promise<unknown>>).run as () => Promise<unknown>
 
 describe("heartbeat", () => {
-  it("skips during dream hours (0-5)", async () => {
+  it("skips during dream hours (0-5) but still updates last tick summary", async () => {
     mockGetHours.mockReturnValue(3)
 
     const result = await run()
 
     expect(result).toEqual({ skipped: true, reason: "dream_hours" })
     expect(mockSense).not.toHaveBeenCalled()
+    expect(mockSetLastTickSummary).toHaveBeenCalledWith(
+      expect.objectContaining({
+        triageDecision: "idle",
+        triageReason: "dream_hours",
+        messagesProcessed: 0,
+        responseSent: false,
+        durationMs: 0
+      })
+    )
   })
 
   it("skips when another tick is already running", async () => {
