@@ -18,13 +18,28 @@ vi.mock("@/personality/mbti.ts", () => ({
   getEmotionBaseline: vi.fn()
 }))
 
+vi.mock("@/emotion/update.ts", () => ({
+  computeEmotionalUpdate: vi.fn((_state: unknown) => ({
+    curiosity: 0.6,
+    satisfaction: 0.6,
+    frustration: 0.4,
+    boredom: 0.4,
+    excitement: 0.6,
+    caution: 0.5,
+    connection: 0.6
+  }))
+}))
+
 import { db } from "@/db/client.ts"
 import { DEFAULT_EMOTIONAL_STATE } from "@/emotion/types.ts"
+import { computeEmotionalUpdate } from "@/emotion/update.ts"
 import { getCurrentEmotion, setCurrentEmotion } from "@/memory/working.ts"
 import { getEmotionBaseline } from "@/personality/mbti.ts"
 import { makeEmotionalState } from "@/test/factories.ts"
 import type { MockDbChain } from "@/test/mocks.ts"
-import { getEmotionalState, getEmotionHistory, saveEmotionalState } from "./state.ts"
+import { getEmotionalState, getEmotionHistory, processEmotionTrigger, saveEmotionalState } from "./state.ts"
+
+const mockComputeEmotionalUpdate = computeEmotionalUpdate as ReturnType<typeof vi.fn>
 
 const mockGetCurrentEmotion = getCurrentEmotion as ReturnType<typeof vi.fn>
 const mockSetCurrentEmotion = setCurrentEmotion as ReturnType<typeof vi.fn>
@@ -79,6 +94,48 @@ describe("saveEmotionalState", () => {
     expect(mockDb.values).toHaveBeenCalledWith(
       expect.objectContaining({ state, trigger: "task_failure", tickId: "tick-1" })
     )
+  })
+})
+
+describe("processEmotionTrigger", () => {
+  it("gets state, computes update, and saves in one call", async () => {
+    const cached = makeEmotionalState({ excitement: 0.5 })
+    mockGetCurrentEmotion.mockResolvedValue(cached)
+    mockSetCurrentEmotion.mockResolvedValue(undefined)
+    mockDb.values.mockResolvedValue([])
+
+    const result = await processEmotionTrigger(
+      { trigger: "message_received", intensity: 0.6 },
+      "message_received",
+      "tick-42"
+    )
+
+    expect(mockComputeEmotionalUpdate).toHaveBeenCalledWith(cached, [{ trigger: "message_received", intensity: 0.6 }])
+    expect(mockSetCurrentEmotion).toHaveBeenCalled()
+    expect(mockDb.values).toHaveBeenCalledWith(
+      expect.objectContaining({ trigger: "message_received", tickId: "tick-42" })
+    )
+    expect(result).toBeDefined()
+  })
+
+  it("accepts an array of events", async () => {
+    const cached = makeEmotionalState()
+    mockGetCurrentEmotion.mockResolvedValue(cached)
+    mockSetCurrentEmotion.mockResolvedValue(undefined)
+    mockDb.values.mockResolvedValue([])
+
+    await processEmotionTrigger(
+      [
+        { trigger: "message_received", intensity: 0.6 },
+        { trigger: "task_success", intensity: 0.5 }
+      ],
+      "message_received"
+    )
+
+    expect(mockComputeEmotionalUpdate).toHaveBeenCalledWith(cached, [
+      { trigger: "message_received", intensity: 0.6 },
+      { trigger: "task_success", intensity: 0.5 }
+    ])
   })
 })
 

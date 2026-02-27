@@ -8,7 +8,7 @@ import { buildComplexContext, buildDeepContext, buildSimpleContext } from "@/cor
 import { getMaxTokensForTier, selectModel } from "@/core/model-router.ts"
 import type { TriageResult } from "@/core/types.ts"
 import { executeWorkflow } from "@/core/workflow-engine.ts"
-import { saveEmotionalState } from "@/emotion/state.ts"
+import { processEmotionTrigger, saveEmotionalState } from "@/emotion/state.ts"
 import { computeEmotionalUpdate } from "@/emotion/update.ts"
 import { loadPrompt } from "@/evolution/prompt-loader.ts"
 import { callClaudeWithUsage } from "@/integrations/anthropic.ts"
@@ -71,11 +71,21 @@ async function handleMessageOperator(
   if (guardianResult.verdict === "blocked") {
     log.warn("Guardian BLOCKED proactive message", { reasons: guardianResult.reasons })
     await sendGuardianAlert(guardianResult)
+    await processEmotionTrigger(
+      { trigger: "guardian_block", intensity: EMOTIONAL_THRESHOLDS.GUARDIAN_BLOCK_INTENSITY },
+      "guardian_block",
+      `guardian-${Date.now()}`
+    )
     return { responseSent: false }
   }
 
   if (guardianResult.verdict === "warning") {
     await sendGuardianAlert(guardianResult)
+    await processEmotionTrigger(
+      { trigger: "guardian_warning", intensity: EMOTIONAL_THRESHOLDS.GUARDIAN_WARNING_INTENSITY },
+      "guardian_warning",
+      `guardian-${Date.now()}`
+    )
   }
 
   const sentMessageId = await sendToOperator(content)
@@ -109,6 +119,20 @@ async function handleGoalUpdate(goalId: string, goalStatus: string): Promise<voi
   }
   await updateGoalStatus(goalId, parsed.data)
   log.info("Goal status updated proactively", { goalId, status: goalStatus })
+
+  if (parsed.data === "done") {
+    await processEmotionTrigger(
+      { trigger: "goal_completed", intensity: EMOTIONAL_THRESHOLDS.GOAL_COMPLETED_INTENSITY },
+      "goal_completed",
+      `goal-${goalId}`
+    )
+  } else if (parsed.data === "failed") {
+    await processEmotionTrigger(
+      { trigger: "goal_failed", intensity: EMOTIONAL_THRESHOLDS.GOAL_FAILED_INTENSITY },
+      "goal_failed",
+      `goal-${goalId}`
+    )
+  }
 }
 
 async function handlePostTweet(
@@ -146,11 +170,21 @@ async function handlePostTweet(
   if (guardianResult.verdict === "blocked") {
     log.warn("Guardian BLOCKED proactive tweet", { reasons: guardianResult.reasons })
     await sendGuardianAlert(guardianResult)
+    await processEmotionTrigger(
+      { trigger: "guardian_block", intensity: EMOTIONAL_THRESHOLDS.GUARDIAN_BLOCK_INTENSITY },
+      "guardian_block",
+      `guardian-${Date.now()}`
+    )
     return { responseSent: false }
   }
 
   if (guardianResult.verdict === "warning") {
     await sendGuardianAlert(guardianResult)
+    await processEmotionTrigger(
+      { trigger: "guardian_warning", intensity: EMOTIONAL_THRESHOLDS.GUARDIAN_WARNING_INTENSITY },
+      "guardian_warning",
+      `guardian-${Date.now()}`
+    )
   }
 
   const { postTweet } = await import("@/integrations/x.ts")
@@ -290,6 +324,11 @@ export async function act(ctx: TickContext, senseResult: SenseResult, thinkResul
 
   if (proactiveCallResult.isErr()) {
     log.warn("Proactive call failed", { error: proactiveCallResult.error.message })
+    await processEmotionTrigger(
+      { trigger: "task_failure", intensity: EMOTIONAL_THRESHOLDS.TASK_FAILURE_INTENSITY },
+      "task_failure",
+      ctx.tickId
+    )
     return { responseSent: false }
   }
   const proactiveRaw = proactiveCallResult.value

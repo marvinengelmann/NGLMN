@@ -3,8 +3,9 @@ import { db } from "@/db/client.ts"
 import { emotionHistory } from "@/db/schema.ts"
 import { getCurrentEmotion, setCurrentEmotion } from "@/memory/working.ts"
 import { getEmotionBaseline } from "@/personality/mbti.ts"
-import type { EmotionTrigger } from "./types.ts"
+import type { EmotionTrigger, EmotionUpdateEvent } from "./types.ts"
 import { EmotionalState } from "./types.ts"
+import { computeEmotionalUpdate } from "./update.ts"
 
 /**
  * Get the current emotional state. Redis-first, DB-fallback, DEFAULT fallback.
@@ -42,6 +43,20 @@ export async function saveEmotionalState(
       tickId: tickId ?? null
     })
   ])
+}
+
+/**
+ * Emit one or more emotion events: get → compute → save in one step.
+ */
+export async function processEmotionTrigger(
+  events: EmotionUpdateEvent | EmotionUpdateEvent[],
+  trigger: EmotionTrigger,
+  tickId?: string
+): Promise<EmotionalState> {
+  const current = await getEmotionalState()
+  const updated = computeEmotionalUpdate(current, Array.isArray(events) ? events : [events])
+  await saveEmotionalState(updated, trigger, tickId)
+  return updated
 }
 
 /**

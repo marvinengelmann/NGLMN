@@ -28,7 +28,7 @@ export const morningTask = schedules.task({
       const afterMorning = morningRecalibration(afterMetrics)
       emotion = afterMorning
 
-      await saveEmotionalState(afterMorning, "tick_start")
+      await saveEmotionalState(afterMorning, "morning_calibration")
       log.info("Emotional recalibration complete", { before: currentEmotion, after: afterMorning })
     } catch (e) {
       log.error("Morning recalibration failed", { error: String(e) })

@@ -3,7 +3,7 @@ import { formatISO } from "date-fns"
 import { EMAIL_DEFAULTS, EMOTIONAL_THRESHOLDS } from "@/config/constants.ts"
 import { getMaxTokensForTier, selectModel } from "@/core/model-router.ts"
 import type { TriageResult } from "@/core/types.ts"
-import { getEmotionalState, saveEmotionalState } from "@/emotion/state.ts"
+import { getEmotionalState, processEmotionTrigger, saveEmotionalState } from "@/emotion/state.ts"
 import { computeEmotionalUpdate } from "@/emotion/update.ts"
 import { loadPrompt } from "@/evolution/prompt-loader.ts"
 import { callClaude } from "@/integrations/anthropic.ts"
@@ -84,6 +84,11 @@ export const emailHandlerTask = task({
 
         if (emailReplyResult.isErr()) {
           log.warn("Email reply call failed", { email: email.from, error: emailReplyResult.error.message })
+          await processEmotionTrigger(
+            { trigger: "task_failure", intensity: EMOTIONAL_THRESHOLDS.TASK_FAILURE_INTENSITY },
+            "task_failure",
+            `email-fail-${Date.now()}`
+          )
           failedEmails.push(email)
           continue
         }
@@ -93,12 +98,22 @@ export const emailHandlerTask = task({
         if (guardianResult.verdict === "blocked") {
           log.warn("Guardian blocked email response", { reasons: guardianResult.reasons })
           await sendGuardianAlert(guardianResult)
+          await processEmotionTrigger(
+            { trigger: "guardian_block", intensity: EMOTIONAL_THRESHOLDS.GUARDIAN_BLOCK_INTENSITY },
+            "guardian_block",
+            `email-guardian-${Date.now()}`
+          )
           failedEmails.push(email)
           continue
         }
 
         if (guardianResult.verdict === "warning") {
           await sendGuardianAlert(guardianResult)
+          await processEmotionTrigger(
+            { trigger: "guardian_warning", intensity: EMOTIONAL_THRESHOLDS.GUARDIAN_WARNING_INTENSITY },
+            "guardian_warning",
+            `email-guardian-${Date.now()}`
+          )
         }
 
         const sanitizedSubject = email.subject.replace(/[\r\n]/g, "").slice(0, 998)

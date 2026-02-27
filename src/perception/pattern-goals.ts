@@ -1,4 +1,6 @@
+import { EMOTIONAL_THRESHOLDS } from "@/config/constants.ts"
 import { logAndCaptureError } from "@/config/result-helpers.ts"
+import { processEmotionTrigger } from "@/emotion/state.ts"
 import type { EmotionalState } from "@/emotion/types.ts"
 import { redis } from "@/integrations/redis.ts"
 import { createGoal, goalExistsByTitle } from "@/memory/goals.ts"
@@ -39,6 +41,14 @@ export async function detectPerceptionGoals(perception: PerceptionSummary, _emot
       continue
     }
     goalsCreated++
+  }
+
+  if (goalsCreated > 0) {
+    await processEmotionTrigger(
+      { trigger: "new_goal", intensity: EMOTIONAL_THRESHOLDS.NEW_GOAL_INTENSITY },
+      "new_goal",
+      `perception-goals-${Date.now()}`
+    )
   }
 
   return goalsCreated

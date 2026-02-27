@@ -22,7 +22,8 @@ vi.mock("@/emotion/metrics-check.ts", () => ({
 vi.mock("@/emotion/state.ts", () => ({
   getEmotionHistory: vi.fn(),
   getEmotionalState: vi.fn(),
-  saveEmotionalState: vi.fn()
+  saveEmotionalState: vi.fn(),
+  processEmotionTrigger: vi.fn()
 }))
 
 vi.mock("@/memory/goals.ts", () => ({
@@ -48,7 +49,7 @@ vi.mock("@/personality/evolution.ts", () => ({
 
 import { subHours } from "date-fns"
 import { ok } from "neverthrow"
-import { getEmotionalState, saveEmotionalState } from "@/emotion/state.ts"
+import { getEmotionalState, processEmotionTrigger, saveEmotionalState } from "@/emotion/state.ts"
 import { callClaude } from "@/integrations/anthropic.ts"
 import { storeEpisode } from "@/memory/episodic.ts"
 import { createGoal } from "@/memory/goals.ts"
@@ -69,6 +70,7 @@ const mockStoreKnowledge = storeKnowledge as ReturnType<typeof vi.fn>
 const mockUpdateAdaptiveLayer = updateAdaptiveLayer as ReturnType<typeof vi.fn>
 const mockGetEmotionalState = getEmotionalState as ReturnType<typeof vi.fn>
 const mockSaveEmotionalState = saveEmotionalState as ReturnType<typeof vi.fn>
+const mockProcessEmotionTrigger = processEmotionTrigger as ReturnType<typeof vi.fn>
 
 describe("performReflection", () => {
   beforeEach(() => {
@@ -121,7 +123,9 @@ describe("performReflection", () => {
     )
   })
 
-  it("creates new goals when suggested", async () => {
+  it("creates new goals when suggested and emits new_goal trigger", async () => {
+    mockGetEmotionalState.mockResolvedValue(makeEmotionalState())
+
     mockCallClaude.mockResolvedValue(
       ok(
         JSON.stringify({
@@ -135,6 +139,7 @@ describe("performReflection", () => {
     expect(mockCreateGoal).toHaveBeenCalledWith("Learn ML basics", "Expand capabilities", "dream", 0.6, {
       emotionalWeight: 0.6
     })
+    expect(mockProcessEmotionTrigger).toHaveBeenCalledWith({ trigger: "new_goal", intensity: 0.5 }, "new_goal")
   })
 
   it("applies emotional corrections when present", async () => {
@@ -156,7 +161,7 @@ describe("performReflection", () => {
         frustration: expect.closeTo(0.5, 1),
         satisfaction: expect.closeTo(0.4, 1)
       }),
-      "tick_start"
+      "dream_correction"
     )
   })
 
@@ -174,7 +179,7 @@ describe("performReflection", () => {
     )
 
     await performReflection(makeReflectionInput())
-    expect(mockSaveEmotionalState).toHaveBeenCalledWith(expect.objectContaining({ caution: 1 }), "tick_start")
+    expect(mockSaveEmotionalState).toHaveBeenCalledWith(expect.objectContaining({ caution: 1 }), "dream_correction")
   })
 
   it("ignores invalid personality dimensions", async () => {

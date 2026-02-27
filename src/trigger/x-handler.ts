@@ -3,7 +3,7 @@ import { formatISO } from "date-fns"
 import { EMOTIONAL_THRESHOLDS } from "@/config/constants.ts"
 import { getMaxTokensForTier, selectModel } from "@/core/model-router.ts"
 import type { TriageResult } from "@/core/types.ts"
-import { getEmotionalState, saveEmotionalState } from "@/emotion/state.ts"
+import { getEmotionalState, processEmotionTrigger, saveEmotionalState } from "@/emotion/state.ts"
 import { computeEmotionalUpdate } from "@/emotion/update.ts"
 import { loadPrompt } from "@/evolution/prompt-loader.ts"
 import { callClaude } from "@/integrations/anthropic.ts"
@@ -92,6 +92,11 @@ export const xHandlerTask = task({
 
         if (replyResult.isErr()) {
           log.warn("X reply call failed", { author: mention.authorUsername, error: replyResult.error.message })
+          await processEmotionTrigger(
+            { trigger: "task_failure", intensity: EMOTIONAL_THRESHOLDS.TASK_FAILURE_INTENSITY },
+            "task_failure",
+            `x-fail-${Date.now()}`
+          )
           failedMentions.push(mention)
           continue
         }
@@ -100,6 +105,11 @@ export const xHandlerTask = task({
         const guardianResult = await validatePublicOutput(replyText)
         if (guardianResult.verdict === "blocked") {
           log.warn("Guardian blocked X response", { reasons: guardianResult.reasons })
+          await processEmotionTrigger(
+            { trigger: "guardian_block", intensity: EMOTIONAL_THRESHOLDS.GUARDIAN_BLOCK_INTENSITY },
+            "guardian_block",
+            `x-guardian-${Date.now()}`
+          )
           failedMentions.push(mention)
           continue
         }

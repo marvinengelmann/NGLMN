@@ -96,7 +96,8 @@ vi.mock("@/emotion/state.ts", () => ({
     caution: 0.5,
     connection: 0.5
   })),
-  saveEmotionalState: vi.fn()
+  saveEmotionalState: vi.fn(),
+  processEmotionTrigger: vi.fn()
 }))
 
 vi.mock("@/emotion/update.ts", () => ({

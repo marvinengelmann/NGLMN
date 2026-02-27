@@ -58,7 +58,17 @@ vi.mock("@/security/guardian.ts", () => ({
 }))
 
 vi.mock("@/emotion/state.ts", () => ({
-  saveEmotionalState: vi.fn()
+  getEmotionalState: vi.fn(() => ({
+    curiosity: 0.5,
+    satisfaction: 0.5,
+    frustration: 0.1,
+    boredom: 0.3,
+    excitement: 0.5,
+    caution: 0.5,
+    connection: 0.5
+  })),
+  saveEmotionalState: vi.fn(),
+  processEmotionTrigger: vi.fn()
 }))
 
 vi.mock("@/emotion/update.ts", () => ({
@@ -82,7 +92,7 @@ vi.mock("@/memory/goals.ts", async () => {
 })
 
 import { ok } from "neverthrow"
-import { saveEmotionalState } from "@/emotion/state.ts"
+import { processEmotionTrigger, saveEmotionalState } from "@/emotion/state.ts"
 import { computeEmotionalUpdate } from "@/emotion/update.ts"
 import { callClaudeWithUsage } from "@/integrations/anthropic.ts"
 import { sendGuardianAlert, sendToOperator } from "@/integrations/telegram.ts"
@@ -97,6 +107,7 @@ import type { ThinkResult } from "./think.ts"
 
 const mockCallClaudeWithUsage = callClaudeWithUsage as ReturnType<typeof vi.fn>
 const mockSaveEmotionalState = saveEmotionalState as ReturnType<typeof vi.fn>
+const mockProcessEmotionTrigger = processEmotionTrigger as ReturnType<typeof vi.fn>
 const mockComputeEmotionalUpdate = computeEmotionalUpdate as ReturnType<typeof vi.fn>
 const mockValidateOutput = validateOutput as ReturnType<typeof vi.fn>
 const mockSendToOperator = sendToOperator as ReturnType<typeof vi.fn>
@@ -276,6 +287,106 @@ describe("act phase", () => {
 
     expect(mockStoreRelationshipEpisode).not.toHaveBeenCalled()
     expect(mockStoreEpisode).toHaveBeenCalled()
+  })
+
+  it("emits guardian_block emotion when message is blocked", async () => {
+    const thinkResult: ThinkResult = {
+      triageResult: makeTriageResult({ decision: "simple" }),
+      personalityPrompt: "personality",
+      triggeredWorkflows: []
+    }
+
+    mockCallClaudeWithUsage.mockResolvedValue(
+      ok({ text: JSON.stringify({ action: "message_operator", content: "bad content" }) })
+    )
+    mockValidateOutput.mockResolvedValue(makeGuardianResult({ verdict: "blocked", reasons: ["unsafe"] }))
+
+    await act(ctx, senseResult, thinkResult)
+
+    expect(mockProcessEmotionTrigger).toHaveBeenCalledWith(
+      { trigger: "guardian_block", intensity: 0.8 },
+      "guardian_block",
+      expect.stringContaining("guardian-")
+    )
+  })
+
+  it("emits guardian_warning emotion on warning", async () => {
+    const thinkResult: ThinkResult = {
+      triageResult: makeTriageResult({ decision: "simple" }),
+      personalityPrompt: "personality",
+      triggeredWorkflows: []
+    }
+
+    mockCallClaudeWithUsage.mockResolvedValue(
+      ok({ text: JSON.stringify({ action: "message_operator", content: "edgy content" }) })
+    )
+    mockValidateOutput.mockResolvedValue(makeGuardianResult({ verdict: "warning", reasons: ["tone"] }))
+
+    await act(ctx, senseResult, thinkResult)
+
+    expect(mockProcessEmotionTrigger).toHaveBeenCalledWith(
+      { trigger: "guardian_warning", intensity: 0.6 },
+      "guardian_warning",
+      expect.stringContaining("guardian-")
+    )
+  })
+
+  it("emits goal_completed emotion when goal status is done", async () => {
+    const thinkResult: ThinkResult = {
+      triageResult: makeTriageResult({ decision: "simple" }),
+      personalityPrompt: "personality",
+      triggeredWorkflows: []
+    }
+
+    mockCallClaudeWithUsage.mockResolvedValue(
+      ok({ text: JSON.stringify({ action: "update_goal", goalId: "goal-123", goalStatus: "done" }) })
+    )
+
+    await act(ctx, senseResult, thinkResult)
+
+    expect(mockProcessEmotionTrigger).toHaveBeenCalledWith(
+      { trigger: "goal_completed", intensity: 0.7 },
+      "goal_completed",
+      "goal-goal-123"
+    )
+  })
+
+  it("emits goal_failed emotion when goal status is failed", async () => {
+    const thinkResult: ThinkResult = {
+      triageResult: makeTriageResult({ decision: "simple" }),
+      personalityPrompt: "personality",
+      triggeredWorkflows: []
+    }
+
+    mockCallClaudeWithUsage.mockResolvedValue(
+      ok({ text: JSON.stringify({ action: "update_goal", goalId: "goal-456", goalStatus: "failed" }) })
+    )
+
+    await act(ctx, senseResult, thinkResult)
+
+    expect(mockProcessEmotionTrigger).toHaveBeenCalledWith(
+      { trigger: "goal_failed", intensity: 0.6 },
+      "goal_failed",
+      "goal-goal-456"
+    )
+  })
+
+  it("emits task_failure emotion when proactive call fails", async () => {
+    const thinkResult: ThinkResult = {
+      triageResult: makeTriageResult({ decision: "simple" }),
+      personalityPrompt: "personality",
+      triggeredWorkflows: []
+    }
+
+    mockCallClaudeWithUsage.mockResolvedValue({ isErr: () => true, error: { message: "api down" } } as never)
+
+    await act(ctx, senseResult, thinkResult)
+
+    expect(mockProcessEmotionTrigger).toHaveBeenCalledWith(
+      { trigger: "task_failure", intensity: 0.6 },
+      "task_failure",
+      "tick-test"
+    )
   })
 
   it("saves message_sent emotion when response is sent", async () => {

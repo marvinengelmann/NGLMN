@@ -5,6 +5,10 @@ vi.mock("@/integrations/redis.ts", () => ({
   }
 }))
 
+vi.mock("@/emotion/state.ts", () => ({
+  processEmotionTrigger: vi.fn()
+}))
+
 vi.mock("@/memory/goals.ts", () => ({
   createGoal: vi.fn(),
   goalExistsByTitle: vi.fn().mockResolvedValue(false)

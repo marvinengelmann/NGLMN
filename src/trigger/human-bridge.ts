@@ -22,7 +22,7 @@ import {
 } from "@/config/constants.ts"
 import { getMaxTokensForTier, selectModel } from "@/core/model-router.ts"
 import { TriageResult } from "@/core/types.ts"
-import { getEmotionalState, saveEmotionalState } from "@/emotion/state.ts"
+import { getEmotionalState, processEmotionTrigger, saveEmotionalState } from "@/emotion/state.ts"
 import { computeEmotionalUpdate } from "@/emotion/update.ts"
 import { loadPrompt } from "@/evolution/prompt-loader.ts"
 import { callClaude, callClaudeWithUsage, HAIKU } from "@/integrations/anthropic.ts"
@@ -103,6 +103,12 @@ export const humanBridgeTask = schedules.task({
           timestamp: formatISO(new Date(message.date * 1000)),
           messageId: message.messageId ?? 0
         }))
+      )
+
+      await processEmotionTrigger(
+        { trigger: "message_received", intensity: EMOTIONAL_THRESHOLDS.MESSAGE_RECEIVED_INTENSITY },
+        "message_received",
+        `conv-${Date.now()}`
       )
 
       let recalledContext: string | null = null
@@ -321,6 +327,13 @@ export const humanBridgeTask = schedules.task({
         await setLastUpdateId(followUpPoll.maxUpdateId)
       }
       await setOperatorLastActivity(formatISO(new Date()))
+
+      await processEmotionTrigger(
+        { trigger: "message_received", intensity: EMOTIONAL_THRESHOLDS.MESSAGE_RECEIVED_INTENSITY },
+        "message_received",
+        `conv-${Date.now()}`
+      )
+
       log.info("Follow-up messages received, continuing conversation", { count: messages.length })
     }
 
