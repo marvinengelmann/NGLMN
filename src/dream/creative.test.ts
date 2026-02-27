@@ -1,6 +1,6 @@
-vi.mock("@/integrations/anthropic.ts", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("@/integrations/anthropic.ts")>()),
-  callClaude: vi.fn()
+vi.mock("@/core/intelligence.ts", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/core/intelligence.ts")>()),
+  callIntelligence: vi.fn()
 }))
 
 vi.mock("@/memory/episodic.ts", () => ({
@@ -18,13 +18,13 @@ vi.mock("@/memory/goals.ts", () => ({
 }))
 
 import { ok } from "neverthrow"
-import { callClaude } from "@/integrations/anthropic.ts"
+import { callIntelligence } from "@/core/intelligence.ts"
 import { queryRelated, storeEpisode } from "@/memory/episodic.ts"
 import { createGoal } from "@/memory/goals.ts"
 import { getKnowledge, storeKnowledge } from "@/memory/semantic.ts"
 import { findCreativeConnections } from "./creative.ts"
 
-const mockCallClaude = callClaude as ReturnType<typeof vi.fn>
+const mockCallIntelligence = callIntelligence as ReturnType<typeof vi.fn>
 const mockQueryRelated = queryRelated as ReturnType<typeof vi.fn>
 const mockStoreEpisode = storeEpisode as ReturnType<typeof vi.fn>
 const mockGetKnowledge = getKnowledge as ReturnType<typeof vi.fn>
@@ -43,26 +43,24 @@ describe("findCreativeConnections", () => {
     mockQueryRelated.mockResolvedValue([])
     const result = await findCreativeConnections()
     expect(result).toEqual({ connectionsFound: 0, goalsCreated: 0, insightsStored: 0 })
-    expect(mockCallClaude).not.toHaveBeenCalled()
+    expect(mockCallIntelligence).not.toHaveBeenCalled()
   })
 
   it("processes episodes and stores high-confidence connections", async () => {
     mockQueryRelated.mockResolvedValue([{ id: "ep-1", score: 0.9, metadata: { category: "interaction" } }])
 
-    mockCallClaude.mockResolvedValue(
-      ok(
-        JSON.stringify({
-          connections: [
-            {
-              sources: ["episode 1", "knowledge 1"],
-              insight: "Interesting pattern found",
-              confidence: 0.8,
-              actionable: false,
-              suggestedGoal: null
-            }
-          ]
-        })
-      )
+    mockCallIntelligence.mockResolvedValue(
+      ok({
+        connections: [
+          {
+            sources: ["episode 1", "knowledge 1"],
+            insight: "Interesting pattern found",
+            confidence: 0.8,
+            actionable: false,
+            suggestedGoal: null
+          }
+        ]
+      })
     )
 
     const result = await findCreativeConnections()
@@ -76,20 +74,18 @@ describe("findCreativeConnections", () => {
   it("creates goals for actionable connections", async () => {
     mockQueryRelated.mockResolvedValue([{ id: "ep-1", score: 0.9, metadata: { category: "task" } }])
 
-    mockCallClaude.mockResolvedValue(
-      ok(
-        JSON.stringify({
-          connections: [
-            {
-              sources: ["source1"],
-              insight: "Should explore X",
-              confidence: 0.7,
-              actionable: true,
-              suggestedGoal: "Explore topic X"
-            }
-          ]
-        })
-      )
+    mockCallIntelligence.mockResolvedValue(
+      ok({
+        connections: [
+          {
+            sources: ["source1"],
+            insight: "Should explore X",
+            confidence: 0.7,
+            actionable: true,
+            suggestedGoal: "Explore topic X"
+          }
+        ]
+      })
     )
 
     const result = await findCreativeConnections()
@@ -106,20 +102,18 @@ describe("findCreativeConnections", () => {
   it("skips low-confidence connections for storage", async () => {
     mockQueryRelated.mockResolvedValue([{ id: "ep-1", score: 0.5, metadata: { category: "observation" } }])
 
-    mockCallClaude.mockResolvedValue(
-      ok(
-        JSON.stringify({
-          connections: [
-            {
-              sources: ["s1"],
-              insight: "Weak connection",
-              confidence: 0.3,
-              actionable: false,
-              suggestedGoal: null
-            }
-          ]
-        })
-      )
+    mockCallIntelligence.mockResolvedValue(
+      ok({
+        connections: [
+          {
+            sources: ["s1"],
+            insight: "Weak connection",
+            confidence: 0.3,
+            actionable: false,
+            suggestedGoal: null
+          }
+        ]
+      })
     )
 
     const result = await findCreativeConnections()

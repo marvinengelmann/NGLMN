@@ -13,9 +13,9 @@ vi.mock("@/db/client.ts", () => {
   return { db: chain }
 })
 
-vi.mock("@/integrations/anthropic.ts", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("@/integrations/anthropic.ts")>()),
-  callClaude: vi.fn()
+vi.mock("@/core/intelligence.ts", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/core/intelligence.ts")>()),
+  callIntelligence: vi.fn()
 }))
 
 vi.mock("@/trust/assessment.ts", () => ({
@@ -84,8 +84,8 @@ vi.mock("@/integrations/resend.ts", () => ({
 }))
 
 import { ok } from "neverthrow"
+import { callIntelligence } from "@/core/intelligence.ts"
 import { db } from "@/db/client.ts"
-import { callClaude } from "@/integrations/anthropic.ts"
 import { validateOutput } from "@/security/guardian.ts"
 import { makeGuardianResult, makeTickSummary, makeTrustAssessment } from "@/test/factories.ts"
 import type { MockDbChain } from "@/test/mocks.ts"
@@ -95,7 +95,7 @@ import { writeChangelogEntry } from "./changelog.ts"
 import { applyWorkflow, disableWorkflow, proposeWorkflow } from "./workflow-evolution.ts"
 
 const mockDb = db as unknown as MockDbChain
-const mockCallClaude = callClaude as ReturnType<typeof vi.fn>
+const mockCallIntelligence = callIntelligence as ReturnType<typeof vi.fn>
 const mockCanActAutonomously = canActAutonomously as ReturnType<typeof vi.fn>
 const mockValidateOutput = validateOutput as ReturnType<typeof vi.fn>
 const mockWriteChangelogEntry = writeChangelogEntry as ReturnType<typeof vi.fn>
@@ -105,20 +105,18 @@ describe("proposeWorkflow", () => {
   it("returns proposal with autonomous flag from trust assessment", async () => {
     mockCanActAutonomously.mockResolvedValue(makeTrustAssessment({ canAct: true }))
     mockDb.where.mockResolvedValue([])
-    mockCallClaude.mockResolvedValue(
-      ok(
-        JSON.stringify({
-          shouldCreate: true,
-          reasoning: "Pattern detected: daily morning check",
-          name: "Morning Check",
-          description: "Check goals every morning",
-          trigger: { type: "schedule", hour: 8 },
-          instruction: "Review goals and summarize progress",
-          model: "haiku",
-          dataSources: ["goals"],
-          outputAction: "telegram_send"
-        })
-      )
+    mockCallIntelligence.mockResolvedValue(
+      ok({
+        shouldCreate: true,
+        reasoning: "Pattern detected: daily morning check",
+        name: "Morning Check",
+        description: "Check goals every morning",
+        trigger: { type: "schedule", hour: 8 },
+        instruction: "Review goals and summarize progress",
+        model: "fast",
+        dataSources: ["goals"],
+        outputAction: "telegram_send"
+      })
     )
 
     const proposal = await proposeWorkflow("I notice I check goals every morning", [makeTickSummary()])
@@ -131,20 +129,18 @@ describe("proposeWorkflow", () => {
   it("marks as non-autonomous when trust is insufficient", async () => {
     mockCanActAutonomously.mockResolvedValue(makeTrustAssessment({ canAct: false }))
     mockDb.where.mockResolvedValue([])
-    mockCallClaude.mockResolvedValue(
-      ok(
-        JSON.stringify({
-          shouldCreate: false,
-          reasoning: "Not a clear pattern",
-          name: "",
-          description: "",
-          trigger: { type: "schedule", hour: 0 },
-          instruction: "",
-          model: "haiku",
-          dataSources: [],
-          outputAction: "log_only"
-        })
-      )
+    mockCallIntelligence.mockResolvedValue(
+      ok({
+        shouldCreate: false,
+        reasoning: "Not a clear pattern",
+        name: "",
+        description: "",
+        trigger: { type: "schedule", hour: 0 },
+        instruction: "",
+        model: "fast",
+        dataSources: [],
+        outputAction: "log_only"
+      })
     )
 
     const proposal = await proposeWorkflow("some pattern", [])
@@ -168,7 +164,7 @@ describe("applyWorkflow", () => {
     description: "A test workflow",
     trigger: { type: "schedule" as const, hour: 9 },
     instruction: "Do something useful",
-    model: "sonnet",
+    model: "reasoning",
     dataSources: ["goals" as const],
     outputAction: "log_only" as const,
     autonomous: true
@@ -212,11 +208,11 @@ describe("applyWorkflow", () => {
     expect(result._unsafeUnwrapErr().message).toContain("Guardian blocked")
   })
 
-  it("returns error when model is opus", async () => {
-    const opusProposal = { ...validProposal, model: "opus" }
-    const result = await applyWorkflow(opusProposal)
+  it("returns error when model is invalid", async () => {
+    const invalidProposal = { ...validProposal, model: "unknown" }
+    const result = await applyWorkflow(invalidProposal)
     expect(result.isErr()).toBe(true)
-    expect(result._unsafeUnwrapErr().message).toContain("cannot use Opus")
+    expect(result._unsafeUnwrapErr().message).toContain("Invalid workflow model")
   })
 })
 

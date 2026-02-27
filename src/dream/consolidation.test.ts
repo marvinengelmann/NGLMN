@@ -1,6 +1,6 @@
-vi.mock("@/integrations/anthropic.ts", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("@/integrations/anthropic.ts")>()),
-  callClaude: vi.fn()
+vi.mock("@/core/intelligence.ts", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/core/intelligence.ts")>()),
+  callIntelligence: vi.fn()
 }))
 
 vi.mock("@/memory/episodic.ts", () => ({
@@ -19,12 +19,12 @@ vi.mock("@/memory/semantic.ts", async () => {
 })
 
 import { ok } from "neverthrow"
-import { callClaude } from "@/integrations/anthropic.ts"
+import { callIntelligence } from "@/core/intelligence.ts"
 import { downgradeEpisodes, queryRelated } from "@/memory/episodic.ts"
 import { storeKnowledge, storeRelation } from "@/memory/semantic.ts"
 import { consolidateMemories } from "./consolidation.ts"
 
-const mockCallClaude = callClaude as ReturnType<typeof vi.fn>
+const mockCallIntelligence = callIntelligence as ReturnType<typeof vi.fn>
 const mockQueryRelated = queryRelated as ReturnType<typeof vi.fn>
 const mockStoreKnowledge = storeKnowledge as ReturnType<typeof vi.fn>
 const mockStoreRelation = storeRelation as ReturnType<typeof vi.fn>
@@ -43,7 +43,7 @@ describe("consolidateMemories", () => {
     expect(result.semanticEntriesCreated).toBe(0)
     expect(result.connectionsFound).toBe(0)
     expect(result.downgraded).toBe(0)
-    expect(mockCallClaude).not.toHaveBeenCalled()
+    expect(mockCallIntelligence).not.toHaveBeenCalled()
   })
 
   it("processes episodes and stores semantic knowledge", async () => {
@@ -52,18 +52,16 @@ describe("consolidateMemories", () => {
       { id: "ep-2", score: 0.8, metadata: { category: "task", timestamp: "2025-01-01" } }
     ])
 
-    mockCallClaude.mockResolvedValue(
-      ok(
-        JSON.stringify({
-          semanticEntries: [
-            { category: "insight", key: "pattern-1", value: "Operator prefers morning updates", confidence: 0.8 }
-          ],
-          connections: [
-            { episodeIds: ["ep-1", "ep-2"], connectionType: "thematic", description: "both relate to communication" }
-          ],
-          downgradeIds: []
-        })
-      )
+    mockCallIntelligence.mockResolvedValue(
+      ok({
+        semanticEntries: [
+          { category: "insight", key: "pattern-1", value: "Operator prefers morning updates", confidence: 0.8 }
+        ],
+        connections: [
+          { episodeIds: ["ep-1", "ep-2"], connectionType: "thematic", description: "both relate to communication" }
+        ],
+        downgradeIds: []
+      })
     )
 
     mockStoreKnowledge.mockResolvedValue(ok("sem-1"))
@@ -87,14 +85,12 @@ describe("consolidateMemories", () => {
       { id: "ep-1", score: 0.9, metadata: { category: "interaction", timestamp: "2025-01-01" } }
     ])
 
-    mockCallClaude.mockResolvedValue(
-      ok(
-        JSON.stringify({
-          semanticEntries: [],
-          connections: [],
-          downgradeIds: []
-        })
-      )
+    mockCallIntelligence.mockResolvedValue(
+      ok({
+        semanticEntries: [],
+        connections: [],
+        downgradeIds: []
+      })
     )
 
     const result = await consolidateMemories()
@@ -106,14 +102,12 @@ describe("consolidateMemories", () => {
       { id: "ep-1", score: 0.9, metadata: { category: "interaction", timestamp: "2025-01-01" } }
     ])
 
-    mockCallClaude.mockResolvedValue(
-      ok(
-        JSON.stringify({
-          semanticEntries: [],
-          connections: [],
-          downgradeIds: ["ep-1", "ep-old"]
-        })
-      )
+    mockCallIntelligence.mockResolvedValue(
+      ok({
+        semanticEntries: [],
+        connections: [],
+        downgradeIds: ["ep-1", "ep-old"]
+      })
     )
 
     mockDowngradeEpisodes.mockResolvedValue(2)
@@ -128,14 +122,12 @@ describe("consolidateMemories", () => {
       { id: "ep-1", score: 0.9, metadata: { category: "interaction", timestamp: "2025-01-01" } }
     ])
 
-    mockCallClaude.mockResolvedValue(
-      ok(
-        JSON.stringify({
-          semanticEntries: [{ category: "invalid_category", key: "test", value: "val", confidence: 0.5 }],
-          connections: [],
-          downgradeIds: []
-        })
-      )
+    mockCallIntelligence.mockResolvedValue(
+      ok({
+        semanticEntries: [{ category: "invalid_category", key: "test", value: "val", confidence: 0.5 }],
+        connections: [],
+        downgradeIds: []
+      })
     )
 
     mockStoreKnowledge.mockResolvedValue(ok("sem-1"))

@@ -57,24 +57,16 @@ describe("estimateCallCost", () => {
     expect(cost).toBe(0)
   })
 
-  it("calculates Opus cost higher than Haiku", () => {
+  it("calculates cost for known model", () => {
     const usage = { inputTokens: 1000, outputTokens: 500 }
-    const haikuCost = estimateCallCost("claude-haiku-4-5-20251001", usage)
-    const opusCost = estimateCallCost("claude-opus-4-6", usage)
-    expect(opusCost).toBeGreaterThan(haikuCost)
+    const cost = estimateCallCost("xai/grok-4-1-fast-non-reasoning", usage)
+    expect(cost).toBeGreaterThan(0)
   })
 
-  it("includes cache token costs", () => {
-    const withCache = estimateCallCost("claude-haiku-4-5-20251001", {
-      inputTokens: 500,
-      outputTokens: 200,
-      cacheReadTokens: 1000,
-      cacheCreationTokens: 300
-    })
-    const withoutCache = estimateCallCost("claude-haiku-4-5-20251001", {
-      inputTokens: 500,
-      outputTokens: 200
-    })
-    expect(withCache).toBeGreaterThan(withoutCache)
+  it("returns same cost for both grok models (identical pricing)", () => {
+    const usage = { inputTokens: 1000, outputTokens: 500 }
+    const fastCost = estimateCallCost("xai/grok-4-1-fast-non-reasoning", usage)
+    const reasoningCost = estimateCallCost("xai/grok-4-1-fast-reasoning", usage)
+    expect(fastCost).toBe(reasoningCost)
   })
 })

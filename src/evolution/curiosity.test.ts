@@ -1,6 +1,6 @@
-vi.mock("@/integrations/anthropic.ts", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("@/integrations/anthropic.ts")>()),
-  callClaude: vi.fn()
+vi.mock("@/core/intelligence.ts", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/core/intelligence.ts")>()),
+  callIntelligence: vi.fn()
 }))
 
 vi.mock("@/memory/goals.ts", () => ({
@@ -12,13 +12,13 @@ vi.mock("@/memory/episodic.ts", () => ({
 }))
 
 import { ok } from "neverthrow"
-import { callClaude } from "@/integrations/anthropic.ts"
+import { callIntelligence } from "@/core/intelligence.ts"
 import { storeEpisode } from "@/memory/episodic.ts"
 import { createGoal } from "@/memory/goals.ts"
 import { makeEmotionalState } from "@/test/factories.ts"
 import { createExplorationGoal, generateInterests, shouldExplore } from "./curiosity.ts"
 
-const mockCallClaude = callClaude as ReturnType<typeof vi.fn>
+const mockCallIntelligence = callIntelligence as ReturnType<typeof vi.fn>
 const mockCreateGoal = createGoal as ReturnType<typeof vi.fn>
 const mockStoreEpisode = storeEpisode as ReturnType<typeof vi.fn>
 
@@ -36,16 +36,14 @@ describe("shouldExplore", () => {
 })
 
 describe("generateInterests", () => {
-  it("returns parsed interests from Claude", async () => {
-    mockCallClaude.mockResolvedValue(
-      ok(
-        JSON.stringify({
-          interests: [
-            { topic: "Graph databases", reason: "Could improve memory associations", priority: 0.7 },
-            { topic: "Music theory", reason: "Creative pattern recognition", priority: 0.5 }
-          ]
-        })
-      )
+  it("returns parsed interests from LLM", async () => {
+    mockCallIntelligence.mockResolvedValue(
+      ok({
+        interests: [
+          { topic: "Graph databases", reason: "Could improve memory associations", priority: 0.7 },
+          { topic: "Music theory", reason: "Creative pattern recognition", priority: 0.5 }
+        ]
+      })
     )
 
     const result = await generateInterests(

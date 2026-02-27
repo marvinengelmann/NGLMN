@@ -11,9 +11,9 @@ vi.mock("@/db/client.ts", () => {
   return { db: chain }
 })
 
-vi.mock("@/integrations/anthropic.ts", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("@/integrations/anthropic.ts")>()),
-  callClaude: vi.fn()
+vi.mock("@/core/intelligence.ts", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/core/intelligence.ts")>()),
+  callIntelligence: vi.fn()
 }))
 
 vi.mock("@/trust/assessment.ts", () => ({
@@ -30,8 +30,8 @@ vi.mock("./changelog.ts", () => ({
 }))
 
 import { ok } from "neverthrow"
+import { callIntelligence } from "@/core/intelligence.ts"
 import { db } from "@/db/client.ts"
-import { callClaude } from "@/integrations/anthropic.ts"
 import { makeMetricsSnapshot, makeTrustAssessment } from "@/test/factories.ts"
 import type { MockDbChain } from "@/test/mocks.ts"
 import { canActAutonomously } from "@/trust/assessment.ts"
@@ -46,7 +46,7 @@ import {
 } from "./prompt-evolution.ts"
 
 const mockDb = db as unknown as MockDbChain
-const mockCallClaude = callClaude as ReturnType<typeof vi.fn>
+const mockCallIntelligence = callIntelligence as ReturnType<typeof vi.fn>
 const mockCanActAutonomously = canActAutonomously as ReturnType<typeof vi.fn>
 const mockRecordSuccess = recordSuccess as ReturnType<typeof vi.fn>
 const mockWriteChangelogEntry = writeChangelogEntry as ReturnType<typeof vi.fn>
@@ -76,15 +76,13 @@ describe("getPromptHistory", () => {
 describe("proposePromptChange", () => {
   it("returns proposal with autonomous flag based on trust", async () => {
     mockCanActAutonomously.mockResolvedValue(makeTrustAssessment({ canAct: true }))
-    mockCallClaude.mockResolvedValue(
-      ok(
-        JSON.stringify({
-          shouldChange: true,
-          newPrompt: "improved prompt",
-          changelog: "Simplified instructions",
-          reasoning: "Current prompt is verbose"
-        })
-      )
+    mockCallIntelligence.mockResolvedValue(
+      ok({
+        shouldChange: true,
+        newPrompt: "improved prompt",
+        changelog: "Simplified instructions",
+        reasoning: "Current prompt is verbose"
+      })
     )
 
     const proposal = await proposePromptChange("triage", "current prompt", makeMetricsSnapshot(), [
@@ -99,15 +97,13 @@ describe("proposePromptChange", () => {
 
   it("marks as non-autonomous when trust is insufficient", async () => {
     mockCanActAutonomously.mockResolvedValue(makeTrustAssessment({ canAct: false }))
-    mockCallClaude.mockResolvedValue(
-      ok(
-        JSON.stringify({
-          shouldChange: false,
-          newPrompt: null,
-          changelog: "No change needed",
-          reasoning: "Prompt performing well"
-        })
-      )
+    mockCallIntelligence.mockResolvedValue(
+      ok({
+        shouldChange: false,
+        newPrompt: null,
+        changelog: "No change needed",
+        reasoning: "Prompt performing well"
+      })
     )
 
     const proposal = await proposePromptChange("triage", "current prompt", makeMetricsSnapshot(), [])

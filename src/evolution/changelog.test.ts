@@ -11,9 +11,9 @@ vi.mock("@/db/client.ts", () => {
   return { db: chain }
 })
 
-vi.mock("@/integrations/anthropic.ts", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("@/integrations/anthropic.ts")>()),
-  callClaude: vi.fn()
+vi.mock("@/core/intelligence.ts", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/core/intelligence.ts")>()),
+  callIntelligence: vi.fn()
 }))
 
 vi.mock("@/memory/episodic.ts", () => ({
@@ -21,13 +21,13 @@ vi.mock("@/memory/episodic.ts", () => ({
 }))
 
 import { ok } from "neverthrow"
+import { callIntelligence } from "@/core/intelligence.ts"
 import { db } from "@/db/client.ts"
-import { callClaude } from "@/integrations/anthropic.ts"
 import { storeEpisode } from "@/memory/episodic.ts"
 import type { MockDbChain } from "@/test/mocks.ts"
 import { getChangelogByType, getRecentChangelog, writeChangelogEntry } from "./changelog.ts"
 
-const mockCallClaude = callClaude as ReturnType<typeof vi.fn>
+const mockCallIntelligence = callIntelligence as ReturnType<typeof vi.fn>
 const mockStoreEpisode = storeEpisode as ReturnType<typeof vi.fn>
 const mockDb = db as unknown as MockDbChain
 
@@ -37,13 +37,13 @@ describe("writeChangelogEntry", () => {
   })
 
   it("generates narrative and stores in DB + episodic memory", async () => {
-    mockCallClaude.mockResolvedValue(ok("I optimized my triage prompt and feel more efficient."))
+    mockCallIntelligence.mockResolvedValue(ok({ text: "I optimized my triage prompt and feel more efficient." }))
 
     const result = await writeChangelogEntry("prompt", "Improved triage prompt wording", "success")
 
     expect(result.isOk()).toBe(true)
     expect(result._unsafeUnwrap()).toBe("evo-1")
-    expect(mockCallClaude).toHaveBeenCalledWith(
+    expect(mockCallIntelligence).toHaveBeenCalledWith(
       expect.objectContaining({
         userMessage: expect.stringContaining("prompt")
       })
@@ -57,12 +57,12 @@ describe("writeChangelogEntry", () => {
   })
 
   it("includes diff when provided", async () => {
-    mockCallClaude.mockResolvedValue(ok("Made a code change."))
+    mockCallIntelligence.mockResolvedValue(ok({ text: "Made a code change." }))
 
-    const result = await writeChangelogEntry("code", "Refactored model-router", "success", "- old\n+ new")
+    const result = await writeChangelogEntry("code", "Refactored intelligence module", "success", "- old\n+ new")
 
     expect(result.isOk()).toBe(true)
-    expect(mockCallClaude).toHaveBeenCalledWith(
+    expect(mockCallIntelligence).toHaveBeenCalledWith(
       expect.objectContaining({
         userMessage: expect.stringContaining("Diff: - old")
       })

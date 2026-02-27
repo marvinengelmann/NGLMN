@@ -1,8 +1,8 @@
 import { ok } from "neverthrow"
 
-vi.mock("@/integrations/anthropic.ts", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("@/integrations/anthropic.ts")>()),
-  callClaude: vi.fn()
+vi.mock("@/core/intelligence.ts", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/core/intelligence.ts")>()),
+  callIntelligence: vi.fn()
 }))
 
 vi.mock("./evolution.ts", () => ({
@@ -20,30 +20,30 @@ vi.mock("./evolution.ts", () => ({
   })
 }))
 
-import { callClaude } from "@/integrations/anthropic.ts"
+import { callIntelligence } from "@/core/intelligence.ts"
 import { updateAdaptiveLayer } from "./evolution.ts"
 import { analyzeOperatorFeedback, applyFeedback } from "./feedback.ts"
 
-const mockCallClaude = callClaude as ReturnType<typeof vi.fn>
+const mockCallIntelligence = callIntelligence as ReturnType<typeof vi.fn>
 const mockUpdateAdaptiveLayer = updateAdaptiveLayer as ReturnType<typeof vi.fn>
 
 describe("analyzeOperatorFeedback", () => {
   it("parses positive sentiment", async () => {
-    mockCallClaude.mockResolvedValue(ok('{"sentiment": "positive", "confidence": 0.85}'))
+    mockCallIntelligence.mockResolvedValue(ok({ sentiment: "positive", confidence: 0.85 }))
     const result = await analyzeOperatorFeedback(["Great job!"], "Here's the summary.")
     expect(result.sentiment).toBe("positive")
     expect(result.confidence).toBe(0.85)
   })
 
   it("parses negative sentiment", async () => {
-    mockCallClaude.mockResolvedValue(ok('{"sentiment": "negative", "confidence": 0.7, "dimension": "verbosity"}'))
+    mockCallIntelligence.mockResolvedValue(ok({ sentiment: "negative", confidence: 0.7, dimension: "verbosity" }))
     const result = await analyzeOperatorFeedback(["Too long."], "Here's a detailed explanation...")
     expect(result.sentiment).toBe("negative")
     expect(result.dimension).toBe("verbosity")
   })
 
-  it("returns neutral for unparseable response", async () => {
-    mockCallClaude.mockResolvedValue(ok("I cannot analyze this."))
+  it("returns neutral when LLM returns neutral", async () => {
+    mockCallIntelligence.mockResolvedValue(ok({ sentiment: "neutral", confidence: 0 }))
     const result = await analyzeOperatorFeedback(["hmm"], "response")
     expect(result.sentiment).toBe("neutral")
     expect(result.confidence).toBe(0)

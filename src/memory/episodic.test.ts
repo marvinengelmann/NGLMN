@@ -6,9 +6,9 @@ vi.mock("@/integrations/vector.ts", () => ({
   }
 }))
 
-vi.mock("@/integrations/anthropic.ts", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("@/integrations/anthropic.ts")>()),
-  callClaude: vi.fn()
+vi.mock("@/core/intelligence.ts", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/core/intelligence.ts")>()),
+  callIntelligence: vi.fn()
 }))
 
 vi.mock("@/lib/logger.ts", () => ({
@@ -17,7 +17,7 @@ vi.mock("@/lib/logger.ts", () => ({
 
 import { formatISO, subDays } from "date-fns"
 import { err, ok } from "neverthrow"
-import { callClaude } from "@/integrations/anthropic.ts"
+import { callIntelligence } from "@/core/intelligence.ts"
 import { vectorIndex } from "@/integrations/vector.ts"
 import { log } from "@/lib/logger.ts"
 import type { EpisodeMetadata } from "@/memory/types.ts"
@@ -31,7 +31,7 @@ import {
 } from "./episodic.ts"
 
 const mockVector = vi.mocked(vectorIndex)
-const mockCallClaude = vi.mocked(callClaude)
+const mockCallIntelligence = vi.mocked(callIntelligence)
 const mockLog = vi.mocked(log)
 
 beforeEach(() => {
@@ -263,7 +263,7 @@ describe("summarizeOldEpisodes", () => {
     ]
 
     mockVector.query.mockResolvedValue(episodes as never)
-    mockCallClaude.mockReturnValue(ok("Summarized: User had three interactions.") as never)
+    mockCallIntelligence.mockReturnValue(ok({ text: "Summarized: User had three interactions." }) as never)
     mockVector.upsert.mockResolvedValue("Success")
     mockVector.update.mockResolvedValue(undefined as never)
 
@@ -271,7 +271,7 @@ describe("summarizeOldEpisodes", () => {
 
     expect(result.created).toBeGreaterThanOrEqual(1)
     expect(result.summarized).toBeGreaterThanOrEqual(3)
-    expect(mockCallClaude).toHaveBeenCalled()
+    expect(mockCallIntelligence).toHaveBeenCalled()
     expect(mockVector.upsert).toHaveBeenCalled()
   })
 
@@ -284,7 +284,7 @@ describe("summarizeOldEpisodes", () => {
 
     expect(result.created).toBe(0)
     expect(result.summarized).toBe(0)
-    expect(mockCallClaude).not.toHaveBeenCalled()
+    expect(mockCallIntelligence).not.toHaveBeenCalled()
   })
 
   it("skips episodes with high relevance scores", async () => {
@@ -333,7 +333,7 @@ describe("summarizeOldEpisodes", () => {
     expect(result.summarized).toBe(0)
   })
 
-  it("continues when Claude summarization fails", async () => {
+  it("continues when LLM summarization fails", async () => {
     const interactionEps = [
       makeOldEpisode("ep-1", "interaction"),
       makeOldEpisode("ep-2", "interaction"),
@@ -341,7 +341,7 @@ describe("summarizeOldEpisodes", () => {
     ]
 
     mockVector.query.mockResolvedValue(interactionEps as never)
-    mockCallClaude.mockReturnValue(err({ tag: "ANTHROPIC_ERROR", message: "Rate limited" }) as never)
+    mockCallIntelligence.mockReturnValue(err({ tag: "LLM_ERROR", message: "Rate limited" }) as never)
 
     const result = await summarizeOldEpisodes(7)
 

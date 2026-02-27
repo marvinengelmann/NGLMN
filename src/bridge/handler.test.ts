@@ -12,59 +12,7 @@ vi.mock("@/core/context-builder.ts", () => ({
 }))
 
 import { makeEmotionalState } from "@/test/factories.ts"
-import { computeFollowUpWait, parseStructuredResponse } from "./handler.ts"
-
-describe("parseStructuredResponse", () => {
-  it("parses valid structured JSON with multiple messages", () => {
-    const raw = JSON.stringify({
-      messages: [{ text: "Hello!", replyTo: 42 }, { text: "How are you?" }],
-      expectsReply: true
-    })
-    const result = parseStructuredResponse(raw)
-    expect(result.messages).toHaveLength(2)
-    expect(result.messages[0]).toEqual({ text: "Hello!", replyTo: 42 })
-    expect(result.messages[1]).toEqual({ text: "How are you?" })
-    expect(result.expectsReply).toBe(true)
-  })
-
-  it("parses JSON wrapped in code fences", () => {
-    const raw = '```json\n{"messages": [{"text": "Hi"}], "expectsReply": false}\n```'
-    const result = parseStructuredResponse(raw)
-    expect(result.messages).toHaveLength(1)
-    expect(result.messages[0]?.text).toBe("Hi")
-    expect(result.expectsReply).toBe(false)
-  })
-
-  it("falls back to single message for plain text", () => {
-    const raw = "Just a plain text response"
-    const result = parseStructuredResponse(raw)
-    expect(result.messages).toHaveLength(1)
-    expect(result.messages[0]?.text).toBe("Just a plain text response")
-    expect(result.expectsReply).toBe(true)
-  })
-
-  it("falls back to single message for invalid JSON", () => {
-    const raw = "{ broken json }}}"
-    const result = parseStructuredResponse(raw)
-    expect(result.messages).toHaveLength(1)
-    expect(result.messages[0]?.text).toBe("{ broken json }}}")
-    expect(result.expectsReply).toBe(true)
-  })
-
-  it("falls back when messages array is empty", () => {
-    const raw = JSON.stringify({ messages: [] })
-    const result = parseStructuredResponse(raw)
-    expect(result.messages).toHaveLength(1)
-    expect(result.expectsReply).toBe(true)
-  })
-
-  it("omits replyTo when not present", () => {
-    const raw = JSON.stringify({ messages: [{ text: "No reply" }], expectsReply: true })
-    const result = parseStructuredResponse(raw)
-    expect(result.messages[0]).toEqual({ text: "No reply" })
-    expect(result.messages[0]).not.toHaveProperty("replyTo")
-  })
-})
+import { computeFollowUpWait } from "./handler.ts"
 
 describe("computeFollowUpWait", () => {
   it("returns value between 60 and 240 seconds", () => {

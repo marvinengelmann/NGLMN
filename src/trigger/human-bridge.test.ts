@@ -21,10 +21,9 @@ vi.mock("@/lib/time.ts", () => ({
   sleep: vi.fn()
 }))
 
-vi.mock("@/integrations/anthropic.ts", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("@/integrations/anthropic.ts")>()),
-  callClaude: vi.fn(),
-  callClaudeWithUsage: vi.fn()
+vi.mock("@/core/intelligence.ts", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/core/intelligence.ts")>()),
+  callIntelligence: vi.fn()
 }))
 
 vi.mock("@/integrations/telegram.ts", () => ({
@@ -45,7 +44,6 @@ vi.mock("@/memory/working.ts", () => ({
 
 vi.mock("@/bridge/handler.ts", () => ({
   buildConversationResponsePrompt: vi.fn(),
-  parseStructuredResponse: vi.fn(),
   computeFollowUpWait: vi.fn()
 }))
 
@@ -66,11 +64,6 @@ vi.mock("@/bridge/typing.ts", () => ({
   computeInterParagraphPause: vi.fn(() => 0),
   splitIntoParagraphs: vi.fn((text: string) => [text]),
   simulateTyping: vi.fn()
-}))
-
-vi.mock("@/core/model-router.ts", () => ({
-  selectModel: vi.fn(() => "haiku"),
-  getMaxTokensForTier: vi.fn(() => 200)
 }))
 
 vi.mock("@/prompts/conversation.ts", () => ({
@@ -134,9 +127,9 @@ vi.mock("@/memory/semantic.ts", () => ({
 }))
 
 import { checkForAfterthought } from "@/bridge/afterthought.ts"
-import { computeFollowUpWait, parseStructuredResponse } from "@/bridge/handler.ts"
+import { computeFollowUpWait } from "@/bridge/handler.ts"
 import { splitIntoParagraphs } from "@/bridge/typing.ts"
-import { callClaude, callClaudeWithUsage } from "@/integrations/anthropic.ts"
+import { callIntelligence } from "@/core/intelligence.ts"
 import { fetchNewMessages, sendMessageWithReply } from "@/integrations/telegram.ts"
 import { storeEpisode } from "@/memory/episodic.ts"
 import {
@@ -150,9 +143,7 @@ import {
 import { humanBridgeTask } from "./human-bridge.ts"
 
 const mockFetchNewMessages = fetchNewMessages as ReturnType<typeof vi.fn>
-const mockCallClaude = callClaude as ReturnType<typeof vi.fn>
-const mockCallClaudeWithUsage = callClaudeWithUsage as ReturnType<typeof vi.fn>
-const mockParseStructuredResponse = parseStructuredResponse as ReturnType<typeof vi.fn>
+const mockCallIntelligence = callIntelligence as ReturnType<typeof vi.fn>
 const mockComputeFollowUpWait = computeFollowUpWait as ReturnType<typeof vi.fn>
 const mockGetActiveConversation = getActiveConversation as ReturnType<typeof vi.fn>
 const mockGetConversationBuffer = getConversationBuffer as ReturnType<typeof vi.fn>
@@ -211,7 +202,9 @@ describe("human-bridge", () => {
 
   it("commits offset and sets operator activity on initial messages", async () => {
     mockFetchNewMessages.mockResolvedValueOnce({ messages: [makeTestMessage()], maxUpdateId: 100 })
-    mockCallClaude.mockResolvedValue(ok('{"decision":"idle","reason":"test","confidence":0.9,"estimatedTokens":0}'))
+    mockCallIntelligence.mockResolvedValue(
+      ok({ decision: "idle", reason: "test", confidence: 0.9, estimatedTokens: 0 })
+    )
 
     await run()
 
@@ -221,7 +214,9 @@ describe("human-bridge", () => {
 
   it("creates new conversation slot when none exists", async () => {
     mockFetchNewMessages.mockResolvedValueOnce({ messages: [makeTestMessage()], maxUpdateId: 100 })
-    mockCallClaude.mockResolvedValue(ok('{"decision":"idle","reason":"test","confidence":0.9,"estimatedTokens":0}'))
+    mockCallIntelligence.mockResolvedValue(
+      ok({ decision: "idle", reason: "test", confidence: 0.9, estimatedTokens: 0 })
+    )
 
     await run()
 
@@ -230,21 +225,13 @@ describe("human-bridge", () => {
 
   it("processes triage → respond → send flow", async () => {
     mockFetchNewMessages.mockResolvedValueOnce({ messages: [makeTestMessage()], maxUpdateId: 100 })
-    mockCallClaude.mockResolvedValue(
-      ok('{"decision":"simple","reason":"greeting","confidence":0.9,"estimatedTokens":100}')
-    )
-    mockCallClaudeWithUsage.mockResolvedValue(
-      ok({ text: '{"messages":[{"text":"Hi!"}],"expectsReply":false}', usage: { input: 10, output: 5 } })
-    )
-    mockParseStructuredResponse.mockReturnValue({
-      messages: [{ text: "Hi!" }],
-      expectsReply: false
-    })
+    mockCallIntelligence
+      .mockResolvedValueOnce(ok({ decision: "simple", reason: "greeting", confidence: 0.9, estimatedTokens: 100 }))
+      .mockResolvedValueOnce(ok({ messages: [{ text: "Hi!" }], expectsReply: false }))
 
     const result = await run()
 
-    expect(mockCallClaude).toHaveBeenCalled()
-    expect(mockCallClaudeWithUsage).toHaveBeenCalled()
+    expect(mockCallIntelligence).toHaveBeenCalledTimes(2)
     expect(mockSendMessageWithReply).toHaveBeenCalledWith("Hi!", undefined)
     expect(result).toEqual({ rounds: 1 })
   })
@@ -258,12 +245,11 @@ describe("human-bridge", () => {
       })
       .mockResolvedValueOnce({ messages: [], maxUpdateId: null })
 
-    mockCallClaude.mockResolvedValue(ok('{"decision":"simple","reason":"chat","confidence":0.9,"estimatedTokens":100}'))
-    mockCallClaudeWithUsage.mockResolvedValue(ok({ text: "response", usage: { input: 10, output: 5 } }))
-    mockParseStructuredResponse.mockReturnValue({
-      messages: [{ text: "Hello!" }],
-      expectsReply: true
-    })
+    mockCallIntelligence
+      .mockResolvedValueOnce(ok({ decision: "simple", reason: "chat", confidence: 0.9, estimatedTokens: 100 }))
+      .mockResolvedValueOnce(ok({ messages: [{ text: "Hello!" }], expectsReply: true }))
+      .mockResolvedValueOnce(ok({ decision: "simple", reason: "chat", confidence: 0.9, estimatedTokens: 100 }))
+      .mockResolvedValueOnce(ok({ messages: [{ text: "Hello!" }], expectsReply: true }))
     mockComputeFollowUpWait.mockReturnValue(60)
 
     const result = await run()
@@ -275,25 +261,25 @@ describe("human-bridge", () => {
 
   it("breaks on triage failure without stuck messages", async () => {
     mockFetchNewMessages.mockResolvedValueOnce({ messages: [makeTestMessage()], maxUpdateId: 100 })
-    mockCallClaude.mockResolvedValue(err(animaError("ANTHROPIC_ERROR", "triage failed")))
+    mockCallIntelligence.mockResolvedValue(err(animaError("LLM_ERROR", "triage failed")))
 
     const result = await run()
 
     expect(result).toEqual({ rounds: 1 })
     expect(mockSetLastUpdateId).toHaveBeenCalledWith(100)
-    expect(mockCallClaudeWithUsage).not.toHaveBeenCalled()
+    expect(mockCallIntelligence).toHaveBeenCalledTimes(1)
   })
 
   it("handles idle decision gracefully", async () => {
     mockFetchNewMessages.mockResolvedValueOnce({ messages: [makeTestMessage()], maxUpdateId: 100 })
-    mockCallClaude.mockResolvedValue(
-      ok('{"decision":"idle","reason":"just an ack","confidence":0.95,"estimatedTokens":0}')
+    mockCallIntelligence.mockResolvedValue(
+      ok({ decision: "idle", reason: "just an ack", confidence: 0.95, estimatedTokens: 0 })
     )
 
     const result = await run()
 
     expect(result).toEqual({ rounds: 1 })
-    expect(mockCallClaudeWithUsage).not.toHaveBeenCalled()
+    expect(mockCallIntelligence).toHaveBeenCalledTimes(1)
     expect(mockStoreEpisode).toHaveBeenCalledWith(
       expect.stringContaining("chose not to respond"),
       "interaction",
@@ -303,12 +289,9 @@ describe("human-bridge", () => {
 
   it("splits paragraphs and sends them as separate messages", async () => {
     mockFetchNewMessages.mockResolvedValueOnce({ messages: [makeTestMessage()], maxUpdateId: 100 })
-    mockCallClaude.mockResolvedValue(ok('{"decision":"simple","reason":"chat","confidence":0.9,"estimatedTokens":100}'))
-    mockCallClaudeWithUsage.mockResolvedValue(ok({ text: "response", usage: { input: 10, output: 5 } }))
-    mockParseStructuredResponse.mockReturnValue({
-      messages: [{ text: "First paragraph.\n\nSecond paragraph." }],
-      expectsReply: false
-    })
+    mockCallIntelligence
+      .mockResolvedValueOnce(ok({ decision: "simple", reason: "chat", confidence: 0.9, estimatedTokens: 100 }))
+      .mockResolvedValueOnce(ok({ messages: [{ text: "First paragraph.\n\nSecond paragraph." }], expectsReply: false }))
     mockSplitIntoParagraphs.mockReturnValue(["First paragraph.", "Second paragraph."])
 
     await run()
@@ -323,7 +306,9 @@ describe("human-bridge", () => {
       messages: [makeTestMessage({ messageId: 555 })],
       maxUpdateId: 100
     })
-    mockCallClaude.mockResolvedValue(ok('{"decision":"idle","reason":"test","confidence":0.9,"estimatedTokens":0}'))
+    mockCallIntelligence.mockResolvedValue(
+      ok({ decision: "idle", reason: "test", confidence: 0.9, estimatedTokens: 0 })
+    )
 
     await run()
 
@@ -334,12 +319,9 @@ describe("human-bridge", () => {
 
   it("includes sentMessageId when pushing ANIMA messages to buffer", async () => {
     mockFetchNewMessages.mockResolvedValueOnce({ messages: [makeTestMessage()], maxUpdateId: 100 })
-    mockCallClaude.mockResolvedValue(ok('{"decision":"simple","reason":"chat","confidence":0.9,"estimatedTokens":100}'))
-    mockCallClaudeWithUsage.mockResolvedValue(ok({ text: "response", usage: { input: 10, output: 5 } }))
-    mockParseStructuredResponse.mockReturnValue({
-      messages: [{ text: "Hi!" }],
-      expectsReply: false
-    })
+    mockCallIntelligence
+      .mockResolvedValueOnce(ok({ decision: "simple", reason: "chat", confidence: 0.9, estimatedTokens: 100 }))
+      .mockResolvedValueOnce(ok({ messages: [{ text: "Hi!" }], expectsReply: false }))
     mockSendMessageWithReply.mockResolvedValue(999)
 
     await run()
@@ -351,12 +333,9 @@ describe("human-bridge", () => {
 
   it("checks for afterthought after main response", async () => {
     mockFetchNewMessages.mockResolvedValueOnce({ messages: [makeTestMessage()], maxUpdateId: 100 })
-    mockCallClaude.mockResolvedValue(ok('{"decision":"simple","reason":"chat","confidence":0.9,"estimatedTokens":100}'))
-    mockCallClaudeWithUsage.mockResolvedValue(ok({ text: "response", usage: { input: 10, output: 5 } }))
-    mockParseStructuredResponse.mockReturnValue({
-      messages: [{ text: "Hello!" }],
-      expectsReply: false
-    })
+    mockCallIntelligence
+      .mockResolvedValueOnce(ok({ decision: "simple", reason: "chat", confidence: 0.9, estimatedTokens: 100 }))
+      .mockResolvedValueOnce(ok({ messages: [{ text: "Hello!" }], expectsReply: false }))
 
     await run()
 
@@ -365,12 +344,9 @@ describe("human-bridge", () => {
 
   it("sends afterthought message when checkForAfterthought returns a result", async () => {
     mockFetchNewMessages.mockResolvedValueOnce({ messages: [makeTestMessage()], maxUpdateId: 100 })
-    mockCallClaude.mockResolvedValue(ok('{"decision":"simple","reason":"chat","confidence":0.9,"estimatedTokens":100}'))
-    mockCallClaudeWithUsage.mockResolvedValue(ok({ text: "response", usage: { input: 10, output: 5 } }))
-    mockParseStructuredResponse.mockReturnValue({
-      messages: [{ text: "Hello!" }],
-      expectsReply: false
-    })
+    mockCallIntelligence
+      .mockResolvedValueOnce(ok({ decision: "simple", reason: "chat", confidence: 0.9, estimatedTokens: 100 }))
+      .mockResolvedValueOnce(ok({ messages: [{ text: "Hello!" }], expectsReply: false }))
     mockCheckForAfterthought.mockResolvedValue({ text: "Oh wait, one more thing!", replyTo: 100 })
     mockSendMessageWithReply.mockResolvedValue(42)
 
@@ -389,12 +365,9 @@ describe("human-bridge", () => {
       .mockResolvedValueOnce({ messages: [makeTestMessage()], maxUpdateId: 100 })
       .mockResolvedValueOnce({ messages: [], maxUpdateId: null })
 
-    mockCallClaude.mockResolvedValue(ok('{"decision":"simple","reason":"chat","confidence":0.9,"estimatedTokens":100}'))
-    mockCallClaudeWithUsage.mockResolvedValue(ok({ text: "response", usage: { input: 10, output: 5 } }))
-    mockParseStructuredResponse.mockReturnValue({
-      messages: [{ text: "Sure!" }],
-      expectsReply: true
-    })
+    mockCallIntelligence
+      .mockResolvedValueOnce(ok({ decision: "simple", reason: "chat", confidence: 0.9, estimatedTokens: 100 }))
+      .mockResolvedValueOnce(ok({ messages: [{ text: "Sure!" }], expectsReply: true }))
     mockComputeFollowUpWait.mockReturnValue(120)
 
     const result = await run()

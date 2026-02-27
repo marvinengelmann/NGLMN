@@ -1,6 +1,6 @@
-vi.mock("@/integrations/anthropic.ts", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("@/integrations/anthropic.ts")>()),
-  callClaude: vi.fn()
+vi.mock("@/core/intelligence.ts", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/core/intelligence.ts")>()),
+  callIntelligence: vi.fn()
 }))
 
 vi.mock("@/integrations/telegram.ts", () => ({
@@ -38,8 +38,8 @@ vi.mock("@/memory/semantic.ts", () => ({
 }))
 
 import { ok } from "neverthrow"
+import { callIntelligence } from "@/core/intelligence.ts"
 import { getEmotionalState } from "@/emotion/state.ts"
-import { callClaude } from "@/integrations/anthropic.ts"
 import { sendToOperator } from "@/integrations/telegram.ts"
 import { storeEpisode } from "@/memory/episodic.ts"
 import { clearDreamInsights, getDreamInsights, pushToActiveConversation } from "@/memory/working.ts"
@@ -48,7 +48,7 @@ import { buildPersonalityPrompt } from "@/personality/expression.ts"
 import { makeEmotionalState, makePersonalityLayer } from "@/test/factories.ts"
 import { composeMorningMessage, sendMorningMessage } from "./morning.ts"
 
-const mockCallClaude = callClaude as ReturnType<typeof vi.fn>
+const mockCallIntelligence = callIntelligence as ReturnType<typeof vi.fn>
 const mockSendToOperator = sendToOperator as ReturnType<typeof vi.fn>
 const mockGetEmotionalState = getEmotionalState as ReturnType<typeof vi.fn>
 const mockGetEffectivePersonality = getEffectivePersonality as ReturnType<typeof vi.fn>
@@ -63,7 +63,7 @@ beforeEach(() => {
   mockGetEmotionalState.mockResolvedValue(makeEmotionalState())
   mockGetEffectivePersonality.mockResolvedValue(makePersonalityLayer())
   mockBuildPersonalityPrompt.mockReturnValue("[PERSONALITY & MOOD]\nBe warm.")
-  mockCallClaude.mockResolvedValue(ok("Good morning! Last night I thought about many things..."))
+  mockCallIntelligence.mockResolvedValue(ok({ text: "Good morning! Last night I thought about many things..." }))
   mockSendToOperator.mockResolvedValue(undefined)
   mockStoreEpisode.mockResolvedValue("ep-id")
   mockClearDreamInsights.mockResolvedValue(undefined)
@@ -75,7 +75,7 @@ describe("composeMorningMessage", () => {
     const message = await composeMorningMessage()
 
     expect(message).toBe("Good morning! Last night I thought about many things...")
-    expect(mockCallClaude).toHaveBeenCalledWith(
+    expect(mockCallIntelligence).toHaveBeenCalledWith(
       expect.objectContaining({
         system: expect.stringContaining("PERSONALITY & MOOD")
       })

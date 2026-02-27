@@ -1,6 +1,6 @@
-vi.mock("@/integrations/anthropic.ts", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("@/integrations/anthropic.ts")>()),
-  callClaude: vi.fn()
+vi.mock("@/core/intelligence.ts", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/core/intelligence.ts")>()),
+  callIntelligence: vi.fn()
 }))
 
 vi.mock("@/integrations/github.ts", () => ({
@@ -44,7 +44,7 @@ vi.mock("@/memory/working.ts", () => ({
 }))
 
 import { ok } from "neverthrow"
-import { callClaude } from "@/integrations/anthropic.ts"
+import { callIntelligence } from "@/core/intelligence.ts"
 import { validateInSandbox } from "@/integrations/e2b.ts"
 import {
   createBranch,
@@ -65,7 +65,7 @@ import { recordFailure, recordSuccess } from "@/trust/history.ts"
 import { writeChangelogEntry } from "./changelog.ts"
 import { executeCodeEvolution, proposeCodeChange, selectRelevantFiles } from "./code-evolution.ts"
 
-const mockCallClaude = callClaude as ReturnType<typeof vi.fn>
+const mockCallIntelligence = callIntelligence as ReturnType<typeof vi.fn>
 const mockGetRef = getRef as ReturnType<typeof vi.fn>
 const mockCreateBranch = createBranch as ReturnType<typeof vi.fn>
 const mockCreateOrUpdateFile = createOrUpdateFile as ReturnType<typeof vi.fn>
@@ -96,8 +96,8 @@ describe("selectRelevantFiles", () => {
     mockGetRepoTree.mockResolvedValue(SAMPLE_TREE)
   })
 
-  it("selects files via Haiku and loads their content", async () => {
-    mockCallClaude.mockResolvedValue(ok(JSON.stringify(["src/core/router.ts", "src/lib/types.ts"])))
+  it("selects files via LLM and loads their content", async () => {
+    mockCallIntelligence.mockResolvedValue(ok({ paths: ["src/core/router.ts", "src/lib/types.ts"] }))
     mockGetFileContent
       .mockResolvedValueOnce({ content: "export const router = {};", sha: "a1" })
       .mockResolvedValueOnce({ content: "export type Foo = string;", sha: "a2" })
@@ -108,11 +108,10 @@ describe("selectRelevantFiles", () => {
       expect.objectContaining({ path: "src/core/router.ts", content: "export const router = {};", truncated: false }),
       expect.objectContaining({ path: "src/lib/types.ts" })
     ])
-    expect(mockCallClaude).toHaveBeenCalledWith(expect.objectContaining({ model: "claude-haiku-4-5-20251001" }))
   })
 
   it("filters out paths not in the repo tree", async () => {
-    mockCallClaude.mockResolvedValue(ok(JSON.stringify(["src/core/router.ts", "src/nonexistent/file.ts"])))
+    mockCallIntelligence.mockResolvedValue(ok({ paths: ["src/core/router.ts", "src/nonexistent/file.ts"] }))
     mockGetFileContent.mockResolvedValue({ content: "code", sha: "a1" })
 
     const files = await selectRelevantFiles("insight", "gap")
@@ -120,8 +119,8 @@ describe("selectRelevantFiles", () => {
     expect(files).toEqual([expect.objectContaining({ path: "src/core/router.ts" })])
   })
 
-  it("returns empty array when Haiku returns invalid JSON", async () => {
-    mockCallClaude.mockResolvedValue(ok("not valid json"))
+  it("returns empty array when no files selected", async () => {
+    mockCallIntelligence.mockResolvedValue(ok({ paths: [] }))
 
     const files = await selectRelevantFiles("insight", "gap")
 
@@ -130,7 +129,7 @@ describe("selectRelevantFiles", () => {
 
   it("truncates files that exceed the remaining token budget", async () => {
     const largeContent = "x".repeat(90_000)
-    mockCallClaude.mockResolvedValue(ok(JSON.stringify(["src/core/router.ts"])))
+    mockCallIntelligence.mockResolvedValue(ok({ paths: ["src/core/router.ts"] }))
     mockGetFileContent.mockResolvedValue({ content: largeContent, sha: "a1" })
 
     const files = await selectRelevantFiles("insight", "gap")
@@ -147,7 +146,7 @@ describe("selectRelevantFiles", () => {
   })
 
   it("limits to max 5 files", async () => {
-    mockCallClaude.mockResolvedValue(ok(JSON.stringify(SAMPLE_TREE)))
+    mockCallIntelligence.mockResolvedValue(ok({ paths: SAMPLE_TREE }))
     mockGetFileContent.mockResolvedValue({ content: "code", sha: "a1" })
 
     const files = await selectRelevantFiles("insight", "gap")
@@ -156,7 +155,7 @@ describe("selectRelevantFiles", () => {
   })
 
   it("skips files that fail to load", async () => {
-    mockCallClaude.mockResolvedValue(ok(JSON.stringify(["src/core/router.ts", "src/lib/types.ts"])))
+    mockCallIntelligence.mockResolvedValue(ok({ paths: ["src/core/router.ts", "src/lib/types.ts"] }))
     mockGetFileContent
       .mockRejectedValueOnce(new Error("Not found"))
       .mockResolvedValueOnce({ content: "types code", sha: "a2" })
@@ -175,17 +174,15 @@ describe("proposeCodeChange", () => {
   it("returns proposal with autonomous flag and source context", async () => {
     mockCanActAutonomously.mockResolvedValue(makeTrustAssessment({ canAct: false }))
 
-    mockCallClaude.mockResolvedValueOnce(ok(JSON.stringify(["src/core/router.ts"]))).mockResolvedValueOnce(
-      ok(
-        JSON.stringify({
-          shouldEvolve: true,
-          files: [{ path: "src/core/test.ts", content: "new code", description: "optimization" }],
-          commitSubject: "Optimize model router",
-          commitBody: "Improve routing performance by caching tier decisions.",
-          testExpectations: ["Model routing should be faster"],
-          reasoning: "Current routing is suboptimal"
-        })
-      )
+    mockCallIntelligence.mockResolvedValueOnce(ok({ paths: ["src/core/router.ts"] })).mockResolvedValueOnce(
+      ok({
+        shouldEvolve: true,
+        files: [{ path: "src/core/test.ts", content: "new code", description: "optimization" }],
+        commitSubject: "Optimize model router",
+        commitBody: "Improve routing performance by caching tier decisions.",
+        testExpectations: ["Model routing should be faster"],
+        reasoning: "Current routing is suboptimal"
+      })
     )
 
     mockGetFileContent.mockResolvedValue({ content: "export const router = {};", sha: "a1" })
@@ -195,14 +192,13 @@ describe("proposeCodeChange", () => {
     expect(proposal.autonomous).toBe(false)
     expect(proposal.files).toHaveLength(1)
 
-    expect(mockCallClaude).toHaveBeenNthCalledWith(
+    expect(mockCallIntelligence).toHaveBeenNthCalledWith(
       2,
       expect.objectContaining({
-        model: "claude-opus-4-6",
         userMessage: expect.stringContaining("src/core/router.ts")
       })
     )
-    expect(mockCallClaude).toHaveBeenNthCalledWith(
+    expect(mockCallIntelligence).toHaveBeenNthCalledWith(
       2,
       expect.objectContaining({
         userMessage: expect.stringContaining("export const router = {};")
@@ -212,22 +208,20 @@ describe("proposeCodeChange", () => {
 
   it("passes fallback message when no files could be loaded", async () => {
     mockCanActAutonomously.mockResolvedValue(makeTrustAssessment({ canAct: true }))
-    mockCallClaude.mockResolvedValueOnce(ok("invalid json")).mockResolvedValueOnce(
-      ok(
-        JSON.stringify({
-          shouldEvolve: false,
-          files: [],
-          commitSubject: "",
-          commitBody: "",
-          testExpectations: [],
-          reasoning: "No change needed"
-        })
-      )
+    mockCallIntelligence.mockResolvedValueOnce(ok({ paths: [] })).mockResolvedValueOnce(
+      ok({
+        shouldEvolve: false,
+        files: [],
+        commitSubject: "",
+        commitBody: "",
+        testExpectations: [],
+        reasoning: "No change needed"
+      })
     )
 
     const proposal = await proposeCodeChange("insight", "gap")
 
-    expect(mockCallClaude).toHaveBeenNthCalledWith(
+    expect(mockCallIntelligence).toHaveBeenNthCalledWith(
       2,
       expect.objectContaining({
         userMessage: expect.stringContaining("No source files could be loaded.")

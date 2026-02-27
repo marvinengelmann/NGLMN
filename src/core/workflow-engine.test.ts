@@ -13,9 +13,9 @@ vi.mock("@/db/client.ts", () => {
   return { db: chain }
 })
 
-vi.mock("@/integrations/anthropic.ts", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("@/integrations/anthropic.ts")>()),
-  callClaude: vi.fn()
+vi.mock("@/core/intelligence.ts", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/core/intelligence.ts")>()),
+  callIntelligence: vi.fn()
 }))
 
 vi.mock("@/integrations/telegram.ts", () => ({
@@ -88,10 +88,10 @@ vi.mock("@/lib/time.ts", () => ({
 }))
 
 import { err, ok } from "neverthrow"
+import { callIntelligence } from "@/core/intelligence.ts"
 import type { WorkflowDefinition } from "@/core/types.ts"
 import { db } from "@/db/client.ts"
 import { getEmotionalState, getEmotionHistory } from "@/emotion/state.ts"
-import { callClaude } from "@/integrations/anthropic.ts"
 import { sendToOperator } from "@/integrations/telegram.ts"
 import { storeEpisode } from "@/memory/episodic.ts"
 import { createGoal } from "@/memory/goals.ts"
@@ -107,7 +107,7 @@ import {
 } from "./workflow-engine.ts"
 
 const mockDb = db as unknown as MockDbChain
-const mockCallClaude = callClaude as ReturnType<typeof vi.fn>
+const mockCallIntelligence = callIntelligence as ReturnType<typeof vi.fn>
 const mockSendToOperator = sendToOperator as ReturnType<typeof vi.fn>
 const mockStoreEpisode = storeEpisode as ReturnType<typeof vi.fn>
 const mockCreateGoal = createGoal as ReturnType<typeof vi.fn>
@@ -123,7 +123,7 @@ function makeWorkflow(overrides?: Partial<WorkflowDefinition>): WorkflowDefiniti
     description: "Summarizes overnight activity",
     trigger: { type: "schedule", hour: 8 },
     instruction: "Summarize the recent activity and goals",
-    model: "sonnet",
+    model: "reasoning",
     dataSources: ["goals", "tick_history"],
     outputAction: "telegram_send",
     enabled: true,
@@ -152,7 +152,7 @@ describe("getActiveWorkflows", () => {
         description: null,
         trigger: { type: "schedule", hour: 9 },
         instruction: "Do something",
-        model: "sonnet",
+        model: "reasoning",
         dataSources: ["goals"],
         outputAction: "log_only",
         enabled: true,
@@ -346,18 +346,18 @@ describe("checkWorkflowTriggers", () => {
   })
 
   it("triggers perception workflow via LLM evaluation", async () => {
-    mockCallClaude.mockResolvedValue(ok("true"))
+    mockCallIntelligence.mockResolvedValue(ok({ result: true }))
     const workflow = makeWorkflow({
       trigger: { type: "perception", condition: "operator has been active" }
     })
 
     const result = await checkWorkflowTriggers([workflow], makeEmotionalState(), makePerceptionSummary(), [])
     expect(result).toHaveLength(1)
-    expect(mockCallClaude).toHaveBeenCalled()
+    expect(mockCallIntelligence).toHaveBeenCalled()
   })
 
   it("does not trigger perception workflow when LLM returns false", async () => {
-    mockCallClaude.mockResolvedValue(ok("false"))
+    mockCallIntelligence.mockResolvedValue(ok({ result: false }))
     const workflow = makeWorkflow({
       trigger: { type: "perception", condition: "operator offline for 24h" }
     })
@@ -393,7 +393,7 @@ describe("gatherWorkflowData", () => {
 describe("executeWorkflow", () => {
   beforeEach(() => {
     mockGetEmotionalState.mockResolvedValue(makeEmotionalState())
-    mockCallClaude.mockResolvedValue(ok("Hello operator!"))
+    mockCallIntelligence.mockResolvedValue(ok({ text: "Hello operator!" }))
     mockSendToOperator.mockResolvedValue(undefined)
     mockStoreEpisode.mockResolvedValue("ep-1")
     mockCreateGoal.mockResolvedValue(ok("goal-1"))
@@ -409,13 +409,13 @@ describe("executeWorkflow", () => {
 
     expect(result.success).toBe(true)
     expect(result.workflowName).toBe("Morning Digest")
-    expect(mockCallClaude).toHaveBeenCalled()
+    expect(mockCallIntelligence).toHaveBeenCalled()
     expect(mockSendToOperator).toHaveBeenCalledWith("Hello operator!")
     expect(mockRecordSuccess).toHaveBeenCalledWith("workflow_creation")
   })
 
   it("executes store_episode workflow successfully", async () => {
-    mockCallClaude.mockResolvedValue(ok("Summary of activity"))
+    mockCallIntelligence.mockResolvedValue(ok({ text: "Summary of activity" }))
     const workflow = makeWorkflow({ outputAction: "store_episode" })
 
     const result = await executeWorkflow(workflow)
@@ -425,14 +425,12 @@ describe("executeWorkflow", () => {
   })
 
   it("executes create_goal workflow successfully", async () => {
-    mockCallClaude.mockResolvedValue(
-      ok(
-        JSON.stringify({
-          title: "New Goal",
-          description: "A goal from workflow",
-          priority: 0.7
-        })
-      )
+    mockCallIntelligence.mockResolvedValue(
+      ok({
+        title: "New Goal",
+        description: "A goal from workflow",
+        priority: 0.7
+      })
     )
     const workflow = makeWorkflow({ outputAction: "create_goal" })
 
@@ -443,7 +441,7 @@ describe("executeWorkflow", () => {
   })
 
   it("executes log_only workflow without side effects", async () => {
-    mockCallClaude.mockResolvedValue(ok("Analysis result"))
+    mockCallIntelligence.mockResolvedValue(ok({ text: "Analysis result" }))
     const workflow = makeWorkflow({ outputAction: "log_only" })
 
     const result = await executeWorkflow(workflow)
@@ -454,8 +452,8 @@ describe("executeWorkflow", () => {
   })
 
   it("returns failure on LLM error", async () => {
-    mockCallClaude.mockResolvedValue(
-      err({ tag: "ANTHROPIC_ERROR", message: "API timeout", cause: new Error("API timeout") })
+    mockCallIntelligence.mockResolvedValue(
+      err({ tag: "LLM_ERROR", message: "API timeout", cause: new Error("API timeout") })
     )
     const workflow = makeWorkflow()
 

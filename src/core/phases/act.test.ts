@@ -12,9 +12,9 @@ vi.mock("@/core/workflow-engine.ts", () => ({
   executeWorkflow: vi.fn(() => ({ success: true }))
 }))
 
-vi.mock("@/integrations/anthropic.ts", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("@/integrations/anthropic.ts")>()),
-  callClaudeWithUsage: vi.fn()
+vi.mock("@/core/intelligence.ts", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/core/intelligence.ts")>()),
+  callIntelligence: vi.fn()
 }))
 
 vi.mock("@/memory/working.ts", () => ({
@@ -28,11 +28,6 @@ vi.mock("@/core/context-builder.ts", () => ({
   buildSimpleContext: vi.fn(() => "simple context"),
   buildComplexContext: vi.fn(() => "complex context"),
   buildDeepContext: vi.fn(() => "deep context")
-}))
-
-vi.mock("@/core/model-router.ts", () => ({
-  selectModel: vi.fn(() => "claude-haiku-4-5-20251001"),
-  getMaxTokensForTier: vi.fn(() => 500)
 }))
 
 vi.mock("@/prompts/proactive.ts", () => ({
@@ -92,9 +87,9 @@ vi.mock("@/memory/goals.ts", async () => {
 })
 
 import { ok } from "neverthrow"
+import { callIntelligence } from "@/core/intelligence.ts"
 import { processEmotionTrigger, saveEmotionalState } from "@/emotion/state.ts"
 import { computeEmotionalUpdate } from "@/emotion/update.ts"
-import { callClaudeWithUsage } from "@/integrations/anthropic.ts"
 import { sendGuardianAlert, sendToOperator } from "@/integrations/telegram.ts"
 import { storeEpisode, storeRelationshipEpisode } from "@/memory/episodic.ts"
 import { updateGoalStatus } from "@/memory/goals.ts"
@@ -105,7 +100,7 @@ import { act } from "./act.ts"
 import type { SenseResult, TickContext } from "./sense.ts"
 import type { ThinkResult } from "./think.ts"
 
-const mockCallClaudeWithUsage = callClaudeWithUsage as ReturnType<typeof vi.fn>
+const mockCallIntelligence = callIntelligence as ReturnType<typeof vi.fn>
 const mockSaveEmotionalState = saveEmotionalState as ReturnType<typeof vi.fn>
 const mockProcessEmotionTrigger = processEmotionTrigger as ReturnType<typeof vi.fn>
 const mockComputeEmotionalUpdate = computeEmotionalUpdate as ReturnType<typeof vi.fn>
@@ -157,9 +152,7 @@ describe("act phase", () => {
       triggeredWorkflows: []
     }
 
-    mockCallClaudeWithUsage.mockResolvedValue(
-      ok({ text: JSON.stringify({ action: "message_operator", content: "Hello operator!" }) })
-    )
+    mockCallIntelligence.mockResolvedValue(ok({ action: "message_operator", content: "Hello operator!" }))
     mockValidateOutput.mockResolvedValue(makeGuardianResult({ verdict: "approved" }))
 
     const result = await act(ctx, senseResult, thinkResult)
@@ -177,9 +170,7 @@ describe("act phase", () => {
       triggeredWorkflows: []
     }
 
-    mockCallClaudeWithUsage.mockResolvedValue(
-      ok({ text: JSON.stringify({ action: "message_operator", content: "bad content" }) })
-    )
+    mockCallIntelligence.mockResolvedValue(ok({ action: "message_operator", content: "bad content" }))
     mockValidateOutput.mockResolvedValue(makeGuardianResult({ verdict: "blocked", reasons: ["unsafe"] }))
 
     const result = await act(ctx, senseResult, thinkResult)
@@ -196,9 +187,7 @@ describe("act phase", () => {
       triggeredWorkflows: []
     }
 
-    mockCallClaudeWithUsage.mockResolvedValue(
-      ok({ text: JSON.stringify({ action: "reflect", content: "I noticed a pattern..." }) })
-    )
+    mockCallIntelligence.mockResolvedValue(ok({ action: "reflect", content: "I noticed a pattern..." }))
 
     await act(ctx, senseResult, thinkResult)
 
@@ -215,13 +204,11 @@ describe("act phase", () => {
       triggeredWorkflows: []
     }
 
-    mockCallClaudeWithUsage.mockResolvedValue(
+    mockCallIntelligence.mockResolvedValue(
       ok({
-        text: JSON.stringify({
-          action: "update_goal",
-          goalId: "goal-123",
-          goalStatus: "done"
-        })
+        action: "update_goal",
+        goalId: "goal-123",
+        goalStatus: "done"
       })
     )
 
@@ -237,7 +224,7 @@ describe("act phase", () => {
       triggeredWorkflows: []
     }
 
-    mockCallClaudeWithUsage.mockResolvedValue(ok({ text: JSON.stringify({ action: "nothing" }) }))
+    mockCallIntelligence.mockResolvedValue(ok({ action: "nothing" }))
 
     const result = await act(ctx, senseResult, thinkResult)
 
@@ -257,9 +244,7 @@ describe("act phase", () => {
       triggeredWorkflows: []
     }
 
-    mockCallClaudeWithUsage.mockResolvedValue(
-      ok({ text: JSON.stringify({ action: "message_operator", content: "warm message" }) })
-    )
+    mockCallIntelligence.mockResolvedValue(ok({ action: "message_operator", content: "warm message" }))
     mockValidateOutput.mockResolvedValue(makeGuardianResult({ verdict: "approved" }))
 
     await act(ctx, highConnectionSense, thinkResult)
@@ -278,9 +263,7 @@ describe("act phase", () => {
       triggeredWorkflows: []
     }
 
-    mockCallClaudeWithUsage.mockResolvedValue(
-      ok({ text: JSON.stringify({ action: "message_operator", content: "hello" }) })
-    )
+    mockCallIntelligence.mockResolvedValue(ok({ action: "message_operator", content: "hello" }))
     mockValidateOutput.mockResolvedValue(makeGuardianResult({ verdict: "approved" }))
 
     await act(ctx, lowConnectionSense, thinkResult)
@@ -296,9 +279,7 @@ describe("act phase", () => {
       triggeredWorkflows: []
     }
 
-    mockCallClaudeWithUsage.mockResolvedValue(
-      ok({ text: JSON.stringify({ action: "message_operator", content: "bad content" }) })
-    )
+    mockCallIntelligence.mockResolvedValue(ok({ action: "message_operator", content: "bad content" }))
     mockValidateOutput.mockResolvedValue(makeGuardianResult({ verdict: "blocked", reasons: ["unsafe"] }))
 
     await act(ctx, senseResult, thinkResult)
@@ -317,9 +298,7 @@ describe("act phase", () => {
       triggeredWorkflows: []
     }
 
-    mockCallClaudeWithUsage.mockResolvedValue(
-      ok({ text: JSON.stringify({ action: "message_operator", content: "edgy content" }) })
-    )
+    mockCallIntelligence.mockResolvedValue(ok({ action: "message_operator", content: "edgy content" }))
     mockValidateOutput.mockResolvedValue(makeGuardianResult({ verdict: "warning", reasons: ["tone"] }))
 
     await act(ctx, senseResult, thinkResult)
@@ -338,9 +317,7 @@ describe("act phase", () => {
       triggeredWorkflows: []
     }
 
-    mockCallClaudeWithUsage.mockResolvedValue(
-      ok({ text: JSON.stringify({ action: "update_goal", goalId: "goal-123", goalStatus: "done" }) })
-    )
+    mockCallIntelligence.mockResolvedValue(ok({ action: "update_goal", goalId: "goal-123", goalStatus: "done" }))
 
     await act(ctx, senseResult, thinkResult)
 
@@ -358,9 +335,7 @@ describe("act phase", () => {
       triggeredWorkflows: []
     }
 
-    mockCallClaudeWithUsage.mockResolvedValue(
-      ok({ text: JSON.stringify({ action: "update_goal", goalId: "goal-456", goalStatus: "failed" }) })
-    )
+    mockCallIntelligence.mockResolvedValue(ok({ action: "update_goal", goalId: "goal-456", goalStatus: "failed" }))
 
     await act(ctx, senseResult, thinkResult)
 
@@ -378,7 +353,7 @@ describe("act phase", () => {
       triggeredWorkflows: []
     }
 
-    mockCallClaudeWithUsage.mockResolvedValue({ isErr: () => true, error: { message: "api down" } } as never)
+    mockCallIntelligence.mockResolvedValue({ isErr: () => true, error: { message: "api down" } } as never)
 
     await act(ctx, senseResult, thinkResult)
 
@@ -396,9 +371,7 @@ describe("act phase", () => {
       triggeredWorkflows: []
     }
 
-    mockCallClaudeWithUsage.mockResolvedValue(
-      ok({ text: JSON.stringify({ action: "message_operator", content: "hi!" }) })
-    )
+    mockCallIntelligence.mockResolvedValue(ok({ action: "message_operator", content: "hi!" }))
     mockValidateOutput.mockResolvedValue(makeGuardianResult({ verdict: "approved" }))
 
     await act(ctx, senseResult, thinkResult)

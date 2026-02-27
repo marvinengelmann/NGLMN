@@ -90,7 +90,7 @@ const thinkResult: ThinkResult = {
 const actResult: ActResult = {
   responseSent: true,
   responseText: "hello",
-  modelUsed: "claude-haiku-4-5-20251001"
+  modelUsed: "xai/grok-4-1-fast-non-reasoning"
 }
 
 describe("maintain phase", () => {
@@ -156,7 +156,7 @@ describe("maintain phase", () => {
     expect(result.triageDecision).toBe("simple")
     expect(result.triageReason).toBe("test reason")
     expect(result.responseSent).toBe(true)
-    expect(result.modelUsed).toBe("claude-haiku-4-5-20251001")
+    expect(result.modelUsed).toBe("xai/grok-4-1-fast-non-reasoning")
     expect(result.messagesProcessed).toBe(0)
     expect(result.durationMs).toBeGreaterThanOrEqual(0)
   })

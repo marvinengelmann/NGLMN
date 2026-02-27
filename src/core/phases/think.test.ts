@@ -10,9 +10,9 @@ vi.mock("@/lib/sentry.ts", () => ({
   addBreadcrumb: vi.fn()
 }))
 
-vi.mock("@/integrations/anthropic.ts", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("@/integrations/anthropic.ts")>()),
-  callClaude: vi.fn()
+vi.mock("@/core/intelligence.ts", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/core/intelligence.ts")>()),
+  callIntelligence: vi.fn()
 }))
 
 vi.mock("@/memory/working.ts", () => ({
@@ -22,11 +22,6 @@ vi.mock("@/memory/working.ts", () => ({
 
 vi.mock("@/core/context-builder.ts", () => ({
   buildTriageContext: vi.fn()
-}))
-
-vi.mock("@/core/model-router.ts", () => ({
-  getModelForPhase: vi.fn(() => "claude-haiku-4-5-20251001"),
-  getMaxTokensForTier: vi.fn(() => 500)
 }))
 
 vi.mock("@/prompts/triage.ts", () => ({
@@ -57,8 +52,8 @@ vi.mock("@/core/workflow-engine.ts", () => ({
 
 import { ok } from "neverthrow"
 import { buildTriageContext } from "@/core/context-builder.ts"
+import { callIntelligence } from "@/core/intelligence.ts"
 import { checkWorkflowTriggers, executeWorkflow, getActiveWorkflows } from "@/core/workflow-engine.ts"
-import { callClaude } from "@/integrations/anthropic.ts"
 import { addBreadcrumb, captureError, setTickContext } from "@/lib/sentry.ts"
 import { getRecentTriageDecisions, pushRecentTriageDecision } from "@/memory/working.ts"
 import { getEffectivePersonality } from "@/personality/dna.ts"
@@ -72,7 +67,7 @@ import {
 import type { SenseResult, TickContext } from "./sense.ts"
 import { think } from "./think.ts"
 
-const mockCallClaude = callClaude as ReturnType<typeof vi.fn>
+const mockCallIntelligence = callIntelligence as ReturnType<typeof vi.fn>
 const mockCaptureError = captureError as ReturnType<typeof vi.fn>
 const mockAddBreadcrumb = addBreadcrumb as ReturnType<typeof vi.fn>
 const mockSetTickContext = setTickContext as ReturnType<typeof vi.fn>
@@ -106,13 +101,14 @@ describe("think phase", () => {
   })
 
   it("parses valid triage JSON into TriageResult", async () => {
-    const triageJson = JSON.stringify({
-      decision: "simple",
-      reason: "operator might enjoy update",
-      confidence: 0.8,
-      estimatedTokens: 200
-    })
-    mockCallClaude.mockResolvedValue(ok(triageJson))
+    mockCallIntelligence.mockResolvedValue(
+      ok({
+        decision: "simple",
+        reason: "operator might enjoy update",
+        confidence: 0.8,
+        estimatedTokens: 200
+      })
+    )
 
     const result = await think(ctx, senseResult)
 
@@ -121,29 +117,17 @@ describe("think phase", () => {
     expect(result.triageResult.confidence).toBe(0.8)
   })
 
-  it("falls back to idle on triage parse error", async () => {
-    mockCallClaude.mockResolvedValue(ok("not valid json at all"))
-
-    const result = await think(ctx, senseResult)
-
-    expect(result.triageResult.decision).toBe("idle")
-    expect(result.triageResult.reason).toBe("triage parse error")
-    expect(mockCaptureError).toHaveBeenCalled()
-  })
-
   it("returns triggered workflows without executing them", async () => {
     const workflow = makeWorkflowDefinition()
     mockGetActiveWorkflows.mockResolvedValue([workflow])
     mockCheckWorkflowTriggers.mockResolvedValue([workflow])
-    mockCallClaude.mockResolvedValue(
-      ok(
-        JSON.stringify({
-          decision: "idle",
-          reason: "test",
-          confidence: 0.5,
-          estimatedTokens: 0
-        })
-      )
+    mockCallIntelligence.mockResolvedValue(
+      ok({
+        decision: "idle",
+        reason: "test",
+        confidence: 0.5,
+        estimatedTokens: 0
+      })
     )
 
     const result = await think(ctx, senseResult)
@@ -154,15 +138,13 @@ describe("think phase", () => {
 
   it("catches workflow errors without blocking triage", async () => {
     mockGetActiveWorkflows.mockRejectedValue(new Error("workflow db down"))
-    mockCallClaude.mockResolvedValue(
-      ok(
-        JSON.stringify({
-          decision: "idle",
-          reason: "test",
-          confidence: 0.5,
-          estimatedTokens: 0
-        })
-      )
+    mockCallIntelligence.mockResolvedValue(
+      ok({
+        decision: "idle",
+        reason: "test",
+        confidence: 0.5,
+        estimatedTokens: 0
+      })
     )
 
     const result = await think(ctx, senseResult)
@@ -172,15 +154,13 @@ describe("think phase", () => {
   })
 
   it("sets Sentry breadcrumbs for triage", async () => {
-    mockCallClaude.mockResolvedValue(
-      ok(
-        JSON.stringify({
-          decision: "complex",
-          reason: "interesting pattern",
-          confidence: 0.9,
-          estimatedTokens: 500
-        })
-      )
+    mockCallIntelligence.mockResolvedValue(
+      ok({
+        decision: "complex",
+        reason: "interesting pattern",
+        confidence: 0.9,
+        estimatedTokens: 500
+      })
     )
 
     await think(ctx, senseResult)
@@ -193,15 +173,13 @@ describe("think phase", () => {
   })
 
   it("pushes triage decision to recent decisions", async () => {
-    mockCallClaude.mockResolvedValue(
-      ok(
-        JSON.stringify({
-          decision: "deep",
-          reason: "deep thought",
-          confidence: 0.95,
-          estimatedTokens: 1000
-        })
-      )
+    mockCallIntelligence.mockResolvedValue(
+      ok({
+        decision: "deep",
+        reason: "deep thought",
+        confidence: 0.95,
+        estimatedTokens: 1000
+      })
     )
 
     await think(ctx, senseResult)
@@ -212,15 +190,13 @@ describe("think phase", () => {
   it("builds personality prompt correctly", async () => {
     const personality = makePersonalityLayer({ warmth: 0.9 })
     mockGetEffectivePersonality.mockResolvedValue(personality)
-    mockCallClaude.mockResolvedValue(
-      ok(
-        JSON.stringify({
-          decision: "idle",
-          reason: "test",
-          confidence: 0.5,
-          estimatedTokens: 0
-        })
-      )
+    mockCallIntelligence.mockResolvedValue(
+      ok({
+        decision: "idle",
+        reason: "test",
+        confidence: 0.5,
+        estimatedTokens: 0
+      })
     )
 
     const result = await think(ctx, senseResult)
@@ -230,15 +206,13 @@ describe("think phase", () => {
   })
 
   it("updates tick context with decision", async () => {
-    mockCallClaude.mockResolvedValue(
-      ok(
-        JSON.stringify({
-          decision: "simple",
-          reason: "test",
-          confidence: 0.8,
-          estimatedTokens: 100
-        })
-      )
+    mockCallIntelligence.mockResolvedValue(
+      ok({
+        decision: "simple",
+        reason: "test",
+        confidence: 0.8,
+        estimatedTokens: 100
+      })
     )
 
     await think(ctx, senseResult)

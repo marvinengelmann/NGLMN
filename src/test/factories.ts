@@ -248,7 +248,7 @@ export function makeWorkflowDefinition(overrides?: Partial<WorkflowDefinition>):
     description: "A test workflow",
     trigger: { type: "schedule", hour: 9 },
     instruction: "Summarize goals and report",
-    model: "sonnet",
+    model: "reasoning",
     dataSources: ["goals"],
     outputAction: "log_only",
     enabled: true,

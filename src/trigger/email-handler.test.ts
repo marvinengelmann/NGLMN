@@ -4,11 +4,6 @@ vi.mock("@trigger.dev/sdk", () => ({
   task: vi.fn((config: Record<string, unknown>) => ({ ...config, trigger: vi.fn() }))
 }))
 
-vi.mock("@/core/model-router.ts", () => ({
-  getMaxTokensForTier: vi.fn(() => 2048),
-  selectModel: vi.fn(() => "haiku")
-}))
-
 vi.mock("@/emotion/state.ts", () => ({
   getEmotionalState: vi.fn(() => ({
     curiosity: 0.5,
@@ -39,9 +34,9 @@ vi.mock("@/evolution/prompt-loader.ts", () => ({
   loadPrompt: vi.fn((_key: string, fallback: string) => fallback)
 }))
 
-vi.mock("@/integrations/anthropic.ts", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("@/integrations/anthropic.ts")>()),
-  callClaude: vi.fn()
+vi.mock("@/core/intelligence.ts", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/core/intelligence.ts")>()),
+  callIntelligence: vi.fn()
 }))
 
 vi.mock("@/integrations/resend.ts", () => ({

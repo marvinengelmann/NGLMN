@@ -1,9 +1,9 @@
 import { ok } from "neverthrow"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
-vi.mock("@/integrations/anthropic.ts", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("@/integrations/anthropic.ts")>()),
-  callClaude: vi.fn()
+vi.mock("@/core/intelligence.ts", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/core/intelligence.ts")>()),
+  callIntelligence: vi.fn()
 }))
 
 vi.mock("@/memory/episodic.ts", () => ({
@@ -12,12 +12,12 @@ vi.mock("@/memory/episodic.ts", () => ({
   queryRelated: vi.fn()
 }))
 
-import { callClaude } from "@/integrations/anthropic.ts"
+import { callIntelligence } from "@/core/intelligence.ts"
 import { queryRelated, storeEpisode, storeRelationshipEpisode } from "@/memory/episodic.ts"
 import { makeConversationSlot, makeEmotionalState, makePendingMessage } from "@/test/factories.ts"
 import { archiveConversation, detectConversationBoundary, recallArchivedContext } from "./conversation.ts"
 
-const mockCallClaude = callClaude as ReturnType<typeof vi.fn>
+const mockCallIntelligence = callIntelligence as ReturnType<typeof vi.fn>
 const mockStoreEpisode = storeEpisode as ReturnType<typeof vi.fn>
 const mockStoreRelationshipEpisode = storeRelationshipEpisode as ReturnType<typeof vi.fn>
 const mockQueryRelated = queryRelated as ReturnType<typeof vi.fn>
@@ -31,43 +31,30 @@ describe("detectConversationBoundary", () => {
     const slot = makeConversationSlot({ messages: [] })
     const result = await detectConversationBoundary(slot, [makePendingMessage()])
     expect(result.isNewConversation).toBe(false)
-    expect(mockCallClaude).not.toHaveBeenCalled()
+    expect(mockCallIntelligence).not.toHaveBeenCalled()
   })
 
-  it("calls Haiku to classify when slot has messages", async () => {
-    mockCallClaude.mockResolvedValue(ok(JSON.stringify({ isNewConversation: false, reason: "same topic" })))
+  it("calls LLM to classify when slot has messages", async () => {
+    mockCallIntelligence.mockResolvedValue(ok({ isNewConversation: false, reason: "same topic" }))
 
     const slot = makeConversationSlot()
     const newMsgs = [makePendingMessage({ text: "What about that?" })]
 
     const result = await detectConversationBoundary(slot, newMsgs)
 
-    expect(mockCallClaude).toHaveBeenCalledOnce()
+    expect(mockCallIntelligence).toHaveBeenCalledOnce()
     expect(result.isNewConversation).toBe(false)
     expect(result.reason).toBe("same topic")
   })
 
-  it("detects new conversation when Haiku says so", async () => {
-    mockCallClaude.mockResolvedValue(
-      ok(JSON.stringify({ isNewConversation: true, reason: "completely different topic" }))
-    )
+  it("detects new conversation when LLM says so", async () => {
+    mockCallIntelligence.mockResolvedValue(ok({ isNewConversation: true, reason: "completely different topic" }))
 
     const slot = makeConversationSlot()
     const newMsgs = [makePendingMessage({ text: "Unrelated question" })]
 
     const result = await detectConversationBoundary(slot, newMsgs)
     expect(result.isNewConversation).toBe(true)
-  })
-
-  it("falls back to continuation on parse error", async () => {
-    mockCallClaude.mockResolvedValue(ok("invalid json"))
-
-    const slot = makeConversationSlot()
-    const newMsgs = [makePendingMessage({ text: "Hello" })]
-
-    const result = await detectConversationBoundary(slot, newMsgs)
-    expect(result.isNewConversation).toBe(false)
-    expect(result.reason).toContain("parse failed")
   })
 })
 
@@ -78,25 +65,25 @@ describe("archiveConversation", () => {
 
   it("does nothing for empty messages", async () => {
     await archiveConversation([], makeEmotionalState())
-    expect(mockCallClaude).not.toHaveBeenCalled()
+    expect(mockCallIntelligence).not.toHaveBeenCalled()
   })
 
   it("summarizes and stores as interaction episode", async () => {
-    mockCallClaude.mockResolvedValue(ok("Discussed project goals"))
+    mockCallIntelligence.mockResolvedValue(ok({ text: "Discussed project goals" }))
 
     const messages = makeConversationSlot().messages
     const emotion = makeEmotionalState({ connection: 0.4 })
 
     await archiveConversation(messages, emotion)
 
-    expect(mockCallClaude).toHaveBeenCalledOnce()
+    expect(mockCallIntelligence).toHaveBeenCalledOnce()
     expect(mockStoreEpisode).toHaveBeenCalledWith("Discussed project goals", "interaction", {
       relevanceScore: 0.7
     })
   })
 
   it("stores relationship episode when connection > 0.6", async () => {
-    mockCallClaude.mockResolvedValue(ok("Deep personal conversation"))
+    mockCallIntelligence.mockResolvedValue(ok({ text: "Deep personal conversation" }))
 
     const messages = makeConversationSlot().messages
     const emotion = makeEmotionalState({ connection: 0.8 })
