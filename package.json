@@ -21,18 +21,17 @@
     "x-auth": "bun run scripts/x-auth.ts"
   },
   "dependencies": {
-    "@anthropic-ai/sdk": "^0.78.0",
     "@date-fns/tz": "^1.4.1",
     "@neondatabase/serverless": "^1.0.2",
     "@sentry/node": "^10.40.0",
     "@trigger.dev/sdk": "^4.4.1",
     "@upstash/redis": "^1.36.2",
     "@upstash/vector": "^1.2.2",
+    "ai": "^6.0.104",
     "date-fns": "^4.1.0",
     "drizzle-orm": "^0.45.1",
     "e2b": "^2.13.0",
     "grammy": "^1.40.1",
-    "jsonrepair": "^3.13.2",
     "neverthrow": "^8.2.0",
     "resend": "^6.9.2",
     "zod": "^4.3.6"
