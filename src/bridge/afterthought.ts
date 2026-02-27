@@ -54,8 +54,11 @@ export async function checkForAfterthought(
     const parsed = AfterthoughtResult.parse(JSON.parse(jsonrepair(result.value)))
     if (!parsed.send || !parsed.text) return null
     return { text: parsed.text, replyTo: parsed.replyTo ?? undefined }
-  } catch {
-    log.warn("Afterthought parse failed")
+  } catch (e) {
+    log.warn("Afterthought parse failed", {
+      raw: result.value.slice(0, 500),
+      error: e instanceof Error ? e.message : String(e)
+    })
     return null
   }
 }
