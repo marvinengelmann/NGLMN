@@ -1,13 +1,13 @@
 # ANIMA — Adaptive Neural Introspective Memory Autonomy
 
-An autonomously operating, self-evolving AI entity built on the Anthropic Claude model family. ANIMA is not a chatbot or assistant — it is a digital entity with its own heartbeat, memory, personality, and the ability to self-evolve.
+An autonomously operating, self-evolving AI entity powered by xAI Grok via Vercel AI Gateway. ANIMA is not a chatbot or assistant — it is a digital entity with its own heartbeat, memory, personality, and the ability to self-evolve.
 
 > **External watchdog:** [anima-watchdog](https://github.com/marvinengelmann/anima-watchdog) — Isolated recovery guardian that monitors and restores ANIMA on failure.
 
 ## Features
 
 - **Autonomous Heartbeat** — Fixed 5-minute cron loop with four phases (SENSE → THINK → ACT → MAINTAIN)
-- **Three-Tier Model Routing** — Haiku, Sonnet, Opus with budget awareness
+- **Two-Tier Model Routing** — Grok Fast and Reasoning via AI Gateway
 - **Three-Layer Memory** — Working (Redis), Episodic (Vector), Semantic (Postgres) with relationship graph
 - **MBTI-Based Personality** — Ten-dimension two-layer model (base + adaptive) evolving through reflection
 - **Simulated Emotions** — 7-dimension state vector with decay, MBTI baselines, and metrics calibration
@@ -16,7 +16,7 @@ An autonomously operating, self-evolving AI entity built on the Anthropic Claude
 - **Human Bridge** — Unified Telegram polling and conversation handler with boundary detection, typing simulation, afterthought messages, and multi-round follow-ups
 - **X Integration** — Mention polling, trust-gated replies and proactive tweets
 - **Email Communication** — Resend-based processing with trust-gated responses and Guardian validation
-- **Dream Simulation** — Nightly consolidation, creative connections, Opus reflection, and morning messages
+- **Dream Simulation** — Nightly consolidation, creative connections, deep reflection, and morning messages
 - **Self-Evolution** — Three tiers: prompt and workflow evolution (DB), code modification (E2B sandbox)
 - **Curiosity Engine** — Emotionally triggered interest exploration that generates self-directed goals
 - **Security** — Guardian (allowlist, validation, drift detection), rollback engine, external watchdog
@@ -44,8 +44,8 @@ The system consists of ten interlocking layers:
 ```
 Heartbeat (5-min cron)
   SENSE    → Evaluate perception sensors, update emotional state (decay + events), detect pattern goals
-  THINK    → Check workflow triggers, build personality prompt, triage via Haiku (idle/simple/complex/deep)
-  ACT      → Execute triggered workflows, model routing (Haiku/Sonnet/Opus), proactive action, Guardian validation
+  THINK    → Check workflow triggers, build personality prompt, triage via Grok Fast (idle/simple/complex/deep)
+  ACT      → Execute triggered workflows, model routing (Fast/Reasoning), proactive action, Guardian validation
   MAINTAIN → Drift detection, ad-hoc reflection trigger, tick log persistence
 ```
 
@@ -54,7 +54,7 @@ Heartbeat (5-min cron)
 | Component | Technology |
 |-----------|-----------|
 | Runtime & Orchestration | [Trigger.dev](https://trigger.dev) Cloud (Bun/TypeScript) |
-| LLM | [Anthropic Claude](https://anthropic.com) (Haiku 4.5, Sonnet 4.6, Opus 4.6) |
+| LLM | [xAI Grok](https://x.ai) via [Vercel AI Gateway](https://sdk.vercel.ai) (Fast, Reasoning) |
 | Relational DB | [Neon](https://neon.tech) (Serverless Postgres) |
 | ORM | [Drizzle](https://orm.drizzle.team) |
 | Cache / KV | [Upstash Redis](https://upstash.com) |
@@ -72,7 +72,7 @@ Heartbeat (5-min cron)
 - [Trigger.dev](https://trigger.dev) account + CLI
 - [Neon](https://neon.tech) database
 - [Upstash](https://upstash.com) Redis + Vector instances
-- [Anthropic](https://console.anthropic.com) API key
+- [Vercel AI Gateway](https://sdk.vercel.ai) API key (for xAI Grok access)
 - [Telegram Bot](https://core.telegram.org/bots#botfather) token
 - [X Developer](https://developer.x.com) app credentials
 - [Resend](https://resend.com) API key
@@ -100,7 +100,7 @@ Environment variables:
 | Variable | Description |
 |----------|-------------|
 | | **Core AI** |
-| `ANTHROPIC_API_KEY` | Anthropic API key |
+| `AI_GATEWAY_API_KEY` | Vercel AI Gateway API key |
 | `ANIMA_PERSONALITY_TYPE` | MBTI type string (e.g. `INFP-T`) |
 | | **Orchestration** |
 | `TRIGGER_SECRET_KEY` | Trigger.dev secret key |
@@ -187,12 +187,12 @@ ANIMA deploys automatically through Trigger.dev on every push to `master`. The s
 src/
 ├── bridge/         # Human Bridge — unified Telegram polling, conversation handling, typing simulation, afterthought
 ├── config/         # Environment validation, constants, error taxonomy, Result helpers, Sentry setup
-├── core/           # Model router, context builder, budget tracking, workflow engine, heartbeat phases
+├── core/           # Intelligence (LLM), context builder, budget tracking, workflow engine, heartbeat phases
 ├── db/             # Drizzle schema (11 tables), migrations, client, seed
 ├── dream/          # Dream orchestration, consolidation, creative connections, reflection, morning messages
 ├── emotion/        # 7-dimension state vector, update logic (decay + events), calibration, metrics check
 ├── evolution/      # Prompt/workflow/code evolution, curiosity engine, changelog, prompt loader
-├── integrations/   # Anthropic, Redis, Vector, Telegram (Grammy), X, GitHub, E2B, Resend, OpenWeather
+├── integrations/   # Redis, Vector, Telegram (Grammy), X, GitHub, E2B, Resend, OpenWeather
 ├── lib/            # Shared utilities (math, time, logger, sentry)
 ├── memory/         # Working (Redis), episodic (Vector), semantic (Postgres), goal tracking
 ├── perception/     # 6 passive sensors, pattern-based goal detection
