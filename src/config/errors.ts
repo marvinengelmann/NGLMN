@@ -1,7 +1,7 @@
 export type AnimaErrorTag =
   | "REDIS_ERROR"
   | "DB_ERROR"
-  | "ANTHROPIC_ERROR"
+  | "LLM_ERROR"
   | "PARSE_ERROR"
   | "VALIDATION_ERROR"
   | "GUARDIAN_BLOCKED"

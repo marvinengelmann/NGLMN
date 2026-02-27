@@ -1,5 +1,5 @@
 {
-  "id": "8cdd94d5-37e7-4d66-b041-e7dfcded1246",
+  "id": "da36f2cc-7855-4f51-ad5c-e2eb309bec3a",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
@@ -937,7 +937,7 @@
           "type": "text",
           "primaryKey": false,
           "notNull": true,
-          "default": "'sonnet'"
+          "default": "'reasoning'"
         },
         "data_sources": {
           "name": "data_sources",

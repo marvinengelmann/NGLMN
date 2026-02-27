@@ -118,7 +118,7 @@ CREATE TABLE "workflows" (
 	"description" text,
 	"trigger" jsonb NOT NULL,
 	"instruction" text NOT NULL,
-	"model" text DEFAULT 'sonnet' NOT NULL,
+	"model" text DEFAULT 'reasoning' NOT NULL,
 	"data_sources" jsonb NOT NULL,
 	"output_action" text NOT NULL,
 	"enabled" boolean DEFAULT false,

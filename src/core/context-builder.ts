@@ -138,7 +138,7 @@ function formatPerceptionBlock(perception: PerceptionSummary): string {
 }
 
 /**
- * Build a compact context for the Haiku triage phase.
+ * Build a compact context for the fast-tier triage phase.
  * Includes time, last tick, conversation indicator, pending messages, top goals,
  * emotional state, and perception summary.
  */
@@ -206,7 +206,7 @@ export async function buildTriageContext(): Promise<TriageContext> {
 }
 
 /**
- * Build context for Haiku simple-tier responses.
+ * Build context for fast-tier simple responses.
  * Includes personality prompt, conversation history, top 3 relevant episodes, and pending messages.
  */
 export async function buildSimpleContext(messages: PendingMessage[], personalityPrompt?: string): Promise<string> {
@@ -317,7 +317,7 @@ function formatMessageSection(messages: PendingMessage[]): string {
 }
 
 /**
- * Build full context for Sonnet complex-tier responses.
+ * Build full context for reasoning-tier complex responses.
  * Includes personality prompt, emotion, perception, conversation history, last tick,
  * episodic memories (including relationship history), semantic knowledge,
  * all active goals, and pending messages.
@@ -368,7 +368,7 @@ export async function buildComplexContext(messages: PendingMessage[], personalit
 }
 
 /**
- * Build maximum context for Opus deep-tier responses.
+ * Build maximum context for reasoning-tier deep responses.
  * Includes everything from complex plus emotion history, trust levels,
  * and full personality DNA (base + adaptive separately).
  */

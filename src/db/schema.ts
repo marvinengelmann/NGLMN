@@ -177,7 +177,7 @@ export const workflows = pgTable(
     description: text("description"),
     trigger: jsonb("trigger").notNull(),
     instruction: text("instruction").notNull(),
-    model: text("model").notNull().default("sonnet"),
+    model: text("model").notNull().default("reasoning"),
     dataSources: jsonb("data_sources").notNull(),
     outputAction: text("output_action").notNull(),
     enabled: boolean("enabled").default(false),

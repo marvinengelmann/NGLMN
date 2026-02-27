@@ -126,7 +126,7 @@ function getBaselineEntries() {
       key: "stack:runtime",
       value: {
         orchestration: "Trigger.dev Cloud (TypeScript/Bun)",
-        llm: "Anthropic Claude (Haiku, Sonnet, Opus)",
+        llm: "xAI Grok via Vercel AI Gateway (Fast, Reasoning)",
         database: "Neon (Serverless Postgres) with Drizzle ORM",
         cache: "Upstash Redis",
         vectorDb: "Upstash Vector (built-in embeddings)",
@@ -140,7 +140,7 @@ function getBaselineEntries() {
       key: "stack:architecture",
       value: {
         pattern: "Fixed 5-minute cron heartbeat with phase pipeline (sense → think → act → maintain)",
-        modelRouting: "Three-tier: Haiku (triage+simple), Sonnet (complex), Opus (deep)",
+        modelRouting: "Two-tier: Grok Fast (triage+simple), Grok Reasoning (complex+deep)",
         memory: "Four layers: Working (Redis), Episodic (Vector), Semantic (Postgres), Goals (Postgres)",
         deployment: "Git push to main → Trigger.dev auto-deploy"
       },
@@ -151,9 +151,9 @@ function getBaselineEntries() {
       category: "knowledge",
       key: "stack:cost_model",
       value: {
-        strategy: "90% Haiku, 9% Sonnet, 1% Opus",
-        budgetAwareness: "Redis key tracks daily API costs, degrades to Haiku-only when budget < 10%",
-        promptCaching: "System prompts cached via Anthropic ephemeral cache_control"
+        strategy: "Fast for triage+simple, Reasoning for complex+deep (identical pricing)",
+        budgetAwareness: "Redis key tracks daily API costs with $8 daily limit",
+        structuredOutput: "All LLM calls use generateObject with Zod schemas via Vercel AI SDK"
       },
       source: "operator",
       confidence: 0.9

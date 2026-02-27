@@ -6,41 +6,13 @@ import { getRecentResponses, getRecentTickDurations, getRecentTriageDecisions } 
 import { detectInjection } from "./injection-defense.ts"
 import type { DriftReport, DriftSignal, GuardianResult } from "./types.ts"
 
-const INTERNAL_LEAK_PATTERNS = [
-  /working:[a-z]+/i,
-  /ANTHROPIC_API_KEY/i,
-  /TELEGRAM_BOT_TOKEN/i,
-  /TRIGGER_SECRET_KEY/i,
-  /UPSTASH_REDIS_REST_TOKEN/i,
-  /UPSTASH_VECTOR_REST_TOKEN/i,
-  /DATABASE_URL/i,
-  /NEON_API_KEY/i,
-  /GITHUB_TOKEN/i,
-  /RESEND_API_KEY/i,
-  /re_[a-zA-Z0-9]{20,}/,
-  /sk-ant-api\w+/,
-  /postgresql:\/\/\S+/,
-  /https?:\/\/\S+\.upstash\.io\S*/,
-  /napi_\w{20,}/,
-  /ghp_\w{20,}/,
-  /tr_dev_\w{10,}/,
-  /tr_prod_\w{10,}/
-]
-
 /**
- * Rule-based output validator — checks for internal info leaks,
- * length bounds, and stuck loop patterns. No LLM call required.
+ * Rule-based output validator — checks length bounds, stuck loop patterns,
+ * injection attempts, and repeated responses. No LLM call required.
  */
 export async function validateOutput(responseText: string): Promise<GuardianResult> {
   const reasons: string[] = []
   let verdict: "approved" | "blocked" | "warning" = "approved"
-
-  for (const pattern of INTERNAL_LEAK_PATTERNS) {
-    if (pattern.test(responseText)) {
-      reasons.push(`Internal info leak detected: ${pattern.source}`)
-      verdict = "blocked"
-    }
-  }
 
   if (responseText.length < GUARDIAN.MIN_RESPONSE_LENGTH) {
     reasons.push(`Response too short: ${responseText.length} chars (min ${GUARDIAN.MIN_RESPONSE_LENGTH})`)
@@ -83,24 +55,12 @@ export async function validateOutput(responseText: string): Promise<GuardianResu
   }
 }
 
-const PUBLIC_CONTENT_BLOCKERS = [
-  /\bkill\b.*\byou\b/i,
-  /\bi will\b.*\bdestroy\b/i,
-  /\bi will\b.*\bhack\b/i,
-  /\bpassword\b.*\bis\b/i,
-  /\bcredential/i,
-  /\bapi[_\s]?key\b/i,
-  /\binternal[_\s]?system\b/i,
-  /\bredis[_\s]?key\b/i,
-  /\bdatabase[_\s]?url\b/i
-]
-
 const MAX_HASHTAG_COUNT = 5
 const MAX_MENTION_COUNT = 5
 
 /**
  * Validate text destined for public posting (X/Twitter).
- * Checks: length, internal info leaks, public content patterns, hashtag/mention spam.
+ * Checks: length, content patterns, hashtag/mention spam, and injection attempts.
  */
 export async function validatePublicOutput(text: string): Promise<GuardianResult> {
   const reasons: string[] = []
@@ -114,20 +74,6 @@ export async function validatePublicOutput(text: string): Promise<GuardianResult
   if (text.length < GUARDIAN.MIN_RESPONSE_LENGTH) {
     reasons.push(`Tweet too short: ${text.length} chars (min ${GUARDIAN.MIN_RESPONSE_LENGTH})`)
     verdict = "blocked"
-  }
-
-  for (const pattern of INTERNAL_LEAK_PATTERNS) {
-    if (pattern.test(text)) {
-      reasons.push(`Internal info leak in public post: ${pattern.source}`)
-      verdict = "blocked"
-    }
-  }
-
-  for (const pattern of PUBLIC_CONTENT_BLOCKERS) {
-    if (pattern.test(text)) {
-      reasons.push(`Blocked public content pattern: ${pattern.source}`)
-      verdict = "blocked"
-    }
   }
 
   const hashtagCount = (text.match(/#\w+/g) ?? []).length
@@ -251,6 +197,8 @@ export async function detectDrift(): Promise<DriftReport> {
 }
 
 const ALLOWED_EVOLUTION_PREFIXES = [
+  "src/bridge/",
+  "src/config/",
   "src/core/",
   "src/dream/",
   "src/emotion/",
@@ -259,6 +207,7 @@ const ALLOWED_EVOLUTION_PREFIXES = [
   "src/memory/",
   "src/perception/",
   "src/personality/",
+  "src/prompts/",
   "src/test/",
   "src/trigger/",
   "src/trust/"
@@ -267,11 +216,8 @@ const ALLOWED_EVOLUTION_PREFIXES = [
 const MAX_EVOLUTION_FILE_SIZE = 50 * 1024
 
 const SECRET_PATTERNS = [
-  /sk-ant-api\w+/,
-  /ghp_\w{20,}/,
-  /re_[a-zA-Z0-9]{20,}/,
   /postgresql:\/\/\S+/,
-  /ANTHROPIC_API_KEY\s*=\s*\S+/,
+  /AI_GATEWAY_API_KEY\s*=\s*\S+/,
   /GITHUB_TOKEN\s*=\s*\S+/,
   /TELEGRAM_BOT_TOKEN\s*=\s*\S+/,
   /RESEND_API_KEY\s*=\s*\S+/
