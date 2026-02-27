@@ -90,7 +90,7 @@ export const healthCheckTask = schedules.task({
 
     let budgetConsumed = 0
     let budgetLimit = 8.0
-    let budgetCompliant = true
+    let budgetCompliant = false
     try {
       const budget = await getBudgetState()
       budgetConsumed = budget.consumedToday
@@ -122,11 +122,13 @@ export const healthCheckTask = schedules.task({
       errors.push(`Personality DNA: ${e instanceof Error ? e.message : String(e)}`)
     }
 
+    let emotionBlocked = false
     try {
       const emotionState = await getCurrentEmotion()
       if (emotionState) {
         const emotionCheck = validateEmotionalState(emotionState)
         if (emotionCheck.verdict === "blocked") {
+          emotionBlocked = true
           errors.push(...emotionCheck.reasons)
         }
       }
@@ -161,7 +163,8 @@ export const healthCheckTask = schedules.task({
       resendStatus === "error" ||
       xStatus === "error" ||
       lastTickRecency === "stale" ||
-      semanticStatus === "error"
+      semanticStatus === "error" ||
+      emotionBlocked
     ) {
       overall = "degraded"
     }
@@ -212,7 +215,13 @@ export const healthCheckTask = schedules.task({
     if (overall === "critical") {
       Sentry.captureMessage("Health check critical", {
         level: "fatal",
-        extra: { errors, services: result.services, process: result.process }
+        extra: {
+          errors,
+          services: result.services,
+          process: result.process,
+          budget: result.budget,
+          memory: result.memory
+        }
       })
     }
 

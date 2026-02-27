@@ -164,6 +164,37 @@ describe("health-check overall status", () => {
 
     expect(result.overall).toBe("degraded")
   })
+
+  it("returns critical when getBudgetState throws", async () => {
+    ;(getBudgetState as ReturnType<typeof vi.fn>).mockRejectedValue(new Error("redis down"))
+
+    const result = await run()
+
+    expect(result.overall).toBe("critical")
+    expect(result.errors).toContain("Budget: redis down")
+  })
+
+  it("returns degraded when emotional state is blocked", async () => {
+    ;(getCurrentEmotion as ReturnType<typeof vi.fn>).mockResolvedValue({
+      curiosity: 0.5,
+      satisfaction: 0.5,
+      frustration: 0.5,
+      boredom: 0.5,
+      excitement: 0.5,
+      caution: 0.5,
+      connection: 1.5
+    })
+    ;(validateEmotionalState as ReturnType<typeof vi.fn>).mockReturnValue({
+      verdict: "blocked",
+      reasons: ['Emotional dimension "connection" out of bounds: 1.5'],
+      checkedAt: new Date().toISOString()
+    })
+
+    const result = await run()
+
+    expect(result.overall).toBe("degraded")
+    expect(result.errors).toContain('Emotional dimension "connection" out of bounds: 1.5')
+  })
 })
 
 describe("health-check service isolation", () => {
