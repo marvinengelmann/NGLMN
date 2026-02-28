@@ -105,16 +105,8 @@ vi.mock("@/emotion/update.ts", () => ({
   }))
 }))
 
-vi.mock("@/personality/dna.ts", () => ({
-  getEffectivePersonality: vi.fn()
-}))
-
-vi.mock("@/personality/expression.ts", () => ({
-  buildPersonalityPrompt: vi.fn(() => "personality prompt")
-}))
-
-vi.mock("@/personality/mbti.ts", () => ({
-  getMbtiType: vi.fn(() => "INFP-T")
+vi.mock("@/core/consciousness.ts", () => ({
+  buildConsciousnessPrompt: vi.fn(() => Promise.resolve("[IDENTITY]\nTest identity\n\npersonality prompt"))
 }))
 
 vi.mock("@/memory/episodic.ts", () => ({

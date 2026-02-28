@@ -209,7 +209,7 @@ export async function buildTriageContext(): Promise<TriageContext> {
  * Build context for fast-tier simple responses.
  * Includes personality prompt, conversation history, top 3 relevant episodes, and pending messages.
  */
-export async function buildSimpleContext(messages: PendingMessage[], personalityPrompt?: string): Promise<string> {
+export async function buildSimpleContext(messages: PendingMessage[], consciousnessPrompt?: string): Promise<string> {
   const now = formatISO(new Date())
   const [conversationBuffer, episodes, operatorLanguage] = await Promise.all([
     getConversationBuffer(),
@@ -224,8 +224,8 @@ export async function buildSimpleContext(messages: PendingMessage[], personality
   parts.push(`Operator's preferred language: ${operatorLanguage}`)
   parts.push("")
 
-  if (personalityPrompt) {
-    parts.push(personalityPrompt)
+  if (consciousnessPrompt) {
+    parts.push(consciousnessPrompt)
     parts.push("")
   }
 
@@ -322,7 +322,7 @@ function formatMessageSection(messages: PendingMessage[]): string {
  * episodic memories (including relationship history), semantic knowledge,
  * all active goals, and pending messages.
  */
-export async function buildComplexContext(messages: PendingMessage[], personalityPrompt?: string): Promise<string> {
+export async function buildComplexContext(messages: PendingMessage[], consciousnessPrompt?: string): Promise<string> {
   const queryText = messages.length > 0 ? messages.map((m) => m.text).join(" ") : "current tasks and goals"
 
   const config = TIERS.complex
@@ -352,7 +352,7 @@ export async function buildComplexContext(messages: PendingMessage[], personalit
   const sections: string[] = [
     `Current time: ${formatISO(new Date())}`,
     `Operator's preferred language: ${operatorLanguage}`,
-    personalityPrompt ?? "",
+    consciousnessPrompt ?? "",
     emotion ? `Emotional state: ${formatEmotionSummary(emotion)}` : "",
     perception ? formatPerceptionBlock(perception) : "",
     formatConversationBuffer(conversationBuffer),
@@ -372,8 +372,8 @@ export async function buildComplexContext(messages: PendingMessage[], personalit
  * Includes everything from complex plus emotion history, trust levels,
  * and full personality DNA (base + adaptive separately).
  */
-export async function buildDeepContext(messages: PendingMessage[], personalityPrompt?: string): Promise<string> {
-  const complexContext = await buildComplexContext(messages, personalityPrompt)
+export async function buildDeepContext(messages: PendingMessage[], consciousnessPrompt?: string): Promise<string> {
+  const complexContext = await buildComplexContext(messages, consciousnessPrompt)
 
   const deepConfig = TIERS.deep
   const [emotionHist, trustLvls, dna] = await Promise.all([

@@ -11,20 +11,20 @@ type ResponseTier = Exclude<TriageDecision, "idle">
  */
 export async function buildConversationResponsePrompt(
   messages: PendingMessage[],
-  personalityPrompt: string,
+  consciousnessPrompt: string,
   tier: ResponseTier,
   recalledContext?: string | null
 ): Promise<string> {
   let baseContext: string
   switch (tier) {
     case "simple":
-      baseContext = await buildSimpleContext(messages, personalityPrompt)
+      baseContext = await buildSimpleContext(messages, consciousnessPrompt)
       break
     case "complex":
-      baseContext = await buildComplexContext(messages, personalityPrompt)
+      baseContext = await buildComplexContext(messages, consciousnessPrompt)
       break
     case "deep":
-      baseContext = await buildDeepContext(messages, personalityPrompt)
+      baseContext = await buildDeepContext(messages, consciousnessPrompt)
       break
   }
   if (recalledContext) {

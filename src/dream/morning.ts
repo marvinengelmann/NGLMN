@@ -1,3 +1,4 @@
+import { buildConsciousnessPrompt } from "@/core/consciousness.ts"
 import { callIntelligence, REASONING, TextOutput } from "@/core/intelligence.ts"
 import { getEmotionalState } from "@/emotion/state.ts"
 import { sendToOperator } from "@/integrations/telegram.ts"
@@ -6,20 +7,16 @@ import { captureError } from "@/lib/sentry.ts"
 import { storeEpisode } from "@/memory/episodic.ts"
 import { getOperatorLanguage } from "@/memory/semantic.ts"
 import { clearDreamInsights, getDreamInsights, pushToActiveConversation } from "@/memory/working.ts"
-import { getEffectivePersonality } from "@/personality/dna.ts"
-import { buildPersonalityPrompt } from "@/personality/expression.ts"
-import { getMbtiType } from "@/personality/mbti.ts"
 import { MORNING_MESSAGE_SYSTEM_PROMPT } from "@/prompts/dream.ts"
 
 export async function composeMorningMessage(): Promise<string> {
-  const [insights, emotion, personality, operatorLanguage] = await Promise.all([
+  const [insights, emotion, operatorLanguage] = await Promise.all([
     getDreamInsights(),
     getEmotionalState(),
-    getEffectivePersonality(),
     getOperatorLanguage()
   ])
 
-  const personalityPrompt = buildPersonalityPrompt(personality, emotion, getMbtiType())
+  const consciousnessPrompt = await buildConsciousnessPrompt(emotion)
 
   const context = {
     operatorLanguage,
@@ -29,7 +26,7 @@ export async function composeMorningMessage(): Promise<string> {
 
   const result = await callIntelligence({
     model: REASONING,
-    system: `${MORNING_MESSAGE_SYSTEM_PROMPT}\n\n${personalityPrompt}`,
+    system: `${MORNING_MESSAGE_SYSTEM_PROMPT}\n\n${consciousnessPrompt}`,
     userMessage: JSON.stringify(context),
     schema: TextOutput,
     maxTokens: 1024

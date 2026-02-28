@@ -83,7 +83,7 @@ const ctx: TickContext = {
 
 const thinkResult: ThinkResult = {
   triageResult: makeTriageResult({ decision: "simple", reason: "test reason" }),
-  personalityPrompt: "personality",
+  consciousnessPrompt: "personality",
   triggeredWorkflows: []
 }
 

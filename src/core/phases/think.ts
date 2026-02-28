@@ -1,5 +1,6 @@
 import { TRIAGE_DEFAULTS } from "@/config/constants.ts"
 import { logAndCaptureError, trySafe } from "@/config/result-helpers.ts"
+import { buildConsciousnessPrompt } from "@/core/consciousness.ts"
 import { buildTriageContext } from "@/core/context-builder.ts"
 import { callIntelligence, FAST, getMaxTokensForTier } from "@/core/intelligence.ts"
 import type { WorkflowDefinition } from "@/core/types.ts"
@@ -9,15 +10,12 @@ import { loadPrompt } from "@/evolution/prompt-loader.ts"
 import { log } from "@/lib/logger.ts"
 import { addBreadcrumb, captureError, setTickContext } from "@/lib/sentry.ts"
 import { getRecentTriageDecisions, pushRecentTriageDecision } from "@/memory/working.ts"
-import { getEffectivePersonality } from "@/personality/dna.ts"
-import { buildPersonalityPrompt } from "@/personality/expression.ts"
-import { getMbtiType } from "@/personality/mbti.ts"
 import { TRIAGE_SYSTEM_PROMPT } from "@/prompts/triage.ts"
 import type { SenseResult, TickContext } from "./sense.ts"
 
 export interface ThinkResult {
   triageResult: TriageResult
-  personalityPrompt: string
+  consciousnessPrompt: string
   triggeredWorkflows: WorkflowDefinition[]
 }
 
@@ -34,8 +32,7 @@ export async function think(ctx: TickContext, senseResult: SenseResult): Promise
     logAndCaptureError(workflowResult.error, { phase: "workflows" })
   }
 
-  const personality = await getEffectivePersonality()
-  const personalityPrompt = buildPersonalityPrompt(personality, senseResult.emotion, getMbtiType())
+  const consciousnessPrompt = await buildConsciousnessPrompt(senseResult.emotion)
 
   if (ctx.actionRequested) {
     log.info("Action requested by operator, skipping triage")
@@ -46,7 +43,7 @@ export async function think(ctx: TickContext, senseResult: SenseResult): Promise
       estimatedTokens: 500
     }
     await pushRecentTriageDecision(triageResult.decision)
-    return { triageResult, personalityPrompt, triggeredWorkflows }
+    return { triageResult, consciousnessPrompt, triggeredWorkflows }
   }
 
   const triageContext = await buildTriageContext()
@@ -70,7 +67,7 @@ export async function think(ctx: TickContext, senseResult: SenseResult): Promise
         confidence: TRIAGE_DEFAULTS.FALLBACK_CONFIDENCE,
         estimatedTokens: TRIAGE_DEFAULTS.FALLBACK_ESTIMATED_TOKENS
       },
-      personalityPrompt,
+      consciousnessPrompt,
       triggeredWorkflows
     }
   }
@@ -87,5 +84,5 @@ export async function think(ctx: TickContext, senseResult: SenseResult): Promise
 
   await pushRecentTriageDecision(triageResult.decision)
 
-  return { triageResult, personalityPrompt, triggeredWorkflows }
+  return { triageResult, consciousnessPrompt, triggeredWorkflows }
 }

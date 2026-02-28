@@ -132,7 +132,7 @@ describe("act phase", () => {
   it("returns responseSent false and saves idle emotion on idle decision", async () => {
     const thinkResult: ThinkResult = {
       triageResult: makeTriageResult({ decision: "idle" }),
-      personalityPrompt: "personality",
+      consciousnessPrompt: "personality",
       triggeredWorkflows: []
     }
 
@@ -148,7 +148,7 @@ describe("act phase", () => {
   it("sends message to operator when guardian approves", async () => {
     const thinkResult: ThinkResult = {
       triageResult: makeTriageResult({ decision: "simple" }),
-      personalityPrompt: "personality",
+      consciousnessPrompt: "personality",
       triggeredWorkflows: []
     }
 
@@ -166,7 +166,7 @@ describe("act phase", () => {
   it("blocks message when guardian blocks", async () => {
     const thinkResult: ThinkResult = {
       triageResult: makeTriageResult({ decision: "simple" }),
-      personalityPrompt: "personality",
+      consciousnessPrompt: "personality",
       triggeredWorkflows: []
     }
 
@@ -183,7 +183,7 @@ describe("act phase", () => {
   it("stores reflection episode", async () => {
     const thinkResult: ThinkResult = {
       triageResult: makeTriageResult({ decision: "complex" }),
-      personalityPrompt: "personality",
+      consciousnessPrompt: "personality",
       triggeredWorkflows: []
     }
 
@@ -200,7 +200,7 @@ describe("act phase", () => {
   it("updates goal status when provided", async () => {
     const thinkResult: ThinkResult = {
       triageResult: makeTriageResult({ decision: "simple" }),
-      personalityPrompt: "personality",
+      consciousnessPrompt: "personality",
       triggeredWorkflows: []
     }
 
@@ -220,7 +220,7 @@ describe("act phase", () => {
   it("does nothing on action nothing", async () => {
     const thinkResult: ThinkResult = {
       triageResult: makeTriageResult({ decision: "simple" }),
-      personalityPrompt: "personality",
+      consciousnessPrompt: "personality",
       triggeredWorkflows: []
     }
 
@@ -240,7 +240,7 @@ describe("act phase", () => {
     }
     const thinkResult: ThinkResult = {
       triageResult: makeTriageResult({ decision: "simple" }),
-      personalityPrompt: "personality",
+      consciousnessPrompt: "personality",
       triggeredWorkflows: []
     }
 
@@ -259,7 +259,7 @@ describe("act phase", () => {
     }
     const thinkResult: ThinkResult = {
       triageResult: makeTriageResult({ decision: "simple" }),
-      personalityPrompt: "personality",
+      consciousnessPrompt: "personality",
       triggeredWorkflows: []
     }
 
@@ -275,7 +275,7 @@ describe("act phase", () => {
   it("emits guardian_block emotion when message is blocked", async () => {
     const thinkResult: ThinkResult = {
       triageResult: makeTriageResult({ decision: "simple" }),
-      personalityPrompt: "personality",
+      consciousnessPrompt: "personality",
       triggeredWorkflows: []
     }
 
@@ -294,7 +294,7 @@ describe("act phase", () => {
   it("emits guardian_warning emotion on warning", async () => {
     const thinkResult: ThinkResult = {
       triageResult: makeTriageResult({ decision: "simple" }),
-      personalityPrompt: "personality",
+      consciousnessPrompt: "personality",
       triggeredWorkflows: []
     }
 
@@ -313,7 +313,7 @@ describe("act phase", () => {
   it("emits goal_completed emotion when goal status is done", async () => {
     const thinkResult: ThinkResult = {
       triageResult: makeTriageResult({ decision: "simple" }),
-      personalityPrompt: "personality",
+      consciousnessPrompt: "personality",
       triggeredWorkflows: []
     }
 
@@ -331,7 +331,7 @@ describe("act phase", () => {
   it("emits goal_failed emotion when goal status is failed", async () => {
     const thinkResult: ThinkResult = {
       triageResult: makeTriageResult({ decision: "simple" }),
-      personalityPrompt: "personality",
+      consciousnessPrompt: "personality",
       triggeredWorkflows: []
     }
 
@@ -349,7 +349,7 @@ describe("act phase", () => {
   it("emits task_failure emotion when proactive call fails", async () => {
     const thinkResult: ThinkResult = {
       triageResult: makeTriageResult({ decision: "simple" }),
-      personalityPrompt: "personality",
+      consciousnessPrompt: "personality",
       triggeredWorkflows: []
     }
 
@@ -367,7 +367,7 @@ describe("act phase", () => {
   it("saves message_sent emotion when response is sent", async () => {
     const thinkResult: ThinkResult = {
       triageResult: makeTriageResult({ decision: "simple" }),
-      personalityPrompt: "personality",
+      consciousnessPrompt: "personality",
       triggeredWorkflows: []
     }
 

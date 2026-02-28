@@ -98,7 +98,7 @@ describe("heartbeat", () => {
 
     const callOrder: string[] = []
     const senseResult = { emotion: {}, messages: [] }
-    const thinkResult = { triageResult: {}, personalityPrompt: "" }
+    const thinkResult = { triageResult: {}, consciousnessPrompt: "" }
     const actResult = { responseSent: false }
     const maintainResult = { tickId: "tick-1" }
 

@@ -1,6 +1,7 @@
 import { task } from "@trigger.dev/sdk"
 import { formatISO } from "date-fns"
 import { EMAIL_DEFAULTS, EMOTIONAL_THRESHOLDS } from "@/config/constants.ts"
+import { buildConsciousnessPrompt } from "@/core/consciousness.ts"
 import { callIntelligence, getMaxTokensForTier, selectModel, TextOutput } from "@/core/intelligence.ts"
 import type { TriageResult } from "@/core/types.ts"
 import { getEmotionalState, processEmotionTrigger, saveEmotionalState } from "@/emotion/state.ts"
@@ -12,9 +13,6 @@ import { log } from "@/lib/logger.ts"
 import { captureError } from "@/lib/sentry.ts"
 import { storeEpisode } from "@/memory/episodic.ts"
 import { clearProcessedEmails, peekAllPendingEmails, pushPendingEmails } from "@/memory/working.ts"
-import { getEffectivePersonality } from "@/personality/dna.ts"
-import { buildPersonalityPrompt } from "@/personality/expression.ts"
-import { getMbtiType } from "@/personality/mbti.ts"
 import { RESPONDER_SYSTEM_PROMPT } from "@/prompts/responder.ts"
 import { validateOutput } from "@/security/guardian.ts"
 import { wrapExternalData } from "@/security/injection-defense.ts"
@@ -44,8 +42,8 @@ export const emailHandlerTask = task({
       return { processed: 0, reason: "trust_blocked" }
     }
 
-    const [personality, emotion] = await Promise.all([getEffectivePersonality(), getEmotionalState()])
-    const personalityPrompt = buildPersonalityPrompt(personality, emotion, getMbtiType())
+    const emotion = await getEmotionalState()
+    const consciousnessPrompt = await buildConsciousnessPrompt(emotion)
     const responderPrompt = await loadPrompt("responder", RESPONDER_SYSTEM_PROMPT)
 
     const triageForModel: TriageResult = {
@@ -63,7 +61,7 @@ export const emailHandlerTask = task({
         const emailContext = [
           `Current time: ${formatISO(new Date())}`,
           `Response language: English`,
-          personalityPrompt,
+          consciousnessPrompt,
           "",
           "IMPORTANT: Always respond in English when replying to external emails.",
           "",

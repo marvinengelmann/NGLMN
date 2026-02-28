@@ -283,7 +283,7 @@ async function executeTriggeredWorkflows(workflows: ThinkResult["triggeredWorkfl
 }
 
 export async function act(ctx: TickContext, senseResult: SenseResult, thinkResult: ThinkResult): Promise<ActResult> {
-  const { triageResult, personalityPrompt, triggeredWorkflows } = thinkResult
+  const { triageResult, consciousnessPrompt, triggeredWorkflows } = thinkResult
 
   await executeTriggeredWorkflows(triggeredWorkflows)
 
@@ -298,17 +298,17 @@ export async function act(ctx: TickContext, senseResult: SenseResult, thinkResul
   let contextPrompt: string
   switch (tier) {
     case "simple":
-      contextPrompt = await buildSimpleContext([], personalityPrompt)
+      contextPrompt = await buildSimpleContext([], consciousnessPrompt)
       break
     case "complex":
-      contextPrompt = await buildComplexContext([], personalityPrompt)
+      contextPrompt = await buildComplexContext([], consciousnessPrompt)
       break
     case "deep":
-      contextPrompt = await buildDeepContext([], personalityPrompt)
+      contextPrompt = await buildDeepContext([], consciousnessPrompt)
       break
     default: {
       const _exhaustive: never = tier
-      contextPrompt = await buildSimpleContext([], personalityPrompt)
+      contextPrompt = await buildSimpleContext([], consciousnessPrompt)
     }
   }
 

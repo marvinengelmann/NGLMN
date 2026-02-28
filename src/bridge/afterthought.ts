@@ -16,7 +16,7 @@ const AfterthoughtResult = z.object({
  */
 export async function checkForAfterthought(
   conversationBuffer: ConversationSlot[],
-  personalityPrompt: string,
+  consciousnessPrompt: string,
   operatorLanguage: string
 ): Promise<{ text: string; replyTo?: number } | null> {
   if (conversationBuffer.length === 0) return null
@@ -27,7 +27,7 @@ export async function checkForAfterthought(
   const lines: string[] = []
   lines.push(`Operator's preferred language: ${operatorLanguage}`)
   lines.push("")
-  lines.push(personalityPrompt)
+  lines.push(consciousnessPrompt)
   lines.push("")
   lines.push("Conversation:")
 

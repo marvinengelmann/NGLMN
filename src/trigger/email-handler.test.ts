@@ -70,12 +70,8 @@ vi.mock("@/memory/semantic.ts", () => ({
   getOperatorLanguage: vi.fn(() => "German")
 }))
 
-vi.mock("@/personality/dna.ts", () => ({
-  getEffectivePersonality: vi.fn()
-}))
-
-vi.mock("@/personality/expression.ts", () => ({
-  buildPersonalityPrompt: vi.fn(() => "personality prompt")
+vi.mock("@/core/consciousness.ts", () => ({
+  buildConsciousnessPrompt: vi.fn(() => Promise.resolve("[IDENTITY]\nTest identity\n\npersonality prompt"))
 }))
 
 vi.mock("@/prompts/responder.ts", () => ({

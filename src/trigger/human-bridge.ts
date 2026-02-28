@@ -13,6 +13,7 @@ import {
   splitIntoParagraphs
 } from "@/bridge/typing.ts"
 import { AFTERTHOUGHT, CONVERSATION, EMOTIONAL_THRESHOLDS, HUMAN_BRIDGE, MESSAGE_DELAY } from "@/config/constants.ts"
+import { buildConsciousnessPrompt } from "@/core/consciousness.ts"
 import { callIntelligence, FAST, getMaxTokensForTier, selectModel } from "@/core/intelligence.ts"
 import { TriageResult } from "@/core/types.ts"
 import { getEmotionalState, processEmotionTrigger, saveEmotionalState } from "@/emotion/state.ts"
@@ -32,9 +33,6 @@ import {
   setOperatorLastActivity,
   startNewConversation
 } from "@/memory/working.ts"
-import { getEffectivePersonality } from "@/personality/dna.ts"
-import { buildPersonalityPrompt } from "@/personality/expression.ts"
-import { getMbtiType } from "@/personality/mbti.ts"
 import { CONVERSATION_TRIAGE_SYSTEM_PROMPT } from "@/prompts/conversation.ts"
 import { RESPONDER_SYSTEM_PROMPT } from "@/prompts/responder.ts"
 
@@ -172,10 +170,9 @@ export const humanBridgeTask = schedules.task({
 
       const tier = triageResult.decision
       const model = selectModel(triageResult)
-      const personality = await getEffectivePersonality()
-      const personalityPrompt = buildPersonalityPrompt(personality, emotion, getMbtiType())
+      const consciousnessPrompt = await buildConsciousnessPrompt(emotion)
 
-      const contextPrompt = await buildConversationResponsePrompt(messages, personalityPrompt, tier, recalledContext)
+      const contextPrompt = await buildConversationResponsePrompt(messages, consciousnessPrompt, tier, recalledContext)
 
       const responderPrompt = await loadPrompt("responder", RESPONDER_SYSTEM_PROMPT)
       const responderCallResult = await callIntelligence({
@@ -236,7 +233,7 @@ export const humanBridgeTask = schedules.task({
 
       const operatorLanguage = await getOperatorLanguage()
       const afterthoughtBuffer = await getConversationBuffer()
-      const afterthought = await checkForAfterthought(afterthoughtBuffer, personalityPrompt, operatorLanguage)
+      const afterthought = await checkForAfterthought(afterthoughtBuffer, consciousnessPrompt, operatorLanguage)
 
       if (afterthought) {
         const atThinkingTime = computeThinkingDuration("simple")

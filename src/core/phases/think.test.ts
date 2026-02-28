@@ -32,16 +32,8 @@ vi.mock("@/evolution/prompt-loader.ts", () => ({
   loadPrompt: vi.fn((_key: string, fallback: string) => fallback)
 }))
 
-vi.mock("@/personality/dna.ts", () => ({
-  getEffectivePersonality: vi.fn()
-}))
-
-vi.mock("@/personality/expression.ts", () => ({
-  buildPersonalityPrompt: vi.fn(() => "personality prompt")
-}))
-
-vi.mock("@/personality/mbti.ts", () => ({
-  getMbtiType: vi.fn(() => undefined)
+vi.mock("@/core/consciousness.ts", () => ({
+  buildConsciousnessPrompt: vi.fn(() => Promise.resolve("[IDENTITY]\nTest identity\n\npersonality prompt"))
 }))
 
 vi.mock("@/core/workflow-engine.ts", () => ({
@@ -56,14 +48,7 @@ import { callIntelligence } from "@/core/intelligence.ts"
 import { checkWorkflowTriggers, executeWorkflow, getActiveWorkflows } from "@/core/workflow-engine.ts"
 import { addBreadcrumb, captureError, setTickContext } from "@/lib/sentry.ts"
 import { getRecentTriageDecisions, pushRecentTriageDecision } from "@/memory/working.ts"
-import { getEffectivePersonality } from "@/personality/dna.ts"
-import { buildPersonalityPrompt } from "@/personality/expression.ts"
-import {
-  makeEmotionalState,
-  makePerceptionSummary,
-  makePersonalityLayer,
-  makeWorkflowDefinition
-} from "@/test/factories.ts"
+import { makeEmotionalState, makePerceptionSummary, makeWorkflowDefinition } from "@/test/factories.ts"
 import type { SenseResult, TickContext } from "./sense.ts"
 import { think } from "./think.ts"
 
@@ -74,8 +59,6 @@ const mockSetTickContext = setTickContext as ReturnType<typeof vi.fn>
 const mockGetRecentTriageDecisions = getRecentTriageDecisions as ReturnType<typeof vi.fn>
 const mockPushRecentTriageDecision = pushRecentTriageDecision as ReturnType<typeof vi.fn>
 const mockBuildTriageContext = buildTriageContext as ReturnType<typeof vi.fn>
-const mockGetEffectivePersonality = getEffectivePersonality as ReturnType<typeof vi.fn>
-const mockBuildPersonalityPrompt = buildPersonalityPrompt as ReturnType<typeof vi.fn>
 const mockGetActiveWorkflows = getActiveWorkflows as ReturnType<typeof vi.fn>
 const mockCheckWorkflowTriggers = checkWorkflowTriggers as ReturnType<typeof vi.fn>
 const mockExecuteWorkflow = executeWorkflow as ReturnType<typeof vi.fn>
@@ -96,8 +79,6 @@ describe("think phase", () => {
     vi.clearAllMocks()
     mockGetRecentTriageDecisions.mockResolvedValue([])
     mockBuildTriageContext.mockResolvedValue({ userPrompt: "triage context" })
-    mockGetEffectivePersonality.mockResolvedValue(makePersonalityLayer())
-    mockBuildPersonalityPrompt.mockReturnValue("personality prompt")
   })
 
   it("parses valid triage JSON into TriageResult", async () => {
@@ -187,9 +168,7 @@ describe("think phase", () => {
     expect(mockPushRecentTriageDecision).toHaveBeenCalledWith("deep")
   })
 
-  it("builds personality prompt correctly", async () => {
-    const personality = makePersonalityLayer({ warmth: 0.9 })
-    mockGetEffectivePersonality.mockResolvedValue(personality)
+  it("builds consciousness prompt correctly", async () => {
     mockCallIntelligence.mockResolvedValue(
       ok({
         decision: "idle",
@@ -201,8 +180,8 @@ describe("think phase", () => {
 
     const result = await think(ctx, senseResult)
 
-    expect(mockBuildPersonalityPrompt).toHaveBeenCalledWith(personality, senseResult.emotion, undefined)
-    expect(result.personalityPrompt).toBe("personality prompt")
+    expect(result.consciousnessPrompt).toContain("[IDENTITY]")
+    expect(result.consciousnessPrompt).toContain("personality prompt")
   })
 
   it("updates tick context with decision", async () => {

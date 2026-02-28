@@ -11,16 +11,8 @@ vi.mock("@/emotion/state.ts", () => ({
   getEmotionalState: vi.fn()
 }))
 
-vi.mock("@/personality/dna.ts", () => ({
-  getEffectivePersonality: vi.fn()
-}))
-
-vi.mock("@/personality/expression.ts", () => ({
-  buildPersonalityPrompt: vi.fn()
-}))
-
-vi.mock("@/personality/mbti.ts", () => ({
-  getMbtiType: vi.fn(() => "INFP-T")
+vi.mock("@/core/consciousness.ts", () => ({
+  buildConsciousnessPrompt: vi.fn(() => Promise.resolve("[IDENTITY]\nTest identity\n\n[PERSONALITY & MOOD]\nBe warm."))
 }))
 
 vi.mock("@/memory/working.ts", () => ({
@@ -43,16 +35,12 @@ import { getEmotionalState } from "@/emotion/state.ts"
 import { sendToOperator } from "@/integrations/telegram.ts"
 import { storeEpisode } from "@/memory/episodic.ts"
 import { clearDreamInsights, getDreamInsights, pushToActiveConversation } from "@/memory/working.ts"
-import { getEffectivePersonality } from "@/personality/dna.ts"
-import { buildPersonalityPrompt } from "@/personality/expression.ts"
-import { makeEmotionalState, makePersonalityLayer } from "@/test/factories.ts"
+import { makeEmotionalState } from "@/test/factories.ts"
 import { composeMorningMessage, sendMorningMessage } from "./morning.ts"
 
 const mockCallIntelligence = callIntelligence as ReturnType<typeof vi.fn>
 const mockSendToOperator = sendToOperator as ReturnType<typeof vi.fn>
 const mockGetEmotionalState = getEmotionalState as ReturnType<typeof vi.fn>
-const mockGetEffectivePersonality = getEffectivePersonality as ReturnType<typeof vi.fn>
-const mockBuildPersonalityPrompt = buildPersonalityPrompt as ReturnType<typeof vi.fn>
 const mockGetDreamInsights = getDreamInsights as ReturnType<typeof vi.fn>
 const mockClearDreamInsights = clearDreamInsights as ReturnType<typeof vi.fn>
 const mockPushToActiveConversation = pushToActiveConversation as ReturnType<typeof vi.fn>
@@ -61,8 +49,6 @@ const mockStoreEpisode = storeEpisode as ReturnType<typeof vi.fn>
 beforeEach(() => {
   mockGetDreamInsights.mockResolvedValue(["Insight from dreams"])
   mockGetEmotionalState.mockResolvedValue(makeEmotionalState())
-  mockGetEffectivePersonality.mockResolvedValue(makePersonalityLayer())
-  mockBuildPersonalityPrompt.mockReturnValue("[PERSONALITY & MOOD]\nBe warm.")
   mockCallIntelligence.mockResolvedValue(ok({ text: "Good morning! Last night I thought about many things..." }))
   mockSendToOperator.mockResolvedValue(undefined)
   mockStoreEpisode.mockResolvedValue("ep-id")

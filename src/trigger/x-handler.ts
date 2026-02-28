@@ -1,6 +1,7 @@
 import { task } from "@trigger.dev/sdk"
 import { formatISO } from "date-fns"
 import { EMOTIONAL_THRESHOLDS } from "@/config/constants.ts"
+import { buildConsciousnessPrompt } from "@/core/consciousness.ts"
 import { callIntelligence, getMaxTokensForTier, selectModel, TextOutput } from "@/core/intelligence.ts"
 import type { TriageResult } from "@/core/types.ts"
 import { getEmotionalState, processEmotionTrigger, saveEmotionalState } from "@/emotion/state.ts"
@@ -13,9 +14,6 @@ import { log } from "@/lib/logger.ts"
 import { captureError } from "@/lib/sentry.ts"
 import { storeEpisode } from "@/memory/episodic.ts"
 import { clearProcessedMentions, peekAllPendingMentions, pushPendingMentions } from "@/memory/working.ts"
-import { getEffectivePersonality } from "@/personality/dna.ts"
-import { buildPersonalityPrompt } from "@/personality/expression.ts"
-import { getMbtiType } from "@/personality/mbti.ts"
 import { RESPONDER_SYSTEM_PROMPT } from "@/prompts/responder.ts"
 import { validatePublicOutput } from "@/security/guardian.ts"
 import { wrapExternalData } from "@/security/injection-defense.ts"
@@ -53,8 +51,8 @@ export const xHandlerTask = task({
       return { processed: 0, reason: "trust_blocked" }
     }
 
-    const [personality, emotion] = await Promise.all([getEffectivePersonality(), getEmotionalState()])
-    const personalityPrompt = buildPersonalityPrompt(personality, emotion, getMbtiType())
+    const emotion = await getEmotionalState()
+    const consciousnessPrompt = await buildConsciousnessPrompt(emotion)
     const responderPrompt = await loadPrompt("responder", RESPONDER_SYSTEM_PROMPT)
 
     const triageForModel: TriageResult = {
@@ -72,7 +70,7 @@ export const xHandlerTask = task({
         const mentionContext = [
           `Current time: ${formatISO(new Date())}`,
           `Response language: English`,
-          personalityPrompt,
+          consciousnessPrompt,
           "",
           "PUBLIC X (Twitter) mention to respond to.",
           'IMPORTANT: Your response will be PUBLIC. Max 280 characters. Always respond in English. Always use first person ("I", "my") — never refer to yourself in the third person. Be concise, authentic, and appropriate for a public audience.',
