@@ -1,5 +1,5 @@
-import { formatISO } from "date-fns"
 import { getRef, listCommits, updateRef } from "@/integrations/github.ts"
+import { nowISO } from "@/lib/time.ts"
 import { pushRollbackEvent } from "@/memory/working.ts"
 import type { RollbackResult, RollbackTier } from "./types.ts"
 
@@ -32,7 +32,7 @@ export async function performRollback(tier: RollbackTier): Promise<RollbackResul
     success: errors.length === 0,
     actions,
     errors,
-    timestamp: formatISO(new Date())
+    timestamp: nowISO()
   }
 }
 

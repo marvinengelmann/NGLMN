@@ -1,5 +1,5 @@
-import { formatISO } from "date-fns"
 import type { EmotionUpdateEvent } from "@/emotion/types.ts"
+import { nowISO } from "@/lib/time.ts"
 import { setPerceptionSummary } from "@/memory/working.ts"
 import type { PerceptionSummary } from "@/perception/types.ts"
 import {
@@ -34,7 +34,7 @@ export async function evaluatePerception(): Promise<PerceptionSummary> {
   ]
 
   const summary: PerceptionSummary = {
-    timestamp: formatISO(new Date()),
+    timestamp: nowISO(),
     ownState: {
       budgetPercent: ownState.budgetPercent,
       lastTickAge: ownState.lastTickAge,

@@ -1,4 +1,3 @@
-import { formatISO } from "date-fns"
 import * as z from "zod"
 import { logAndCaptureError } from "@/config/result-helpers.ts"
 import { callIntelligence, FAST, REASONING } from "@/core/intelligence.ts"
@@ -15,6 +14,7 @@ import {
 } from "@/integrations/github.ts"
 import { log } from "@/lib/logger.ts"
 import { estimateTokens } from "@/lib/math.ts"
+import { nowFilename } from "@/lib/time.ts"
 import { storeEpisode } from "@/memory/episodic.ts"
 import { getNextEvolutionNumber } from "@/memory/working.ts"
 import { CODE_EVOLUTION_SYSTEM_PROMPT } from "@/prompts/evolution.ts"
@@ -181,7 +181,7 @@ export async function executeCodeEvolution(proposal: CodeProposal): Promise<{
   }
 
   const evolutionNumber = await getNextEvolutionNumber()
-  const timestamp = formatISO(new Date()).replace(/[:.]/g, "-")
+  const timestamp = nowFilename()
   const branchName = `evolution/${timestamp}`
   const commitPrefix = `Evolution #${evolutionNumber}`
 

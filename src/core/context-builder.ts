@@ -1,4 +1,4 @@
-import { differenceInMinutes, formatISO, parseISO } from "date-fns"
+import { differenceInMinutes, parseISO } from "date-fns"
 import type { ConversationSlot } from "@/bridge/types.ts"
 import { TIERS } from "@/config/constants.ts"
 import type { TickSummary } from "@/core/types.ts"
@@ -6,6 +6,7 @@ import { getEmotionHistory } from "@/emotion/state.ts"
 import type { EmotionalState } from "@/emotion/types.ts"
 import type { PendingMessage } from "@/integrations/types.ts"
 import { estimateTokens } from "@/lib/math.ts"
+import { nowISO } from "@/lib/time.ts"
 import { queryRelated, queryRelationshipHistory } from "@/memory/episodic.ts"
 import { getGoalsByPriority } from "@/memory/goals.ts"
 import { getKnowledge, getOperatorLanguage } from "@/memory/semantic.ts"
@@ -143,7 +144,7 @@ function formatPerceptionBlock(perception: PerceptionSummary): string {
  * emotional state, and perception summary.
  */
 export async function buildTriageContext(): Promise<TriageContext> {
-  const now = formatISO(new Date())
+  const now = nowISO()
   const [lastTick, conversationBuffer, emotion, perception, lastProactive] = await Promise.all([
     getLastTickSummary(),
     getConversationBuffer(),
@@ -210,7 +211,7 @@ export async function buildTriageContext(): Promise<TriageContext> {
  * Includes personality prompt, conversation history, top 3 relevant episodes, and pending messages.
  */
 export async function buildSimpleContext(messages: PendingMessage[], consciousnessPrompt?: string): Promise<string> {
-  const now = formatISO(new Date())
+  const now = nowISO()
   const [conversationBuffer, episodes, operatorLanguage] = await Promise.all([
     getConversationBuffer(),
     messages.length > 0
@@ -350,7 +351,7 @@ export async function buildComplexContext(messages: PendingMessage[], consciousn
   const allGoals = await getGoalsByPriority(config.maxGoals, emotion ?? undefined)
 
   const sections: string[] = [
-    `Current time: ${formatISO(new Date())}`,
+    `Current time: ${nowISO()}`,
     `Operator's preferred language: ${operatorLanguage}`,
     consciousnessPrompt ?? "",
     emotion ? `Emotional state: ${formatEmotionSummary(emotion)}` : "",

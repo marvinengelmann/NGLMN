@@ -1,7 +1,7 @@
-import { formatISO } from "date-fns"
 import { GUARDIAN, X } from "@/config/constants.ts"
 import { getBudgetState } from "@/core/budget.ts"
 import type { EmotionalState } from "@/emotion/types.ts"
+import { nowISO } from "@/lib/time.ts"
 import { getRecentResponses, getRecentTickDurations, getRecentTriageDecisions } from "@/memory/working.ts"
 import { detectInjection } from "./injection-defense.ts"
 import type { DriftReport, DriftSignal, GuardianResult } from "./types.ts"
@@ -51,7 +51,7 @@ export async function validateOutput(responseText: string): Promise<GuardianResu
   return {
     verdict,
     reasons,
-    checkedAt: formatISO(new Date())
+    checkedAt: nowISO()
   }
 }
 
@@ -97,7 +97,7 @@ export async function validatePublicOutput(text: string): Promise<GuardianResult
   return {
     verdict,
     reasons,
-    checkedAt: formatISO(new Date())
+    checkedAt: nowISO()
   }
 }
 
@@ -106,7 +106,7 @@ export async function validatePublicOutput(text: string): Promise<GuardianResult
  * Returns a DriftReport with signals and overall health status.
  */
 export async function detectDrift(): Promise<DriftReport> {
-  const now = formatISO(new Date())
+  const now = nowISO()
   const signals: DriftSignal[] = []
 
   const triageDecisions = await getRecentTriageDecisions()
@@ -251,7 +251,7 @@ export function validateEvolution(files: Array<{ path: string; content: string }
   return {
     verdict: reasons.length > 0 ? "blocked" : "approved",
     reasons,
-    checkedAt: formatISO(new Date())
+    checkedAt: nowISO()
   }
 }
 
@@ -270,6 +270,6 @@ export function validateEmotionalState(state: EmotionalState): GuardianResult {
   return {
     verdict: reasons.length > 0 ? "blocked" : "approved",
     reasons,
-    checkedAt: formatISO(new Date())
+    checkedAt: nowISO()
   }
 }

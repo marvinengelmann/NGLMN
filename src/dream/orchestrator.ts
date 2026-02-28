@@ -1,4 +1,4 @@
-import { formatISO, getHours } from "date-fns"
+import { getHours } from "date-fns"
 import { db } from "@/db/client.ts"
 import { dreamLog } from "@/db/schema.ts"
 import type { ConsolidationResult, ReflectionOutput } from "@/dream/types.ts"
@@ -7,7 +7,7 @@ import { getEmotionalState } from "@/emotion/state.ts"
 import type { EmotionalState, MetricsSnapshot } from "@/emotion/types.ts"
 import type { EvolutionType } from "@/evolution/changelog.ts"
 import { log } from "@/lib/logger.ts"
-import { nowLocal } from "@/lib/time.ts"
+import { nowISO, nowLocal } from "@/lib/time.ts"
 import {
   getDreamState,
   setDreamInsights,
@@ -188,7 +188,7 @@ export async function runDreamCycle(): Promise<DreamCycleResult> {
     })
   }
 
-  const nowIso = formatISO(new Date())
+  const nowIso = nowISO()
   await setDreamLastRun(nowIso)
   await setReflectionLastAt(nowIso)
   await setDreamState("waking")

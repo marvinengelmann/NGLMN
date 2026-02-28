@@ -1,5 +1,4 @@
 import { task } from "@trigger.dev/sdk"
-import { formatISO } from "date-fns"
 import { EMAIL_DEFAULTS, EMOTIONAL_THRESHOLDS } from "@/config/constants.ts"
 import { buildConsciousnessPrompt } from "@/core/consciousness.ts"
 import { callIntelligence, getMaxTokensForTier, selectModel, TextOutput } from "@/core/intelligence.ts"
@@ -11,6 +10,7 @@ import { sendEmail } from "@/integrations/resend.ts"
 import { escapeTelegramMarkdown, sendGuardianAlert, sendToOperator } from "@/integrations/telegram.ts"
 import { log } from "@/lib/logger.ts"
 import { captureError } from "@/lib/sentry.ts"
+import { nowISO } from "@/lib/time.ts"
 import { storeEpisode } from "@/memory/episodic.ts"
 import { clearProcessedEmails, peekAllPendingEmails, pushPendingEmails } from "@/memory/working.ts"
 import { RESPONDER_SYSTEM_PROMPT } from "@/prompts/responder.ts"
@@ -59,7 +59,7 @@ export const emailHandlerTask = task({
     try {
       for (const email of emails) {
         const emailContext = [
-          `Current time: ${formatISO(new Date())}`,
+          `Current time: ${nowISO()}`,
           `Response language: English`,
           consciousnessPrompt,
           "",

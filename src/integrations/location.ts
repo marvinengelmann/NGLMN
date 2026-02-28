@@ -1,6 +1,6 @@
-import { formatISO } from "date-fns"
 import * as z from "zod"
 import { logAndCaptureError } from "@/config/result-helpers.ts"
+import { nowISO } from "@/lib/time.ts"
 import { getKnowledge, storeKnowledge } from "@/memory/semantic.ts"
 import { clearWeatherData, getOperatorLocation, setOperatorLocation } from "@/memory/working.ts"
 
@@ -65,7 +65,7 @@ export async function resolveOperatorLocation(): Promise<OperatorLocation | null
           longitude: value.longitude,
           cityName: value.cityName,
           source: "semantic_memory",
-          updatedAt: rows[0]?.updatedAt?.toISOString() ?? formatISO(new Date())
+          updatedAt: rows[0]?.updatedAt?.toISOString() ?? nowISO()
         }
       }
     }
@@ -80,7 +80,7 @@ export async function resolveOperatorLocation(): Promise<OperatorLocation | null
         longitude: coords.longitude,
         cityName: defaultLocation,
         source: "env_default",
-        updatedAt: formatISO(new Date())
+        updatedAt: nowISO()
       }
       await setOperatorLocation(location, ENV_DEFAULT_CACHE_TTL_SECONDS)
       return location
@@ -99,7 +99,7 @@ export async function storeOperatorLocationFromTelegram(latitude: number, longit
     latitude,
     longitude,
     source: "telegram",
-    updatedAt: formatISO(new Date())
+    updatedAt: nowISO()
   }
   await setOperatorLocation(location)
   await clearWeatherData()

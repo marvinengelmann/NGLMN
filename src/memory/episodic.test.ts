@@ -20,6 +20,7 @@ import { err, ok } from "neverthrow"
 import { callIntelligence } from "@/core/intelligence.ts"
 import { vectorIndex } from "@/integrations/vector.ts"
 import { log } from "@/lib/logger.ts"
+import { nowISO } from "@/lib/time.ts"
 import type { EpisodeMetadata } from "@/memory/types.ts"
 import {
   downgradeEpisodes,
@@ -303,7 +304,7 @@ describe("summarizeOldEpisodes", () => {
   })
 
   it("skips episodes that are too recent", async () => {
-    const recentTimestamp = formatISO(new Date())
+    const recentTimestamp = nowISO()
     const episodes = [
       {
         id: "ep-1",

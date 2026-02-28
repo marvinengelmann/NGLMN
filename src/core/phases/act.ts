@@ -1,4 +1,3 @@
-import { formatISO } from "date-fns"
 import * as z from "zod"
 import { EMOTIONAL_THRESHOLDS, X } from "@/config/constants.ts"
 import { hasXConfig } from "@/config/env.ts"
@@ -18,6 +17,7 @@ import {
 } from "@/integrations/telegram.ts"
 import { log } from "@/lib/logger.ts"
 import { setTickContext } from "@/lib/sentry.ts"
+import { nowISO } from "@/lib/time.ts"
 import { storeEpisode, storeRelationshipEpisode } from "@/memory/episodic.ts"
 import { updateGoalStatus } from "@/memory/goals.ts"
 import { GoalStatus } from "@/memory/types.ts"
@@ -92,7 +92,7 @@ async function handleMessageOperator(
     {
       role: "anima",
       text: content,
-      timestamp: formatISO(new Date()),
+      timestamp: nowISO(),
       messageId: sentMessageId
     }
   ])
@@ -233,7 +233,7 @@ async function executeProactiveAction(
   if (proactiveResult.action !== "nothing") {
     await setLastProactiveAction({
       action: proactiveResult.action,
-      timestamp: formatISO(new Date())
+      timestamp: nowISO()
     })
   }
 

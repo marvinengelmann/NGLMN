@@ -18,7 +18,8 @@ vi.mock("@/lib/sentry.ts", () => ({
 }))
 
 vi.mock("@/lib/time.ts", () => ({
-  sleep: vi.fn()
+  sleep: vi.fn(),
+  nowISO: vi.fn(() => "2026-01-01T00:00:00+00:00")
 }))
 
 vi.mock("@/core/intelligence.ts", async (importOriginal) => ({

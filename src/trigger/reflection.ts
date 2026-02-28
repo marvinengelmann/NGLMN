@@ -1,10 +1,10 @@
 import { task } from "@trigger.dev/sdk"
-import { formatISO } from "date-fns"
 import { db } from "@/db/client.ts"
 import { dreamLog } from "@/db/schema.ts"
 import { buildReflectionInput, performReflection } from "@/dream/reflection.ts"
 import { log } from "@/lib/logger.ts"
 import { captureError } from "@/lib/sentry.ts"
+import { nowISO } from "@/lib/time.ts"
 import { setReflectionLastAt } from "@/memory/working.ts"
 
 export const adHocReflectionTask = task({
@@ -19,7 +19,7 @@ export const adHocReflectionTask = task({
       const input = await buildReflectionInput()
       const output = await performReflection(input)
 
-      await setReflectionLastAt(formatISO(new Date()))
+      await setReflectionLastAt(nowISO())
 
       await db.insert(dreamLog).values({
         phase: "ad_hoc_reflection",

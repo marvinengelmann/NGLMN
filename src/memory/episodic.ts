@@ -1,7 +1,8 @@
-import { formatISO, parseISO, subDays } from "date-fns"
+import { parseISO, subDays } from "date-fns"
 import { callIntelligence, FAST, TextOutput } from "@/core/intelligence.ts"
 import { vectorIndex } from "@/integrations/vector.ts"
 import { log } from "@/lib/logger.ts"
+import { nowISO } from "@/lib/time.ts"
 import type { EpisodeMetadata, EpisodicCategory } from "@/memory/types.ts"
 
 /**
@@ -18,7 +19,7 @@ export async function storeEpisode(
   } = {}
 ): Promise<string> {
   const id = crypto.randomUUID()
-  const now = formatISO(new Date())
+  const now = nowISO()
 
   await vectorIndex.upsert({
     id,

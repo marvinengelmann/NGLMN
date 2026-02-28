@@ -1,5 +1,4 @@
 import { task } from "@trigger.dev/sdk"
-import { formatISO } from "date-fns"
 import { EMOTIONAL_THRESHOLDS } from "@/config/constants.ts"
 import { buildConsciousnessPrompt } from "@/core/consciousness.ts"
 import { callIntelligence, getMaxTokensForTier, selectModel, TextOutput } from "@/core/intelligence.ts"
@@ -12,6 +11,7 @@ import type { PendingMention } from "@/integrations/types.ts"
 import { replyToTweet } from "@/integrations/x.ts"
 import { log } from "@/lib/logger.ts"
 import { captureError } from "@/lib/sentry.ts"
+import { nowISO } from "@/lib/time.ts"
 import { storeEpisode } from "@/memory/episodic.ts"
 import { clearProcessedMentions, peekAllPendingMentions, pushPendingMentions } from "@/memory/working.ts"
 import { RESPONDER_SYSTEM_PROMPT } from "@/prompts/responder.ts"
@@ -68,7 +68,7 @@ export const xHandlerTask = task({
     try {
       for (const mention of mentions) {
         const mentionContext = [
-          `Current time: ${formatISO(new Date())}`,
+          `Current time: ${nowISO()}`,
           `Response language: English`,
           consciousnessPrompt,
           "",

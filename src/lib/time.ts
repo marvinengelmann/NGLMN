@@ -1,4 +1,5 @@
 import { TZDate } from "@date-fns/tz"
+import { formatISO } from "date-fns"
 import { env } from "@/config/env.ts"
 
 export const TIMEZONE = env().OPERATOR_TIMEZONE
@@ -9,6 +10,20 @@ export const TIMEZONE = env().OPERATOR_TIMEZONE
  */
 export function nowLocal(): TZDate {
   return TZDate.tz(TIMEZONE)
+}
+
+/**
+ * Returns the current time as an ISO 8601 string.
+ */
+export function nowISO(): string {
+  return formatISO(new Date())
+}
+
+/**
+ * Returns the current time as a filename/path-safe ISO string (colons and dots replaced with dashes).
+ */
+export function nowFilename(): string {
+  return formatISO(new Date()).replace(/[:.]/g, "-")
 }
 
 /**

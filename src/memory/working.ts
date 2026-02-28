@@ -1,4 +1,3 @@
-import { formatISO } from "date-fns"
 import * as z from "zod"
 import { type ConversationMessage, ConversationSlot } from "@/bridge/types.ts"
 import { CONVERSATION } from "@/config/constants.ts"
@@ -8,6 +7,7 @@ import { ActiveEvolution } from "@/evolution/types.ts"
 import { OperatorLocation } from "@/integrations/location.ts"
 import { redis } from "@/integrations/redis.ts"
 import { PendingEmail, PendingMention, WeatherData } from "@/integrations/types.ts"
+import { nowISO } from "@/lib/time.ts"
 import { PerceptionSummary } from "@/perception/types.ts"
 import { PersonalityLayer } from "@/personality/types.ts"
 import { GuardianResult } from "@/security/types.ts"
@@ -154,7 +154,7 @@ export async function pushToActiveConversation(messages: ConversationMessage[]):
   if (messages.length === 0) return
   const buffer = await getConversationBuffer()
   if (buffer.length === 0) {
-    const now = formatISO(new Date())
+    const now = nowISO()
     buffer.push({ id: crypto.randomUUID(), messages: [], startedAt: now, lastActivityAt: now })
   }
   const active = buffer[buffer.length - 1]
@@ -176,7 +176,7 @@ export async function startNewConversation(): Promise<ConversationSlot | null> {
   if (buffer.length >= CONVERSATION.MAX_BUFFER_SLOTS) {
     evicted = buffer.shift() ?? null
   }
-  const now = formatISO(new Date())
+  const now = nowISO()
   buffer.push({ id: crypto.randomUUID(), messages: [], startedAt: now, lastActivityAt: now })
   await setConversationBuffer(buffer)
   return evicted

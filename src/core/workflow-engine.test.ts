@@ -88,7 +88,8 @@ vi.mock("@/prompts/workflow.ts", () => ({
 
 vi.mock("@/lib/time.ts", () => ({
   TIMEZONE: "UTC",
-  nowLocal: vi.fn(() => new Date())
+  nowLocal: vi.fn(() => new Date()),
+  nowISO: vi.fn(() => "2026-01-01T00:00:00+00:00")
 }))
 
 import { err, ok } from "neverthrow"

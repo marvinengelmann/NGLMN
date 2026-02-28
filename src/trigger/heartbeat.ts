@@ -1,5 +1,5 @@
 import { schedules, task } from "@trigger.dev/sdk"
-import { formatISO, getHours } from "date-fns"
+import { getHours } from "date-fns"
 import { act } from "@/core/phases/act.ts"
 import { maintain } from "@/core/phases/maintain.ts"
 import type { TickContext } from "@/core/phases/sense.ts"
@@ -7,7 +7,7 @@ import { sense } from "@/core/phases/sense.ts"
 import { think } from "@/core/phases/think.ts"
 import { log } from "@/lib/logger.ts"
 import { setTickContext } from "@/lib/sentry.ts"
-import { nowLocal } from "@/lib/time.ts"
+import { nowISO, nowLocal } from "@/lib/time.ts"
 import { isTickRunning, setLastTickSummary, setTickRunning } from "@/memory/working.ts"
 
 async function executeHeartbeat(skipDreamCheck = false, actionRequested = false) {
@@ -16,7 +16,7 @@ async function executeHeartbeat(skipDreamCheck = false, actionRequested = false)
     log.info("Dream hours, skipping heartbeat", { hour })
     await setLastTickSummary({
       tickId: `tick-${Date.now()}`,
-      timestamp: formatISO(new Date()),
+      timestamp: nowISO(),
       triageDecision: "idle",
       triageReason: "dream_hours",
       messagesProcessed: 0,
@@ -29,7 +29,7 @@ async function executeHeartbeat(skipDreamCheck = false, actionRequested = false)
   const ctx: TickContext = {
     tickId: `tick-${Date.now()}`,
     startTime: Date.now(),
-    timestamp: formatISO(new Date()),
+    timestamp: nowISO(),
     actionRequested
   }
   setTickContext({ tickId: ctx.tickId })

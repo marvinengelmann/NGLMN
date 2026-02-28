@@ -1,6 +1,6 @@
 import * as Sentry from "@sentry/node"
 import { schedules } from "@trigger.dev/sdk"
-import { differenceInSeconds, formatISO, parseISO } from "date-fns"
+import { differenceInSeconds, parseISO } from "date-fns"
 import { count, sql } from "drizzle-orm"
 import { getBudgetState } from "@/core/budget.ts"
 import { db } from "@/db/client.ts"
@@ -11,6 +11,7 @@ import { pingTelegram } from "@/integrations/telegram.ts"
 import { vectorIndex } from "@/integrations/vector.ts"
 import { log } from "@/lib/logger.ts"
 import { captureError } from "@/lib/sentry.ts"
+import { nowISO } from "@/lib/time.ts"
 import {
   getCurrentEmotion,
   getLastTickSummary,
@@ -170,7 +171,7 @@ export const healthCheckTask = schedules.task({
     }
 
     const result: HealthCheckResult = {
-      timestamp: formatISO(new Date()),
+      timestamp: nowISO(),
       overall,
       services: {
         redis: redisStatus,

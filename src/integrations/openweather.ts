@@ -1,4 +1,4 @@
-import { formatISO } from "date-fns"
+import { nowISO } from "@/lib/time.ts"
 import { getWeatherData, setWeatherData } from "@/memory/working.ts"
 import type { WeatherData } from "./types.ts"
 
@@ -50,7 +50,7 @@ export async function fetchCurrentWeather(lat: number, lon: number): Promise<Wea
       cloudPercent: clouds.all,
       isDay,
       locationName: data.name ?? undefined,
-      fetchedAt: formatISO(new Date())
+      fetchedAt: nowISO()
     }
   } catch {
     return null

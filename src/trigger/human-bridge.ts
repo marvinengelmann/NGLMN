@@ -21,7 +21,7 @@ import { computeEmotionalUpdate } from "@/emotion/update.ts"
 import { loadPrompt } from "@/evolution/prompt-loader.ts"
 import { fetchNewMessages, sendMessageWithReply, sendTypingAction } from "@/integrations/telegram.ts"
 import { log } from "@/lib/logger.ts"
-import { sleep } from "@/lib/time.ts"
+import { nowISO, sleep } from "@/lib/time.ts"
 import { storeEpisode, storeRelationshipEpisode } from "@/memory/episodic.ts"
 import { getOperatorLanguage } from "@/memory/semantic.ts"
 import {
@@ -59,7 +59,7 @@ export const humanBridgeTask = schedules.task({
     if (initialPoll.maxUpdateId != null) {
       await setLastUpdateId(initialPoll.maxUpdateId)
     }
-    await setOperatorLastActivity(formatISO(new Date()))
+    await setOperatorLastActivity(nowISO())
 
     let roundCount = 0
 
@@ -213,7 +213,7 @@ export const humanBridgeTask = schedules.task({
           const sentMessageId = await sendMessageWithReply(paragraph, p === 0 ? responseMessage.replyTo : undefined)
 
           await pushToActiveConversation([
-            { role: "anima", text: paragraph, timestamp: formatISO(new Date()), messageId: sentMessageId }
+            { role: "anima", text: paragraph, timestamp: nowISO(), messageId: sentMessageId }
           ])
           await pushRecentResponse(paragraph)
 
@@ -244,9 +244,7 @@ export const humanBridgeTask = schedules.task({
           await simulateTyping(computeTypingDuration(paragraph), sendTypingAction)
           const atSentId = await sendMessageWithReply(paragraph, p === 0 ? afterthought.replyTo : undefined)
 
-          await pushToActiveConversation([
-            { role: "anima", text: paragraph, timestamp: formatISO(new Date()), messageId: atSentId }
-          ])
+          await pushToActiveConversation([{ role: "anima", text: paragraph, timestamp: nowISO(), messageId: atSentId }])
           await pushRecentResponse(paragraph)
 
           if (p < atParagraphs.length - 1) {
@@ -307,7 +305,7 @@ export const humanBridgeTask = schedules.task({
       if (followUpPoll.maxUpdateId != null) {
         await setLastUpdateId(followUpPoll.maxUpdateId)
       }
-      await setOperatorLastActivity(formatISO(new Date()))
+      await setOperatorLastActivity(nowISO())
 
       await processEmotionTrigger(
         { trigger: "message_received", intensity: EMOTIONAL_THRESHOLDS.MESSAGE_RECEIVED_INTENSITY },

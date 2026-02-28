@@ -19,7 +19,8 @@ vi.mock("@/lib/sentry.ts", () => ({
 }))
 
 vi.mock("@/lib/time.ts", () => ({
-  nowLocal: vi.fn(() => new Date())
+  nowLocal: vi.fn(() => new Date()),
+  nowISO: vi.fn(() => "2026-01-01T00:00:00+00:00")
 }))
 
 vi.mock("@/memory/working.ts", () => ({
