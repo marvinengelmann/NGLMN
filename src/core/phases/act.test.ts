@@ -8,7 +8,7 @@ vi.mock("@/lib/sentry.ts", () => ({
   setTickContext: vi.fn()
 }))
 
-vi.mock("@/core/workflow-engine.ts", () => ({
+vi.mock("@/core/workflow.ts", () => ({
   executeWorkflow: vi.fn(() => ({ success: true }))
 }))
 
@@ -24,7 +24,7 @@ vi.mock("@/memory/working.ts", () => ({
   setLastProactiveAction: vi.fn()
 }))
 
-vi.mock("@/core/context-builder.ts", () => ({
+vi.mock("@/core/context.ts", () => ({
   buildSimpleContext: vi.fn(() => "simple context"),
   buildComplexContext: vi.fn(() => "complex context"),
   buildDeepContext: vi.fn(() => "deep context")
@@ -34,7 +34,7 @@ vi.mock("@/prompts/proactive.ts", () => ({
   PROACTIVE_SYSTEM_PROMPT: "mock proactive prompt"
 }))
 
-vi.mock("@/evolution/prompt-loader.ts", () => ({
+vi.mock("@/evolution/prompt.ts", () => ({
   loadPrompt: vi.fn((_key: string, fallback: string) => fallback)
 }))
 

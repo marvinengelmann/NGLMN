@@ -1,10 +1,10 @@
 import { and, desc, eq, inArray } from "drizzle-orm"
-import type { AnimaResultAsync } from "@/config/result-helpers.ts"
-import { trySafe } from "@/config/result-helpers.ts"
 import { db } from "@/db/client.ts"
 import type { GoalSelect } from "@/db/schema.ts"
 import { goals } from "@/db/schema.ts"
 import type { EmotionalState } from "@/emotion/types.ts"
+import type { AnimaResultAsync } from "@/lib/result.ts"
+import { trySafe } from "@/lib/result.ts"
 import type { GoalSource, GoalStatus } from "@/memory/types.ts"
 
 const EMOTION_BOOST_FACTOR = 0.3

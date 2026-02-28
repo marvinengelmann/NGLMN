@@ -1,6 +1,6 @@
-import { logAndCaptureError } from "@/config/result-helpers.ts"
 import { callIntelligence, REASONING } from "@/core/intelligence.ts"
 import { log } from "@/lib/logger.ts"
+import { logAndCaptureError } from "@/lib/result.ts"
 import { queryRelated, storeEpisode } from "@/memory/episodic.ts"
 import { createGoal } from "@/memory/goals.ts"
 import { getKnowledge, storeKnowledge } from "@/memory/semantic.ts"

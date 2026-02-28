@@ -1,10 +1,10 @@
 import { desc, eq } from "drizzle-orm"
 import * as z from "zod"
-import type { AnimaResultAsync } from "@/config/result-helpers.ts"
-import { trySafe } from "@/config/result-helpers.ts"
 import { callIntelligence, REASONING, TextOutput } from "@/core/intelligence.ts"
 import { db } from "@/db/client.ts"
 import { evolutionLog } from "@/db/schema.ts"
+import type { AnimaResultAsync } from "@/lib/result.ts"
+import { trySafe } from "@/lib/result.ts"
 import { storeEpisode } from "@/memory/episodic.ts"
 
 export const EvolutionType = z.enum(["prompt", "workflow", "code"])

@@ -22,7 +22,7 @@ vi.mock("@/emotion/update.ts", () => ({
   computeEmotionalUpdate: vi.fn()
 }))
 
-vi.mock("@/perception/pattern-goals.ts", () => ({
+vi.mock("@/perception/goals.ts", () => ({
   detectPerceptionGoals: vi.fn()
 }))
 
@@ -30,7 +30,7 @@ import { getEmotionalState, saveEmotionalState } from "@/emotion/state.ts"
 import { computeEmotionalUpdate } from "@/emotion/update.ts"
 import { setEmotionContext } from "@/lib/sentry.ts"
 import { evaluatePerception } from "@/perception/evaluate.ts"
-import { detectPerceptionGoals } from "@/perception/pattern-goals.ts"
+import { detectPerceptionGoals } from "@/perception/goals.ts"
 import { makeEmotionalState, makePerceptionSummary } from "@/test/factories.ts"
 import type { TickContext } from "./sense.ts"
 import { sense } from "./sense.ts"

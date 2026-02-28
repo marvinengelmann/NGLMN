@@ -1,52 +1,64 @@
-import { getHours } from "date-fns"
 import { db } from "@/db/client.ts"
 import { dreamLog } from "@/db/schema.ts"
-import type { ConsolidationResult, ReflectionOutput } from "@/dream/types.ts"
-import { collectMetrics } from "@/emotion/metrics-check.ts"
+import type { ConsolidationResult } from "@/dream/types.ts"
+import { collectMetrics } from "@/emotion/metrics.ts"
 import { getEmotionalState } from "@/emotion/state.ts"
 import type { EmotionalState, MetricsSnapshot } from "@/emotion/types.ts"
-import type { EvolutionType } from "@/evolution/changelog.ts"
 import { log } from "@/lib/logger.ts"
-import { nowISO, nowLocal } from "@/lib/time.ts"
-import {
-  getDreamState,
-  setDreamInsights,
-  setDreamLastRun,
-  setDreamState,
-  setReflectionLastAt
-} from "@/memory/working.ts"
+import { captureError } from "@/lib/sentry.ts"
+import { isDreamTime, nowISO } from "@/lib/time.ts"
+import { getDreamState, setDreamLastRun, setDreamState } from "@/memory/working.ts"
 import { consolidateMemories } from "./consolidation.ts"
 import { findCreativeConnections } from "./creative.ts"
-import { buildReflectionInput, performReflection } from "./reflection.ts"
-
-export interface EvolutionTrigger {
-  type: EvolutionType
-  promptId?: string
-  insight?: string
-  capabilityGap?: string
-}
 
 export interface DreamCycleResult {
+  action: string
+  consolidation?: ConsolidationResult | null
+  creative?: { connectionsFound: number; goalsCreated: number; insightsStored: number } | null
+  errors?: string[]
+  reason?: string
+}
+
+/**
+ * Runs the full dream cycle lifecycle: checks dream time, runs consolidation
+ * and creative phases, captures errors, and logs outcome.
+ */
+export async function runDreamCycle(): Promise<DreamCycleResult> {
+  if (!isDreamTime()) {
+    log.info("Not dream time, skipping")
+    return { action: "skipped", reason: "not dream time" }
+  }
+
+  log.info("Starting dream cycle")
+  const result = await executeDreamPhases()
+
+  if (result.errors.length > 0) {
+    for (const err of result.errors) {
+      captureError(err, { phase: "dream_cycle" })
+    }
+    log.warn("Dream cycle completed with errors", { errors: result.errors })
+  } else {
+    log.info("Dream cycle completed successfully", {
+      consolidation: result.consolidation,
+      creative: result.creative
+    })
+  }
+
+  return { action: "completed", ...result }
+}
+
+interface DreamPhasesResult {
   consolidation: ConsolidationResult | null
   creative: { connectionsFound: number; goalsCreated: number; insightsStored: number } | null
-  reflection: ReflectionOutput | null
-  evolutionTriggers: EvolutionTrigger[]
   errors: string[]
 }
 
-export function isDreamTime(): boolean {
-  const hour = getHours(nowLocal())
-  return hour < 6
-}
-
-export async function runDreamCycle(): Promise<DreamCycleResult> {
+async function executeDreamPhases(): Promise<DreamPhasesResult> {
   const currentState = await getDreamState()
   if (currentState === "dreaming") {
     return {
       consolidation: null,
       creative: null,
-      reflection: null,
-      evolutionTriggers: [],
       errors: ["Dream cycle already in progress"]
     }
   }
@@ -55,7 +67,6 @@ export async function runDreamCycle(): Promise<DreamCycleResult> {
   const errors: string[] = []
   let consolidationResult: ConsolidationResult | null = null
   let creativeResult: { connectionsFound: number; goalsCreated: number; insightsStored: number } | null = null
-  let reflectionOutput: ReflectionOutput | null = null
   let emotionBefore: EmotionalState | null = null
   let metricsSnapshot: MetricsSnapshot | null = null
 
@@ -101,103 +112,12 @@ export async function runDreamCycle(): Promise<DreamCycleResult> {
     errors.push(`Creative connections failed: ${e}`)
   }
 
-  try {
-    const reflectionInput = await buildReflectionInput()
-    reflectionOutput = await performReflection(reflectionInput)
-    let emotionAfterReflection: EmotionalState | null = null
-    try {
-      emotionAfterReflection = await getEmotionalState()
-    } catch (e) {
-      log.warn("Failed to get emotional state after reflection", { error: String(e) })
-    }
-    await db.insert(dreamLog).values({
-      phase: "reflection",
-      summary: `Generated ${reflectionOutput.insights.length} insights`,
-      insights: reflectionOutput,
-      metricsSnapshot,
-      emotionBefore,
-      emotionAfter: emotionAfterReflection
-    })
-  } catch (e) {
-    log.error("Dream: reflection failed", { error: String(e) })
-    errors.push(`Reflection failed: ${e}`)
-  }
-
-  const allInsights: string[] = []
-  if (reflectionOutput?.insights) {
-    allInsights.push(...reflectionOutput.insights)
-  }
-  if (reflectionOutput?.morningMessageDraft) {
-    allInsights.push(reflectionOutput.morningMessageDraft)
-  }
-
-  if (allInsights.length > 0) {
-    await setDreamInsights(allInsights)
-  }
-
-  const evolutionTriggers: EvolutionTrigger[] = []
-
-  if (reflectionOutput?.insights) {
-    for (const insight of reflectionOutput.insights) {
-      const lower = insight.toLowerCase()
-      if (
-        lower.includes("capability") ||
-        lower.includes("missing") ||
-        lower.includes("cannot") ||
-        lower.includes("should be able to")
-      ) {
-        evolutionTriggers.push({
-          type: "code",
-          insight,
-          capabilityGap: insight
-        })
-      }
-      if (
-        lower.includes("prompt") ||
-        lower.includes("triage") ||
-        lower.includes("communication style") ||
-        lower.includes("response quality")
-      ) {
-        evolutionTriggers.push({
-          type: "prompt",
-          promptId: lower.includes("triage") ? "triage" : "responder",
-          insight
-        })
-      }
-      if (
-        lower.includes("pattern") ||
-        lower.includes("recurring") ||
-        lower.includes("every day") ||
-        lower.includes("routine") ||
-        lower.includes("automate") ||
-        lower.includes("workflow")
-      ) {
-        evolutionTriggers.push({
-          type: "workflow",
-          insight
-        })
-      }
-    }
-  }
-
-  if (metricsSnapshot && metricsSnapshot.errorRate > 0.3) {
-    evolutionTriggers.push({
-      type: "prompt",
-      promptId: "triage",
-      insight: `High error rate (${(metricsSnapshot.errorRate * 100).toFixed(0)}%) suggests triage prompt needs improvement`
-    })
-  }
-
-  const nowIso = nowISO()
-  await setDreamLastRun(nowIso)
-  await setReflectionLastAt(nowIso)
+  await setDreamLastRun(nowISO())
   await setDreamState("waking")
 
   return {
     consolidation: consolidationResult,
     creative: creativeResult,
-    reflection: reflectionOutput,
-    evolutionTriggers,
     errors
   }
 }

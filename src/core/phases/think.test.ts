@@ -20,7 +20,7 @@ vi.mock("@/memory/working.ts", () => ({
   pushRecentTriageDecision: vi.fn()
 }))
 
-vi.mock("@/core/context-builder.ts", () => ({
+vi.mock("@/core/context.ts", () => ({
   buildTriageContext: vi.fn()
 }))
 
@@ -28,7 +28,7 @@ vi.mock("@/prompts/triage.ts", () => ({
   TRIAGE_SYSTEM_PROMPT: "mock triage prompt"
 }))
 
-vi.mock("@/evolution/prompt-loader.ts", () => ({
+vi.mock("@/evolution/prompt.ts", () => ({
   loadPrompt: vi.fn((_key: string, fallback: string) => fallback)
 }))
 
@@ -36,16 +36,16 @@ vi.mock("@/core/consciousness.ts", () => ({
   buildConsciousnessPrompt: vi.fn(() => Promise.resolve("[IDENTITY]\nTest identity\n\npersonality prompt"))
 }))
 
-vi.mock("@/core/workflow-engine.ts", () => ({
+vi.mock("@/core/workflow.ts", () => ({
   getActiveWorkflows: vi.fn(() => []),
   checkWorkflowTriggers: vi.fn(() => []),
   executeWorkflow: vi.fn()
 }))
 
 import { ok } from "neverthrow"
-import { buildTriageContext } from "@/core/context-builder.ts"
+import { buildTriageContext } from "@/core/context.ts"
 import { callIntelligence } from "@/core/intelligence.ts"
-import { checkWorkflowTriggers, executeWorkflow, getActiveWorkflows } from "@/core/workflow-engine.ts"
+import { checkWorkflowTriggers, executeWorkflow, getActiveWorkflows } from "@/core/workflow.ts"
 import { addBreadcrumb, captureError, setTickContext } from "@/lib/sentry.ts"
 import { getRecentTriageDecisions, pushRecentTriageDecision } from "@/memory/working.ts"
 import { makeEmotionalState, makePerceptionSummary, makeWorkflowDefinition } from "@/test/factories.ts"

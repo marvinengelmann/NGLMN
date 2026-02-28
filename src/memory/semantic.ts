@@ -1,10 +1,10 @@
 import { and, desc, eq, inArray, or, type SQL } from "drizzle-orm"
-import type { AnimaResultAsync } from "@/config/result-helpers.ts"
-import { trySafe } from "@/config/result-helpers.ts"
 import { db } from "@/db/client.ts"
 import type { SemanticMemorySelect, SemanticRelationSelect } from "@/db/schema.ts"
 import { semanticMemory, semanticRelations } from "@/db/schema.ts"
 import { log } from "@/lib/logger.ts"
+import type { AnimaResultAsync } from "@/lib/result.ts"
+import { trySafe } from "@/lib/result.ts"
 import type { RelationType, SemanticCategory, SemanticScope, SemanticSource } from "@/memory/types.ts"
 
 const DEFAULT_OPERATOR_LANGUAGE = "English"

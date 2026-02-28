@@ -1,6 +1,6 @@
 import { err, ok } from "neverthrow"
 import { describe, expect, it, vi } from "vitest"
-import { animaError } from "@/config/errors.ts"
+import { animaError } from "@/lib/errors.ts"
 
 vi.mock("@/core/intelligence.ts", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/core/intelligence.ts")>()),

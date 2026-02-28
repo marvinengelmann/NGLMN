@@ -1,4 +1,4 @@
-import { fromCatch } from "@/config/errors.ts"
+import { fromCatch } from "@/lib/errors.ts"
 import { log } from "@/lib/logger.ts"
 import {
   getXAccessToken,

@@ -1,5 +1,5 @@
 import * as z from "zod"
-import { logAndCaptureError } from "@/config/result-helpers.ts"
+import { logAndCaptureError } from "@/lib/result.ts"
 import { nowISO } from "@/lib/time.ts"
 import { getKnowledge, storeKnowledge } from "@/memory/semantic.ts"
 import { clearWeatherData, getOperatorLocation, setOperatorLocation } from "@/memory/working.ts"

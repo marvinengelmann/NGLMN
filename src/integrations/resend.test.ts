@@ -34,7 +34,7 @@ vi.mock("@/memory/working.ts", () => ({
   pushPendingEmails: vi.fn()
 }))
 
-vi.mock("@/security/injection-defense.ts", () => ({
+vi.mock("@/security/defense.ts", () => ({
   sanitizeForContext: vi.fn((text: string) => text)
 }))
 

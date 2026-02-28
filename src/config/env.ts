@@ -13,9 +13,9 @@ const EnvSchema = z.object({
   UPSTASH_VECTOR_REST_URL: z.string(),
   UPSTASH_VECTOR_REST_TOKEN: z.string(),
 
-  RESEND_API_KEY: z.string(),
-  RESEND_FROM_EMAIL: z.string(),
-  RESEND_OPERATOR_EMAIL: z.string(),
+  RESEND_API_KEY: z.string().optional(),
+  RESEND_FROM_EMAIL: z.string().optional(),
+  RESEND_OPERATOR_EMAIL: z.string().optional(),
 
   TRIGGER_PROJECT_REF: z.string(),
   TRIGGER_SECRET_KEY: z.string(),
@@ -79,6 +79,13 @@ export function env(): Env {
  */
 export function validateEnv(): Env {
   return EnvSchema.parse(process.env)
+}
+
+/**
+ * Check if all Resend (email) env vars are configured.
+ */
+export function hasEmailConfig(): boolean {
+  return !!(process.env.RESEND_API_KEY && process.env.RESEND_FROM_EMAIL && process.env.RESEND_OPERATOR_EMAIL)
 }
 
 /**

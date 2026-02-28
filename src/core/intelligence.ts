@@ -2,9 +2,9 @@ import { generateText, Output } from "ai"
 import * as z from "zod"
 import type { TierKey } from "@/config/constants.ts"
 import { MAX_TOKENS } from "@/config/constants.ts"
-import type { AnimaResultAsync } from "@/config/result-helpers.ts"
-import { trySafe } from "@/config/result-helpers.ts"
 import type { TriageResult } from "@/core/types.ts"
+import type { AnimaResultAsync } from "@/lib/result.ts"
+import { trySafe } from "@/lib/result.ts"
 import { estimateCallCost, trackApiCost } from "./budget.ts"
 
 export const TextOutput = z.object({ text: z.string() })

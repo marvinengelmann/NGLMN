@@ -2,6 +2,7 @@ import { differenceInHours, differenceInSeconds, parseISO } from "date-fns"
 import { hasXConfig } from "@/config/env.ts"
 import { getBudgetState } from "@/core/budget.ts"
 import type { EmotionUpdateEvent } from "@/emotion/types.ts"
+import type { OverallStatus } from "@/health/types.ts"
 import { listCommits } from "@/integrations/github.ts"
 import { resolveOperatorLocation } from "@/integrations/location.ts"
 import { getCachedOrFetchWeather } from "@/integrations/openweather.ts"
@@ -16,7 +17,6 @@ import {
   peekAllPendingEmails,
   peekAllPendingMentions
 } from "@/memory/working.ts"
-import type { OverallStatus } from "@/trigger/types.ts"
 
 /**
  * Read ANIMA's own state and generate emotional triggers from it.

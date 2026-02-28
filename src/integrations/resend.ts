@@ -3,11 +3,34 @@ import { env } from "@/config/env.ts"
 import type { AlertLevel, PendingEmail } from "@/integrations/types.ts"
 import { log } from "@/lib/logger.ts"
 import { getLastPolledEmailId, pushPendingEmails, setLastPolledEmailId } from "@/memory/working.ts"
-import { sanitizeForContext } from "@/security/injection-defense.ts"
+import { sanitizeForContext } from "@/security/defense.ts"
 
-const resend = new Resend(env().RESEND_API_KEY)
-const fromEmail = env().RESEND_FROM_EMAIL
-const operatorEmail = env().RESEND_OPERATOR_EMAIL
+let _resend: Resend | undefined
+let _fromEmail: string | undefined
+let _operatorEmail: string | undefined
+
+function getResend(): Resend {
+  _resend ??= new Resend(env().RESEND_API_KEY)
+  return _resend
+}
+
+function getFromEmail(): string {
+  if (!_fromEmail) {
+    const val = env().RESEND_FROM_EMAIL
+    if (!val) throw new Error("RESEND_FROM_EMAIL is not configured")
+    _fromEmail = val
+  }
+  return _fromEmail
+}
+
+function getOperatorEmail(): string {
+  if (!_operatorEmail) {
+    const val = env().RESEND_OPERATOR_EMAIL
+    if (!val) throw new Error("RESEND_OPERATOR_EMAIL is not configured")
+    _operatorEmail = val
+  }
+  return _operatorEmail
+}
 
 /**
  * Send an email via Resend.
@@ -16,8 +39,8 @@ const operatorEmail = env().RESEND_OPERATOR_EMAIL
  * @param html - HTML body content.
  */
 export async function sendEmail(to: string, subject: string, html: string): Promise<void> {
-  await resend.emails.send({
-    from: fromEmail,
+  await getResend().emails.send({
+    from: getFromEmail(),
     to,
     subject,
     html
@@ -30,7 +53,7 @@ export async function sendEmail(to: string, subject: string, html: string): Prom
  * @param html - HTML body content.
  */
 export async function sendEmailToOperator(subject: string, html: string): Promise<void> {
-  await sendEmail(operatorEmail, subject, html)
+  await sendEmail(getOperatorEmail(), subject, html)
 }
 
 /**
@@ -46,7 +69,7 @@ export async function pollNewEmails(): Promise<number> {
     listParams.after = lastPolledId
   }
 
-  const { data: listResult, error: listError } = await resend.emails.receiving.list(listParams)
+  const { data: listResult, error: listError } = await getResend().emails.receiving.list(listParams)
 
   if (listError || !listResult) {
     log.error("Email polling failed", { error: listError?.message ?? "no result" })
@@ -59,7 +82,7 @@ export async function pollNewEmails(): Promise<number> {
   const pendingEmails: PendingEmail[] = []
 
   for (const entry of emailIds) {
-    const { data: email, error: getError } = await resend.emails.receiving.get(entry.id)
+    const { data: email, error: getError } = await getResend().emails.receiving.get(entry.id)
 
     if (getError || !email) {
       log.warn("Failed to fetch email", { emailId: entry.id, error: getError?.message ?? "no data" })
@@ -67,7 +90,7 @@ export async function pollNewEmails(): Promise<number> {
     }
 
     const recipients = Array.isArray(email.to) ? email.to : [String(email.to)]
-    const isForAnima = recipients.some((addr) => addr.toLowerCase() === fromEmail.toLowerCase())
+    const isForAnima = recipients.some((addr) => addr.toLowerCase() === getFromEmail().toLowerCase())
     if (!isForAnima) continue
 
     const rawText = email.text ?? email.html ?? ""
@@ -112,7 +135,7 @@ export async function sendEmailAlert(level: AlertLevel, message: string): Promis
  */
 export async function pingResend(): Promise<boolean> {
   try {
-    const { error } = await resend.domains.list()
+    const { error } = await getResend().domains.list()
     return !error
   } catch {
     return false

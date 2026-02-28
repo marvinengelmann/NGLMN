@@ -5,7 +5,7 @@ vi.mock("@/memory/working.ts", () => ({
   pushToActiveConversation: vi.fn()
 }))
 
-vi.mock("@/core/context-builder.ts", () => ({
+vi.mock("@/core/context.ts", () => ({
   buildSimpleContext: vi.fn(),
   buildComplexContext: vi.fn(),
   buildDeepContext: vi.fn()

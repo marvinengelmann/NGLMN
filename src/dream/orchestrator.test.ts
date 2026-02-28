@@ -5,20 +5,35 @@ vi.mock("@/db/client.ts", () => {
   return { db: chain }
 })
 
+vi.mock("@/db/schema.ts", () => ({
+  dreamLog: {}
+}))
+
 vi.mock("@/emotion/state.ts", () => ({
   getEmotionalState: vi.fn()
 }))
 
-vi.mock("@/emotion/metrics-check.ts", () => ({
+vi.mock("@/emotion/metrics.ts", () => ({
   collectMetrics: vi.fn()
+}))
+
+vi.mock("@/lib/logger.ts", () => ({
+  log: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() }
+}))
+
+vi.mock("@/lib/sentry.ts", () => ({
+  captureError: vi.fn()
+}))
+
+vi.mock("@/lib/time.ts", () => ({
+  isDreamTime: vi.fn(() => true),
+  nowISO: vi.fn(() => "2026-01-01T03:00:00+00:00")
 }))
 
 vi.mock("@/memory/working.ts", () => ({
   getDreamState: vi.fn(),
   setDreamState: vi.fn(),
-  setDreamLastRun: vi.fn(),
-  setDreamInsights: vi.fn(),
-  setReflectionLastAt: vi.fn()
+  setDreamLastRun: vi.fn()
 }))
 
 vi.mock("./consolidation.ts", () => ({
@@ -29,51 +44,45 @@ vi.mock("./creative.ts", () => ({
   findCreativeConnections: vi.fn()
 }))
 
-vi.mock("./reflection.ts", () => ({
-  buildReflectionInput: vi.fn(),
-  performReflection: vi.fn()
-}))
-
-import { collectMetrics } from "@/emotion/metrics-check.ts"
+import { collectMetrics } from "@/emotion/metrics.ts"
 import { getEmotionalState } from "@/emotion/state.ts"
-import { getDreamState, setDreamInsights, setDreamLastRun, setDreamState } from "@/memory/working.ts"
-import {
-  makeConsolidationResult,
-  makeEmotionalState,
-  makeMetricsSnapshot,
-  makeReflectionInput,
-  makeReflectionOutput
-} from "@/test/factories.ts"
+import { captureError } from "@/lib/sentry.ts"
+import { isDreamTime } from "@/lib/time.ts"
+import { getDreamState, setDreamLastRun, setDreamState } from "@/memory/working.ts"
+import { makeConsolidationResult, makeEmotionalState, makeMetricsSnapshot } from "@/test/factories.ts"
 import { consolidateMemories } from "./consolidation.ts"
 import { findCreativeConnections } from "./creative.ts"
-import { isDreamTime, runDreamCycle } from "./orchestrator.ts"
-import { buildReflectionInput, performReflection } from "./reflection.ts"
+import { runDreamCycle } from "./orchestrator.ts"
 
+const mockIsDreamTime = isDreamTime as ReturnType<typeof vi.fn>
 const mockGetDreamState = getDreamState as ReturnType<typeof vi.fn>
 const mockSetDreamState = setDreamState as ReturnType<typeof vi.fn>
 const mockSetDreamLastRun = setDreamLastRun as ReturnType<typeof vi.fn>
-const mockSetDreamInsights = setDreamInsights as ReturnType<typeof vi.fn>
 const mockGetEmotionalState = getEmotionalState as ReturnType<typeof vi.fn>
 const mockConsolidateMemories = consolidateMemories as ReturnType<typeof vi.fn>
 const mockFindCreativeConnections = findCreativeConnections as ReturnType<typeof vi.fn>
-const mockBuildReflectionInput = buildReflectionInput as ReturnType<typeof vi.fn>
-const mockPerformReflection = performReflection as ReturnType<typeof vi.fn>
 const mockCollectMetrics = collectMetrics as ReturnType<typeof vi.fn>
+const mockCaptureError = captureError as ReturnType<typeof vi.fn>
 
-describe("isDreamTime", () => {
-  it("is a function that returns a boolean", () => {
-    expect(typeof isDreamTime()).toBe("boolean")
-  })
+beforeEach(() => {
+  vi.clearAllMocks()
+  mockIsDreamTime.mockReturnValue(true)
+  mockGetDreamState.mockResolvedValue("idle")
+  mockSetDreamState.mockResolvedValue(undefined)
+  mockSetDreamLastRun.mockResolvedValue(undefined)
+  mockGetEmotionalState.mockResolvedValue(makeEmotionalState())
+  mockCollectMetrics.mockResolvedValue(makeMetricsSnapshot())
 })
 
 describe("runDreamCycle", () => {
-  beforeEach(() => {
-    mockGetDreamState.mockResolvedValue("idle")
-    mockSetDreamState.mockResolvedValue(undefined)
-    mockSetDreamLastRun.mockResolvedValue(undefined)
-    mockSetDreamInsights.mockResolvedValue(undefined)
-    mockGetEmotionalState.mockResolvedValue(makeEmotionalState())
-    mockCollectMetrics.mockResolvedValue(makeMetricsSnapshot())
+  it("skips when not dream time", async () => {
+    mockIsDreamTime.mockReturnValue(false)
+
+    const result = await runDreamCycle()
+
+    expect(result.action).toBe("skipped")
+    expect(result.reason).toBe("not dream time")
+    expect(mockConsolidateMemories).not.toHaveBeenCalled()
   })
 
   it("aborts if already dreaming", async () => {
@@ -83,29 +92,25 @@ describe("runDreamCycle", () => {
     expect(mockConsolidateMemories).not.toHaveBeenCalled()
   })
 
-  it("runs all three phases in sequence", async () => {
+  it("runs consolidation and creative phases in sequence", async () => {
     mockConsolidateMemories.mockResolvedValue(makeConsolidationResult())
     mockFindCreativeConnections.mockResolvedValue({
       connectionsFound: 3,
       goalsCreated: 1,
       insightsStored: 2
     })
-    mockBuildReflectionInput.mockResolvedValue(makeReflectionInput())
-    mockPerformReflection.mockResolvedValue(makeReflectionOutput())
 
     const result = await runDreamCycle()
 
+    expect(result.action).toBe("completed")
     expect(result.consolidation).not.toBeNull()
     expect(result.creative).not.toBeNull()
-    expect(result.reflection).not.toBeNull()
     expect(result.errors).toHaveLength(0)
   })
 
   it("sets dream state transitions correctly", async () => {
     mockConsolidateMemories.mockResolvedValue(makeConsolidationResult())
     mockFindCreativeConnections.mockResolvedValue({ connectionsFound: 0, goalsCreated: 0, insightsStored: 0 })
-    mockBuildReflectionInput.mockResolvedValue(makeReflectionInput())
-    mockPerformReflection.mockResolvedValue(makeReflectionOutput())
 
     await runDreamCycle()
 
@@ -114,75 +119,27 @@ describe("runDreamCycle", () => {
     expect(mockSetDreamLastRun).toHaveBeenCalled()
   })
 
-  it("continues when consolidation fails", async () => {
+  it("continues when consolidation fails and captures errors", async () => {
     mockConsolidateMemories.mockRejectedValue(new Error("consolidation error"))
     mockFindCreativeConnections.mockResolvedValue({ connectionsFound: 1, goalsCreated: 0, insightsStored: 1 })
-    mockBuildReflectionInput.mockResolvedValue(makeReflectionInput())
-    mockPerformReflection.mockResolvedValue(makeReflectionOutput())
 
     const result = await runDreamCycle()
 
     expect(result.consolidation).toBeNull()
     expect(result.creative).not.toBeNull()
-    expect(result.reflection).not.toBeNull()
     expect(result.errors).toHaveLength(1)
-    expect(result.errors[0]).toContain("Consolidation failed")
+    expect(result.errors?.[0]).toContain("Consolidation failed")
+    expect(mockCaptureError).toHaveBeenCalled()
   })
 
   it("continues when creative connections fail", async () => {
     mockConsolidateMemories.mockResolvedValue(makeConsolidationResult())
     mockFindCreativeConnections.mockRejectedValue(new Error("creative error"))
-    mockBuildReflectionInput.mockResolvedValue(makeReflectionInput())
-    mockPerformReflection.mockResolvedValue(makeReflectionOutput())
 
     const result = await runDreamCycle()
 
     expect(result.consolidation).not.toBeNull()
     expect(result.creative).toBeNull()
     expect(result.errors).toHaveLength(1)
-  })
-
-  it("stores dream insights for morning message", async () => {
-    mockConsolidateMemories.mockResolvedValue(makeConsolidationResult())
-    mockFindCreativeConnections.mockResolvedValue({ connectionsFound: 0, goalsCreated: 0, insightsStored: 0 })
-    mockBuildReflectionInput.mockResolvedValue(makeReflectionInput())
-    mockPerformReflection.mockResolvedValue(
-      makeReflectionOutput({
-        insights: ["Insight A", "Insight B"],
-        morningMessageDraft: "Good morning draft"
-      })
-    )
-
-    await runDreamCycle()
-
-    expect(mockSetDreamInsights).toHaveBeenCalledWith(["Insight A", "Insight B", "Good morning draft"])
-  })
-
-  it("generates evolution triggers from capability insights", async () => {
-    mockConsolidateMemories.mockResolvedValue(makeConsolidationResult())
-    mockFindCreativeConnections.mockResolvedValue({ connectionsFound: 0, goalsCreated: 0, insightsStored: 0 })
-    mockBuildReflectionInput.mockResolvedValue(makeReflectionInput())
-    mockPerformReflection.mockResolvedValue(
-      makeReflectionOutput({
-        insights: ["I am missing the capability to parse PDFs"]
-      })
-    )
-
-    const result = await runDreamCycle()
-    expect(result.evolutionTriggers.length).toBeGreaterThan(0)
-    expect(result.evolutionTriggers[0]?.type).toBe("code")
-  })
-
-  it("generates prompt evolution trigger on high error rate", async () => {
-    mockCollectMetrics.mockResolvedValue(makeMetricsSnapshot({ errorRate: 0.5 }))
-    mockConsolidateMemories.mockResolvedValue(makeConsolidationResult())
-    mockFindCreativeConnections.mockResolvedValue({ connectionsFound: 0, goalsCreated: 0, insightsStored: 0 })
-    mockBuildReflectionInput.mockResolvedValue(makeReflectionInput())
-    mockPerformReflection.mockResolvedValue(makeReflectionOutput())
-
-    const result = await runDreamCycle()
-    const promptTrigger = result.evolutionTriggers.find((t) => t.type === "prompt")
-    expect(promptTrigger).toBeDefined()
-    expect(promptTrigger?.promptId).toBe("triage")
   })
 })

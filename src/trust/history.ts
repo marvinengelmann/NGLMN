@@ -1,9 +1,9 @@
 import { eq } from "drizzle-orm"
-import type { AnimaResultAsync } from "@/config/result-helpers.ts"
-import { trySafe } from "@/config/result-helpers.ts"
 import { db } from "@/db/client.ts"
 import { trustLevels } from "@/db/schema.ts"
 import { clamp01 } from "@/lib/math.ts"
+import type { AnimaResultAsync } from "@/lib/result.ts"
+import { trySafe } from "@/lib/result.ts"
 import { ensureTrustLevel } from "./levels.ts"
 import type { ActionType } from "./types.ts"
 

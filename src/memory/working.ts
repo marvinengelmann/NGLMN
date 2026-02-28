@@ -4,6 +4,7 @@ import { CONVERSATION } from "@/config/constants.ts"
 import { TickSummary } from "@/core/types.ts"
 import { EmotionalState } from "@/emotion/types.ts"
 import { ActiveEvolution } from "@/evolution/types.ts"
+import { HealthCheckResult } from "@/health/types.ts"
 import { OperatorLocation } from "@/integrations/location.ts"
 import { redis } from "@/integrations/redis.ts"
 import { PendingEmail, PendingMention, WeatherData } from "@/integrations/types.ts"
@@ -11,7 +12,6 @@ import { nowISO } from "@/lib/time.ts"
 import { PerceptionSummary } from "@/perception/types.ts"
 import { PersonalityLayer } from "@/personality/types.ts"
 import { GuardianResult } from "@/security/types.ts"
-import { HealthCheckResult } from "@/trigger/types.ts"
 
 function parseRedisJson<T>(schema: z.ZodType<T>, raw: unknown, key: string): T {
   try {

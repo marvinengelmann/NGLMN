@@ -6,7 +6,7 @@ import { sendGuardianAlert } from "@/integrations/telegram.ts"
 import { log } from "@/lib/logger.ts"
 import { nowISO } from "@/lib/time.ts"
 import { getRecentResponses, getRecentTickDurations, getRecentTriageDecisions } from "@/memory/working.ts"
-import { detectInjection } from "./injection-defense.ts"
+import { detectInjection } from "./defense.ts"
 import type { DriftReport, DriftSignal, GuardianResult } from "./types.ts"
 
 export interface GuardianHandleResult {

@@ -1,5 +1,5 @@
 import { CONVERSATION, FOLLOW_UP } from "@/config/constants.ts"
-import { buildComplexContext, buildDeepContext, buildSimpleContext } from "@/core/context-builder.ts"
+import { buildComplexContext, buildDeepContext, buildSimpleContext } from "@/core/context.ts"
 import type { TriageDecision } from "@/core/types.ts"
 import type { EmotionalState } from "@/emotion/types.ts"
 import type { PendingMessage } from "@/integrations/types.ts"

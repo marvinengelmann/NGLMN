@@ -32,7 +32,7 @@ vi.mock("@/integrations/telegram.ts", () => ({
   sendDriftAlert: vi.fn()
 }))
 
-vi.mock("@/dream/reflection.ts", () => ({
+vi.mock("@/routine/reflection.ts", () => ({
   shouldTriggerReflection: vi.fn(() => ({ trigger: false, reason: "No introspective urge" }))
 }))
 
@@ -53,10 +53,10 @@ vi.mock("@/emotion/state.ts", () => ({
 }))
 
 import { db } from "@/db/client.ts"
-import { shouldTriggerReflection } from "@/dream/reflection.ts"
 import { sendDriftAlert } from "@/integrations/telegram.ts"
 import { addBreadcrumb } from "@/lib/sentry.ts"
 import { getEffectivePersonality, pushRecentTickDuration, setLastTickSummary } from "@/memory/working.ts"
+import { shouldTriggerReflection } from "@/routine/reflection.ts"
 import { detectDrift } from "@/security/guardian.ts"
 import { makeDriftReport, makePersonalityLayer, makeTriageResult } from "@/test/factories.ts"
 import { adHocReflectionTask } from "@/trigger/reflection.ts"

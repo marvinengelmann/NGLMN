@@ -1,8 +1,8 @@
 import * as z from "zod"
-import { logAndCaptureError } from "@/config/result-helpers.ts"
 import { callIntelligence, REASONING } from "@/core/intelligence.ts"
 import type { EmotionalState } from "@/emotion/types.ts"
 import { log } from "@/lib/logger.ts"
+import { logAndCaptureError } from "@/lib/result.ts"
 import { storeEpisode } from "@/memory/episodic.ts"
 import { createGoal } from "@/memory/goals.ts"
 

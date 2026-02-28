@@ -1,55 +1,5 @@
 import { schedules, task } from "@trigger.dev/sdk"
-import { getHours } from "date-fns"
-import { act } from "@/core/phases/act.ts"
-import { maintain } from "@/core/phases/maintain.ts"
-import type { TickContext } from "@/core/phases/sense.ts"
-import { sense } from "@/core/phases/sense.ts"
-import { think } from "@/core/phases/think.ts"
-import { log } from "@/lib/logger.ts"
-import { setTickContext } from "@/lib/sentry.ts"
-import { nowISO, nowLocal } from "@/lib/time.ts"
-import { isTickRunning, setLastTickSummary, setTickRunning } from "@/memory/working.ts"
-
-async function executeHeartbeat(skipDreamCheck = false, actionRequested = false) {
-  const hour = getHours(nowLocal())
-  if (hour < 6 && !skipDreamCheck) {
-    log.info("Dream hours, skipping heartbeat", { hour })
-    await setLastTickSummary({
-      tickId: `tick-${Date.now()}`,
-      timestamp: nowISO(),
-      triageDecision: "idle",
-      triageReason: "dream_hours",
-      messagesProcessed: 0,
-      responseSent: false,
-      durationMs: 0
-    })
-    return { skipped: true, reason: "dream_hours" }
-  }
-
-  const ctx: TickContext = {
-    tickId: `tick-${Date.now()}`,
-    startTime: Date.now(),
-    timestamp: nowISO(),
-    actionRequested
-  }
-  setTickContext({ tickId: ctx.tickId })
-
-  if (await isTickRunning()) {
-    log.warn("Tick already running, skipping")
-    return { skipped: true }
-  }
-
-  await setTickRunning(true)
-
-  try {
-    const senseResult = await sense(ctx)
-    const thinkResult = await think(ctx, senseResult)
-    const actResult = await act(ctx, senseResult, thinkResult)
-    return await maintain(ctx, thinkResult, actResult)
-  } finally {
-    await setTickRunning(false)
-  }
-}
+import { runHeartbeat } from "@/core/heartbeat.ts"
 
 /**
  * Standalone heartbeat task — can be triggered programmatically (e.g. from conversation handler).
@@ -61,7 +11,7 @@ export const heartbeatRunTask = task({
   },
   maxDuration: 300,
   run: async (payload: { skipDreamCheck?: boolean; actionRequested?: boolean }) =>
-    executeHeartbeat(payload.skipDreamCheck, payload.actionRequested)
+    runHeartbeat(payload.skipDreamCheck, payload.actionRequested)
 })
 
 /**
@@ -73,5 +23,5 @@ export const heartbeatTask = schedules.task({
   queue: {
     concurrencyLimit: 1
   },
-  run: () => executeHeartbeat()
+  run: () => runHeartbeat()
 })

@@ -1,6 +1,6 @@
-import { logAndCaptureError } from "@/config/result-helpers.ts"
 import { callIntelligence, REASONING } from "@/core/intelligence.ts"
 import { log } from "@/lib/logger.ts"
+import { logAndCaptureError } from "@/lib/result.ts"
 import { downgradeEpisodes, queryRelated, summarizeOldEpisodes } from "@/memory/episodic.ts"
 import { storeKnowledge, storeRelation } from "@/memory/semantic.ts"
 import { type RelationType, RelationType as RelationTypeSchema, type SemanticCategory } from "@/memory/types.ts"

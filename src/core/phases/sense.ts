@@ -1,11 +1,11 @@
-import { logAndCaptureError, trySafe } from "@/config/result-helpers.ts"
 import { getEmotionalState, saveEmotionalState } from "@/emotion/state.ts"
 import type { EmotionalState } from "@/emotion/types.ts"
 import { computeEmotionalUpdate } from "@/emotion/update.ts"
 import { log } from "@/lib/logger.ts"
+import { logAndCaptureError, trySafe } from "@/lib/result.ts"
 import { setEmotionContext } from "@/lib/sentry.ts"
 import { evaluatePerception } from "@/perception/evaluate.ts"
-import { detectPerceptionGoals } from "@/perception/pattern-goals.ts"
+import { detectPerceptionGoals } from "@/perception/goals.ts"
 import type { PerceptionSummary } from "@/perception/types.ts"
 
 export interface TickContext {

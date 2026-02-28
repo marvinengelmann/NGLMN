@@ -1,5 +1,5 @@
 import { TZDate } from "@date-fns/tz"
-import { formatISO } from "date-fns"
+import { formatISO, getHours } from "date-fns"
 import { env } from "@/config/env.ts"
 
 export const TIMEZONE = env().OPERATOR_TIMEZONE
@@ -10,6 +10,13 @@ export const TIMEZONE = env().OPERATOR_TIMEZONE
  */
 export function nowLocal(): TZDate {
   return TZDate.tz(TIMEZONE)
+}
+
+/**
+ * Returns true during dream hours (00:00–05:59 in operator timezone).
+ */
+export function isDreamTime(): boolean {
+  return getHours(nowLocal()) < 6
 }
 
 /**

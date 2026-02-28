@@ -1,11 +1,10 @@
-import { logAndCaptureError, trySafe } from "@/config/result-helpers.ts"
 import type { TickSummary } from "@/core/types.ts"
 import { db } from "@/db/client.ts"
 import { tickLog } from "@/db/schema.ts"
-import { shouldTriggerReflection } from "@/dream/reflection.ts"
 import { getEmotionalState } from "@/emotion/state.ts"
 import { sendDriftAlert } from "@/integrations/telegram.ts"
 import { log } from "@/lib/logger.ts"
+import { logAndCaptureError, trySafe } from "@/lib/result.ts"
 import { addBreadcrumb } from "@/lib/sentry.ts"
 import {
   getEffectivePersonality,
@@ -13,6 +12,7 @@ import {
   pushRecentTickDuration,
   setLastTickSummary
 } from "@/memory/working.ts"
+import { shouldTriggerReflection } from "@/routine/reflection.ts"
 import { detectDrift } from "@/security/guardian.ts"
 import type { DriftReport } from "@/security/types.ts"
 import { adHocReflectionTask } from "@/trigger/reflection.ts"
