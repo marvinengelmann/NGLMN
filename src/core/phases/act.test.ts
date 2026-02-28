@@ -48,9 +48,13 @@ vi.mock("@/memory/episodic.ts", () => ({
   storeRelationshipEpisode: vi.fn()
 }))
 
-vi.mock("@/security/guardian.ts", () => ({
-  validateOutput: vi.fn()
-}))
+vi.mock("@/security/guardian.ts", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/security/guardian.ts")>()
+  return {
+    ...actual,
+    validateOutput: vi.fn()
+  }
+})
 
 vi.mock("@/emotion/state.ts", () => ({
   getEmotionalState: vi.fn(() => ({

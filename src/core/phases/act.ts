@@ -9,12 +9,7 @@ import { executeWorkflow } from "@/core/workflow-engine.ts"
 import { processEmotionTrigger, saveEmotionalState } from "@/emotion/state.ts"
 import { computeEmotionalUpdate } from "@/emotion/update.ts"
 import { loadPrompt } from "@/evolution/prompt-loader.ts"
-import {
-  escapeTelegramMarkdown,
-  sendGuardianAlert,
-  sendSystemNotification,
-  sendToOperator
-} from "@/integrations/telegram.ts"
+import { escapeTelegramMarkdown, sendSystemNotification, sendToOperator } from "@/integrations/telegram.ts"
 import { log } from "@/lib/logger.ts"
 import { setTickContext } from "@/lib/sentry.ts"
 import { nowISO } from "@/lib/time.ts"
@@ -28,7 +23,7 @@ import {
   setLastProactiveAction
 } from "@/memory/working.ts"
 import { PROACTIVE_SYSTEM_PROMPT } from "@/prompts/proactive.ts"
-import { validateOutput, validatePublicOutput } from "@/security/guardian.ts"
+import { handleGuardianVerdict, validateOutput, validatePublicOutput } from "@/security/guardian.ts"
 import type { SenseResult, TickContext } from "./sense.ts"
 import type { ThinkResult } from "./think.ts"
 
@@ -66,24 +61,9 @@ async function handleMessageOperator(
   const guardianResult = await guardianValidate(content)
   await setGuardianResult(guardianResult)
 
-  if (guardianResult.verdict === "blocked") {
-    log.warn("Guardian BLOCKED proactive message", { reasons: guardianResult.reasons })
-    await sendGuardianAlert(guardianResult)
-    await processEmotionTrigger(
-      { trigger: "guardian_block", intensity: EMOTIONAL_THRESHOLDS.GUARDIAN_BLOCK_INTENSITY },
-      "guardian_block",
-      `guardian-${Date.now()}`
-    )
+  const { blocked } = await handleGuardianVerdict(guardianResult, "proactive-msg")
+  if (blocked) {
     return { responseSent: false }
-  }
-
-  if (guardianResult.verdict === "warning") {
-    await sendGuardianAlert(guardianResult)
-    await processEmotionTrigger(
-      { trigger: "guardian_warning", intensity: EMOTIONAL_THRESHOLDS.GUARDIAN_WARNING_INTENSITY },
-      "guardian_warning",
-      `guardian-${Date.now()}`
-    )
   }
 
   const sentMessageId = await sendToOperator(content)
@@ -165,24 +145,9 @@ async function handlePostTweet(
   const guardianResult = await validatePublicOutput(content)
   await setGuardianResult(guardianResult)
 
-  if (guardianResult.verdict === "blocked") {
-    log.warn("Guardian BLOCKED proactive tweet", { reasons: guardianResult.reasons })
-    await sendGuardianAlert(guardianResult)
-    await processEmotionTrigger(
-      { trigger: "guardian_block", intensity: EMOTIONAL_THRESHOLDS.GUARDIAN_BLOCK_INTENSITY },
-      "guardian_block",
-      `guardian-${Date.now()}`
-    )
+  const { blocked } = await handleGuardianVerdict(guardianResult, "proactive-tweet")
+  if (blocked) {
     return { responseSent: false }
-  }
-
-  if (guardianResult.verdict === "warning") {
-    await sendGuardianAlert(guardianResult)
-    await processEmotionTrigger(
-      { trigger: "guardian_warning", intensity: EMOTIONAL_THRESHOLDS.GUARDIAN_WARNING_INTENSITY },
-      "guardian_warning",
-      `guardian-${Date.now()}`
-    )
   }
 
   const { postTweet } = await import("@/integrations/x.ts")

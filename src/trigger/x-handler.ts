@@ -15,7 +15,7 @@ import { nowISO } from "@/lib/time.ts"
 import { storeEpisode } from "@/memory/episodic.ts"
 import { clearProcessedMentions, peekAllPendingMentions, pushPendingMentions } from "@/memory/working.ts"
 import { RESPONDER_SYSTEM_PROMPT } from "@/prompts/responder.ts"
-import { validatePublicOutput } from "@/security/guardian.ts"
+import { handleGuardianVerdict, validatePublicOutput } from "@/security/guardian.ts"
 import { wrapExternalData } from "@/security/injection-defense.ts"
 import { canActAutonomously } from "@/trust/assessment.ts"
 import { recordFailure, recordSuccess } from "@/trust/history.ts"
@@ -101,13 +101,8 @@ export const xHandlerTask = task({
         const replyText = replyResult.value.text
 
         const guardianResult = await validatePublicOutput(replyText)
-        if (guardianResult.verdict === "blocked") {
-          log.warn("Guardian blocked X response", { reasons: guardianResult.reasons })
-          await processEmotionTrigger(
-            { trigger: "guardian_block", intensity: EMOTIONAL_THRESHOLDS.GUARDIAN_BLOCK_INTENSITY },
-            "guardian_block",
-            `x-guardian-${Date.now()}`
-          )
+        const { blocked } = await handleGuardianVerdict(guardianResult, "x")
+        if (blocked) {
           failedMentions.push(mention)
           continue
         }

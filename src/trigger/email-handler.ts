@@ -7,14 +7,14 @@ import { getEmotionalState, processEmotionTrigger, saveEmotionalState } from "@/
 import { computeEmotionalUpdate } from "@/emotion/update.ts"
 import { loadPrompt } from "@/evolution/prompt-loader.ts"
 import { sendEmail } from "@/integrations/resend.ts"
-import { escapeTelegramMarkdown, sendGuardianAlert, sendToOperator } from "@/integrations/telegram.ts"
+import { escapeTelegramMarkdown, sendToOperator } from "@/integrations/telegram.ts"
 import { log } from "@/lib/logger.ts"
 import { captureError } from "@/lib/sentry.ts"
 import { nowISO } from "@/lib/time.ts"
 import { storeEpisode } from "@/memory/episodic.ts"
 import { clearProcessedEmails, peekAllPendingEmails, pushPendingEmails } from "@/memory/working.ts"
 import { RESPONDER_SYSTEM_PROMPT } from "@/prompts/responder.ts"
-import { validateOutput } from "@/security/guardian.ts"
+import { handleGuardianVerdict, validateOutput } from "@/security/guardian.ts"
 import { wrapExternalData } from "@/security/injection-defense.ts"
 import { canActAutonomously } from "@/trust/assessment.ts"
 import { recordFailure, recordSuccess } from "@/trust/history.ts"
@@ -93,25 +93,10 @@ export const emailHandlerTask = task({
         const emailReply = emailReplyResult.value.text
 
         const guardianResult = await validateOutput(emailReply)
-        if (guardianResult.verdict === "blocked") {
-          log.warn("Guardian blocked email response", { reasons: guardianResult.reasons })
-          await sendGuardianAlert(guardianResult)
-          await processEmotionTrigger(
-            { trigger: "guardian_block", intensity: EMOTIONAL_THRESHOLDS.GUARDIAN_BLOCK_INTENSITY },
-            "guardian_block",
-            `email-guardian-${Date.now()}`
-          )
+        const { blocked } = await handleGuardianVerdict(guardianResult, "email")
+        if (blocked) {
           failedEmails.push(email)
           continue
-        }
-
-        if (guardianResult.verdict === "warning") {
-          await sendGuardianAlert(guardianResult)
-          await processEmotionTrigger(
-            { trigger: "guardian_warning", intensity: EMOTIONAL_THRESHOLDS.GUARDIAN_WARNING_INTENSITY },
-            "guardian_warning",
-            `email-guardian-${Date.now()}`
-          )
         }
 
         const sanitizedSubject = email.subject.replace(/[\r\n]/g, "").slice(0, 998)

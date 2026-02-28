@@ -1,10 +1,51 @@
-import { GUARDIAN, X } from "@/config/constants.ts"
+import { EMOTIONAL_THRESHOLDS, GUARDIAN, X } from "@/config/constants.ts"
 import { getBudgetState } from "@/core/budget.ts"
+import { processEmotionTrigger } from "@/emotion/state.ts"
 import type { EmotionalState } from "@/emotion/types.ts"
+import { sendGuardianAlert } from "@/integrations/telegram.ts"
+import { log } from "@/lib/logger.ts"
 import { nowISO } from "@/lib/time.ts"
 import { getRecentResponses, getRecentTickDurations, getRecentTriageDecisions } from "@/memory/working.ts"
 import { detectInjection } from "./injection-defense.ts"
 import type { DriftReport, DriftSignal, GuardianResult } from "./types.ts"
+
+export interface GuardianHandleResult {
+  blocked: boolean
+}
+
+/**
+ * Handle a guardian verdict by logging, alerting, and triggering emotions.
+ * @param guardianResult - The result from validateOutput or validatePublicOutput.
+ * @param contextPrefix - Label for the emotion trigger context (e.g. "email", "x", "proactive").
+ */
+export async function handleGuardianVerdict(
+  guardianResult: GuardianResult,
+  contextPrefix: string
+): Promise<GuardianHandleResult> {
+  const contextId = `guardian-${contextPrefix}-${nowISO()}`
+
+  if (guardianResult.verdict === "blocked") {
+    log.warn("Guardian BLOCKED content", { reasons: guardianResult.reasons })
+    await sendGuardianAlert(guardianResult)
+    await processEmotionTrigger(
+      { trigger: "guardian_block", intensity: EMOTIONAL_THRESHOLDS.GUARDIAN_BLOCK_INTENSITY },
+      "guardian_block",
+      contextId
+    )
+    return { blocked: true }
+  }
+
+  if (guardianResult.verdict === "warning") {
+    await sendGuardianAlert(guardianResult)
+    await processEmotionTrigger(
+      { trigger: "guardian_warning", intensity: EMOTIONAL_THRESHOLDS.GUARDIAN_WARNING_INTENSITY },
+      "guardian_warning",
+      contextId
+    )
+  }
+
+  return { blocked: false }
+}
 
 /**
  * Rule-based output validator — checks length bounds, stuck loop patterns,

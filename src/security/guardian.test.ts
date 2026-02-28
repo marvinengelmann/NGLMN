@@ -1,3 +1,15 @@
+vi.mock("@/emotion/state.ts", () => ({
+  processEmotionTrigger: vi.fn()
+}))
+
+vi.mock("@/integrations/telegram.ts", () => ({
+  sendGuardianAlert: vi.fn()
+}))
+
+vi.mock("@/lib/logger.ts", () => ({
+  log: { trace: vi.fn(), debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn(), fatal: vi.fn() }
+}))
+
 vi.mock("@/memory/working.ts", () => ({
   getRecentResponses: vi.fn(),
   getRecentTriageDecisions: vi.fn(),
