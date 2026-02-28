@@ -10,7 +10,7 @@ An autonomously operating, self-evolving AI entity powered by xAI Grok via Verce
 - **Two-Tier Model Routing** — Grok Fast and Reasoning via AI Gateway
 - **Three-Layer Memory** — Working (Redis), Episodic (Vector), Semantic (Postgres) with relationship graph
 - **MBTI-Based Personality** — Ten-dimension two-layer model (base + adaptive) evolving through reflection
-- **Simulated Emotions** — 7-dimension state vector with decay, MBTI baselines, and metrics calibration
+- **Simulated Emotions** — 7-dimension state vector with decay, personality-driven baselines, and metrics calibration
 - **Trust System** — Fear/confidence-based autonomy across 9 action types that grows through experience
 - **Passive Perception** — 6 sensor sources with pattern-based goal detection
 - **Human Bridge** — Unified Telegram polling and conversation handler with boundary detection, typing simulation, afterthought messages, and multi-round follow-ups
@@ -185,22 +185,26 @@ ANIMA deploys automatically through Trigger.dev on every push to `master`. The s
 
 ```
 src/
-├── bridge/         # Human Bridge — unified Telegram polling, conversation handling, typing simulation, afterthought
+├── bridge/         # Human Bridge — conversation handling, typing simulation, afterthought
 ├── config/         # Environment validation, constants, error taxonomy, Result helpers, Sentry setup
 ├── core/           # Intelligence (LLM), context builder, budget tracking, workflow engine, heartbeat phases
 ├── db/             # Drizzle schema (11 tables), migrations, client, seed
-├── dream/          # Dream orchestration, consolidation, creative connections, reflection, morning messages
+├── dream/          # Dream orchestration, consolidation, creative connections
 ├── emotion/        # 7-dimension state vector, update logic (decay + events), calibration, metrics check
 ├── evolution/      # Prompt/workflow/code evolution, curiosity engine, changelog, prompt loader
+├── health/         # Health check logic, service status verification
+├── inbound/        # Unified polling cycle — X mentions, email processing
 ├── integrations/   # Redis, Vector, Telegram (Grammy), X, GitHub, E2B, Resend, OpenWeather
 ├── lib/            # Shared utilities (math, time, logger, sentry)
 ├── memory/         # Working (Redis), episodic (Vector), semantic (Postgres), goal tracking
 ├── perception/     # 6 passive sensors, pattern-based goal detection
 ├── personality/    # MBTI system, personality DNA, expression prompts, operator feedback
 ├── prompts/        # System prompts (triage, conversation, responder, proactive, afterthought, dream, evolution)
+├── routine/        # Reflection, morning messages
 ├── security/       # Guardian, rollback engine, injection defense
 ├── test/           # Test factories, mocks, and utilities
-└── trigger/        # Trigger.dev tasks (heartbeat, human-bridge, x-poll, dream, morning, email, evolution, health-check)
+├── trigger/        # Trigger.dev tasks (heartbeat, bridge, inbound, dream, morning, evolution, health, reflection, init)
+└── trust/          # Trust assessment, autonomy levels, action history
 ```
 
 ## License
