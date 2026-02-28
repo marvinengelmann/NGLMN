@@ -1,4 +1,4 @@
-import { generateObject } from "ai"
+import { generateText, Output } from "ai"
 import * as z from "zod"
 import type { TierKey } from "@/config/constants.ts"
 import { MAX_TOKENS } from "@/config/constants.ts"
@@ -46,27 +46,29 @@ interface CallIntelligenceOptions<T extends z.ZodType> {
 }
 
 /**
- * Unified LLM call — always uses generateObject with a Zod schema.
+ * Unified LLM call — uses generateText with Output.object for structured output.
  * Tracks usage internally; callers receive only the typed result.
  */
-export function callIntelligence<T extends z.ZodType>(opts: CallIntelligenceOptions<T>): AnimaResultAsync<z.infer<T>> {
+export function callIntelligence<T extends z.ZodType>(
+  options: CallIntelligenceOptions<T>
+): AnimaResultAsync<z.infer<T>> {
   return trySafe("LLM_ERROR", async () => {
-    const result = await generateObject({
-      model: opts.model,
-      system: opts.system,
-      prompt: opts.userMessage,
-      schema: opts.schema,
-      maxTokens: opts.maxTokens ?? 1024
+    const result = await generateText({
+      model: options.model,
+      system: options.system,
+      prompt: options.userMessage,
+      output: Output.object({ schema: options.schema }),
+      maxOutputTokens: options.maxTokens ?? 1024
     })
 
     const inputTokens = result.usage?.inputTokens ?? 0
     const outputTokens = result.usage?.outputTokens ?? 0
 
-    const cost = estimateCallCost(opts.model, { inputTokens, outputTokens })
+    const cost = estimateCallCost(options.model, { inputTokens, outputTokens })
     if (cost > 0) {
       await trackApiCost(cost)
     }
 
-    return result.object as z.infer<T>
+    return result.output as z.infer<T>
   })
 }

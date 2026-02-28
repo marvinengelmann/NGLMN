@@ -153,7 +153,7 @@ function getBaselineEntries() {
       value: {
         strategy: "Fast for triage+simple, Reasoning for complex+deep (identical pricing)",
         budgetAwareness: "Redis key tracks daily API costs with $8 daily limit",
-        structuredOutput: "All LLM calls use generateObject with Zod schemas via Vercel AI SDK"
+        structuredOutput: "All LLM calls use generateText with Output.object and Zod schemas via Vercel AI SDK"
       },
       source: "operator",
       confidence: 0.9
