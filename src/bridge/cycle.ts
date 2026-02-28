@@ -2,7 +2,6 @@ import { formatISO } from "date-fns"
 import { checkForAfterthought } from "@/bridge/afterthought.ts"
 import { archiveConversation, detectConversationBoundary, recallArchivedContext } from "@/bridge/conversation.ts"
 import { buildConversationResponsePrompt, computeFollowUpWait } from "@/bridge/handler.ts"
-import { StructuredResponse } from "@/bridge/types.ts"
 import {
   computeInterParagraphPause,
   computeReadTime,
@@ -10,7 +9,8 @@ import {
   computeTypingDuration,
   simulateTyping,
   splitIntoParagraphs
-} from "@/bridge/typing.ts"
+} from "@/bridge/timing.ts"
+import { StructuredResponse } from "@/bridge/types.ts"
 import { AFTERTHOUGHT, CONVERSATION, EMOTIONAL_THRESHOLDS, HUMAN_BRIDGE, MESSAGE_DELAY } from "@/config/constants.ts"
 import { buildConsciousnessPrompt } from "@/core/consciousness.ts"
 import { callIntelligence, FAST, getMaxTokensForTier, selectModel } from "@/core/intelligence.ts"

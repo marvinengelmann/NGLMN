@@ -54,7 +54,7 @@ vi.mock("@/bridge/conversation.ts", () => ({
   recallArchivedContext: vi.fn()
 }))
 
-vi.mock("@/bridge/typing.ts", () => ({
+vi.mock("@/bridge/timing.ts", () => ({
   computeTypingDuration: vi.fn(() => 0),
   computeReadTime: vi.fn(() => 0),
   computeThinkingDuration: vi.fn(() => 0),
@@ -117,7 +117,7 @@ vi.mock("@/memory/semantic.ts", () => ({
 
 import { checkForAfterthought } from "@/bridge/afterthought.ts"
 import { computeFollowUpWait } from "@/bridge/handler.ts"
-import { splitIntoParagraphs } from "@/bridge/typing.ts"
+import { splitIntoParagraphs } from "@/bridge/timing.ts"
 import { callIntelligence } from "@/core/intelligence.ts"
 import { fetchNewMessages, sendMessageWithReply } from "@/integrations/telegram.ts"
 import { storeEpisode } from "@/memory/episodic.ts"

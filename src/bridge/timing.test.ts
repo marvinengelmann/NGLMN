@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { makePendingMessage } from "@/test/factories.ts"
-import { computeReadTime, computeTypingDuration, simulateTyping } from "./typing.ts"
+import { computeReadTime, computeTypingDuration, simulateTyping } from "./timing.ts"
 
 describe("computeTypingDuration", () => {
   it("returns minimum for very short text", () => {
