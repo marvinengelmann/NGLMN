@@ -2,6 +2,7 @@
   "name": "anima",
   "type": "module",
   "private": true,
+  "license": "PolyForm-Noncommercial-1.0.0",
   "scripts": {
     "dev": "bunx trigger.dev@latest dev",
     "check": "bunx biome check src/",

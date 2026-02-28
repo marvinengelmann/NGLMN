@@ -202,3 +202,10 @@ src/
 ├── test/           # Test factories, mocks, and utilities
 └── trigger/        # Trigger.dev tasks (heartbeat, human-bridge, x-poll, dream, morning, email, evolution, health-check)
 ```
+
+## License
+
+This project is licensed under the [PolyForm Noncommercial License 1.0.0](LICENSE.md).
+
+- You **may** use, modify, and self-host ANIMA for personal, educational, research, or other noncommercial purposes
+- You **may not** use ANIMA for any commercial purpose without explicit permission from the author
