@@ -1,4 +1,5 @@
 vi.mock("@/personality/mbti.ts", () => ({
+  getMbtiType: vi.fn(() => "INFP-T"),
   mbtiFlavorText: vi.fn((type: string) => `Your personality archetype is ${type}. Mock flavor text.`)
 }))
 
@@ -187,30 +188,21 @@ describe("buildPersonalityPrompt", () => {
       )
       const lines = result.split("\n")
       expect(lines[0]).toBe("[PERSONALITY & MOOD]")
-      expect(lines[1]).toContain("Style:")
-      expect(lines[2]).toContain("Current mood:")
+      expect(lines[1]).toContain("Archetype:")
+      expect(lines[2]).toContain("Style:")
+      expect(lines[3]).toContain("Current mood:")
     })
   })
 
-  describe("mbtiType parameter", () => {
-    it("includes archetype flavor text when mbtiType provided", () => {
-      const result = buildPersonalityPrompt(makePersonalityLayer(), makeEmotionalState(), "INFP-T")
+  describe("mbti archetype", () => {
+    it("includes archetype flavor text from getMbtiType", () => {
+      const result = buildPersonalityPrompt(makePersonalityLayer(), makeEmotionalState())
       expect(result).toContain("Archetype:")
       expect(result).toContain("INFP-T")
     })
 
-    it("does not include archetype when mbtiType is null", () => {
-      const result = buildPersonalityPrompt(makePersonalityLayer(), makeEmotionalState(), null)
-      expect(result).not.toContain("Archetype:")
-    })
-
-    it("does not include archetype when mbtiType is undefined", () => {
-      const result = buildPersonalityPrompt(makePersonalityLayer(), makeEmotionalState(), undefined)
-      expect(result).not.toContain("Archetype:")
-    })
-
     it("places archetype between header and style", () => {
-      const result = buildPersonalityPrompt(makePersonalityLayer({ warmth: 0.9 }), makeEmotionalState(), "ESTJ-A")
+      const result = buildPersonalityPrompt(makePersonalityLayer({ warmth: 0.9 }), makeEmotionalState())
       const lines = result.split("\n")
       expect(lines[0]).toBe("[PERSONALITY & MOOD]")
       expect(lines[1]).toContain("Archetype:")

@@ -1,16 +1,13 @@
 import type { EmotionalState } from "@/emotion/types.ts"
-import { mbtiFlavorText } from "@/personality/mbti.ts"
+import { getMbtiType, mbtiFlavorText } from "@/personality/mbti.ts"
 import type { PersonalityLayer } from "@/personality/types.ts"
 
 /**
  * Build a natural-language personality and mood prompt block
  * from numeric personality dimensions and emotional state.
  */
-export function buildPersonalityPrompt(
-  personality: PersonalityLayer,
-  emotion: EmotionalState,
-  mbtiType?: string | null
-): string {
+export function buildPersonalityPrompt(personality: PersonalityLayer, emotion: EmotionalState): string {
+  const mbtiType = getMbtiType()
   const styleInstructions: string[] = []
 
   if (personality.warmth > 0.7) {

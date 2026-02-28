@@ -2,6 +2,7 @@ import { differenceInHours, formatISO, getDay, getHours, getMinutes } from "date
 import { desc, eq } from "drizzle-orm"
 import { WORKFLOW } from "@/config/constants.ts"
 import { logAndCaptureError, trySafe } from "@/config/result-helpers.ts"
+import { buildIdentityPrompt } from "@/core/identity.ts"
 import { BooleanOutput, callIntelligence, FAST, REASONING, TextOutput } from "@/core/intelligence.ts"
 import type { TickSummary, WorkflowExecutionResult } from "@/core/types.ts"
 import {
@@ -26,7 +27,6 @@ import { getAllConversationMessages, getPerceptionSummary } from "@/memory/worki
 import type { PerceptionSummary } from "@/perception/types.ts"
 import { getEffectivePersonality } from "@/personality/dna.ts"
 import { buildPersonalityPrompt } from "@/personality/expression.ts"
-import { getMbtiType } from "@/personality/mbti.ts"
 import { PERCEPTION_TRIGGER_EVAL_PROMPT, WORKFLOW_EXECUTION_SYSTEM_PROMPT } from "@/prompts/workflow.ts"
 import { recordFailure, recordSuccess } from "@/trust/history.ts"
 
@@ -312,14 +312,17 @@ export async function gatherWorkflowData(dataSources: string[]): Promise<string>
 async function prepareWorkflowContext(workflow: WorkflowDefinition): Promise<string> {
   const isOperatorFacing = workflow.outputAction === "telegram_send"
 
-  const [data, personality, emotion, operatorLanguage] = await Promise.all([
+  const [data, personality, emotion, operatorLanguage, identityPrompt] = await Promise.all([
     gatherWorkflowData(workflow.dataSources),
     getEffectivePersonality(),
     getEmotionalState(),
-    isOperatorFacing ? getOperatorLanguage() : Promise.resolve(null)
+    isOperatorFacing ? getOperatorLanguage() : Promise.resolve(null),
+    buildIdentityPrompt()
   ])
 
-  const personalityPrompt = personality ? buildPersonalityPrompt(personality, emotion, getMbtiType()) : ""
+  const personalityPrompt = personality
+    ? `${identityPrompt}\n\n${buildPersonalityPrompt(personality, emotion)}`
+    : identityPrompt
 
   return [
     `## Workflow: ${workflow.name}`,
