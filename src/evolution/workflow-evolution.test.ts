@@ -75,6 +75,10 @@ vi.mock("@/personality/expression.ts", () => ({
   buildPersonalityPrompt: vi.fn().mockReturnValue("")
 }))
 
+vi.mock("@/core/identity.ts", () => ({
+  buildIdentityPrompt: vi.fn(() => Promise.resolve("[IDENTITY]\nTest identity"))
+}))
+
 vi.mock("@/integrations/telegram.ts", () => ({
   sendToOperator: vi.fn()
 }))

@@ -64,6 +64,10 @@ vi.mock("@/personality/expression.ts", () => ({
   buildPersonalityPrompt: vi.fn().mockReturnValue("")
 }))
 
+vi.mock("@/core/identity.ts", () => ({
+  buildIdentityPrompt: vi.fn(() => Promise.resolve("[IDENTITY]\nTest identity"))
+}))
+
 vi.mock("@/trust/history.ts", () => ({
   recordSuccess: vi.fn(),
   recordFailure: vi.fn()
