@@ -5,7 +5,7 @@ import { db } from "@/db/client.ts"
 import type { SemanticMemorySelect, SemanticRelationSelect } from "@/db/schema.ts"
 import { semanticMemory, semanticRelations } from "@/db/schema.ts"
 import { log } from "@/lib/logger.ts"
-import type { RelationType, SemanticCategory, SemanticSource } from "@/memory/types.ts"
+import type { RelationType, SemanticCategory, SemanticScope, SemanticSource } from "@/memory/types.ts"
 
 const DEFAULT_OPERATOR_LANGUAGE = "English"
 
@@ -28,21 +28,22 @@ export async function getOperatorLanguage(): Promise<string> {
 }
 
 /**
- * Store or update a piece of long-term knowledge (upsert on category+key).
+ * Store or update a piece of long-term knowledge (upsert on category+key+scope).
  */
 export function storeKnowledge(
   category: SemanticCategory,
   key: string,
   value: unknown,
   source: SemanticSource,
-  confidence: number = 0.5
+  confidence: number = 0.5,
+  scope?: SemanticScope
 ): AnimaResultAsync<string> {
   return trySafe("DB_ERROR", async () => {
     const rows = await db
       .insert(semanticMemory)
-      .values({ category, key, value, source, confidence })
+      .values({ category, key, value, source, confidence, scope: scope ?? null })
       .onConflictDoUpdate({
-        target: [semanticMemory.category, semanticMemory.key],
+        target: [semanticMemory.category, semanticMemory.key, semanticMemory.scope],
         set: { value, source, confidence, updatedAt: new Date() }
       })
       .returning({ id: semanticMemory.id })
@@ -54,14 +55,19 @@ export function storeKnowledge(
 }
 
 /**
- * Retrieve knowledge by category and/or key.
+ * Retrieve knowledge by category, key, and/or scope.
  * Also updates `lastAccessedAt` on returned rows.
  */
-export function getKnowledge(category?: SemanticCategory, key?: string): AnimaResultAsync<SemanticMemorySelect[]> {
+export function getKnowledge(
+  category?: SemanticCategory,
+  key?: string,
+  scope?: SemanticScope
+): AnimaResultAsync<SemanticMemorySelect[]> {
   return trySafe("DB_ERROR", async () => {
     const conditions: SQL[] = []
     if (category) conditions.push(eq(semanticMemory.category, category))
     if (key) conditions.push(eq(semanticMemory.key, key))
+    if (scope) conditions.push(eq(semanticMemory.scope, scope))
 
     const rows = await db
       .select()

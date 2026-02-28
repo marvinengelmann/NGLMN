@@ -239,5 +239,20 @@ export async function performReflection(input: ReflectionInput): Promise<Reflect
     if (storeResult.isErr()) logAndCaptureError(storeResult.error)
   }
 
+  if (output.selfInsights && output.selfInsights.length > 0) {
+    for (const selfInsight of output.selfInsights) {
+      const storeResult = await storeKnowledge(
+        "insight",
+        `self-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+        selfInsight,
+        "reflection",
+        0.85,
+        "self"
+      )
+      if (storeResult.isErr()) logAndCaptureError(storeResult.error)
+    }
+    log.info("Stored self-insights from reflection", { count: output.selfInsights.length })
+  }
+
   return output
 }

@@ -9,6 +9,9 @@ export type GoalStatus = z.infer<typeof GoalStatus>
 export const SemanticCategory = z.enum(["preference", "project", "contact", "knowledge", "insight"])
 export type SemanticCategory = z.infer<typeof SemanticCategory>
 
+export const SemanticScope = z.enum(["self", "operator", "world"])
+export type SemanticScope = z.infer<typeof SemanticScope>
+
 export const SemanticSource = z.enum(["operator", "observation", "dream", "reflection"])
 export type SemanticSource = z.infer<typeof SemanticSource>
 

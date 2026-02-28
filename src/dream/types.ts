@@ -48,6 +48,7 @@ export type ReflectionInput = z.infer<typeof ReflectionInput>
 
 export const ReflectionOutput = z.object({
   insights: z.array(z.string()),
+  selfInsights: z.array(z.string()).nullish(),
   personalityDeltas: z.record(z.string(), z.number()).nullish(),
   newGoals: z
     .array(

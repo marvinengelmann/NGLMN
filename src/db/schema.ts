@@ -45,13 +45,15 @@ export const semanticMemory = pgTable(
     value: jsonb("value").notNull(),
     confidence: real("confidence").default(0.5),
     source: text("source").notNull(),
+    scope: text("scope"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
     lastAccessedAt: timestamp("last_accessed_at", { withTimezone: true })
   },
   (table) => [
-    unique("uq_semantic_memory_category_key").on(table.category, table.key),
-    index("idx_semantic_memory_category_key").on(table.category, table.key)
+    unique("uq_semantic_memory_category_key_scope").on(table.category, table.key, table.scope),
+    index("idx_semantic_memory_category_key").on(table.category, table.key),
+    index("idx_semantic_memory_scope").on(table.scope)
   ]
 )
 

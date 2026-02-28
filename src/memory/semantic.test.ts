@@ -24,6 +24,7 @@ vi.mock("@/db/schema.ts", () => ({
     value: "value",
     confidence: "confidence",
     source: "source",
+    scope: "scope",
     createdAt: "created_at",
     updatedAt: "updated_at",
     lastAccessedAt: "last_accessed_at"
@@ -95,7 +96,8 @@ describe("storeKnowledge", () => {
       key: "color",
       value: "blue",
       source: "operator",
-      confidence: 0.9
+      confidence: 0.9,
+      scope: null
     })
   })
 
