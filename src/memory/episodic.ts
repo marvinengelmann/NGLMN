@@ -51,6 +51,7 @@ export async function queryRelated(
     id: string
     score: number
     metadata: EpisodeMetadata | undefined
+    data: string | undefined
   }>
 > {
   const truncated = text.length > MAX_QUERY_LENGTH ? text.slice(0, MAX_QUERY_LENGTH) : text
@@ -58,13 +59,15 @@ export async function queryRelated(
     data: truncated,
     topK,
     includeMetadata: true,
+    includeData: true,
     ...(filter ? { filter } : {})
   })
 
   return results.map((r) => ({
     id: r.id as string,
     score: r.score,
-    metadata: r.metadata
+    metadata: r.metadata,
+    data: r.data as string | undefined
   }))
 }
 
@@ -92,6 +95,7 @@ export async function queryRelationshipHistory(topK: number = 5): Promise<
     id: string
     score: number
     metadata: EpisodeMetadata | undefined
+    data: string | undefined
   }>
 > {
   return queryRelated("operator relationship interaction bonding", topK, "category = 'relationship'")
@@ -204,18 +208,21 @@ export async function getRecentByCategory(
     id: string
     score: number
     metadata: EpisodeMetadata | undefined
+    data: string | undefined
   }>
 > {
   const results = await vectorIndex.query({
     data: `recent ${category} activity`,
     topK: limit,
     includeMetadata: true,
+    includeData: true,
     filter: `category = '${category}'`
   })
 
   return results.map((r) => ({
     id: r.id as string,
     score: r.score,
-    metadata: r.metadata
+    metadata: r.metadata,
+    data: r.data as string | undefined
   }))
 }

@@ -4,7 +4,7 @@ Select the most relevant file paths (max 8) that you would need to read or modif
 export const CHANGELOG_NARRATIVE_SYSTEM_PROMPT = `You just made a change to yourself. Write a brief autobiographical changelog entry about it.
 
 1–2 sentences, first person. Include how the change feels — not just what it does.
-If a [PERSONALITY & MOOD] section is provided, let it shape your tone.
+If a \`Personality & Mood\` section is provided, let it shape your tone.
 
 Input: a technical description of the change and its outcome.
 Output: ONLY the narrative text. No JSON, no markdown, no preamble.`

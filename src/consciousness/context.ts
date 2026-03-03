@@ -1,10 +1,13 @@
+import { format } from "date-fns"
 import type { ConversationSlot } from "@/communication/types.ts"
 import { CONTEXT_LIMITS } from "@/config/constants.ts"
 import { env } from "@/config/env.ts"
 import type { SenseData } from "@/consciousness/types.ts"
+import type { DreamState } from "@/dream/types.ts"
 import { getEmotionHistory } from "@/emotion/state.ts"
+import { EmotionalState } from "@/emotion/types.ts"
 import { getRecentChangelog } from "@/evolution/changelog.ts"
-import { nowISO } from "@/lib/time.ts"
+import { nowLocal, TIMEZONE } from "@/lib/time.ts"
 import { queryRelated, queryRelationshipHistory } from "@/memory/episodic.ts"
 import { getGoalsByPriority } from "@/memory/goals.ts"
 import { getKnowledge, getOperatorLanguage } from "@/memory/semantic.ts"
@@ -53,7 +56,7 @@ function formatConversationSlot(slot: ConversationSlot, label: string): string {
 
 function formatConversationBuffer(buffer: ConversationSlot[]): string {
   if (buffer.length === 0) return ""
-  const parts: string[] = ["[CONVERSATION]"]
+  const parts: string[] = ["# Conversation"]
   for (let i = 0; i < buffer.length; i++) {
     const slot = buffer[i]
     if (!slot) continue
@@ -74,6 +77,31 @@ function formatConversationBuffer(buffer: ConversationSlot[]): string {
   return parts.join("\n\n")
 }
 
+function computeEmotionDeltas(current: unknown, previous: unknown): string | null {
+  const curr = EmotionalState.safeParse(current)
+  const prev = EmotionalState.safeParse(previous)
+  if (!curr.success || !prev.success) return null
+
+  const changes = (Object.keys(curr.data) as (keyof EmotionalState)[])
+    .map((dim) => ({ dim, diff: curr.data[dim] - prev.data[dim] }))
+    .filter(({ diff }) => Math.abs(diff) > 0.03)
+    .map(({ dim, diff }) => `${dim} ${diff > 0 ? "+" : ""}${diff.toFixed(2)}`)
+
+  return changes.length > 0 ? changes.join(", ") : "stable"
+}
+
+function formatEmotionTrajectory(
+  history: { state: unknown; trigger: string | null; createdAt: Date | null }[]
+): string[] {
+  return history.map((entry, i) => {
+    const trigger = entry.trigger ?? "unknown"
+    const time = entry.createdAt ? format(entry.createdAt, "HH:mm") : "?"
+    const deltas = computeEmotionDeltas(entry.state, history[i + 1]?.state)
+    const suffix = deltas ? ` — ${deltas}` : ""
+    return `  - [${trigger}] ${time}${suffix}`
+  })
+}
+
 function formatKnowledgeByScope(knowledge: { category: string; key: string; value: unknown; scope: string }[]): string {
   const grouped: Record<string, string[]> = { self: [], operator: [], world: [] }
 
@@ -88,18 +116,18 @@ function formatKnowledgeByScope(knowledge: { category: string; key: string; valu
     }
   }
 
-  const lines: string[] = ["[KNOWLEDGE]"]
+  const lines: string[] = ["# Knowledge"]
 
   if (grouped.self && grouped.self.length > 0) {
-    lines.push("Self-understanding:")
+    lines.push("## Self-Understanding")
     lines.push(...grouped.self)
   }
   if (grouped.operator && grouped.operator.length > 0) {
-    lines.push("About operator:")
+    lines.push("## About Operator")
     lines.push(...grouped.operator)
   }
   if (grouped.world && grouped.world.length > 0) {
-    lines.push("World:")
+    lines.push("## World")
     lines.push(...grouped.world)
   }
 
@@ -108,7 +136,7 @@ function formatKnowledgeByScope(knowledge: { category: string; key: string; valu
 
 function formatTriggeredWorkflows(workflows: WorkflowDefinition[]): string {
   if (workflows.length === 0) return ""
-  const lines = [`[WORKFLOWS]\nDue workflows (${workflows.length}):`]
+  const lines = [`# Workflows\nDue workflows (${workflows.length}):`]
   for (const wf of workflows) {
     const triggerDesc = formatTriggerDescription(wf.trigger)
     lines.push(`  - [${wf.id}] "${wf.name}" (${triggerDesc}) — Instruction: ${wf.instruction}`)
@@ -137,8 +165,6 @@ function formatTriggerDescription(trigger: WorkflowDefinition["trigger"]): strin
  * Gathers all data, formats into ordered sections, joined with double newlines.
  */
 export async function buildContext(senseData: SenseData): Promise<string> {
-  const now = nowISO()
-
   const [
     lastTick,
     conversationBuffer,
@@ -180,41 +206,49 @@ export async function buildContext(senseData: SenseData): Promise<string> {
   const knowledge = knowledgeResult.unwrapOr([])
   const sections: string[] = []
 
-  sections.push(`[TIME]\nCurrent time: ${now}`)
+  const formattedTime = format(nowLocal(), "EEEE, MMMM d, yyyy · HH:mm")
+  sections.push(`# Time\n${formattedTime} (${TIMEZONE})`)
 
   sections.push(
-    `[LANGUAGE]\nInternal (reasoning, insights, memory): English\nOperator communication (messages): ${operatorLanguage}`
+    [
+      "# Language",
+      `You think in English. You write to your operator in ${operatorLanguage}.`,
+      "Everything internal — reasoning, insights, memory, reflections, goals — is English.",
+      `Everything in the messages array — every single message — is ${operatorLanguage}.`
+    ].join("\n")
   )
 
   const emotionLines = Object.entries(senseData.emotion)
     .map(([dim, val]) => `  ${dim}: ${(val as number).toFixed(2)}`)
     .join("\n")
-  const emotionSection = [`[EMOTIONS]\nCurrent state:\n${emotionLines}`]
+  const emotionSection = [`# Emotions\nCurrent state:\n${emotionLines}`]
   if (emotionHistory.length > 0) {
     emotionSection.push(`Recent trajectory (last ${emotionHistory.length}):`)
-    for (const entry of emotionHistory) {
-      emotionSection.push(`  - [${entry.trigger ?? "unknown"}] at ${entry.createdAt?.toISOString() ?? "?"}`)
-    }
+    emotionSection.push(...formatEmotionTrajectory(emotionHistory))
   }
   sections.push(emotionSection.join("\n"))
 
-  const dreamLines: string[] = ["[DREAM]"]
-  dreamLines.push(`State: ${dreamState}`)
-  if (dreamLastRun) dreamLines.push(`Last dream run: ${dreamLastRun}`)
+  const dreamDescriptions: Record<DreamState, string> = {
+    idle: "You are awake. No dream cycle active.",
+    dreaming: "You are currently dreaming.",
+    waking: "You are waking up from a dream."
+  }
+  const dreamLines: string[] = ["# Dream", dreamDescriptions[dreamState] ?? dreamDescriptions.idle]
+  if (dreamLastRun) dreamLines.push(`Last dream: ${dreamLastRun}`)
   if (dreamInsights && dreamInsights.length > 0) {
     dreamLines.push(`Insights from last dream: ${dreamInsights.join("; ")}`)
   }
   sections.push(dreamLines.join("\n"))
 
   if (reflectionLastAt) {
-    sections.push(`[REFLECTION]\nLast reflection: ${reflectionLastAt}`)
+    sections.push(`# Reflection\nLast reflection: ${reflectionLastAt}`)
   }
 
   if (senseData.health) {
     const h = senseData.health
     sections.push(
       [
-        "[HEALTH]",
+        "# Health",
         `Overall: ${h.overall}`,
         `Services: Redis=${h.services.redis}, Postgres=${h.services.postgres}, Telegram=${h.services.telegram}, Vector=${h.services.vector}`,
         `Process: ${h.process.lastTickRecency} (${h.process.lastTickAgeSeconds}s ago)`,
@@ -226,7 +260,7 @@ export async function buildContext(senseData: SenseData): Promise<string> {
 
   sections.push(
     [
-      "[PERCEPTION]",
+      "# Perception",
       `Budget: ${senseData.perception.ownState.budgetPercent.toFixed(0)}%, Health: ${senseData.perception.ownState.healthStatus}`,
       `Telegram: ${senseData.perception.telegramActivity.pendingCount} pending, operator ${senseData.perception.telegramActivity.operatorActive ? "active" : "inactive"}`,
       ...(senseData.weather
@@ -243,13 +277,18 @@ export async function buildContext(senseData: SenseData): Promise<string> {
   )
 
   if (lastTick) {
+    const reasoning = lastTick.reasoning.length > 200 ? `${lastTick.reasoning.slice(0, 200)}...` : lastTick.reasoning
     sections.push(
-      `[LAST_TICK]\nAction: ${lastTick.action}, Reasoning: ${lastTick.reasoning}\nMessages: ${lastTick.messagesProcessed}, Response: ${lastTick.responseSent}, Duration: ${lastTick.durationMs}ms`
+      [
+        "# Last Tick",
+        `Action: ${lastTick.action} | Messages: ${lastTick.messagesProcessed} | Response: ${lastTick.responseSent} | Duration: ${lastTick.durationMs}ms`,
+        `Reasoning: ${reasoning}`
+      ].join("\n")
     )
   }
 
   if (goals.length > 0) {
-    const lines = [`[GOALS]\nActive goals (${goals.length}):`]
+    const lines = [`# Goals\nActive goals (${goals.length}):`]
     for (const goal of goals) {
       lines.push(
         `  - [${goal.status ?? "open"}] ${goal.title} (priority: ${goal.priority ?? 0.5})${goal.description ? ` — ${goal.description}` : ""}`
@@ -259,10 +298,12 @@ export async function buildContext(senseData: SenseData): Promise<string> {
   }
 
   if (episodes.length > 0) {
-    const lines = [`[MEMORY]\nRelevant episodes (${episodes.length}):`]
+    const lines = [`# Memory\nRelevant episodes (${episodes.length}):`]
     for (const ep of episodes) {
       if (ep.metadata) {
-        lines.push(`  - [${ep.metadata.category}] ${ep.metadata.timestamp} (score: ${ep.score.toFixed(2)})`)
+        const text = ep.data ? (ep.data.length > 150 ? `${ep.data.slice(0, 150)}...` : ep.data) : ""
+        const textPart = text ? ` — ${text}` : ""
+        lines.push(`  - [${ep.metadata.category}] ${ep.metadata.timestamp}${textPart} (${ep.score.toFixed(2)})`)
       }
     }
     sections.push(lines.join("\n"))
@@ -275,26 +316,29 @@ export async function buildContext(senseData: SenseData): Promise<string> {
   }
 
   if (trustLevels.length > 0) {
-    const lines = ["[TRUST]"]
+    const lines = ["# Trust"]
     for (const t of trustLevels) {
-      const fearLevel = (t.fear ?? 0) > 0.6 ? "high" : (t.fear ?? 0) > 0.3 ? "moderate" : "low"
-      const confidenceLevel = (t.confidence ?? 0) > 0.6 ? "high" : (t.confidence ?? 0) > 0.3 ? "moderate" : "low"
-      lines.push(`  - ${t.actionType}: fear ${fearLevel}, confidence ${confidenceLevel}`)
+      const fear = (t.fear ?? 0).toFixed(2)
+      const confidence = (t.confidence ?? 0).toFixed(2)
+      const attempts = `${t.successfulAttempts ?? 0}/${t.totalAttempts ?? 0} successful`
+      lines.push(`  - ${t.actionType}: fear=${fear} confidence=${confidence} (${attempts})`)
     }
     sections.push(lines.join("\n"))
   }
 
   if (relationships.length > 0) {
-    const lines = [`[RELATIONSHIPS]\nRelationship history (${relationships.length}):`]
+    const lines = [`# Relationships\nRelationship history (${relationships.length}):`]
     for (const rel of relationships) {
       if (rel.metadata) {
-        lines.push(`  - ${rel.metadata.timestamp} (score: ${rel.score.toFixed(2)})`)
+        const text = rel.data ? (rel.data.length > 150 ? `${rel.data.slice(0, 150)}...` : rel.data) : ""
+        const textPart = text ? ` — ${text}` : ""
+        lines.push(`  - ${rel.metadata.timestamp}${textPart} (${rel.score.toFixed(2)})`)
       }
     }
     sections.push(lines.join("\n"))
   }
 
-  const evolutionLines: string[] = ["[EVOLUTION]"]
+  const evolutionLines: string[] = ["# Evolution"]
   if (evolutionHistory.length > 0) {
     evolutionLines.push(`Evolution history (last ${evolutionHistory.length}):`)
     for (const entry of evolutionHistory) {
@@ -317,7 +361,7 @@ export async function buildContext(senseData: SenseData): Promise<string> {
     .map((e: { narrative: string | null; type: string }) => `  - ${e.narrative ?? e.type}`)
     .join("\n")
   if (changelog) {
-    sections.push(`[CHANGELOG]\nRecent changes:\n${changelog}`)
+    sections.push(`# Changelog\nRecent changes:\n${changelog}`)
   }
 
   const workflowSection = formatTriggeredWorkflows(senseData.triggeredWorkflows ?? [])
@@ -331,7 +375,7 @@ export async function buildContext(senseData: SenseData): Promise<string> {
       return `  ${idPrefix}[${msg.from}]: ${msg.text}`
     })
     sections.push(
-      `[MESSAGES]\nNew messages from operator (${senseData.pendingMessages.length}):\n${msgLines.join("\n")}`
+      `# Messages\nNew messages from operator (${senseData.pendingMessages.length}):\n${msgLines.join("\n")}`
     )
   }
 
@@ -341,14 +385,14 @@ export async function buildContext(senseData: SenseData): Promise<string> {
     const cs = senseData.conversationState
     sections.push(
       [
-        "[CONVERSATION_STATE]",
+        "# Conversation State",
         "Active conversation: yes",
         `Waiting for reply: ${cs.waitingSeconds}s`,
         cs.replyReceived ? "Operator just replied." : "No reply received this cycle."
       ].join("\n")
     )
   } else {
-    sections.push("[CONVERSATION_STATE]\nActive conversation: no")
+    sections.push("# Conversation State\nActive conversation: no")
   }
 
   return sections.filter(Boolean).join("\n\n")

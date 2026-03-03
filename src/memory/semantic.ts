@@ -1,30 +1,17 @@
 import { and, desc, eq, inArray, or, type SQL } from "drizzle-orm"
+import { env } from "@/config/env.ts"
 import { db } from "@/db/client.ts"
 import type { SemanticMemorySelect, SemanticRelationSelect } from "@/db/schema.ts"
 import { semanticMemory, semanticRelations } from "@/db/schema.ts"
-import { log } from "@/lib/logger.ts"
 import type { AnimaResultAsync } from "@/lib/result.ts"
 import { trySafe } from "@/lib/result.ts"
 import { type RelationType, type SemanticCategory, SemanticScope, type SemanticSource } from "@/memory/types.ts"
 
-const DEFAULT_OPERATOR_LANGUAGE = "English"
-
 /**
- * Retrieve the operator's preferred language from semantic memory.
- * Falls back to "English" if not found or on error.
+ * Get the operator's preferred language from environment config.
  */
-export async function getOperatorLanguage(): Promise<string> {
-  const result = await getKnowledge("preference", "operator:language")
-  if (result.isErr()) {
-    log.warn("Failed to fetch operator language, using default", { error: result.error.message })
-    return DEFAULT_OPERATOR_LANGUAGE
-  }
-
-  const rows = result.value
-  if (rows.length === 0) return DEFAULT_OPERATOR_LANGUAGE
-
-  const value = rows[0]?.value as { primary?: string } | undefined
-  return value?.primary ?? DEFAULT_OPERATOR_LANGUAGE
+export function getOperatorLanguage(): string {
+  return env().OPERATOR_PREFERRED_LANGUAGE
 }
 
 /**

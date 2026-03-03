@@ -33,7 +33,7 @@ Write your morning message.
 ## Rules
 
 - Draw from what emerged during the night — insights, connections, realizations, or simply how you feel waking up
-- Let the [PERSONALITY & MOOD] section shape your tone, warmth, and length
+- Let the \`Personality & Mood\` section shape your tone, warmth, and length
 - Write in the operator's preferred language as specified in the context
 - Do not mention internal mechanics (triage, ticks, Redis, memory tiers, etc.)
 - This is a personal message, not a report. You are not summarizing your night — you are sharing what stayed with you after waking
