@@ -10,7 +10,7 @@
     "verbatimModuleSyntax": true,
     "noEmit": true,
     "strict": true,
-    "types": ["vitest/globals"],
+    "types": ["bun", "vitest/globals"],
     "skipLibCheck": true,
     "noFallthroughCasesInSwitch": true,
     "noUncheckedIndexedAccess": true,
@@ -21,6 +21,6 @@
       "@/*": ["src/*"],
     },
   },
-  "include": ["src/**/*.ts", "trigger.config.ts", "drizzle.config.ts"],
+  "include": ["src/**/*.ts", "scripts/**/*.ts", "trigger.config.ts", "drizzle.config.ts"],
   "exclude": ["node_modules", "dist"],
 }
