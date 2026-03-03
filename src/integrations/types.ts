@@ -14,27 +14,6 @@ export const PendingMessage = z.object({
 })
 export type PendingMessage = z.infer<typeof PendingMessage>
 
-export const PendingEmail = z.object({
-  emailId: z.string(),
-  from: z.string().max(256),
-  to: z.array(z.string().max(256)),
-  subject: z.string().max(998),
-  text: z.string().max(50_000),
-  receivedAt: z.string()
-})
-export type PendingEmail = z.infer<typeof PendingEmail>
-
-export const PendingMention = z.object({
-  tweetId: z.string(),
-  authorId: z.string(),
-  authorUsername: z.string(),
-  text: z.string().max(1000),
-  conversationId: z.string().optional(),
-  inReplyToTweetId: z.string().optional(),
-  createdAt: z.string()
-})
-export type PendingMention = z.infer<typeof PendingMention>
-
 export const WeatherData = z.object({
   temperature: z.number(),
   feelsLike: z.number(),

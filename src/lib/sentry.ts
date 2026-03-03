@@ -1,10 +1,33 @@
 import * as Sentry from "@sentry/node"
+import { tasks } from "@trigger.dev/sdk"
+import { env } from "@/config/env.ts"
+
+/**
+ * Initialize Sentry SDK and register Trigger.dev failure handler.
+ */
+export function setupSentry(): void {
+  Sentry.init({
+    dsn: env().SENTRY_DSN,
+    environment: env().NODE_ENV === "production" ? "production" : "development",
+    skipOpenTelemetrySetup: true,
+    enableLogs: true
+  })
+
+  tasks.onFailure(({ payload, error, ctx }) => {
+    Sentry.captureException(error, {
+      extra: { payload },
+      tags: {
+        taskId: ctx.task.id,
+        runId: ctx.run.id
+      }
+    })
+  })
+}
 
 interface TickContext {
   tickId: string
   decision?: string
   tier?: string
-  model?: string
 }
 
 let _isSendingAlert = false
@@ -58,7 +81,6 @@ export function setTickContext(ctx: TickContext): void {
     Sentry.setTag("tickId", ctx.tickId)
     if (ctx.decision) Sentry.setTag("decision", ctx.decision)
     if (ctx.tier) Sentry.setTag("tier", ctx.tier)
-    if (ctx.model) Sentry.setTag("model", ctx.model)
     Sentry.setContext("tick", { ...ctx })
   } catch {
     // Sentry must never crash the application

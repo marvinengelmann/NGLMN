@@ -36,12 +36,8 @@ export const EmotionTrigger = z.enum([
   "perception_positive",
   "perception_negative",
   "tick_start",
-  "email_received",
-  "email_sent",
   "weather_update",
   "git_activity",
-  "mention_received",
-  "tweet_sent",
   "dream_correction",
   "morning_calibration"
 ])

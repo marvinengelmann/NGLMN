@@ -16,22 +16,13 @@ function getBudgetKey(): string {
   return `working:budget:${formatISO(new Date(), { representation: "date" })}`
 }
 
-const MODEL_COST_PER_MTOK: Record<string, { input: number; output: number }> = {
-  "xai/grok-4-1-fast-non-reasoning": { input: 0.2, output: 0.5 },
-  "xai/grok-4-1-fast-reasoning": { input: 0.2, output: 0.5 }
-}
+const COST_PER_MTOK = { input: 0.2, output: 0.5 }
 
 /**
- * Estimate the USD cost of an LLM API call from model and usage data.
+ * Estimate the USD cost of an LLM API call from token usage.
  */
-export function estimateCallCost(model: string, usage: { inputTokens: number; outputTokens: number }): number {
-  const rates = MODEL_COST_PER_MTOK[model]
-  if (!rates) return 0
-
-  const inputCost = usage.inputTokens * rates.input
-  const outputCost = usage.outputTokens * rates.output
-
-  return (inputCost + outputCost) / 1_000_000
+export function estimateCallCost(usage: { inputTokens: number; outputTokens: number }): number {
+  return (usage.inputTokens * COST_PER_MTOK.input + usage.outputTokens * COST_PER_MTOK.output) / 1_000_000
 }
 
 async function getConsumedToday(): Promise<number> {

@@ -2,9 +2,9 @@ import { neon } from "@neondatabase/serverless"
 import { drizzle } from "drizzle-orm/neon-http"
 import { migrate } from "drizzle-orm/neon-http/migrator"
 import { env } from "@/config/env.ts"
-import { setupSentry } from "@/config/sentry.ts"
 import { ensureSeeded } from "@/db/seed.ts"
 import { redis } from "@/integrations/redis.ts"
+import { setupSentry } from "@/lib/sentry.ts"
 
 const INIT_KEY = "working:init:complete"
 

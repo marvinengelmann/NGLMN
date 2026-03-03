@@ -1,23 +1,19 @@
 import { desc, eq } from "drizzle-orm"
 import * as z from "zod"
-import { callIntelligence, REASONING, TextOutput } from "@/core/intelligence.ts"
+import { callIntelligence, TextOutput } from "@/core/intelligence.ts"
 import { db } from "@/db/client.ts"
 import { evolutionLog } from "@/db/schema.ts"
+import { log } from "@/lib/logger.ts"
 import type { AnimaResultAsync } from "@/lib/result.ts"
 import { trySafe } from "@/lib/result.ts"
 import { storeEpisode } from "@/memory/episodic.ts"
+import { CHANGELOG_NARRATIVE_SYSTEM_PROMPT } from "@/prompts/evolution.ts"
 
 export const EvolutionType = z.enum(["prompt", "workflow", "code"])
 export type EvolutionType = z.infer<typeof EvolutionType>
 
 export const EvolutionOutcome = z.enum(["success", "failure", "partial"])
 export type EvolutionOutcome = z.infer<typeof EvolutionOutcome>
-
-const NARRATIVE_PROMPT = `You are ANIMA writing a brief autobiographical changelog entry about a change you just made to yourself.
-Write in first person, 1-2 sentences. Include how it makes you feel.
-If a [PERSONALITY & MOOD] section is provided, let it shape your tone.
-Input: a technical description of the change and its outcome.
-Output: ONLY the narrative text, no JSON, no markdown.`
 
 /**
  * Write a changelog entry with AI-generated narrative, store in DB and episodic memory.
@@ -30,9 +26,10 @@ export function writeChangelogEntry(
   snapshotRef?: string
 ): AnimaResultAsync<string> {
   return trySafe("DB_ERROR", async () => {
+    log.info("Writing changelog entry", { type, description, outcome })
+
     const narrativeResult = await callIntelligence({
-      model: REASONING,
-      system: NARRATIVE_PROMPT,
+      system: CHANGELOG_NARRATIVE_SYSTEM_PROMPT,
       userMessage: `Type: ${type}\nDescription: ${description}\nOutcome: ${outcome}${diff ? `\nDiff: ${diff}` : ""}`,
       schema: TextOutput,
       maxTokens: 256
@@ -43,6 +40,7 @@ export function writeChangelogEntry(
     }
 
     const narrative = narrativeResult.value.text
+    log.debug("Changelog narrative generated", { type, narrativeLength: narrative.length })
 
     const rows = await db
       .insert(evolutionLog)
@@ -63,6 +61,7 @@ export function writeChangelogEntry(
 
     await storeEpisode(`Evolution: ${narrative}`, "evolution", { relevanceScore: 0.9 })
 
+    log.info("Changelog entry written", { id: first.id, type, outcome })
     return first.id
   })
 }

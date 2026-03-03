@@ -6,10 +6,7 @@ export const ActionType = z.enum([
   "prompt_modification",
   "workflow_creation",
   "deployment",
-  "code_modification",
-  "external_communication",
-  "email_send",
-  "x_post"
+  "code_modification"
 ])
 export type ActionType = z.infer<typeof ActionType>
 

@@ -1,5 +1,4 @@
-import type { EmotionalState, MetricsSnapshot } from "@/emotion/types.ts"
-import { getEmotionBaseline } from "@/personality/mbti.ts"
+import { DEFAULT_EMOTIONAL_STATE, type EmotionalState, type MetricsSnapshot } from "@/emotion/types.ts"
 import { clampState } from "./update.ts"
 
 const MORNING_BASELINE_WEIGHT = 0.7
@@ -10,7 +9,7 @@ const MORNING_CURRENT_WEIGHT = 0.3
  * Formula: 0.3 * current + 0.7 * baseline
  */
 export function morningRecalibration(current: EmotionalState): EmotionalState {
-  const baseline = getEmotionBaseline()
+  const baseline = DEFAULT_EMOTIONAL_STATE
   return clampState({
     curiosity: current.curiosity * MORNING_CURRENT_WEIGHT + baseline.curiosity * MORNING_BASELINE_WEIGHT,
     satisfaction: current.satisfaction * MORNING_CURRENT_WEIGHT + baseline.satisfaction * MORNING_BASELINE_WEIGHT,

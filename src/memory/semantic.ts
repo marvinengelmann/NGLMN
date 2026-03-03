@@ -5,7 +5,7 @@ import { semanticMemory, semanticRelations } from "@/db/schema.ts"
 import { log } from "@/lib/logger.ts"
 import type { AnimaResultAsync } from "@/lib/result.ts"
 import { trySafe } from "@/lib/result.ts"
-import type { RelationType, SemanticCategory, SemanticScope, SemanticSource } from "@/memory/types.ts"
+import { type RelationType, type SemanticCategory, SemanticScope, type SemanticSource } from "@/memory/types.ts"
 
 const DEFAULT_OPERATOR_LANGUAGE = "English"
 
@@ -36,12 +36,12 @@ export function storeKnowledge(
   value: unknown,
   source: SemanticSource,
   confidence: number = 0.5,
-  scope?: SemanticScope
+  scope: SemanticScope = SemanticScope.enum.self
 ): AnimaResultAsync<string> {
   return trySafe("DB_ERROR", async () => {
     const rows = await db
       .insert(semanticMemory)
-      .values({ category, key, value, source, confidence, scope: scope ?? null })
+      .values({ category, key, value, source, confidence, scope })
       .onConflictDoUpdate({
         target: [semanticMemory.category, semanticMemory.key, semanticMemory.scope],
         set: { value, source, confidence, updatedAt: new Date() }

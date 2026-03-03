@@ -1,27 +1,24 @@
-import { schedules, task } from "@trigger.dev/sdk"
-import { runHeartbeat } from "@/core/heartbeat.ts"
+import { runs, schedules } from "@trigger.dev/sdk"
+import { HEARTBEAT } from "@/config/constants.ts"
+import { runHeartbeat } from "@/consciousness/heartbeat.ts"
+import { isBusy } from "@/memory/working.ts"
 
-/**
- * Standalone heartbeat task — can be triggered programmatically (e.g. from conversation handler).
- */
-export const heartbeatRunTask = task({
-  id: "heartbeat-run",
-  queue: {
-    concurrencyLimit: 1
-  },
-  maxDuration: 300,
-  run: async (payload: { skipDreamCheck?: boolean; actionRequested?: boolean }) =>
-    runHeartbeat(payload.skipDreamCheck, payload.actionRequested)
-})
-
-/**
- * Scheduled heartbeat — runs every 5 minutes via cron.
- */
 export const heartbeatTask = schedules.task({
   id: "heartbeat",
-  cron: "*/5 * * * *",
+  cron: HEARTBEAT.CRON,
   queue: {
-    concurrencyLimit: 1
+    concurrencyLimit: HEARTBEAT.CONCURRENCY
   },
-  run: () => runHeartbeat()
+  maxDuration: HEARTBEAT.BUSY_TTL,
+  run: async (_, { ctx, signal }) => {
+    if (await isBusy()) {
+      await runs.cancel(ctx.run.id)
+      if (!signal.aborted) {
+        await new Promise<void>((resolve) => signal.addEventListener("abort", () => resolve()))
+      }
+      return
+    }
+
+    return runHeartbeat()
+  }
 })

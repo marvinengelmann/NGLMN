@@ -1,11 +1,15 @@
-import { callIntelligence, REASONING } from "@/core/intelligence.ts"
 import { log } from "@/lib/logger.ts"
 import { logAndCaptureError } from "@/lib/result.ts"
 import { downgradeEpisodes, queryRelated, summarizeOldEpisodes } from "@/memory/episodic.ts"
 import { storeKnowledge, storeRelation } from "@/memory/semantic.ts"
-import { type RelationType, RelationType as RelationTypeSchema, type SemanticCategory } from "@/memory/types.ts"
-import { CONSOLIDATION_SYSTEM_PROMPT } from "@/prompts/dream.ts"
-import { ConsolidationOutput, type ConsolidationResult } from "./types.ts"
+import {
+  type RelationType,
+  RelationType as RelationTypeSchema,
+  SemanticCategory,
+  SemanticScope,
+  SemanticSource
+} from "@/memory/types.ts"
+import type { ConsolidationOutput } from "./types.ts"
 
 const QUERY_TEXTS = [
   "recent interactions and conversations",
@@ -22,7 +26,11 @@ const QUERY_TEXTS = [
 
 const VALID_CATEGORIES: SemanticCategory[] = ["preference", "project", "contact", "knowledge", "insight"]
 
-export async function consolidateMemories(): Promise<ConsolidationResult> {
+/**
+ * Gather episodic memory data for consolidation — pure SENSE helper.
+ * Returns formatted episodes ready for the consolidation LLM prompt.
+ */
+export async function gatherConsolidationData(): Promise<string> {
   const allEpisodes: Array<{ id: string; score: number; text: string }> = []
   const seenIds = new Set<string>()
 
@@ -41,45 +49,40 @@ export async function consolidateMemories(): Promise<ConsolidationResult> {
     }
   }
 
-  if (allEpisodes.length === 0) {
-    return { episodesProcessed: 0, semanticEntriesCreated: 0, connectionsFound: 0, downgraded: 0 }
-  }
+  log.info("Consolidation episodes collected", { uniqueEpisodes: allEpisodes.length })
 
   const episodesForPrompt = allEpisodes.slice(0, 50)
+  return JSON.stringify(episodesForPrompt)
+}
 
-  const result = await callIntelligence({
-    model: REASONING,
-    system: CONSOLIDATION_SYSTEM_PROMPT,
-    userMessage: JSON.stringify(episodesForPrompt),
-    schema: ConsolidationOutput,
-    maxTokens: 2048
-  })
-
-  if (result.isErr()) {
-    log.warn("consolidateMemories: callIntelligence failed", { error: result.error.message })
-    return { episodesProcessed: 0, semanticEntriesCreated: 0, connectionsFound: 0, downgraded: 0 }
-  }
-
-  const parsed = result.value
-
-  let semanticEntriesCreated = 0
+/**
+ * Apply consolidation output — pure ACT helper.
+ * Persists semantic entries, relations, downgrades, and summarization.
+ */
+export async function applyConsolidationResult(output: ConsolidationOutput): Promise<void> {
   const createdEntryIds: string[] = []
 
-  for (const entry of parsed.semanticEntries) {
+  for (const entry of output.semanticEntries) {
     const category = VALID_CATEGORIES.includes(entry.category as SemanticCategory)
       ? (entry.category as SemanticCategory)
-      : "knowledge"
-    const entryIdResult = await storeKnowledge(category, entry.key, entry.value, "dream", entry.confidence)
+      : SemanticCategory.enum.knowledge
+    const entryIdResult = await storeKnowledge(
+      category,
+      entry.key,
+      entry.value,
+      SemanticSource.enum.dream,
+      entry.confidence,
+      SemanticScope.enum.self
+    )
     if (entryIdResult.isErr()) {
       logAndCaptureError(entryIdResult.error)
       continue
     }
     createdEntryIds.push(entryIdResult.value)
-    semanticEntriesCreated++
   }
 
   const validRelationTypes = RelationTypeSchema.options
-  for (const conn of parsed.connections) {
+  for (const conn of output.connections) {
     if (createdEntryIds.length >= 2 && conn.episodeIds.length >= 2) {
       const relType = validRelationTypes.includes(conn.connectionType as RelationType)
         ? (conn.connectionType as RelationType)
@@ -95,18 +98,15 @@ export async function consolidateMemories(): Promise<ConsolidationResult> {
     }
   }
 
-  let downgraded = 0
-  if (parsed.downgradeIds.length > 0) {
-    downgraded = await downgradeEpisodes(parsed.downgradeIds)
+  if (output.downgradeIds.length > 0) {
+    await downgradeEpisodes(output.downgradeIds)
   }
 
-  const summarization = await summarizeOldEpisodes(7)
+  await summarizeOldEpisodes(7)
 
-  return {
-    episodesProcessed: episodesForPrompt.length,
-    semanticEntriesCreated,
-    connectionsFound: parsed.connections.length,
-    downgraded,
-    summarized: summarization.summarized
-  }
+  log.info("Consolidation results applied", {
+    semanticEntries: output.semanticEntries.length,
+    connections: output.connections.length,
+    downgrades: output.downgradeIds.length
+  })
 }

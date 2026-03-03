@@ -13,10 +13,6 @@ const EnvSchema = z.object({
   UPSTASH_VECTOR_REST_URL: z.string(),
   UPSTASH_VECTOR_REST_TOKEN: z.string(),
 
-  RESEND_API_KEY: z.string().optional(),
-  RESEND_FROM_EMAIL: z.string().optional(),
-  RESEND_OPERATOR_EMAIL: z.string().optional(),
-
   TRIGGER_PROJECT_REF: z.string(),
   TRIGGER_SECRET_KEY: z.string(),
 
@@ -33,12 +29,9 @@ const EnvSchema = z.object({
   OPENWEATHER_API_KEY: z.string().optional(),
   OPENWEATHER_DEFAULT_LOCATION: z.string().optional(),
 
-  E2B_TEMPLATE_ID: z.string().optional(),
+  DAYTONA_API_KEY: z.string().optional(),
 
-  X_CLIENT_ID: z.string().optional(),
-  X_CLIENT_SECRET: z.string().optional(),
-  X_ACCESS_TOKEN: z.string().optional(),
-  X_REFRESH_TOKEN: z.string().optional(),
+  CONTEXT7_API_KEY: z.string().optional(),
 
   ANIMA_PERSONALITY_TYPE: z.string().regex(/^[EI][SN][TF][JP](-[AT])?$/)
 })
@@ -79,25 +72,6 @@ export function env(): Env {
  */
 export function validateEnv(): Env {
   return EnvSchema.parse(process.env)
-}
-
-/**
- * Check if all Resend (email) env vars are configured.
- */
-export function hasEmailConfig(): boolean {
-  return !!(process.env.RESEND_API_KEY && process.env.RESEND_FROM_EMAIL && process.env.RESEND_OPERATOR_EMAIL)
-}
-
-/**
- * Check if all X (Twitter) OAuth 2.0 env vars are configured.
- */
-export function hasXConfig(): boolean {
-  return !!(
-    process.env.X_CLIENT_ID &&
-    process.env.X_CLIENT_SECRET &&
-    process.env.X_ACCESS_TOKEN &&
-    process.env.X_REFRESH_TOKEN
-  )
 }
 
 /**

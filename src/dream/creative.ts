@@ -1,12 +1,10 @@
-import { callIntelligence, REASONING } from "@/core/intelligence.ts"
 import { log } from "@/lib/logger.ts"
 import { logAndCaptureError } from "@/lib/result.ts"
 import { queryRelated, storeEpisode } from "@/memory/episodic.ts"
 import { createGoal } from "@/memory/goals.ts"
 import { getKnowledge, storeKnowledge } from "@/memory/semantic.ts"
-import type { SemanticCategory } from "@/memory/types.ts"
-import { CREATIVE_CONNECTIONS_SYSTEM_PROMPT } from "@/prompts/dream.ts"
-import { CreativeConnectionsOutput } from "./types.ts"
+import { SemanticCategory, SemanticScope, SemanticSource } from "@/memory/types.ts"
+import type { CreativeConnectionsOutput } from "./types.ts"
 
 const DIVERSE_QUERIES = [
   "surprising discoveries and unexpected findings",
@@ -23,11 +21,11 @@ const DIVERSE_QUERIES = [
 
 const KNOWLEDGE_CATEGORIES: SemanticCategory[] = ["preference", "project", "contact", "knowledge", "insight"]
 
-export async function findCreativeConnections(): Promise<{
-  connectionsFound: number
-  goalsCreated: number
-  insightsStored: number
-}> {
+/**
+ * Gather episodic and semantic data for creative connections — pure SENSE helper.
+ * Returns formatted input ready for the creative connections LLM prompt.
+ */
+export async function gatherCreativeData(): Promise<string> {
   const episodicResults = await Promise.all(DIVERSE_QUERIES.map((q) => queryRelated(q, 2)))
 
   const episodes = episodicResults
@@ -50,9 +48,10 @@ export async function findCreativeConnections(): Promise<{
     }
   }
 
-  if (episodes.length === 0 && semanticEntries.length === 0) {
-    return { connectionsFound: 0, goalsCreated: 0, insightsStored: 0 }
-  }
+  log.info("Creative dream material collected", {
+    episodeCount: episodes.length,
+    knowledgeCount: semanticEntries.length
+  })
 
   const input = {
     episodes: episodes.map((e) => ({
@@ -63,34 +62,28 @@ export async function findCreativeConnections(): Promise<{
     knowledge: semanticEntries.slice(0, 10)
   }
 
-  const result = await callIntelligence({
-    model: REASONING,
-    system: CREATIVE_CONNECTIONS_SYSTEM_PROMPT,
-    userMessage: JSON.stringify(input),
-    schema: CreativeConnectionsOutput,
-    maxTokens: 2048
-  })
+  return JSON.stringify(input)
+}
 
-  if (result.isErr()) {
-    log.warn("findCreativeConnections: callIntelligence failed", { error: result.error.message })
-    return { connectionsFound: 0, goalsCreated: 0, insightsStored: 0 }
-  }
-
-  const parsed = result.value
-
+/**
+ * Apply creative connections output — pure ACT helper.
+ * Persists episodes, knowledge entries, and goals from creative connections.
+ */
+export async function applyCreativeResult(output: CreativeConnectionsOutput): Promise<void> {
   let goalsCreated = 0
   let insightsStored = 0
 
-  for (const conn of parsed.connections) {
+  for (const conn of output.connections) {
     if (conn.confidence >= 0.5) {
       await storeEpisode(`Dream connection: ${conn.insight}`, "dream", { relevanceScore: conn.confidence })
 
       const knowledgeResult = await storeKnowledge(
-        "insight",
+        SemanticCategory.enum.insight,
         `creative-connection-${Date.now()}-${insightsStored}`,
         conn.insight,
-        "dream",
-        conn.confidence
+        SemanticSource.enum.dream,
+        conn.confidence,
+        SemanticScope.enum.self
       )
       if (knowledgeResult.isErr()) logAndCaptureError(knowledgeResult.error)
       insightsStored++
@@ -112,9 +105,9 @@ export async function findCreativeConnections(): Promise<{
     }
   }
 
-  return {
-    connectionsFound: parsed.connections.length,
+  log.info("Creative connections applied", {
+    connectionsProcessed: output.connections.length,
     goalsCreated,
     insightsStored
-  }
+  })
 }

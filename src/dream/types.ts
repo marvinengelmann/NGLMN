@@ -38,6 +38,17 @@ export const ConsolidationResult = z.object({
   semanticEntriesCreated: z.number(),
   connectionsFound: z.number(),
   downgraded: z.number(),
-  summarized: z.number().optional()
+  summarized: z.number().optional(),
+  insights: z.array(z.string()).optional()
 })
 export type ConsolidationResult = z.infer<typeof ConsolidationResult>
+
+export const DreamState = z.enum(["idle", "dreaming", "waking"])
+export type DreamState = z.infer<typeof DreamState>
+
+export const DreamThinkResult = z.object({
+  consolidation: ConsolidationOutput.nullable(),
+  creative: CreativeConnectionsOutput.nullable(),
+  insights: z.array(z.string())
+})
+export type DreamThinkResult = z.infer<typeof DreamThinkResult>

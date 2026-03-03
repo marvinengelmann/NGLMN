@@ -1,9 +1,7 @@
 import { eq } from "drizzle-orm"
 import * as z from "zod"
-import { callIntelligence, REASONING } from "@/core/intelligence.ts"
-import type { TickSummary } from "@/core/types.ts"
-import { WorkflowDataSource, WorkflowOutputAction, WorkflowTrigger } from "@/core/types.ts"
-import { getActiveWorkflowCount, getActiveWorkflows, MAX_ACTIVE_WORKFLOWS } from "@/core/workflow.ts"
+import type { TickSummary } from "@/consciousness/types.ts"
+import { callIntelligence } from "@/core/intelligence.ts"
 import { db } from "@/db/client.ts"
 import { workflows } from "@/db/schema.ts"
 import { log } from "@/lib/logger.ts"
@@ -13,6 +11,8 @@ import { WORKFLOW_PROPOSAL_SYSTEM_PROMPT } from "@/prompts/workflow.ts"
 import { validateOutput } from "@/security/guardian.ts"
 import { canActAutonomously } from "@/trust/assessment.ts"
 import { recordSuccess } from "@/trust/history.ts"
+import { getActiveWorkflowCount, getActiveWorkflows, MAX_ACTIVE_WORKFLOWS } from "@/workflow/engine.ts"
+import { WorkflowOutputAction, WorkflowTrigger } from "@/workflow/types.ts"
 import { writeChangelogEntry } from "./changelog.ts"
 
 export const WorkflowProposalOutput = z.object({
@@ -22,13 +22,11 @@ export const WorkflowProposalOutput = z.object({
   description: z.string(),
   trigger: WorkflowTrigger,
   instruction: z.string(),
-  model: z.string(),
-  dataSources: z.array(WorkflowDataSource),
   outputAction: WorkflowOutputAction
 })
 export type WorkflowProposalOutput = z.infer<typeof WorkflowProposalOutput>
 
-export interface WorkflowProposal extends WorkflowProposalOutput {
+interface WorkflowProposal extends WorkflowProposalOutput {
   autonomous: boolean
 }
 
@@ -40,7 +38,6 @@ export async function proposeWorkflow(pattern: string, tickHistory: TickSummary[
   const existingWorkflows = await getActiveWorkflows()
 
   const responseResult = await callIntelligence({
-    model: REASONING,
     system: WORKFLOW_PROPOSAL_SYSTEM_PROMPT,
     userMessage: JSON.stringify({
       pattern,
@@ -64,8 +61,6 @@ export async function proposeWorkflow(pattern: string, tickHistory: TickSummary[
       description: "",
       trigger: { type: "schedule", hour: 0 },
       instruction: "",
-      model: "",
-      dataSources: [],
       outputAction: "log_only",
       autonomous: false
     }
@@ -92,11 +87,6 @@ export function applyWorkflow(proposal: WorkflowProposal): AnimaResultAsync<stri
       throw new Error(`Guardian blocked workflow instruction: ${guardianResult.reasons.join(", ")}`)
     }
 
-    const allowedModels = ["fast", "reasoning"]
-    if (!allowedModels.includes(proposal.model)) {
-      throw new Error(`Invalid workflow model "${proposal.model}" — must be "fast" or "reasoning"`)
-    }
-
     const rows = await db
       .insert(workflows)
       .values({
@@ -104,8 +94,6 @@ export function applyWorkflow(proposal: WorkflowProposal): AnimaResultAsync<stri
         description: proposal.description,
         trigger: proposal.trigger,
         instruction: proposal.instruction,
-        model: proposal.model,
-        dataSources: proposal.dataSources,
         outputAction: proposal.outputAction,
         enabled: true,
         createdBy: "dream"

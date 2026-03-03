@@ -1,10 +1,11 @@
 import * as z from "zod"
-import { callIntelligence, REASONING } from "@/core/intelligence.ts"
+import { callIntelligence } from "@/core/intelligence.ts"
 import type { EmotionalState } from "@/emotion/types.ts"
 import { log } from "@/lib/logger.ts"
 import { logAndCaptureError } from "@/lib/result.ts"
 import { storeEpisode } from "@/memory/episodic.ts"
 import { createGoal } from "@/memory/goals.ts"
+import { CURIOSITY_INTEREST_SYSTEM_PROMPT } from "@/prompts/evolution.ts"
 
 export const InterestsOutput = z.object({
   interests: z.array(
@@ -17,15 +18,6 @@ export const InterestsOutput = z.object({
 })
 export type InterestsOutput = z.infer<typeof InterestsOutput>
 
-const INTEREST_PROMPT = `You are ANIMA reflecting on what interests you and what you'd like to explore.
-Given your current emotional state, recent experiences, and knowledge, suggest topics worth exploring.
-
-Rules:
-- Suggest 2-5 topics
-- Topics should be relevant to your capabilities and growth
-- Higher priority for topics that address knowledge gaps
-- Be specific, not generic`
-
 export function shouldExplore(emotion: EmotionalState): boolean {
   return emotion.curiosity > 0.6 && emotion.boredom > 0.5 && emotion.caution < 0.7
 }
@@ -36,8 +28,7 @@ export async function generateInterests(
   semanticKnowledge: string[]
 ): Promise<Array<{ topic: string; reason: string; priority: number }>> {
   const responseResult = await callIntelligence({
-    model: REASONING,
-    system: INTEREST_PROMPT,
+    system: CURIOSITY_INTEREST_SYSTEM_PROMPT,
     userMessage: JSON.stringify({
       emotionalState: emotion,
       recentExperiences: recentEpisodes.slice(0, 10),
@@ -52,6 +43,7 @@ export async function generateInterests(
     return []
   }
 
+  log.info("Curiosity interests generated", { count: responseResult.value.interests.length })
   return responseResult.value.interests
 }
 
@@ -71,5 +63,6 @@ export async function createExplorationGoal(
 
   await storeEpisode(`Curiosity sparked: interested in "${topic}" — ${reason}`, "observation", { relevanceScore: 0.7 })
 
+  log.info("Exploration goal created", { topic, goalId: goalResult.value, curiosityLevel })
   return goalResult.value
 }

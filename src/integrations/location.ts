@@ -2,6 +2,7 @@ import * as z from "zod"
 import { logAndCaptureError } from "@/lib/result.ts"
 import { nowISO } from "@/lib/time.ts"
 import { getKnowledge, storeKnowledge } from "@/memory/semantic.ts"
+import { SemanticCategory, SemanticScope, SemanticSource } from "@/memory/types.ts"
 import { clearWeatherData, getOperatorLocation, setOperatorLocation } from "@/memory/working.ts"
 
 export const OperatorLocationSource = z.enum(["telegram", "semantic_memory", "env_default"])
@@ -114,11 +115,12 @@ export async function storeOperatorLocationInMemory(
   cityName?: string
 ): Promise<void> {
   const result = await storeKnowledge(
-    "knowledge",
+    SemanticCategory.enum.knowledge,
     "operator_location",
     { latitude, longitude, cityName },
-    "operator",
-    0.9
+    SemanticSource.enum.operator,
+    0.9,
+    SemanticScope.enum.operator
   )
   if (result.isErr()) logAndCaptureError(result.error)
 }

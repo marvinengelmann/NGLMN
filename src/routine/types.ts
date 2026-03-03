@@ -1,4 +1,5 @@
 import * as z from "zod"
+import { EmotionalState } from "@/emotion/types.ts"
 
 export const ReflectionInput = z.object({
   successRate: z.number(),
@@ -22,13 +23,6 @@ export const ReflectionInput = z.object({
       createdAt: z.string()
     })
   ),
-  personalityChanges: z.array(
-    z.object({
-      version: z.number(),
-      changelog: z.string().nullable(),
-      createdAt: z.string()
-    })
-  ),
   unresolvedGoals: z.array(
     z.object({
       title: z.string(),
@@ -49,7 +43,6 @@ export type ReflectionInput = z.infer<typeof ReflectionInput>
 export const ReflectionOutput = z.object({
   insights: z.array(z.string()),
   selfInsights: z.array(z.string()).nullish(),
-  personalityDeltas: z.record(z.string(), z.number()).nullish(),
   newGoals: z
     .array(
       z.object({
@@ -59,12 +52,19 @@ export const ReflectionOutput = z.object({
       })
     )
     .nullish(),
-  morningMessageDraft: z.string().nullish(),
   emotionalCorrections: z.record(z.string(), z.number()).nullish()
 })
 export type ReflectionOutput = z.infer<typeof ReflectionOutput>
 
-export interface ReflectionResult {
-  reason: string
-  output: ReflectionOutput
-}
+export const ReflectionContext = z.object({
+  emotion: EmotionalState,
+  lastReflectionAt: z.string().nullable()
+})
+export type ReflectionContext = z.infer<typeof ReflectionContext>
+
+export const MorningThinkResult = z.object({
+  recalibratedEmotion: EmotionalState,
+  reflection: ReflectionOutput,
+  morningMessage: z.string()
+})
+export type MorningThinkResult = z.infer<typeof MorningThinkResult>

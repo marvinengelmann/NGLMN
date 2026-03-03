@@ -219,43 +219,11 @@ export async function deleteBranch(branchName: string): Promise<void> {
 }
 
 /**
- * Create a pull request.
+ * Fast-forward merge a branch into master by updating the master ref.
+ * Only succeeds if master hasn't moved since the branch was created (force: false).
  */
-export async function createPullRequest(
-  title: string,
-  body: string,
-  head: string,
-  base: string = "master"
-): Promise<{ number: number; url: string }> {
-  const { token, owner, repo } = getConfig()
-
-  const res = await fetch(`${GITHUB_API_BASE}/repos/${owner}/${repo}/pulls`, {
-    method: "POST",
-    headers: headers(token),
-    body: JSON.stringify({ title, body, head, base })
-  })
-
-  if (!res.ok) {
-    throw new Error(`GitHub createPullRequest failed: ${res.status} ${await res.text()}`)
-  }
-
-  const data = (await res.json()) as { number: number; html_url: string }
-  return { number: data.number, url: data.html_url }
-}
-
-/**
- * Merge a pull request.
- */
-export async function mergePullRequest(pullNumber: number): Promise<void> {
-  const { token, owner, repo } = getConfig()
-
-  const res = await fetch(`${GITHUB_API_BASE}/repos/${owner}/${repo}/pulls/${pullNumber}/merge`, {
-    method: "PUT",
-    headers: headers(token),
-    body: JSON.stringify({ merge_method: "rebase" })
-  })
-
-  if (!res.ok) {
-    throw new Error(`GitHub mergePullRequest failed: ${res.status} ${await res.text()}`)
-  }
+export async function mergeBranch(branchName: string): Promise<void> {
+  const { sha } = await getRef(`heads/${branchName}`)
+  await updateRef("heads/master", sha, false)
+  await deleteBranch(branchName)
 }

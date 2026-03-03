@@ -1,7 +1,11 @@
 import { EMOTION } from "@/config/constants.ts"
-import type { EmotionalState, EmotionTrigger, EmotionUpdateEvent } from "@/emotion/types.ts"
+import {
+  DEFAULT_EMOTIONAL_STATE,
+  type EmotionalState,
+  type EmotionTrigger,
+  type EmotionUpdateEvent
+} from "@/emotion/types.ts"
 import { clamp01 } from "@/lib/math.ts"
-import { getEmotionBaseline } from "@/personality/mbti.ts"
 
 type EmotionDeltas = Partial<Record<keyof EmotionalState, number>>
 
@@ -20,12 +24,8 @@ const TRIGGER_EFFECTS: Record<EmotionTrigger, EmotionDeltas> = {
   perception_positive: { satisfaction: 0.05, excitement: 0.03 },
   perception_negative: { caution: 0.05, frustration: 0.03 },
   tick_start: {},
-  email_received: { curiosity: 0.08, excitement: 0.05, boredom: -0.05 },
-  email_sent: { satisfaction: 0.03 },
   weather_update: { curiosity: 0.03, excitement: 0.04, boredom: -0.03 },
   git_activity: { curiosity: 0.05, excitement: 0.03 },
-  mention_received: { curiosity: 0.08, excitement: 0.06, boredom: -0.05, caution: 0.03 },
-  tweet_sent: { satisfaction: 0.04, excitement: 0.03, caution: 0.02 },
   dream_correction: {},
   morning_calibration: {}
 }
@@ -49,7 +49,7 @@ export function clampState(state: EmotionalState): EmotionalState {
  * Apply natural decay towards the baseline emotional state.
  */
 export function applyDecay(state: EmotionalState): EmotionalState {
-  const baseline = getEmotionBaseline()
+  const baseline = DEFAULT_EMOTIONAL_STATE
   return {
     curiosity: state.curiosity + (baseline.curiosity - state.curiosity) * EMOTION.DECAY_RATE,
     satisfaction: state.satisfaction + (baseline.satisfaction - state.satisfaction) * EMOTION.DECAY_RATE,

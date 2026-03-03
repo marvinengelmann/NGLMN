@@ -1,59 +1,41 @@
-import { buildConsciousnessPrompt } from "@/core/consciousness.ts"
-import { callIntelligence, REASONING, TextOutput } from "@/core/intelligence.ts"
-import { metricsRecalibration, morningRecalibration } from "@/emotion/calibration.ts"
-import { collectMetrics } from "@/emotion/metrics.ts"
-import { getEmotionalState, saveEmotionalState } from "@/emotion/state.ts"
+import type { EmotionalState } from "@/emotion/types.ts"
 import { sendToOperator } from "@/integrations/telegram.ts"
 import { log } from "@/lib/logger.ts"
 import { captureError } from "@/lib/sentry.ts"
 import { storeEpisode } from "@/memory/episodic.ts"
-import { getOperatorLanguage } from "@/memory/semantic.ts"
-import { clearDreamInsights, getDreamInsights, pushToActiveConversation, setDreamState } from "@/memory/working.ts"
-import { MORNING_MESSAGE_SYSTEM_PROMPT } from "@/prompts/dream.ts"
-import { runReflection } from "./reflection.ts"
+import { clearDreamInsights, pushToActiveConversation, setDreamState } from "@/memory/working.ts"
+import { MORNING_MESSAGE_SYSTEM_PROMPT } from "@/prompts/routine.ts"
 
-export interface MorningRoutineResult {
-  action: string
-  emotion: Record<string, number> | null
-}
-
-export async function composeMorningMessage(): Promise<string> {
-  const [insights, emotion, operatorLanguage] = await Promise.all([
-    getDreamInsights(),
-    getEmotionalState(),
-    getOperatorLanguage()
-  ])
-
-  const consciousnessPrompt = await buildConsciousnessPrompt(emotion)
-
+/**
+ * Build the context for the morning message LLM call — pure THINK helper.
+ * No LLM call, just data assembly for the prompt.
+ */
+export function buildMorningContext(
+  dreamInsights: string[] | null,
+  emotion: EmotionalState,
+  operatorLanguage: string
+): { systemInstruction: string; context: string } {
   const context = {
     operatorLanguage,
-    dreamInsights: insights ?? [],
+    dreamInsights: dreamInsights ?? [],
     currentMood: emotion
   }
 
-  const result = await callIntelligence({
-    model: REASONING,
-    system: `${MORNING_MESSAGE_SYSTEM_PROMPT}\n\n${consciousnessPrompt}`,
-    userMessage: JSON.stringify(context),
-    schema: TextOutput,
-    maxTokens: 1024
-  })
-
-  if (result.isErr()) {
-    log.warn("composeMorningMessage: callIntelligence failed", { error: result.error.message })
-    return ""
+  return {
+    systemInstruction: MORNING_MESSAGE_SYSTEM_PROMPT,
+    context: JSON.stringify(context)
   }
-
-  return result.value.text
 }
 
-export async function sendMorningMessage(): Promise<void> {
-  const message = await composeMorningMessage()
-
+/**
+ * Send the morning message to operator — pure ACT helper.
+ * Persists episode, pushes to conversation buffer, clears dream insights, resets dream state.
+ */
+export async function sendMorningMessage(message: string): Promise<void> {
   if (!message) {
     log.warn("sendMorningMessage: empty message, skipping send")
     await clearDreamInsights()
+    await setDreamState("idle")
     return
   }
 
@@ -81,50 +63,5 @@ export async function sendMorningMessage(): Promise<void> {
   }
 
   await clearDreamInsights()
-}
-
-/**
- * Full morning routine pipeline:
- * 1. Emotional recalibration (metrics-based + morning reset)
- * 2. Morning reflection
- * 3. Morning message to operator
- * 4. Reset dream state
- */
-export async function runMorningRoutine(): Promise<MorningRoutineResult> {
-  log.info("Starting morning routine")
-  let emotion: Record<string, number> | null = null
-
-  try {
-    const [currentEmotion, metrics] = await Promise.all([getEmotionalState(), collectMetrics()])
-
-    const afterMetrics = metricsRecalibration(currentEmotion, metrics)
-    const afterMorning = morningRecalibration(afterMetrics)
-    emotion = afterMorning
-
-    await saveEmotionalState(afterMorning, "morning_calibration")
-    log.info("Emotional recalibration complete", { before: currentEmotion, after: afterMorning })
-  } catch (e) {
-    log.error("Morning recalibration failed", { error: String(e) })
-    captureError(e, { phase: "morning_recalibration" })
-  }
-
-  try {
-    await runReflection("morning")
-  } catch (e) {
-    log.error("Morning reflection failed", { error: String(e) })
-    captureError(e, { phase: "morning_reflection" })
-  }
-
-  try {
-    await sendMorningMessage()
-    log.info("Morning message sent")
-  } catch (e) {
-    log.error("Morning message failed", { error: String(e) })
-    captureError(e, { phase: "morning_message" })
-  } finally {
-    await setDreamState("idle")
-    log.info("Dream state reset to idle")
-  }
-
-  return { action: "completed", emotion }
+  await setDreamState("idle")
 }

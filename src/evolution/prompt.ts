@@ -1,6 +1,6 @@
 import { desc, eq } from "drizzle-orm"
 import * as z from "zod"
-import { callIntelligence, REASONING } from "@/core/intelligence.ts"
+import { callIntelligence } from "@/core/intelligence.ts"
 import { db } from "@/db/client.ts"
 import { promptVersions } from "@/db/schema.ts"
 import type { MetricsSnapshot } from "@/emotion/types.ts"
@@ -19,7 +19,7 @@ export const PromptProposalOutput = z.object({
 })
 export type PromptProposalOutput = z.infer<typeof PromptProposalOutput>
 
-export interface PromptProposal extends PromptProposalOutput {
+interface PromptProposal extends PromptProposalOutput {
   autonomous: boolean
 }
 
@@ -70,7 +70,6 @@ export async function proposePromptChange(
   const trust = await canActAutonomously("prompt_modification")
 
   const responseResult = await callIntelligence({
-    model: REASONING,
     system: PROMPT_EVOLUTION_SYSTEM_PROMPT,
     userMessage: JSON.stringify({
       promptId,

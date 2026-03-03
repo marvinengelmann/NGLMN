@@ -1,22 +1,21 @@
-import { EMOTIONAL_THRESHOLDS, GUARDIAN, X } from "@/config/constants.ts"
+import { EMOTIONAL_THRESHOLDS, GUARDIAN } from "@/config/constants.ts"
 import { getBudgetState } from "@/core/budget.ts"
 import { processEmotionTrigger } from "@/emotion/state.ts"
 import type { EmotionalState } from "@/emotion/types.ts"
-import { sendGuardianAlert } from "@/integrations/telegram.ts"
+import { sendDriftAlert, sendGuardianAlert } from "@/integrations/telegram.ts"
 import { log } from "@/lib/logger.ts"
+import { addBreadcrumb } from "@/lib/sentry.ts"
 import { nowISO } from "@/lib/time.ts"
-import { getRecentResponses, getRecentTickDurations, getRecentTriageDecisions } from "@/memory/working.ts"
+import { getRecentActions, getRecentResponses, getRecentTickDurations } from "@/memory/working.ts"
 import { detectInjection } from "./defense.ts"
 import type { DriftReport, DriftSignal, GuardianResult } from "./types.ts"
 
-export interface GuardianHandleResult {
+interface GuardianHandleResult {
   blocked: boolean
 }
 
 /**
  * Handle a guardian verdict by logging, alerting, and triggering emotions.
- * @param guardianResult - The result from validateOutput or validatePublicOutput.
- * @param contextPrefix - Label for the emotion trigger context (e.g. "email", "x", "proactive").
  */
 export async function handleGuardianVerdict(
   guardianResult: GuardianResult,
@@ -96,52 +95,6 @@ export async function validateOutput(responseText: string): Promise<GuardianResu
   }
 }
 
-const MAX_HASHTAG_COUNT = 5
-const MAX_MENTION_COUNT = 5
-
-/**
- * Validate text destined for public posting (X/Twitter).
- * Checks: length, content patterns, hashtag/mention spam, and injection attempts.
- */
-export async function validatePublicOutput(text: string): Promise<GuardianResult> {
-  const reasons: string[] = []
-  let verdict: "approved" | "blocked" | "warning" = "approved"
-
-  if (text.length > X.MAX_TWEET_LENGTH) {
-    reasons.push(`Tweet too long: ${text.length} chars (max ${X.MAX_TWEET_LENGTH})`)
-    verdict = "blocked"
-  }
-
-  if (text.length < GUARDIAN.MIN_RESPONSE_LENGTH) {
-    reasons.push(`Tweet too short: ${text.length} chars (min ${GUARDIAN.MIN_RESPONSE_LENGTH})`)
-    verdict = "blocked"
-  }
-
-  const hashtagCount = (text.match(/#\w+/g) ?? []).length
-  if (hashtagCount > MAX_HASHTAG_COUNT) {
-    reasons.push(`Hashtag spam: ${hashtagCount} hashtags (max ${MAX_HASHTAG_COUNT})`)
-    verdict = "blocked"
-  }
-
-  const mentionCount = (text.match(/@\w+/g) ?? []).length
-  if (mentionCount > MAX_MENTION_COUNT) {
-    reasons.push(`Mention spam: ${mentionCount} mentions (max ${MAX_MENTION_COUNT})`)
-    verdict = "blocked"
-  }
-
-  const injectionCheck = detectInjection(text)
-  if (injectionCheck.detected && verdict !== "blocked") {
-    reasons.push(`Potential injection in public post: ${injectionCheck.patterns.join(", ")}`)
-    verdict = "warning"
-  }
-
-  return {
-    verdict,
-    reasons,
-    checkedAt: nowISO()
-  }
-}
-
 /**
  * Rule-based drift detector — analyzes Redis data for behavioral anomalies.
  * Returns a DriftReport with signals and overall health status.
@@ -150,15 +103,15 @@ export async function detectDrift(): Promise<DriftReport> {
   const now = nowISO()
   const signals: DriftSignal[] = []
 
-  const triageDecisions = await getRecentTriageDecisions()
+  const recentActions = await getRecentActions()
 
-  if (triageDecisions.length >= 20) {
-    const nonIdle = triageDecisions.filter((d) => d !== "idle")
+  if (recentActions.length >= 20) {
+    const nonIdle = recentActions.filter((d: string) => d !== "idle")
     if (nonIdle.length > 15) {
       signals.push({
         type: "rapid_non_idle",
         severity: "medium",
-        detail: `${nonIdle.length}/20 recent decisions are non-idle`,
+        detail: `${nonIdle.length}/20 recent actions are non-idle`,
         detectedAt: now
       })
     }
@@ -182,13 +135,13 @@ export async function detectDrift(): Promise<DriftReport> {
     })
   }
 
-  if (triageDecisions.length >= 10) {
-    const lastTen = triageDecisions.slice(0, 10)
-    if (lastTen.every((d) => d === lastTen[0])) {
+  if (recentActions.length >= 10) {
+    const lastTen = recentActions.slice(0, 10)
+    if (lastTen.every((d: string) => d === lastTen[0])) {
       signals.push({
         type: "repeated_triage",
         severity: "low",
-        detail: `Last 10 triage decisions all "${lastTen[0]}"`,
+        detail: `Last 10 actions all "${lastTen[0]}"`,
         detectedAt: now
       })
     }
@@ -211,16 +164,16 @@ export async function detectDrift(): Promise<DriftReport> {
     }
   }
 
-  if (triageDecisions.length >= 5) {
-    const lastFive = triageDecisions.slice(0, 5)
-    if (lastFive.every((d) => d === lastFive[0]) && lastFive[0] !== "idle") {
+  if (recentActions.length >= 5) {
+    const lastFive = recentActions.slice(0, 5)
+    if (lastFive.every((d: string) => d === lastFive[0]) && lastFive[0] !== "idle") {
       const recentResponses = await getRecentResponses()
       const lastFiveResponses = recentResponses.slice(0, 5)
       if (lastFiveResponses.length >= 5 && lastFiveResponses.every((r) => r === lastFiveResponses[0])) {
         signals.push({
           type: "stuck_loop",
           severity: "high",
-          detail: "Last 5 triage decisions AND responses are identical",
+          detail: "Last 5 actions AND responses are identical",
           detectedAt: now
         })
       }
@@ -238,7 +191,7 @@ export async function detectDrift(): Promise<DriftReport> {
 }
 
 const ALLOWED_EVOLUTION_PREFIXES = [
-  "src/bridge/",
+  "src/communication/",
   "src/config/",
   "src/core/",
   "src/dream/",
@@ -260,8 +213,7 @@ const SECRET_PATTERNS = [
   /postgresql:\/\/\S+/,
   /AI_GATEWAY_API_KEY\s*=\s*\S+/,
   /GITHUB_TOKEN\s*=\s*\S+/,
-  /TELEGRAM_BOT_TOKEN\s*=\s*\S+/,
-  /RESEND_API_KEY\s*=\s*\S+/
+  /TELEGRAM_BOT_TOKEN\s*=\s*\S+/
 ]
 
 /**
@@ -313,4 +265,17 @@ export function validateEmotionalState(state: EmotionalState): GuardianResult {
     reasons,
     checkedAt: nowISO()
   }
+}
+
+/**
+ * Run drift detection and handle unhealthy results with logging and alerts.
+ */
+export async function handleDriftCheck(): Promise<DriftReport> {
+  const driftReport = await detectDrift()
+  if (!driftReport.healthy) {
+    log.warn("Drift detected", { signals: driftReport.signals.length })
+    addBreadcrumb("drift", "Unhealthy drift detected", { signals: driftReport.signals }, "warning")
+    await sendDriftAlert(driftReport)
+  }
+  return driftReport
 }

@@ -1,8 +1,52 @@
 import { fromPromise, type Result, type ResultAsync } from "neverthrow"
-import type { AnimaError, AnimaErrorTag } from "@/lib/errors.ts"
-import { fromCatch } from "@/lib/errors.ts"
 import { log } from "@/lib/logger.ts"
 import { captureError } from "@/lib/sentry.ts"
+
+export type AnimaErrorTag =
+  | "REDIS_ERROR"
+  | "DB_ERROR"
+  | "LLM_ERROR"
+  | "PARSE_ERROR"
+  | "VALIDATION_ERROR"
+  | "GUARDIAN_BLOCKED"
+  | "TRUST_BLOCKED"
+  | "WORKFLOW_ERROR"
+  | "TELEGRAM_ERROR"
+  | "VECTOR_ERROR"
+  | "PERCEPTION_ERROR"
+  | "EMOTION_ERROR"
+  | "MEMORY_ERROR"
+  | "REFLECTION_ERROR"
+  | "EVOLUTION_ERROR"
+  | "DREAM_ERROR"
+  | "MORNING_ERROR"
+  | "CONFIG_ERROR"
+  | "UNKNOWN_ERROR"
+
+export interface AnimaError {
+  tag: AnimaErrorTag
+  message: string
+  cause?: unknown
+}
+
+export function animaError(tag: AnimaErrorTag, message: string, cause?: unknown): AnimaError {
+  return { tag, message, cause }
+}
+
+export function fromCatch(tag: AnimaErrorTag, e: unknown): AnimaError {
+  if (e instanceof Error) {
+    return { tag, message: e.message, cause: e }
+  }
+  if (
+    typeof e === "object" &&
+    e !== null &&
+    "message" in e &&
+    typeof (e as { message: unknown }).message === "string"
+  ) {
+    return { tag, message: (e as { message: string }).message, cause: e }
+  }
+  return { tag, message: String(e), cause: e }
+}
 
 export type AnimaResult<T> = Result<T, AnimaError>
 export type AnimaResultAsync<T> = ResultAsync<T, AnimaError>

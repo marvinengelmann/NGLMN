@@ -1,5 +1,5 @@
 import { parseISO, subDays } from "date-fns"
-import { callIntelligence, FAST, TextOutput } from "@/core/intelligence.ts"
+import { callIntelligence, TextOutput } from "@/core/intelligence.ts"
 import { vectorIndex } from "@/integrations/vector.ts"
 import { log } from "@/lib/logger.ts"
 import { nowISO } from "@/lib/time.ts"
@@ -166,7 +166,6 @@ export async function summarizeOldEpisodes(
     const episodeTexts = oldLowRelevance.map((r) => r.data ?? JSON.stringify(r.metadata)).join("\n---\n")
 
     const summaryResult = await callIntelligence({
-      model: FAST,
       system:
         "Summarize these related episodes into 1-2 concise sentences capturing the key information. Be factual and brief.",
       userMessage: episodeTexts,

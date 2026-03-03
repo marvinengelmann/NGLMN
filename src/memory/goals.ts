@@ -1,11 +1,16 @@
 import { and, desc, eq, inArray } from "drizzle-orm"
+import { EMOTIONAL_THRESHOLDS } from "@/config/constants.ts"
+import type { AnimaDecision } from "@/consciousness/types.ts"
 import { db } from "@/db/client.ts"
 import type { GoalSelect } from "@/db/schema.ts"
 import { goals } from "@/db/schema.ts"
+import { processEmotionTrigger } from "@/emotion/state.ts"
 import type { EmotionalState } from "@/emotion/types.ts"
+import { log } from "@/lib/logger.ts"
 import type { AnimaResultAsync } from "@/lib/result.ts"
 import { trySafe } from "@/lib/result.ts"
-import type { GoalSource, GoalStatus } from "@/memory/types.ts"
+import type { GoalSource } from "@/memory/types.ts"
+import { GoalStatus } from "@/memory/types.ts"
 
 const EMOTION_BOOST_FACTOR = 0.3
 
@@ -119,4 +124,34 @@ export async function goalExistsByTitle(title: string): Promise<boolean> {
     .where(and(eq(goals.title, title), inArray(goals.status, ["open", "active"])))
     .limit(1)
   return rows.length > 0
+}
+
+/**
+ * Execute a goal status update from ANIMA's decision, with emotion triggers for completion/failure.
+ */
+export async function executeGoalUpdate(decision: AnimaDecision): Promise<void> {
+  const goalId = decision.actionPayload?.goalId
+  const status = decision.actionPayload?.status
+  if (!goalId || !status) return
+
+  const parsed = GoalStatus.safeParse(status)
+  if (!parsed.success) {
+    log.warn("Invalid goal status from ANIMA", { goalId, status })
+    return
+  }
+
+  await updateGoalStatus(goalId, parsed.data)
+  log.info("Goal status updated", { goalId, status })
+
+  if (parsed.data === "done") {
+    await processEmotionTrigger(
+      { trigger: "goal_completed", intensity: EMOTIONAL_THRESHOLDS.GOAL_COMPLETED_INTENSITY },
+      "goal_completed"
+    )
+  } else if (parsed.data === "failed") {
+    await processEmotionTrigger(
+      { trigger: "goal_failed", intensity: EMOTIONAL_THRESHOLDS.GOAL_FAILED_INTENSITY },
+      "goal_failed"
+    )
+  }
 }

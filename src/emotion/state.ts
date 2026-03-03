@@ -2,9 +2,7 @@ import { desc } from "drizzle-orm"
 import { db } from "@/db/client.ts"
 import { emotionHistory } from "@/db/schema.ts"
 import { getCurrentEmotion, setCurrentEmotion } from "@/memory/working.ts"
-import { getEmotionBaseline } from "@/personality/mbti.ts"
-import type { EmotionTrigger, EmotionUpdateEvent } from "./types.ts"
-import { EmotionalState } from "./types.ts"
+import { DEFAULT_EMOTIONAL_STATE, EmotionalState, type EmotionTrigger, type EmotionUpdateEvent } from "./types.ts"
 import { computeEmotionalUpdate } from "./update.ts"
 
 /**
@@ -22,9 +20,8 @@ export async function getEmotionalState(): Promise<EmotionalState> {
     return state
   }
 
-  const baseline = getEmotionBaseline()
-  await setCurrentEmotion(baseline)
-  return baseline
+  await setCurrentEmotion(DEFAULT_EMOTIONAL_STATE)
+  return DEFAULT_EMOTIONAL_STATE
 }
 
 /**

@@ -1,13 +1,12 @@
 import * as Sentry from "@sentry/node"
 import { differenceInSeconds, parseISO } from "date-fns"
 import { count, sql } from "drizzle-orm"
-import { hasEmailConfig, hasXConfig } from "@/config/env.ts"
+import { BUDGET } from "@/config/constants.ts"
 import { getBudgetState } from "@/core/budget.ts"
 import { db } from "@/db/client.ts"
-import { personalityDna, semanticMemory } from "@/db/schema.ts"
+import { semanticMemory } from "@/db/schema.ts"
 import type { HealthCheckResult, OverallStatus, ProcessStatus, ServiceStatus } from "@/health/types.ts"
 import { getRef } from "@/integrations/github.ts"
-import { pingResend } from "@/integrations/resend.ts"
 import { pingTelegram } from "@/integrations/telegram.ts"
 import { vectorIndex } from "@/integrations/vector.ts"
 import { log } from "@/lib/logger.ts"
@@ -61,13 +60,14 @@ export async function runHealthCheck(): Promise<HealthCheckResult> {
   return result
 }
 
-async function collectHealthStatus(): Promise<HealthCheckResult> {
+export async function collectHealthStatus(): Promise<HealthCheckResult> {
   const errors: string[] = []
 
   let redisStatus: ServiceStatus = "error"
   try {
     redisStatus = (await pingRedis()) ? "ok" : "error"
   } catch (e) {
+    log.error("Health check: Redis failed", { error: e instanceof Error ? e.message : String(e) })
     captureError(e, { service: "redis" })
     errors.push(`Redis: ${e instanceof Error ? e.message : String(e)}`)
   }
@@ -77,6 +77,7 @@ async function collectHealthStatus(): Promise<HealthCheckResult> {
     await db.execute(sql`SELECT 1`)
     postgresStatus = "ok"
   } catch (e) {
+    log.error("Health check: Postgres failed", { error: e instanceof Error ? e.message : String(e) })
     captureError(e, { service: "postgres" })
     errors.push(`Postgres: ${e instanceof Error ? e.message : String(e)}`)
   }
@@ -85,19 +86,9 @@ async function collectHealthStatus(): Promise<HealthCheckResult> {
   try {
     telegramStatus = (await pingTelegram()) ? "ok" : "error"
   } catch (e) {
+    log.error("Health check: Telegram failed", { error: e instanceof Error ? e.message : String(e) })
     captureError(e, { service: "telegram" })
     errors.push(`Telegram: ${e instanceof Error ? e.message : String(e)}`)
-  }
-
-  let resendStatus: ServiceStatus | undefined
-  try {
-    if (hasEmailConfig()) {
-      resendStatus = (await pingResend()) ? "ok" : "error"
-    }
-  } catch (e) {
-    captureError(e, { service: "resend" })
-    errors.push(`Resend: ${e instanceof Error ? e.message : String(e)}`)
-    resendStatus = "error"
   }
 
   let vectorStatus: ServiceStatus = "error"
@@ -105,6 +96,7 @@ async function collectHealthStatus(): Promise<HealthCheckResult> {
     await vectorIndex.info()
     vectorStatus = "ok"
   } catch (e) {
+    log.error("Health check: Vector failed", { error: e instanceof Error ? e.message : String(e) })
     captureError(e, { service: "vector" })
     errors.push(`Vector: ${e instanceof Error ? e.message : String(e)}`)
   }
@@ -123,12 +115,13 @@ async function collectHealthStatus(): Promise<HealthCheckResult> {
       else lastTickRecency = "dead"
     }
   } catch (e) {
+    log.error("Health check: Process failed", { error: e instanceof Error ? e.message : String(e) })
     captureError(e, { service: "process" })
     errors.push(`Process: ${e instanceof Error ? e.message : String(e)}`)
   }
 
   let budgetConsumed = 0
-  let budgetLimit = 8.0
+  let budgetLimit: number = BUDGET.DAILY_LIMIT
   let budgetCompliant = false
   try {
     const budget = await getBudgetState()
@@ -136,6 +129,7 @@ async function collectHealthStatus(): Promise<HealthCheckResult> {
     budgetLimit = budget.dailyLimit
     budgetCompliant = budget.consumedToday <= budget.dailyLimit
   } catch (e) {
+    log.error("Health check: Budget failed", { error: e instanceof Error ? e.message : String(e) })
     captureError(e, { service: "budget" })
     errors.push(`Budget: ${e instanceof Error ? e.message : String(e)}`)
   }
@@ -147,18 +141,9 @@ async function collectHealthStatus(): Promise<HealthCheckResult> {
     semanticCount = result[0]?.value ?? 0
     semanticStatus = "ok"
   } catch (e) {
+    log.error("Health check: Semantic failed", { error: e instanceof Error ? e.message : String(e) })
     captureError(e, { service: "semantic" })
     errors.push(`Semantic: ${e instanceof Error ? e.message : String(e)}`)
-  }
-
-  try {
-    const dnaResult = await db.select({ value: count() }).from(personalityDna)
-    if ((dnaResult[0]?.value ?? 0) === 0) {
-      errors.push("Personality DNA: no entries in database")
-    }
-  } catch (e) {
-    captureError(e, { service: "personality_dna" })
-    errors.push(`Personality DNA: ${e instanceof Error ? e.message : String(e)}`)
   }
 
   let emotionBlocked = false
@@ -172,20 +157,9 @@ async function collectHealthStatus(): Promise<HealthCheckResult> {
       }
     }
   } catch (e) {
+    log.error("Health check: EmotionalState failed", { error: e instanceof Error ? e.message : String(e) })
     captureError(e, { service: "emotional_state" })
     errors.push(`Emotional state: ${e instanceof Error ? e.message : String(e)}`)
-  }
-
-  let xStatus: ServiceStatus | undefined
-  try {
-    if (hasXConfig()) {
-      const { pingX } = await import("@/integrations/x.ts")
-      xStatus = (await pingX()) ? "ok" : "error"
-    }
-  } catch (e) {
-    captureError(e, { service: "x" })
-    errors.push(`X: ${e instanceof Error ? e.message : String(e)}`)
-    xStatus = "error"
   }
 
   const criticalDown = redisStatus === "error" || postgresStatus === "error"
@@ -198,8 +172,6 @@ async function collectHealthStatus(): Promise<HealthCheckResult> {
   } else if (
     telegramStatus === "error" ||
     vectorStatus === "error" ||
-    resendStatus === "error" ||
-    xStatus === "error" ||
     lastTickRecency === "stale" ||
     semanticStatus === "error" ||
     emotionBlocked
@@ -214,9 +186,7 @@ async function collectHealthStatus(): Promise<HealthCheckResult> {
       redis: redisStatus,
       postgres: postgresStatus,
       telegram: telegramStatus,
-      vector: vectorStatus,
-      resend: resendStatus,
-      x: xStatus
+      vector: vectorStatus
     },
     process: {
       lastTickRecency,

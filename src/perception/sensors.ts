@@ -1,5 +1,4 @@
 import { differenceInHours, differenceInSeconds, parseISO } from "date-fns"
-import { hasXConfig } from "@/config/env.ts"
 import { getBudgetState } from "@/core/budget.ts"
 import type { EmotionUpdateEvent } from "@/emotion/types.ts"
 import type { OverallStatus } from "@/health/types.ts"
@@ -8,15 +7,7 @@ import { resolveOperatorLocation } from "@/integrations/location.ts"
 import { getCachedOrFetchWeather } from "@/integrations/openweather.ts"
 import type { WeatherData } from "@/integrations/types.ts"
 import { log } from "@/lib/logger.ts"
-import {
-  getHealthCheck,
-  getLastTickSummary,
-  getOperatorLastActivity,
-  getPendingEmailCount,
-  getPendingMentionCount,
-  peekAllPendingEmails,
-  peekAllPendingMentions
-} from "@/memory/working.ts"
+import { getHealthCheck, getLastTickSummary, getOperatorLastActivity } from "@/memory/working.ts"
 
 /**
  * Read ANIMA's own state and generate emotional triggers from it.
@@ -72,8 +63,6 @@ export async function readOwnState(): Promise<{
 
 /**
  * Read Telegram activity and generate emotional triggers from it.
- * Messages are processed atomically by the human bridge — no pending queue exists.
- * Activity is tracked via operatorLastActivity timestamp set by the bridge.
  */
 export async function readTelegramActivity(): Promise<{
   pendingCount: number
@@ -99,68 +88,6 @@ export async function readTelegramActivity(): Promise<{
   return { pendingCount: 0, lastMessageAge, operatorActive, triggers }
 }
 
-/**
- * Read email activity and generate emotional triggers from it.
- */
-export async function readEmailActivity(): Promise<{
-  pendingCount: number
-  lastEmailAge: number
-  hasNewEmail: boolean
-  triggers: EmotionUpdateEvent[]
-}> {
-  const [pendingCount, emails] = await Promise.all([getPendingEmailCount(), peekAllPendingEmails()])
-
-  const lastEmail = emails[emails.length - 1]
-  const lastEmailAge = lastEmail ? differenceInSeconds(new Date(), new Date(lastEmail.receivedAt)) : -1
-
-  const hasNewEmail = pendingCount > 0
-
-  const triggers: EmotionUpdateEvent[] = []
-
-  if (pendingCount > 0) {
-    triggers.push({
-      trigger: "email_received",
-      intensity: Math.min(1, pendingCount * 0.4),
-      detail: `${pendingCount} pending email(s)`
-    })
-  }
-
-  return { pendingCount, lastEmailAge, hasNewEmail, triggers }
-}
-
-/**
- * Read X (Twitter) activity and generate emotional triggers from it.
- */
-export async function readXActivity(): Promise<{
-  pendingCount: number
-  lastMentionAge: number
-  hasNewMention: boolean
-  triggers: EmotionUpdateEvent[]
-}> {
-  if (!hasXConfig()) {
-    return { pendingCount: 0, lastMentionAge: -1, hasNewMention: false, triggers: [] }
-  }
-
-  const [pendingCount, mentions] = await Promise.all([getPendingMentionCount(), peekAllPendingMentions()])
-
-  const lastMention = mentions[mentions.length - 1]
-  const lastMentionAge = lastMention ? differenceInSeconds(new Date(), new Date(lastMention.createdAt)) : -1
-
-  const hasNewMention = pendingCount > 0
-
-  const triggers: EmotionUpdateEvent[] = []
-
-  if (pendingCount > 0) {
-    triggers.push({
-      trigger: "mention_received",
-      intensity: Math.min(1, pendingCount * 0.3),
-      detail: `${pendingCount} pending X mention(s)`
-    })
-  }
-
-  return { pendingCount, lastMentionAge, hasNewMention, triggers }
-}
-
 const STORM_CONDITIONS = ["Thunderstorm", "Squall", "Tornado"]
 const RAIN_CONDITIONS = ["Rain", "Drizzle"]
 
@@ -181,29 +108,13 @@ export async function readWeatherData(): Promise<{
     const triggers: EmotionUpdateEvent[] = []
 
     if (weatherData.temperature < 0) {
-      triggers.push({
-        trigger: "weather_update",
-        intensity: 0.4,
-        detail: "Freezing conditions"
-      })
+      triggers.push({ trigger: "weather_update", intensity: 0.4, detail: "Freezing conditions" })
     } else if (weatherData.temperature > 35) {
-      triggers.push({
-        trigger: "weather_update",
-        intensity: 0.4,
-        detail: "Extreme heat"
-      })
+      triggers.push({ trigger: "weather_update", intensity: 0.4, detail: "Extreme heat" })
     } else if (STORM_CONDITIONS.includes(weatherData.condition) || RAIN_CONDITIONS.includes(weatherData.condition)) {
-      triggers.push({
-        trigger: "weather_update",
-        intensity: 0.3,
-        detail: `Weather: ${weatherData.description}`
-      })
+      triggers.push({ trigger: "weather_update", intensity: 0.3, detail: `Weather: ${weatherData.description}` })
     } else if (weatherData.condition === "Clear" && weatherData.temperature >= 15 && weatherData.temperature <= 28) {
-      triggers.push({
-        trigger: "weather_update",
-        intensity: 0.3,
-        detail: "Beautiful weather"
-      })
+      triggers.push({ trigger: "weather_update", intensity: 0.3, detail: "Beautiful weather" })
     }
 
     return { weatherData, triggers }

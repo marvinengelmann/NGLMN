@@ -16,20 +16,6 @@ export const PerceptionSummary = z.object({
     lastMessageAge: z.number(),
     operatorActive: z.boolean()
   }),
-  emailActivity: z
-    .object({
-      pendingCount: z.number(),
-      lastEmailAge: z.number(),
-      hasNewEmail: z.boolean()
-    })
-    .optional(),
-  xActivity: z
-    .object({
-      pendingCount: z.number(),
-      lastMentionAge: z.number(),
-      hasNewMention: z.boolean()
-    })
-    .optional(),
   weatherData: WeatherData.optional(),
   gitActivity: z
     .object({

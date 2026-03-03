@@ -88,11 +88,19 @@ export async function sendTypingAction(): Promise<void> {
  * Send a message with optional reply-to and return the sent message ID.
  */
 export async function sendMessageWithReply(text: string, replyToMessageId?: number | null): Promise<number> {
-  const sent = await bot.sendMessage(operatorChatId, text, {
-    parse_mode: "Markdown",
-    ...(replyToMessageId ? { reply_parameters: { message_id: replyToMessageId } } : {})
-  })
-  return sent.message_id
+  try {
+    const sent = await bot.sendMessage(operatorChatId, text, {
+      parse_mode: "Markdown",
+      ...(replyToMessageId ? { reply_parameters: { message_id: replyToMessageId } } : {})
+    })
+    return sent.message_id
+  } catch (error) {
+    if (replyToMessageId && error instanceof Error && error.message.includes("message to be replied not found")) {
+      const sent = await bot.sendMessage(operatorChatId, text, { parse_mode: "Markdown" })
+      return sent.message_id
+    }
+    throw error
+  }
 }
 
 /**
