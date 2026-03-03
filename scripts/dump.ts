@@ -1,0 +1,62 @@
+/**
+ * Dumps the full ANIMA system prompt as it would appear during a heartbeat tick.
+ * Reads live state from Redis/Postgres/Vector and calls the single source of truth
+ * context builder (buildContext + buildSystemPrompt).
+ *
+ * Usage: bun run dump
+ */
+
+import "dotenv/config"
+import { buildContext, buildSystemPrompt } from "@/consciousness/context.ts"
+import type { SenseData } from "@/consciousness/types.ts"
+import { getEmotionalState } from "@/emotion/state.ts"
+import { estimateTokens } from "@/lib/math.ts"
+import { nowISO } from "@/lib/time.ts"
+import { getHealthCheck, getPerceptionSummary } from "@/memory/working.ts"
+
+async function dump() {
+  console.log("\n  ANIMA Prompt Dump\n")
+
+  const [emotion, perception, health] = await Promise.all([
+    getEmotionalState(),
+    getPerceptionSummary(),
+    getHealthCheck()
+  ])
+
+  const senseData: SenseData = {
+    pendingMessages: [],
+    perception: perception ?? {
+      timestamp: nowISO(),
+      ownState: { budgetPercent: 0, lastTickAge: 0, errorCount: 0, healthStatus: "healthy" },
+      telegramActivity: { pendingCount: 0, lastMessageAge: 0, operatorActive: false },
+      emotionalTriggers: []
+    },
+    emotion,
+    health,
+    weather: null,
+    conversationState: null,
+    triggeredWorkflows: []
+  }
+
+  const contextString = await buildContext(senseData)
+  const systemPrompt = buildSystemPrompt(contextString)
+
+  console.log("=".repeat(80))
+  console.log("  SYSTEM PROMPT")
+  console.log("=".repeat(80))
+  console.log(systemPrompt)
+  console.log("=".repeat(80))
+
+  console.log("\n--- Stats ---")
+  console.log(`  System prompt tokens: ~${estimateTokens(systemPrompt).toLocaleString()}`)
+  console.log(`  Context tokens:       ~${estimateTokens(contextString).toLocaleString()}`)
+  console.log(`  Total characters:     ${systemPrompt.length.toLocaleString()}`)
+  console.log()
+
+  process.exit(0)
+}
+
+dump().catch((err) => {
+  console.error("Dump failed:", err)
+  process.exit(1)
+})
