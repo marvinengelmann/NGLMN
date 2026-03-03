@@ -4,6 +4,7 @@ import {
   index,
   integer,
   jsonb,
+  pgEnum,
   pgTable,
   real,
   serial,
@@ -13,20 +14,27 @@ import {
   uuid
 } from "drizzle-orm/pg-core"
 
+export const semanticCategoryEnum = pgEnum("semantic_category", [
+  "preference",
+  "project",
+  "contact",
+  "knowledge",
+  "insight"
+])
+export const semanticSourceEnum = pgEnum("semantic_source", ["operator", "observation", "dream", "reflection"])
+export const semanticScopeEnum = pgEnum("semantic_scope", ["self", "operator", "world"])
+
 export const tickLog = pgTable(
   "tick_log",
   {
     id: serial("id").primaryKey(),
     tickId: text("tick_id").notNull(),
     timestamp: timestamp("timestamp", { withTimezone: true }).notNull(),
-    triageDecision: text("triage_decision").notNull(),
-    triageReason: text("triage_reason").notNull(),
+    action: text("action").notNull(),
+    reasoning: text("reasoning").notNull(),
     messagesProcessed: integer("messages_processed").notNull().default(0),
     responseSent: boolean("response_sent").notNull().default(false),
     responseText: text("response_text"),
-    modelUsed: text("model_used"),
-    tier: text("tier"),
-    nextInterval: text("next_interval"),
     durationMs: integer("duration_ms").notNull(),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow()
   },
@@ -40,12 +48,12 @@ export const semanticMemory = pgTable(
   "semantic_memory",
   {
     id: uuid("id").primaryKey().defaultRandom(),
-    category: text("category").notNull(),
+    category: semanticCategoryEnum("category").notNull(),
     key: text("key").notNull(),
     value: jsonb("value").notNull(),
     confidence: real("confidence").default(0.5),
-    source: text("source").notNull(),
-    scope: text("scope"),
+    source: semanticSourceEnum("source").notNull(),
+    scope: semanticScopeEnum("scope").notNull(),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
     lastAccessedAt: timestamp("last_accessed_at", { withTimezone: true })
@@ -85,18 +93,6 @@ export const goals = pgTable(
 
 export type GoalInsert = typeof goals.$inferInsert
 export type GoalSelect = typeof goals.$inferSelect
-
-export const personalityDna = pgTable("personality_dna", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  version: integer("version").notNull(),
-  baseLayer: jsonb("base_layer").notNull(),
-  adaptiveLayer: jsonb("adaptive_layer").notNull(),
-  changelog: text("changelog"),
-  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow()
-})
-
-export type PersonalityDnaInsert = typeof personalityDna.$inferInsert
-export type PersonalityDnaSelect = typeof personalityDna.$inferSelect
 
 export const trustLevels = pgTable("trust_levels", {
   id: uuid("id").primaryKey().defaultRandom(),
@@ -179,8 +175,6 @@ export const workflows = pgTable(
     description: text("description"),
     trigger: jsonb("trigger").notNull(),
     instruction: text("instruction").notNull(),
-    model: text("model").notNull().default("reasoning"),
-    dataSources: jsonb("data_sources").notNull(),
     outputAction: text("output_action").notNull(),
     enabled: boolean("enabled").default(false),
     createdBy: text("created_by").notNull(),

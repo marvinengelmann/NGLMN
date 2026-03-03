@@ -1,5 +1,5 @@
 {
-  "id": "da36f2cc-7855-4f51-ad5c-e2eb309bec3a",
+  "id": "66bd8c54-3ee6-4c60-961a-931e1f830dcf",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
@@ -378,57 +378,6 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
-    "public.personality_dna": {
-      "name": "personality_dna",
-      "schema": "",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "uuid",
-          "primaryKey": true,
-          "notNull": true,
-          "default": "gen_random_uuid()"
-        },
-        "version": {
-          "name": "version",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "base_layer": {
-          "name": "base_layer",
-          "type": "jsonb",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "adaptive_layer": {
-          "name": "adaptive_layer",
-          "type": "jsonb",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "changelog": {
-          "name": "changelog",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        }
-      },
-      "indexes": {},
-      "foreignKeys": {},
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {},
-      "isRLSEnabled": false
-    },
     "public.prompt_versions": {
       "name": "prompt_versions",
       "schema": "",
@@ -493,7 +442,8 @@
         },
         "category": {
           "name": "category",
-          "type": "text",
+          "type": "semantic_category",
+          "typeSchema": "public",
           "primaryKey": false,
           "notNull": true
         },
@@ -518,7 +468,15 @@
         },
         "source": {
           "name": "source",
-          "type": "text",
+          "type": "semantic_source",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "scope": {
+          "name": "scope",
+          "type": "semantic_scope",
+          "typeSchema": "public",
           "primaryKey": false,
           "notNull": true
         },
@@ -564,17 +522,33 @@
           "concurrently": false,
           "method": "btree",
           "with": {}
+        },
+        "idx_semantic_memory_scope": {
+          "name": "idx_semantic_memory_scope",
+          "columns": [
+            {
+              "expression": "scope",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
         }
       },
       "foreignKeys": {},
       "compositePrimaryKeys": {},
       "uniqueConstraints": {
-        "uq_semantic_memory_category_key": {
-          "name": "uq_semantic_memory_category_key",
+        "uq_semantic_memory_category_key_scope": {
+          "name": "uq_semantic_memory_category_key_scope",
           "nullsNotDistinct": false,
           "columns": [
             "category",
-            "key"
+            "key",
+            "scope"
           ]
         }
       },
@@ -727,14 +701,14 @@
           "primaryKey": false,
           "notNull": true
         },
-        "triage_decision": {
-          "name": "triage_decision",
+        "action": {
+          "name": "action",
           "type": "text",
           "primaryKey": false,
           "notNull": true
         },
-        "triage_reason": {
-          "name": "triage_reason",
+        "reasoning": {
+          "name": "reasoning",
           "type": "text",
           "primaryKey": false,
           "notNull": true
@@ -755,24 +729,6 @@
         },
         "response_text": {
           "name": "response_text",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "model_used": {
-          "name": "model_used",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "tier": {
-          "name": "tier",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "next_interval": {
-          "name": "next_interval",
           "type": "text",
           "primaryKey": false,
           "notNull": false
@@ -932,19 +888,6 @@
           "primaryKey": false,
           "notNull": true
         },
-        "model": {
-          "name": "model",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "'reasoning'"
-        },
-        "data_sources": {
-          "name": "data_sources",
-          "type": "jsonb",
-          "primaryKey": false,
-          "notNull": true
-        },
         "output_action": {
           "name": "output_action",
           "type": "text",
@@ -1024,7 +967,38 @@
       "isRLSEnabled": false
     }
   },
-  "enums": {},
+  "enums": {
+    "public.semantic_category": {
+      "name": "semantic_category",
+      "schema": "public",
+      "values": [
+        "preference",
+        "project",
+        "contact",
+        "knowledge",
+        "insight"
+      ]
+    },
+    "public.semantic_scope": {
+      "name": "semantic_scope",
+      "schema": "public",
+      "values": [
+        "self",
+        "operator",
+        "world"
+      ]
+    },
+    "public.semantic_source": {
+      "name": "semantic_source",
+      "schema": "public",
+      "values": [
+        "operator",
+        "observation",
+        "dream",
+        "reflection"
+      ]
+    }
+  },
   "schemas": {},
   "sequences": {},
   "roles": {},

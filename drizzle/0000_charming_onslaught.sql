@@ -1,3 +1,6 @@
+CREATE TYPE "public"."semantic_category" AS ENUM('preference', 'project', 'contact', 'knowledge', 'insight');--> statement-breakpoint
+CREATE TYPE "public"."semantic_scope" AS ENUM('self', 'operator', 'world');--> statement-breakpoint
+CREATE TYPE "public"."semantic_source" AS ENUM('operator', 'observation', 'dream', 'reflection');--> statement-breakpoint
 CREATE TABLE "dream_log" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"phase" text NOT NULL,
@@ -43,15 +46,6 @@ CREATE TABLE "goals" (
 	"deadline" timestamp with time zone
 );
 --> statement-breakpoint
-CREATE TABLE "personality_dna" (
-	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
-	"version" integer NOT NULL,
-	"base_layer" jsonb NOT NULL,
-	"adaptive_layer" jsonb NOT NULL,
-	"changelog" text,
-	"created_at" timestamp with time zone DEFAULT now() NOT NULL
-);
---> statement-breakpoint
 CREATE TABLE "prompt_versions" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"prompt_id" text NOT NULL,
@@ -63,15 +57,16 @@ CREATE TABLE "prompt_versions" (
 --> statement-breakpoint
 CREATE TABLE "semantic_memory" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
-	"category" text NOT NULL,
+	"category" "semantic_category" NOT NULL,
 	"key" text NOT NULL,
 	"value" jsonb NOT NULL,
 	"confidence" real DEFAULT 0.5,
-	"source" text NOT NULL,
+	"source" "semantic_source" NOT NULL,
+	"scope" "semantic_scope" NOT NULL,
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
 	"updated_at" timestamp with time zone DEFAULT now() NOT NULL,
 	"last_accessed_at" timestamp with time zone,
-	CONSTRAINT "uq_semantic_memory_category_key" UNIQUE("category","key")
+	CONSTRAINT "uq_semantic_memory_category_key_scope" UNIQUE("category","key","scope")
 );
 --> statement-breakpoint
 CREATE TABLE "semantic_relations" (
@@ -89,14 +84,11 @@ CREATE TABLE "tick_log" (
 	"id" serial PRIMARY KEY NOT NULL,
 	"tick_id" text NOT NULL,
 	"timestamp" timestamp with time zone NOT NULL,
-	"triage_decision" text NOT NULL,
-	"triage_reason" text NOT NULL,
+	"action" text NOT NULL,
+	"reasoning" text NOT NULL,
 	"messages_processed" integer DEFAULT 0 NOT NULL,
 	"response_sent" boolean DEFAULT false NOT NULL,
 	"response_text" text,
-	"model_used" text,
-	"tier" text,
-	"next_interval" text,
 	"duration_ms" integer NOT NULL,
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
@@ -118,8 +110,6 @@ CREATE TABLE "workflows" (
 	"description" text,
 	"trigger" jsonb NOT NULL,
 	"instruction" text NOT NULL,
-	"model" text DEFAULT 'reasoning' NOT NULL,
-	"data_sources" jsonb NOT NULL,
 	"output_action" text NOT NULL,
 	"enabled" boolean DEFAULT false,
 	"created_by" text NOT NULL,
@@ -140,6 +130,7 @@ CREATE INDEX "idx_goals_status" ON "goals" USING btree ("status");--> statement-
 CREATE INDEX "idx_goals_parent" ON "goals" USING btree ("parent_goal_id");--> statement-breakpoint
 CREATE INDEX "idx_goals_status_created" ON "goals" USING btree ("status","created_at");--> statement-breakpoint
 CREATE INDEX "idx_semantic_memory_category_key" ON "semantic_memory" USING btree ("category","key");--> statement-breakpoint
+CREATE INDEX "idx_semantic_memory_scope" ON "semantic_memory" USING btree ("scope");--> statement-breakpoint
 CREATE INDEX "idx_semantic_relations_source" ON "semantic_relations" USING btree ("source_id");--> statement-breakpoint
 CREATE INDEX "idx_semantic_relations_target" ON "semantic_relations" USING btree ("target_id");--> statement-breakpoint
 CREATE INDEX "idx_tick_log_timestamp" ON "tick_log" USING btree ("timestamp");--> statement-breakpoint

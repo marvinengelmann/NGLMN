@@ -5,15 +5,8 @@
     {
       "idx": 0,
       "version": "7",
-      "when": 1772224402362,
-      "tag": "0000_omniscient_the_leader",
-      "breakpoints": true
-    },
-    {
-      "idx": 1,
-      "version": "7",
-      "when": 1772236837164,
-      "tag": "0001_lethal_sauron",
+      "when": 1772529237109,
+      "tag": "0000_charming_onslaught",
       "breakpoints": true
     }
   ]
