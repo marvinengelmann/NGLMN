@@ -6,44 +6,25 @@ An autonomously operating, self-evolving AI entity powered by xAI Grok. ANIMA is
 
 ## Features
 
-- **Autonomous Heartbeat** — 1-minute cron with busy-gating and internal conversation loop (SENSE → THINK → ACT → MAINTAIN)
+- **Autonomous Heartbeat** — 1-minute cron with busy-gating (SENSE → THINK → ACT → MAINTAIN)
 - **Three-Layer Memory** — Working (Redis), Episodic (Vector), Semantic (Postgres) with a relationship graph
 - **MBTI Personality** — 16 personality types that shape identity, cognition, and behavior
 - **Simulated Emotions** — 7-dimension state vector with decay, morning calibration, and event-driven triggers
-- **Trust System** — Fear/confidence-based autonomy across 6 action types (from goal management to code modification)
-- **Passive Perception** — 4 sensors (own state, Telegram, weather, Git) with emotional triggers
+- **Trust System** — Fear/confidence-based autonomy across 6 action types
+- **Passive Perception** — 4 sensors (own state, Telegram, weather, Git)
 - **Communication** — Telegram messaging with typing simulation and conversation awareness
 - **Dream Cycle** — Nightly consolidation, creative connections, and morning messages
-- **Self-Evolution** — Prompt, workflow, and code evolution via sandboxed execution with a curiosity engine
+- **Self-Evolution** — Curiosity-driven prompt, workflow, and code evolution with sandboxed execution
 - **Security** — Guardian system with validation, drift detection, injection defense, and rollback
-- **Workflow Engine** — Custom automation with schedule, event, and condition triggers
+- **Workflow Engine** — Custom automation with schedule, emotion, perception, and idle-streak triggers
 
 ## Architecture
 
-```
-                  ┌─────────────────────────────────┐
-                  │      Heartbeat (1-min cron)     │
-                  │           busy-gated            │
-                  └───────────────┬─────────────────┘
-                                  │
-                  ┌───────────────▼─────────────────┐
-              ┌──►│     SENSE → THINK → ACT         │
-              │   └───────────────┬─────────────────┘
-              │                   │
-              │            expectsReply?
-              │            yes │  │ no
-              └────────────────┘  │
-                                  ▼
-                  ┌─────────────────────────────────┐
-                  │           MAINTAIN              │
-                  └─────────────────────────────────┘
-```
-
 | Phase | Responsibility |
 |-------|----------------|
-| **SENSE** | Read 4 sensors, fetch pending messages, apply emotional decay + triggers, build context prompts |
-| **THINK** | Call LLM with full context, decide action (idle, reflect, update_goal, evolve, dream, morning) |
-| **ACT** | Send messages via Telegram, execute decided action, run triggered workflows, update emotions, store episodes |
+| **SENSE** | Fetch pending messages, read 4 sensors (own state, operator activity, weather, Git), detect conversation boundaries, apply emotional decay + triggers, check workflow triggers, build full context (memory, goals, trust, history) |
+| **THINK** | Call LLM with full context → `AnimaDecision`: action (idle, reflect, update_goal, evolve, dream, morning), messages, expectsReply. Sub-Think for dream (consolidation + creativity), morning (calibration + reflection), reflect (introspection + insights) |
+| **ACT** | Guardian validation → message sending (typing simulation, paragraph splitting, Telegram delivery), execute decided action, run triggered workflows, update emotions, store episodes + relationships |
 | **MAINTAIN** | Drift detection, tick logging, working memory persistence |
 
 ## Tech Stack
@@ -89,6 +70,84 @@ bun run test                     # Run tests
 ## Deployment
 
 ANIMA deploys automatically through Trigger.dev on every push to `master`.
+
+## Diagrams
+
+### Cognitive Loop
+
+```
+                    ┌────────────────────────┐
+                    │ Heartbeat (1-min cron) │
+                    │       busy-gated       │
+                    └────────────┬───────────┘
+                                 │
+┌────────────────────────────────▼───────────────────────────────┐
+│ SENSE                                                          │
+│                                                                │
+│ Messages ───► Sensors ───► Emotion ───► Workflows ───► Context │
+│ Telegram      own state    decay        trigger        memory  │
+│ fetch         operator     triggers     evaluation     goals   │
+│               weather                                  trust   │
+│               git                                      history │
+└────────────────────────────────┬───────────────────────────────┘
+                                 │ systemPrompt + userPrompt
+┌────────────────────────────────▼───────────────────────────────┐
+│ THINK                                                          │
+│                                                                │
+│ LLM Call ───► Decision ───► Sub-Think dispatch                 │
+│ structured    action        dream: consolidation + creativity  │
+│ output        messages      morning: calibration + reflection  │
+│               expectsReply  reflect: introspection + insights  │
+│               workflowId                                       │
+└────────────────────────────────┬───────────────────────────────┘
+                                 │ decision
+┌────────────────────────────────▼───────────────────────────────┐
+│ ACT                                                            │
+│                                                                │
+│ Guardian ───► Messages ───► Action ───► Persistence            │
+│ validate      typing sim    reflect     emotion update         │
+│ block         split+send    evolve      episode storage        │
+│ warn          via Telegram  dream       relationship track     │
+│                             morning                            │
+│                             goal                               │
+│                             workflow                           │
+└────────────────────────────────┬───────────────────────────────┘
+                                 │ expectsReply?
+          re-enter SENSE ◄───────┴───────►┌──────────────────────┐
+                           yes        no  │ MAINTAIN             │
+                                          │                      │
+                                          │ drift detection      │
+                                          │ logging              │
+                                          │ working memory       │
+                                          └──────────────────────┘
+```
+
+### Data Layer
+
+```
+      ┌────────────────────────────────┐
+      │         External World         │
+      │  Telegram · Weather · GitHub   │
+      └────────────────┬───────────────┘
+                       │
+      ┌────────────────▼───────────────┐
+      │       Consciousness Core       │
+      │ SENSE → THINK → ACT → MAINTAIN │
+      └─┬──────────────┬─────────────┬─┘
+        │              │             │
+┌───────▼──────┐ ┌─────▼───────┐ ┌───▼────────┐
+│ Working      │ │ Episodic    │ │ Semantic   │
+│ Memory       │ │ Memory      │ │ Memory     │
+│ (Redis)      │ │ (Vector)    │ │ (Postgres) │
+│              │ │             │ │            │
+│ emotion      │ │ episodes    │ │ knowledge  │
+│ conversation │ │ dreams      │ │ goals      │
+│ busy / dream │ │ reflections │ │ trust      │
+│ drift cache  │ │ relations   │ │ evolution  │
+└──────────────┘ └─────────────┘ └────────────┘
+
+Cross-cutting: Guardian · Trust · Emotion Engine
+```
 
 ## Project Structure
 
