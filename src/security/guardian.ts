@@ -200,7 +200,6 @@ const ALLOWED_EVOLUTION_PREFIXES = [
   "src/lib/",
   "src/memory/",
   "src/perception/",
-  "src/personality/",
   "src/prompts/",
   "src/test/",
   "src/trigger/",

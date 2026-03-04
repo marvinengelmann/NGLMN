@@ -33,7 +33,6 @@ const EnvSchema = z.object({
 
   CONTEXT7_API_KEY: z.string().optional(),
 
-  ANIMA_PERSONALITY_TYPE: z.string().regex(/^[EI][SN][TF][JP](-[AT])?$/)
 })
 
 type EnvKey = keyof z.infer<typeof EnvSchema>

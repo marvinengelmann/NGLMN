@@ -1,12 +1,10 @@
 import { detectCognitiveConflict, shouldInstinctOverride } from "@/cognition/override.ts"
 import { ATTENTION } from "@/config/constants.ts"
-import { env } from "@/config/env.ts"
 import { callIntelligence } from "@/core/intelligence.ts"
 import { thinkDream } from "@/dream/thinking.ts"
 import { log } from "@/lib/logger.ts"
 import { captureError } from "@/lib/sentry.ts"
 import { queryRelated } from "@/memory/episodic.ts"
-import type { PersonalityType } from "@/personality/types.ts"
 import { generateInnerDialog } from "@/polyphony/dialog.ts"
 import { selectActiveVoices, shouldRunDialog } from "@/polyphony/voices.ts"
 import { thinkMorning, thinkReflect } from "@/routine/thinking.ts"
@@ -16,9 +14,7 @@ import { AnimaDecision, type DeliberateResult, type FeelingResult, type SenseRes
  * DELIBERATE phase — main LLM decision with polyphony and instinct integration.
  */
 export async function deliberate(senseResult: SenseResult, feelResult: FeelingResult): Promise<DeliberateResult> {
-  const personality = env().ANIMA_PERSONALITY_TYPE.substring(0, 4).toUpperCase() as PersonalityType
-
-  const activeVoices = selectActiveVoices(senseResult.emotion, personality, {
+  const activeVoices = selectActiveVoices(senseResult.emotion, {
     dissonanceScore: feelResult.dissonance.activeDissonance,
     action: "pending",
     hasMessages: senseResult.pendingMessages.length > 0

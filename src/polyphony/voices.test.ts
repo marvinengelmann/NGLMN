@@ -16,7 +16,7 @@ const baseEmotion: EmotionalState = {
 
 describe("selectActiveVoices", () => {
   it("always returns 2-4 voices", () => {
-    const voices = selectActiveVoices(baseEmotion, "INFP", {
+    const voices = selectActiveVoices(baseEmotion, {
       dissonanceScore: 0,
       action: "idle",
       hasMessages: false
@@ -26,7 +26,7 @@ describe("selectActiveVoices", () => {
   })
 
   it("includes observer when dissonance is high", () => {
-    const voices = selectActiveVoices(baseEmotion, "INFP", {
+    const voices = selectActiveVoices(baseEmotion, {
       dissonanceScore: 0.6,
       action: "idle",
       hasMessages: false
@@ -35,7 +35,7 @@ describe("selectActiveVoices", () => {
   })
 
   it("includes guardian when caution is high", () => {
-    const voices = selectActiveVoices({ ...baseEmotion, caution: 0.8 }, "INFP", {
+    const voices = selectActiveVoices({ ...baseEmotion, caution: 0.8 }, {
       dissonanceScore: 0,
       action: "idle",
       hasMessages: false
@@ -44,7 +44,7 @@ describe("selectActiveVoices", () => {
   })
 
   it("includes explorer when curiosity is high", () => {
-    const voices = selectActiveVoices({ ...baseEmotion, curiosity: 0.8 }, "ENTP", {
+    const voices = selectActiveVoices({ ...baseEmotion, curiosity: 0.8 }, {
       dissonanceScore: 0,
       action: "idle",
       hasMessages: false
@@ -52,20 +52,14 @@ describe("selectActiveVoices", () => {
     expect(voices).toContain("explorer")
   })
 
-  it("weights analyst higher for NT personality types", () => {
-    const ntVoices = selectActiveVoices(baseEmotion, "INTJ", {
+  it("always weights feeler and explorer higher (INFP personality)", () => {
+    const voices = selectActiveVoices(baseEmotion, {
       dissonanceScore: 0,
       action: "idle",
       hasMessages: false
     })
-    const sfVoices = selectActiveVoices(baseEmotion, "ISFP", {
-      dissonanceScore: 0,
-      action: "idle",
-      hasMessages: false
-    })
-    const ntHasAnalyst = ntVoices.includes("analyst")
-    const sfHasAnalyst = sfVoices.includes("analyst")
-    expect(ntHasAnalyst || !sfHasAnalyst).toBe(true)
+    expect(voices).toContain("feeler")
+    expect(voices).toContain("explorer")
   })
 })
 

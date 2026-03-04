@@ -3,7 +3,6 @@ import { getAttachmentStyle, getRelationshipPhase } from "@/attachment/state.ts"
 import { AttentionState } from "@/cognition/types.ts"
 import { CommunicationRegister, type ConversationSlot } from "@/communication/types.ts"
 import { CONTEXT_LIMITS, HUMOR } from "@/config/constants.ts"
-import { env } from "@/config/env.ts"
 import type { SenseData } from "@/consciousness/types.ts"
 import { getDeceptionState } from "@/deception/state.ts"
 import { DissonanceState } from "@/dissonance/types.ts"
@@ -28,8 +27,7 @@ import {
   getPendingEvolutionProposal,
   getReflectionLastAt
 } from "@/memory/working.ts"
-import { PERSONALITY_PROMPTS, PERSONALITY_SECTION_INTRO } from "@/personality/profiles.ts"
-import type { PersonalityType } from "@/personality/types.ts"
+import { PERSONALITY_PROMPT } from "@/prompts/personality.ts"
 import { InnerDialog } from "@/polyphony/types.ts"
 import {
   ACTIONS_PROMPT,
@@ -67,14 +65,6 @@ function describeSomaticDimension(dim: string, val: number): string {
   if (val < 0.3) return `${dim}: ${low} (${val.toFixed(2)})`
   if (val > 0.6) return `${dim}: ${high} (${val.toFixed(2)})`
   return `${dim}: ${mid} (${val.toFixed(2)})`
-}
-
-/**
- * Get the personality prompt for the configured personality type.
- */
-export function getPersonalityPrompt(): string {
-  const raw = env().ANIMA_PERSONALITY_TYPE.substring(0, 4).toUpperCase() as PersonalityType
-  return PERSONALITY_PROMPTS[raw] ?? PERSONALITY_PROMPTS.INFP
 }
 
 export function formatConversationMessage(
@@ -607,11 +597,9 @@ export async function buildContext(senseData: SenseData): Promise<string> {
  * Assemble the full ANIMA system prompt: identity, personality, consciousness, and context.
  */
 export function buildSystemPrompt(contextSections: string): string {
-  const personality = getPersonalityPrompt()
   return [
     IDENTITY_PROMPT,
-    PERSONALITY_SECTION_INTRO,
-    personality,
+    PERSONALITY_PROMPT,
     RHYTHM_PROMPT,
     ACTIONS_PROMPT,
     COMMUNICATION_PROMPT,
