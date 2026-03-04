@@ -1,16 +1,26 @@
 import { getAttachmentStyle } from "@/attachment/state.ts"
 import { evaluateAttachmentDynamics, isOperatorReturning } from "@/attachment/update.ts"
+import { computeAttentionState } from "@/cognition/flow.ts"
 import { computeInstinctImpression } from "@/cognition/instinct.ts"
+import { computeCommunicationRegister } from "@/communication/register.ts"
+import { processDeceptionCycle } from "@/deception/compute.ts"
+import { getDeceptionState, saveDeceptionState } from "@/deception/state.ts"
 import { buildDissonanceState, checkDissonance, resolveDissonance } from "@/dissonance/check.ts"
 import { saveDissonanceState } from "@/dissonance/state.ts"
+import { detectNostalgia } from "@/emotion/nostalgia.ts"
+import { saveEmotionalState } from "@/emotion/state.ts"
+import { applyEvent } from "@/emotion/update.ts"
 import { log } from "@/lib/logger.ts"
 import { elapsedMinutesSince } from "@/lib/time.ts"
 import { getKnowledge } from "@/memory/semantic.ts"
-import { getRecentActions } from "@/memory/working.ts"
+import { getConsecutiveIdleTicks, getConversationWaitingSince, getRecentActions } from "@/memory/working.ts"
 import { getSelfConcept } from "@/psyche/state.ts"
+import { queryRelated } from "@/memory/episodic.ts"
 import { querySomaticMemories } from "@/soma/memory.ts"
 import { getSomaticLastTimestamp, getSomaticState, saveSomaticState } from "@/soma/state.ts"
 import { computeSomaticUpdate } from "@/soma/update.ts"
+import { getOperatorModel, saveOperatorModel } from "@/mind/state.ts"
+import { detectModelCorrection, updateOperatorModel } from "@/mind/update.ts"
 import { getAggregateTrustExperience } from "@/trust/levels.ts"
 import { computeIntimacyScore, computeVulnerability, saveVulnerability } from "@/vulnerability/compute.ts"
 import type { FeelingResult, SenseResult } from "./types.ts"
@@ -20,13 +30,17 @@ import type { FeelingResult, SenseResult } from "./types.ts"
  * Updates somatic markers, instinct, dissonance, attachment, vulnerability, and self-concept.
  */
 export async function feel(senseResult: SenseResult): Promise<FeelingResult> {
-  const [currentSoma, lastSomaTs, selfConcept, attachmentStyle, trustExperience] = await Promise.all([
-    getSomaticState(),
-    getSomaticLastTimestamp(),
-    getSelfConcept(),
-    getAttachmentStyle(),
-    getAggregateTrustExperience()
-  ])
+  const [currentSoma, lastSomaTs, selfConcept, attachmentStyle, trustExperience, previousOperatorModel, waitingSince, deceptionState] =
+    await Promise.all([
+      getSomaticState(),
+      getSomaticLastTimestamp(),
+      getSelfConcept(),
+      getAttachmentStyle(),
+      getAggregateTrustExperience(),
+      getOperatorModel(),
+      getConversationWaitingSince(),
+      getDeceptionState()
+    ])
 
   const elapsed = elapsedMinutesSince(lastSomaTs)
 
@@ -35,6 +49,17 @@ export async function feel(senseResult: SenseResult): Promise<FeelingResult> {
 
   const soma = computeSomaticUpdate(currentSoma, senseResult.emotion, elapsed, somaticMemories)
   await saveSomaticState(soma, "feel_phase")
+
+  const episodicHits = messageText
+    ? await queryRelated(messageText, 5)
+    : []
+  const nostalgia = episodicHits.length > 0
+    ? detectNostalgia(episodicHits, new Date())
+    : null
+  if (nostalgia) {
+    const updatedEmotion = applyEvent(senseResult.emotion, nostalgia)
+    await saveEmotionalState(updatedEmotion, "nostalgia_wave")
+  }
 
   const instinct = await computeInstinctImpression(senseResult.pendingMessages, senseResult.emotion, soma)
 
@@ -45,13 +70,22 @@ export async function feel(senseResult: SenseResult): Promise<FeelingResult> {
 
   const selfKnowledge = knowledgeResult.isOk() ? knowledgeResult.value.map((k) => ({ key: k.key, value: k.value })) : []
 
-  let dissonanceEvents = checkDissonance(recentActions, selfConcept, senseResult.emotion, selfKnowledge)
+  let dissonanceEvents = await checkDissonance(recentActions, selfConcept, senseResult.emotion, selfKnowledge)
   dissonanceEvents = dissonanceEvents.map((event) => ({
     ...event,
     resolution: resolveDissonance(event, senseResult.emotion)
   }))
   const dissonance = buildDissonanceState(dissonanceEvents)
   await saveDissonanceState(dissonance)
+
+  const updatedDeception = processDeceptionCycle(deceptionState, {
+    dissonance,
+    selfConcept,
+    vulnerabilityOpen: false,
+    isDreaming: senseResult.moodContext.isDreaming,
+    isReflecting: false
+  })
+  await saveDeceptionState(updatedDeception)
 
   const operatorSilenceMinutes = senseResult.moodContext.operatorSilenceMinutes
   const operatorJustReturned = isOperatorReturning(senseResult.pendingMessages.length, operatorSilenceMinutes)
@@ -66,6 +100,21 @@ export async function feel(senseResult: SenseResult): Promise<FeelingResult> {
     trustExperience
   })
 
+  const messageTexts = senseResult.pendingMessages.map((m) => m.text)
+  const messageTimestamps = senseResult.pendingMessages.map((m) => new Date(m.date * 1000).toISOString())
+  const operatorModel = await updateOperatorModel({
+    messageTexts,
+    messageTimestamps,
+    silenceMinutes: operatorSilenceMinutes,
+    previousModel: previousOperatorModel
+  })
+  const correction = detectModelCorrection(previousOperatorModel, operatorModel)
+  if (correction) {
+    operatorModel.modelConfidence = Math.max(0.1, operatorModel.modelConfidence - 0.1)
+    operatorModel.correctionCount++
+  }
+  await saveOperatorModel(operatorModel, correction ? "correction" : "update")
+
   const hourOfDay = new Date().getHours()
   const vulnerability = await computeVulnerability({
     trustExperience,
@@ -79,11 +128,24 @@ export async function feel(senseResult: SenseResult): Promise<FeelingResult> {
   })
   await saveVulnerability(vulnerability)
 
+  const register = computeCommunicationRegister(senseResult.emotion, soma, vulnerability)
+
+  const consecutiveIdleTicks = await getConsecutiveIdleTicks()
+  const attentionState = computeAttentionState(
+    senseResult.emotion,
+    soma,
+    senseResult.pendingMessages.length > 0,
+    consecutiveIdleTicks
+  )
+
   log.info("Feel complete", {
     somaticTension: soma.tension.toFixed(2),
     instinctImpulse: instinct.impulse,
     dissonance: dissonance.activeDissonance.toFixed(2),
-    vulnerabilityOpen: vulnerability.windowOpen
+    vulnerabilityOpen: vulnerability.windowOpen,
+    register,
+    attentionState,
+    operatorMood: operatorModel.estimatedMood
   })
 
   return {
@@ -92,6 +154,9 @@ export async function feel(senseResult: SenseResult): Promise<FeelingResult> {
     dissonance,
     vulnerability,
     attachmentDynamics,
-    selfConcept
+    selfConcept,
+    register,
+    attentionState,
+    operatorModel
   }
 }

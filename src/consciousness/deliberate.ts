@@ -1,9 +1,11 @@
 import { detectCognitiveConflict, shouldInstinctOverride } from "@/cognition/override.ts"
+import { ATTENTION } from "@/config/constants.ts"
 import { env } from "@/config/env.ts"
 import { callIntelligence } from "@/core/intelligence.ts"
 import { thinkDream } from "@/dream/thinking.ts"
 import { log } from "@/lib/logger.ts"
 import { captureError } from "@/lib/sentry.ts"
+import { queryRelated } from "@/memory/episodic.ts"
 import type { PersonalityType } from "@/personality/types.ts"
 import { generateInnerDialog } from "@/polyphony/dialog.ts"
 import { selectActiveVoices, shouldRunDialog } from "@/polyphony/voices.ts"
@@ -54,7 +56,8 @@ export async function deliberate(senseResult: SenseResult, feelResult: FeelingRe
       messages: [],
       expectsReply: false,
       action,
-      workflowId: null
+      workflowId: null,
+      corrections: []
     }
 
     return {
@@ -65,9 +68,34 @@ export async function deliberate(senseResult: SenseResult, feelResult: FeelingRe
     }
   }
 
+  let userPrompt = senseResult.userPrompt
+
+  if (feelResult.attentionState === "blank") {
+    log.info("Attention blank — forcing idle")
+    return {
+      decision: {
+        reasoning: "Mind is blank. No thoughts forming.",
+        messages: [],
+        expectsReply: false,
+        action: "idle",
+        workflowId: null,
+        corrections: []
+      },
+      instinctOverride: true,
+      innerDialog
+    }
+  }
+
+  if (feelResult.attentionState === "drifting" && Math.random() < ATTENTION.DRIFT_INJECTION_PROBABILITY) {
+    const driftMemories = await queryRelated("random thought memory association", 1)
+    if (driftMemories.length > 0 && driftMemories[0]?.data) {
+      userPrompt = `${userPrompt}\n\n[A stray memory surfaces: "${driftMemories[0].data.slice(0, 200)}"]`
+    }
+  }
+
   const callResult = await callIntelligence({
     system: senseResult.systemPrompt,
-    userMessage: senseResult.userPrompt,
+    userMessage: userPrompt,
     schema: AnimaDecision
   })
 
@@ -80,7 +108,8 @@ export async function deliberate(senseResult: SenseResult, feelResult: FeelingRe
         messages: [],
         expectsReply: false,
         action: "idle",
-        workflowId: null
+        workflowId: null,
+        corrections: []
       },
       instinctOverride: false
     }

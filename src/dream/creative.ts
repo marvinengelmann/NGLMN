@@ -4,6 +4,7 @@ import { queryRelated, storeEpisode } from "@/memory/episodic.ts"
 import { createGoal } from "@/memory/goals.ts"
 import { getKnowledge, storeKnowledge } from "@/memory/semantic.ts"
 import { SemanticCategory, SemanticScope, SemanticSource } from "@/memory/types.ts"
+import { addExistentialQuestion } from "@/psyche/questions.ts"
 import type { CreativeConnectionsOutput } from "./types.ts"
 
 const DIVERSE_QUERIES = [
@@ -33,20 +34,13 @@ export async function gatherCreativeData(): Promise<string> {
     .filter((r, i, arr) => arr.findIndex((x) => x.id === r.id) === i)
     .slice(0, 10)
 
-  const semanticEntries: Array<Record<string, unknown>> = []
-  for (const category of KNOWLEDGE_CATEGORIES) {
-    const entriesResult = await getKnowledge(category)
-    const entries = entriesResult.unwrapOr([])
-    if (entries.length > 0) {
-      semanticEntries.push(
-        ...entries.slice(0, 2).map((e) => ({
-          category: e.category,
-          key: e.key,
-          value: e.value
-        }))
-      )
-    }
-  }
+  const semanticResults = await Promise.all(KNOWLEDGE_CATEGORIES.map((cat) => getKnowledge(cat)))
+  const semanticEntries = semanticResults.flatMap((result) =>
+    result
+      .unwrapOr([])
+      .slice(0, 2)
+      .map((e) => ({ category: e.category, key: e.key, value: e.value }))
+  )
 
   log.info("Creative dream material collected", {
     episodeCount: episodes.length,
@@ -70,44 +64,40 @@ export async function gatherCreativeData(): Promise<string> {
  * Persists episodes, knowledge entries, and goals from creative connections.
  */
 export async function applyCreativeResult(output: CreativeConnectionsOutput): Promise<void> {
-  let goalsCreated = 0
-  let insightsStored = 0
-
-  for (const conn of output.connections) {
-    if (conn.confidence >= 0.5) {
+  const insightConnections = output.connections.filter((conn) => conn.confidence >= 0.5)
+  await Promise.all(
+    insightConnections.map(async (conn, i) => {
       await storeEpisode(`Dream connection: ${conn.insight}`, "dream", { relevanceScore: conn.confidence })
-
       const knowledgeResult = await storeKnowledge(
         SemanticCategory.enum.insight,
-        `creative-connection-${Date.now()}-${insightsStored}`,
+        `creative-connection-${Date.now()}-${i}`,
         conn.insight,
         SemanticSource.enum.dream,
         conn.confidence,
         SemanticScope.enum.self
       )
       if (knowledgeResult.isErr()) logAndCaptureError(knowledgeResult.error)
-      insightsStored++
-    }
+    })
+  )
 
-    if (conn.actionable && conn.suggestedGoal) {
-      const goalResult = await createGoal(
-        conn.suggestedGoal,
-        `Creative dream connection: ${conn.insight}`,
-        "dream",
-        conn.confidence * 0.5,
-        { emotionalWeight: 0.7 }
-      )
-      if (goalResult.isErr()) {
-        logAndCaptureError(goalResult.error)
-      } else {
-        goalsCreated++
-      }
-    }
-  }
+  const goalConnections = output.connections.filter((conn) => conn.actionable && conn.suggestedGoal)
+  const goalResults = await Promise.all(
+    goalConnections.map((conn) =>
+      createGoal(conn.suggestedGoal!, `Creative dream connection: ${conn.insight}`, "dream", conn.confidence * 0.5, {
+        emotionalWeight: 0.7
+      })
+    )
+  )
+  goalResults.filter((r) => r.isErr()).forEach((r) => logAndCaptureError(r.error))
+  const goalsCreated = goalResults.filter((r) => r.isOk()).length
+
+  const existentialCandidates = (output.existentialQuestions ?? []).slice(0, 2)
+  await Promise.all(existentialCandidates.map((question) => addExistentialQuestion(question)))
 
   log.info("Creative connections applied", {
     connectionsProcessed: output.connections.length,
     goalsCreated,
-    insightsStored
+    insightsStored: insightConnections.length,
+    existentialQuestions: existentialCandidates.length
   })
 }

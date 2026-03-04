@@ -1,5 +1,5 @@
 import { sendMessages } from "@/communication/messaging.ts"
-import { EMOTIONAL_THRESHOLDS, TRIGGER_INTENSITY } from "@/config/constants.ts"
+import { MESSAGE_DELAY, EMOTIONAL_THRESHOLDS, TRIGGER_INTENSITY } from "@/config/constants.ts"
 import { db } from "@/db/client.ts"
 import { narrativeEntries } from "@/db/schema.ts"
 import { isDissonanceSignificant } from "@/dissonance/check.ts"
@@ -7,9 +7,10 @@ import { executeDream } from "@/dream/executor.ts"
 import { saveEmotionalState } from "@/emotion/state.ts"
 import { computeEmotionalIntensity, computeEmotionalUpdate, summarizeEmotions } from "@/emotion/update.ts"
 import { runEvolutionCycle } from "@/evolution/cycle.ts"
+import { sendMessageWithReply } from "@/integrations/telegram.ts"
 import { log } from "@/lib/logger.ts"
 import { logAndCaptureError, trySafe } from "@/lib/result.ts"
-import { storeEpisode, storeRelationshipEpisode } from "@/memory/episodic.ts"
+import { storeEpisode, storeHumorEpisode, storeRelationshipEpisode } from "@/memory/episodic.ts"
 import { executeGoalUpdate } from "@/memory/goals.ts"
 import { generateNarrativeEntry } from "@/psyche/narrative.ts"
 import { savePsycheSnapshot, saveSelfConcept } from "@/psyche/state.ts"
@@ -37,6 +38,17 @@ export async function act(
     const result = await sendMessages(decision)
     responseSent = result.responseSent
     responseText = result.responseText
+
+    if (decision.corrections.length > 0) {
+      await decision.corrections.reduce(async (prev, correction) => {
+        await prev
+        const delay = MESSAGE_DELAY.MIN_BETWEEN_MESSAGES_MS + Math.random() * MESSAGE_DELAY.MAX_JITTER_MS
+        await new Promise((resolve) => setTimeout(resolve, delay))
+        await trySafe("TELEGRAM_ERROR", () =>
+          sendMessageWithReply(correction.text, correction.replyTo)
+        )
+      }, Promise.resolve())
+    }
   }
 
   await executeAction(deliberateResult)
@@ -109,7 +121,9 @@ export async function act(
   }
 
   const summary = `${decision.action}: ${decision.reasoning.slice(0, 200)}`
-  if (responseSent && senseResult.emotion.connection > EMOTIONAL_THRESHOLDS.CONNECTION_HIGH) {
+  if (responseSent && feelResult.register === "playful" && senseResult.emotion.connection > EMOTIONAL_THRESHOLDS.CONNECTION_HIGH) {
+    await storeHumorEpisode(summary)
+  } else if (responseSent && senseResult.emotion.connection > EMOTIONAL_THRESHOLDS.CONNECTION_HIGH) {
     await storeRelationshipEpisode(summary)
   } else {
     await storeEpisode(summary, responseSent ? "interaction" : "observation", {

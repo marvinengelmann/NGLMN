@@ -1,4 +1,12 @@
 import { differenceInHours } from "date-fns"
+import { callIntelligence } from "@/core/intelligence.ts"
+import type { EmotionalState } from "@/emotion/types.ts"
+import { log } from "@/lib/logger.ts"
+import { nowISO } from "@/lib/time.ts"
+import { VALUE_ACTION_PROMPT } from "@/prompts/dissonance.ts"
+import type { SelfConcept } from "@/psyche/types.ts"
+import type { DissonanceEvent, DissonanceResolution, DissonanceState } from "./types.ts"
+import { ValueActionAnalysis } from "./types.ts"
 
 /**
  * Check whether active dissonance exceeds the significance threshold.
@@ -6,86 +14,21 @@ import { differenceInHours } from "date-fns"
 export function isDissonanceSignificant(activeDissonance: number): boolean {
   return activeDissonance > 0.3
 }
-import type { EmotionalState } from "@/emotion/types.ts"
-import { nowISO } from "@/lib/time.ts"
-import type { SelfConcept } from "@/psyche/types.ts"
-import type { DissonanceEvent, DissonanceResolution, DissonanceState } from "./types.ts"
 
 interface SelfKnowledge {
   key: string
   value: unknown
 }
 
-const VALUE_PATTERNS: Array<{
-  keywords: string[]
-  check: (actions: string[], emotion: EmotionalState) => { matched: boolean; action: string; score: number }
-}> = [
-  {
-    keywords: ["reflect", "introspect", "self-aware", "mindful"],
-    check: (actions) => {
-      const reflectCount = actions.filter((a) => a === "reflect").length
-      if (reflectCount === 0 && actions.length >= 10) {
-        return { matched: true, action: `no reflection in last ${actions.length} actions`, score: 0.4 }
-      }
-      return { matched: false, action: "", score: 0 }
-    }
-  },
-  {
-    keywords: ["calm", "patience", "peaceful", "serene"],
-    check: (actions, emotion) => {
-      if (emotion.frustration > 0.7 && actions.filter((a) => a !== "idle").length > 5) {
-        return { matched: true, action: "high frustration with excessive activity", score: 0.5 }
-      }
-      return { matched: false, action: "", score: 0 }
-    }
-  },
-  {
-    keywords: ["honest", "truthful", "transparent", "sincere"],
-    check: (_actions, emotion) => {
-      if (emotion.caution > 0.7 && emotion.connection < 0.4) {
-        return { matched: true, action: "high caution with low connection (guarded behavior)", score: 0.35 }
-      }
-      return { matched: false, action: "", score: 0 }
-    }
-  },
-  {
-    keywords: ["curious", "learn", "explore", "discover"],
-    check: (actions, emotion) => {
-      if (emotion.boredom > 0.6 && !actions.includes("evolve") && actions.length >= 8) {
-        return { matched: true, action: "bored without exploration or evolution", score: 0.3 }
-      }
-      return { matched: false, action: "", score: 0 }
-    }
-  },
-  {
-    keywords: ["connect", "empathy", "relate", "bond"],
-    check: (actions, emotion) => {
-      if (emotion.connection < 0.3 && actions.filter((a) => a === "idle").length > 8) {
-        return { matched: true, action: "low connection with prolonged inactivity", score: 0.35 }
-      }
-      return { matched: false, action: "", score: 0 }
-    }
-  },
-  {
-    keywords: ["courage", "brave", "bold", "fearless"],
-    check: (_actions, emotion) => {
-      if (emotion.caution > 0.8 && emotion.confidence < 0.3) {
-        return { matched: true, action: "extreme caution with low confidence", score: 0.4 }
-      }
-      return { matched: false, action: "", score: 0 }
-    }
-  }
-]
-
 /**
- * Check for cognitive dissonance between declared values and recent actions — NO LLM call.
+ * Check for cognitive dissonance between declared values and recent actions via LLM analysis.
  */
-export function checkDissonance(
+export async function checkDissonance(
   recentActions: string[],
   selfConcept: SelfConcept,
   emotion: EmotionalState,
   selfKnowledge: SelfKnowledge[]
-): DissonanceEvent[] {
+): Promise<DissonanceEvent[]> {
   const events: DissonanceEvent[] = []
   const now = nowISO()
 
@@ -93,22 +36,37 @@ export function checkDissonance(
     .filter((k) => typeof k.value === "string")
     .map((k) => ({ key: k.key, value: k.value as string }))
 
-  for (const value of declaredValues) {
-    const valueLower = value.value.toLowerCase()
+  if (declaredValues.length > 0) {
+    const emotionSummary = Object.entries(emotion)
+      .filter(([, val]) => Math.abs((val as number) - 0.5) > 0.15)
+      .map(([dim, val]) => `${dim}: ${(val as number).toFixed(2)}`)
+      .join(", ")
 
-    for (const pattern of VALUE_PATTERNS) {
-      if (pattern.keywords.some((kw) => valueLower.includes(kw))) {
-        const result = pattern.check(recentActions, emotion)
-        if (result.matched) {
-          events.push({
-            declaredValue: `values "${value.value}"`,
-            actualAction: result.action,
-            dissonanceScore: result.score,
-            timestamp: now
-          })
-          break
-        }
-      }
+    const userMessage = [
+      "Declared values:",
+      ...declaredValues.map((v) => `  - ${v.key}: ${v.value}`),
+      `\nRecent actions (last ${recentActions.length}): ${recentActions.join(", ")}`,
+      `\nEmotional state: ${emotionSummary}`
+    ].join("\n")
+
+    const result = await callIntelligence({
+      system: VALUE_ACTION_PROMPT,
+      userMessage,
+      schema: ValueActionAnalysis,
+      maxTokens: 512
+    })
+
+    if (result.isOk()) {
+      result.value.mismatches.forEach((m) => {
+        events.push({
+          declaredValue: m.declaredValue,
+          actualAction: m.actualAction,
+          dissonanceScore: m.dissonanceScore,
+          timestamp: now
+        })
+      })
+    } else {
+      log.warn("Value-action analysis LLM failed", { error: result.error.message })
     }
   }
 
@@ -130,36 +88,29 @@ export function checkDissonance(
     })
   }
 
-  if (emotion.frustration > 0.7 && !recentActions.includes("reflect") && recentActions.length >= 5) {
-    events.push({
-      declaredValue: "growth through reflection",
-      actualAction: "high frustration without reflection",
-      dissonanceScore: 0.35,
-      timestamp: now
-    })
-  }
-
   return events
 }
 
 /**
  * Compute aggregate dissonance score from events with temporal decay.
- * Older events contribute less to the score.
  */
 export function computeDissonanceScore(events: DissonanceEvent[]): number {
   if (events.length === 0) return 0
   const now = new Date()
-  let total = 0
-  let weightSum = 0
 
-  for (const event of events) {
-    const resolutionWeight = event.resolution && event.resolution !== "unresolved" ? 0.3 : 1.0
-    const eventDate = new Date(event.timestamp)
-    const hoursAgo = Number.isNaN(eventDate.getTime()) ? 0 : differenceInHours(now, eventDate)
-    const temporalDecay = Math.pow(0.5, Math.max(0, hoursAgo) / 6)
-    total += event.dissonanceScore * resolutionWeight * temporalDecay
-    weightSum += temporalDecay
-  }
+  const { total, weightSum } = events.reduce(
+    (acc, event) => {
+      const resolutionWeight = event.resolution && event.resolution !== "unresolved" ? 0.3 : 1.0
+      const eventDate = new Date(event.timestamp)
+      const hoursAgo = Number.isNaN(eventDate.getTime()) ? 0 : differenceInHours(now, eventDate)
+      const temporalDecay = Math.pow(0.5, Math.max(0, hoursAgo) / 6)
+      return {
+        total: acc.total + event.dissonanceScore * resolutionWeight * temporalDecay,
+        weightSum: acc.weightSum + temporalDecay
+      }
+    },
+    { total: 0, weightSum: 0 }
+  )
 
   return Math.min(1, total / Math.max(0.1, weightSum))
 }

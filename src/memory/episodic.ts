@@ -1,6 +1,9 @@
 import { parseISO, subDays } from "date-fns"
 import { callIntelligence } from "@/core/intelligence.ts"
 import { TextOutput } from "@/core/types.ts"
+import { applyDistortions } from "@/distortion/compute.ts"
+import type { DistortedMemory } from "@/distortion/types.ts"
+import { computeEmotionalIntensity } from "@/emotion/update.ts"
 import { vectorIndex } from "@/integrations/vector.ts"
 import { log } from "@/lib/logger.ts"
 import { nowISO } from "@/lib/time.ts"
@@ -107,22 +110,19 @@ export async function queryRelationshipHistory(topK: number = 5): Promise<
  * Used during dream consolidation to deprioritize stale or redundant episodes.
  */
 export async function downgradeEpisodes(ids: string[], factor: number = 0.5): Promise<number> {
-  let downgraded = 0
-
-  for (const id of ids) {
-    try {
-      await vectorIndex.update<Partial<EpisodeMetadata>>({
+  const results = await Promise.allSettled(
+    ids.map((id) =>
+      vectorIndex.update<Partial<EpisodeMetadata>>({
         id,
         metadata: { relevanceScore: factor },
         metadataUpdateMode: "PATCH"
       })
-      downgraded++
-    } catch (e) {
-      log.warn("Failed to downgrade episode", { id, error: String(e) })
-    }
-  }
-
-  return downgraded
+    )
+  )
+  results
+    .filter((r): r is PromiseRejectedResult => r.status === "rejected")
+    .forEach((r, i) => log.warn("Failed to downgrade episode", { id: ids[i], error: String(r.reason) }))
+  return results.filter((r) => r.status === "fulfilled").length
 }
 
 /**
@@ -138,67 +138,103 @@ export async function summarizeOldEpisodes(
 ): Promise<{ summarized: number; created: number }> {
   const categories: EpisodicCategory[] = ["interaction", "task", "observation", "dream", "evolution"]
 
-  let totalSummarized = 0
-  let totalCreated = 0
+  const cutoffDate = subDays(new Date(), daysThreshold)
 
-  for (const category of categories) {
-    const results = await vectorIndex.query({
-      data: `old ${category} episodes to summarize`,
-      topK: 20,
-      includeMetadata: true,
-      includeData: true,
-      filter: `category = '${category}'`
-    })
-
-    const cutoffDate = subDays(new Date(), daysThreshold)
-    const oldLowRelevance = results.filter((r) => {
-      const meta = r.metadata as EpisodeMetadata | undefined
-      if (!meta) return false
-      if ((meta.relevanceScore ?? 1) >= 0.6) return false
-      try {
-        return parseISO(meta.timestamp) < cutoffDate
-      } catch (e) {
-        log.warn("Failed to parse episode timestamp during summarization", {
-          timestamp: meta.timestamp,
-          error: String(e)
-        })
-        return false
-      }
-    })
-
-    if (oldLowRelevance.length < 3) continue
-
-    const episodeTexts = oldLowRelevance.map((r) => r.data ?? JSON.stringify(r.metadata)).join("\n---\n")
-
-    const summaryResult = await callIntelligence({
-      system:
-        "Summarize these related episodes into 1-2 concise sentences capturing the key information. Be factual and brief.",
-      userMessage: episodeTexts,
-      schema: TextOutput,
-      maxTokens: 200
-    })
-
-    if (summaryResult.isErr()) {
-      log.warn("Episode summarization failed, skipping category", {
-        category,
-        episodeCount: oldLowRelevance.length,
-        error: summaryResult.error.message
+  const categoryResults = await Promise.all(
+    categories.map(async (category) => {
+      const results = await vectorIndex.query({
+        data: `old ${category} episodes to summarize`,
+        topK: 20,
+        includeMetadata: true,
+        includeData: true,
+        filter: `category = '${category}'`
       })
-      continue
-    }
-    const summary = summaryResult.value.text
 
-    await storeEpisode(`[Summary] ${summary}`, category, {
-      relevanceScore: 0.7
+      const oldLowRelevance = results.filter((r) => {
+        const meta = r.metadata as EpisodeMetadata | undefined
+        if (!meta) return false
+        if ((meta.relevanceScore ?? 1) >= 0.6) return false
+        try {
+          return parseISO(meta.timestamp) < cutoffDate
+        } catch (e) {
+          log.warn("Failed to parse episode timestamp during summarization", {
+            timestamp: meta.timestamp,
+            error: String(e)
+          })
+          return false
+        }
+      })
+
+      if (oldLowRelevance.length < 3) return { summarized: 0, created: 0 }
+
+      const episodeTexts = oldLowRelevance.map((r) => r.data ?? JSON.stringify(r.metadata)).join("\n---\n")
+
+      const summaryResult = await callIntelligence({
+        system:
+          "Summarize these related episodes into 1-2 concise sentences capturing the key information. Be factual and brief.",
+        userMessage: episodeTexts,
+        schema: TextOutput,
+        maxTokens: 200
+      })
+
+      if (summaryResult.isErr()) {
+        log.warn("Episode summarization failed, skipping category", {
+          category,
+          episodeCount: oldLowRelevance.length,
+          error: summaryResult.error.message
+        })
+        return { summarized: 0, created: 0 }
+      }
+
+      await storeEpisode(`[Summary] ${summaryResult.value.text}`, category, { relevanceScore: 0.7 })
+      const idsToDowngrade = oldLowRelevance.map((r) => r.id as string)
+      await downgradeEpisodes(idsToDowngrade, 0.1)
+
+      return { summarized: idsToDowngrade.length, created: 1 }
     })
-    totalCreated++
+  )
 
-    const idsToDowngrade = oldLowRelevance.map((r) => r.id as string)
-    await downgradeEpisodes(idsToDowngrade, 0.1)
-    totalSummarized += idsToDowngrade.length
-  }
+  return categoryResults.reduce(
+    (acc, r) => ({ summarized: acc.summarized + r.summarized, created: acc.created + r.created }),
+    { summarized: 0, created: 0 }
+  )
+}
 
-  return { summarized: totalSummarized, created: totalCreated }
+/**
+ * Store a humor episode with default high relevance.
+ */
+export async function storeHumorEpisode(
+  summary: string,
+  metadata?: { emotionalState?: string; tickId?: string }
+): Promise<string> {
+  return storeEpisode(summary, "humor", { relevanceScore: 0.75, ...metadata })
+}
+
+/**
+ * Query humor-related episodic memories.
+ */
+export async function queryHumorMemories(topK: number = 3): Promise<
+  Array<{
+    id: string
+    score: number
+    metadata: EpisodeMetadata | undefined
+    data: string | undefined
+  }>
+> {
+  return queryRelated("funny embarrassing absurd humorous moment", topK, "category = 'humor'")
+}
+
+/**
+ * Query related episodes with probabilistic memory distortion applied.
+ */
+export async function queryRelatedWithDistortion(
+  text: string,
+  topK: number,
+  emotionIntensity: number,
+  filter?: string
+): Promise<DistortedMemory[]> {
+  const episodes = await queryRelated(text, topK, filter)
+  return applyDistortions(episodes, emotionIntensity)
 }
 
 export async function getRecentByCategory(

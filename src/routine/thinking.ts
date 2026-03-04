@@ -27,7 +27,7 @@ export async function thinkMorning(senseResult: SenseResult): Promise<MorningThi
     maxTokens: 4096
   })
 
-  const reflection = reflectionResult.isOk() ? reflectionResult.value : { insights: [] }
+  const reflection = reflectionResult.isOk() ? reflectionResult.value : { insights: [], existentialQuestions: [] }
   if (reflectionResult.isErr()) {
     log.warn("thinkMorning: reflection LLM failed", { error: reflectionResult.error.message })
   }
@@ -70,7 +70,7 @@ export async function thinkReflect(senseResult: SenseResult): Promise<Reflection
 
   if (result.isErr()) {
     log.warn("thinkReflect: LLM failed", { error: result.error.message })
-    return { insights: [] }
+    return { insights: [], existentialQuestions: [] }
   }
 
   log.info("thinkReflect complete", { insights: result.value.insights.length })

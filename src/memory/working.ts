@@ -58,7 +58,8 @@ const KEYS = {
   EMOTION_TRIGGER_TIMESTAMPS: "working:emotion:triggerTimestamps",
   EMOTION_OPERATOR_SILENT_FIRED: "working:emotion:operatorSilentFired",
   EMOTION_LAST_SYSTEM_STATUS: "working:emotion:lastSystemStatus",
-  EMOTION_LAST_TIMESTAMP: "working:emotion:lastTimestamp"
+  EMOTION_LAST_TIMESTAMP: "working:emotion:lastTimestamp",
+  CONSECUTIVE_IDLE_TICKS: "working:cognition:consecutiveIdleTicks"
 } as const
 
 export async function getLastTickSummary(): Promise<TickSummary | null> {
@@ -133,10 +134,10 @@ export async function pushToActiveConversation(messages: ConversationMessage[]):
   }
   const active = buffer[buffer.length - 1]
   if (!active) return
-  for (const message of messages) {
+  messages.forEach((message) => {
     active.messages.push(message)
     active.lastActivityAt = message.timestamp
-  }
+  })
   await setConversationBuffer(buffer)
 }
 
@@ -379,12 +380,12 @@ export async function clearConversationWaitingSince(): Promise<void> {
 export async function getTriggerTimestamps(): Promise<Record<string, number>> {
   const raw = await redis.get<Record<string, string>>(KEYS.EMOTION_TRIGGER_TIMESTAMPS)
   if (!raw) return {}
-  const result: Record<string, number> = {}
-  for (const [trigger, isoTimestamp] of Object.entries(raw)) {
-    const elapsed = (Date.now() - new Date(isoTimestamp).getTime()) / 60000
-    result[trigger] = elapsed
-  }
-  return result
+  return Object.fromEntries(
+    Object.entries(raw).map(([trigger, isoTimestamp]) => [
+      trigger,
+      (Date.now() - new Date(isoTimestamp).getTime()) / 60000
+    ])
+  )
 }
 
 export async function setTriggerTimestamp(trigger: string, isoTimestamp: string): Promise<void> {
@@ -421,4 +422,18 @@ export async function getLastEmotionTimestamp(): Promise<string | null> {
 
 export async function setLastEmotionTimestamp(isoTimestamp: string): Promise<void> {
   await redis.set(KEYS.EMOTION_LAST_TIMESTAMP, isoTimestamp)
+}
+
+export async function getConsecutiveIdleTicks(): Promise<number> {
+  const raw = await redis.get<number>(KEYS.CONSECUTIVE_IDLE_TICKS)
+  return raw ?? 0
+}
+
+export async function incrementConsecutiveIdleTicks(): Promise<void> {
+  const current = await getConsecutiveIdleTicks()
+  await redis.set(KEYS.CONSECUTIVE_IDLE_TICKS, current + 1)
+}
+
+export async function resetConsecutiveIdleTicks(): Promise<void> {
+  await redis.set(KEYS.CONSECUTIVE_IDLE_TICKS, 0)
 }

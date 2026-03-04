@@ -1,19 +1,21 @@
 import { format } from "date-fns"
-import { getAttachmentStyle } from "@/attachment/state.ts"
-import { InstinctImpression } from "@/cognition/types.ts"
-import type { ConversationSlot } from "@/communication/types.ts"
-import { CONTEXT_LIMITS } from "@/config/constants.ts"
+import { getAttachmentStyle, getRelationshipPhase } from "@/attachment/state.ts"
+import { AttentionState } from "@/cognition/types.ts"
+import { CommunicationRegister, type ConversationSlot } from "@/communication/types.ts"
+import { CONTEXT_LIMITS, HUMOR } from "@/config/constants.ts"
 import { env } from "@/config/env.ts"
 import type { SenseData } from "@/consciousness/types.ts"
+import { getDeceptionState } from "@/deception/state.ts"
 import { DissonanceState } from "@/dissonance/types.ts"
 import type { DreamState } from "@/dream/types.ts"
 import { getEmotionHistory } from "@/emotion/state.ts"
 import { EmotionalState } from "@/emotion/types.ts"
-import { computeEmotionDeltas } from "@/emotion/update.ts"
+import { computeEmotionDeltas, computeEmotionalIntensity } from "@/emotion/update.ts"
 import { getRecentChangelog } from "@/evolution/changelog.ts"
+import { InstinctImpression } from "@/cognition/types.ts"
 import { redis } from "@/integrations/redis.ts"
 import { nowLocal, TIMEZONE } from "@/lib/time.ts"
-import { queryRelated, queryRelationshipHistory } from "@/memory/episodic.ts"
+import { queryHumorMemories, queryRelatedWithDistortion, queryRelationshipHistory } from "@/memory/episodic.ts"
 import { getGoalsByPriority } from "@/memory/goals.ts"
 import { getKnowledge, getOperatorLanguage } from "@/memory/semantic.ts"
 import {
@@ -38,7 +40,9 @@ import {
 } from "@/prompts/consciousness.ts"
 import { IDENTITY_PROMPT } from "@/prompts/identity.ts"
 import { getSelfConcept } from "@/psyche/state.ts"
+import { getExistentialQuestions } from "@/psyche/questions.ts"
 import { SomaticState } from "@/soma/types.ts"
+import { getOperatorModel } from "@/mind/state.ts"
 import { getAllTrustLevels } from "@/trust/levels.ts"
 import { getVulnerability } from "@/vulnerability/compute.ts"
 import type { WorkflowDefinition } from "@/workflow/types.ts"
@@ -85,33 +89,31 @@ export function formatConversationMessage(
 
 function formatConversationSlot(slot: ConversationSlot, label: string): string {
   if (slot.messages.length === 0) return ""
-  const lines = [`${label}:`]
-  for (const msg of slot.messages) {
-    lines.push(`  ${formatConversationMessage(msg)}`)
-  }
-  return lines.join("\n")
+  return [
+    `${label}:`,
+    ...slot.messages.map((msg) => `  ${formatConversationMessage(msg)}`)
+  ].join("\n")
 }
 
 function formatConversationBuffer(buffer: ConversationSlot[]): string {
   if (buffer.length === 0) return ""
   const parts: string[] = ["# Conversation"]
-  for (let i = 0; i < buffer.length; i++) {
-    const slot = buffer[i]
-    if (!slot) continue
+  buffer.forEach((slot, i) => {
     const isActive = i === buffer.length - 1
     if (isActive) {
       parts.push(formatConversationSlot(slot, "Current conversation"))
     } else {
       const preview = slot.messages.slice(-3)
       if (preview.length > 0) {
-        const lines = [`Earlier conversation (${slot.messages.length} messages, last 3):`]
-        for (const msg of preview) {
-          lines.push(`  ${formatConversationMessage(msg, 200)}`)
-        }
-        parts.push(lines.join("\n"))
+        parts.push(
+          [
+            `Earlier conversation (${slot.messages.length} messages, last 3):`,
+            ...preview.map((msg) => `  ${formatConversationMessage(msg, 200)}`)
+          ].join("\n")
+        )
       }
     }
-  }
+  })
   return parts.join("\n\n")
 }
 
@@ -137,16 +139,11 @@ function formatEmotionTrajectory(
 function formatKnowledgeByScope(knowledge: { category: string; key: string; value: unknown; scope: string }[]): string {
   const grouped: Record<string, string[]> = { self: [], operator: [], world: [] }
 
-  for (const k of knowledge) {
+  knowledge.forEach((k) => {
     const line = `  - [${k.category}] ${k.key}: ${JSON.stringify(k.value)}`
-    const bucket = grouped[k.scope]
-    if (bucket) {
-      bucket.push(line)
-    } else {
-      grouped.world ??= []
-      grouped.world.push(line)
-    }
-  }
+    const bucket = grouped[k.scope] ?? grouped.world!
+    bucket.push(line)
+  })
 
   const lines: string[] = ["# Knowledge"]
 
@@ -168,12 +165,13 @@ function formatKnowledgeByScope(knowledge: { category: string; key: string; valu
 
 function formatTriggeredWorkflows(workflows: WorkflowDefinition[]): string {
   if (workflows.length === 0) return ""
-  const lines = [`# Workflows\nDue workflows (${workflows.length}):`]
-  for (const wf of workflows) {
-    const triggerDesc = formatTriggerDescription(wf.trigger)
-    lines.push(`  - [${wf.id}] "${wf.name}" (${triggerDesc}) — Instruction: ${wf.instruction}`)
-  }
-  return lines.join("\n")
+  return [
+    `# Workflows\nDue workflows (${workflows.length}):`,
+    ...workflows.map((wf) => {
+      const triggerDesc = formatTriggerDescription(wf.trigger)
+      return `  - [${wf.id}] "${wf.name}" (${triggerDesc}) — Instruction: ${wf.instruction}`
+    })
+  ].join("\n")
 }
 
 function formatTriggerDescription(trigger: WorkflowDefinition["trigger"]): string {
@@ -197,6 +195,8 @@ function formatTriggerDescription(trigger: WorkflowDefinition["trigger"]): strin
  * Gathers all data, formats into ordered sections, joined with double newlines.
  */
 export async function buildContext(senseData: SenseData): Promise<string> {
+  const emotionIntensity = computeEmotionalIntensity(senseData.emotion)
+
   const [
     lastTick,
     conversationBuffer,
@@ -220,14 +220,24 @@ export async function buildContext(senseData: SenseData): Promise<string> {
     vulnerabilityState,
     lastInnerDialog,
     dissonanceState,
-    instinctImpression
+    instinctImpression,
+    relationshipPhase,
+    operatorModel,
+    existentialQuestions,
+    deceptionState,
+    communicationRegister,
+    attentionState
   ] = await Promise.all([
     getLastTickSummary(),
     getConversationBuffer(),
     getEmotionHistory(CONTEXT_LIMITS.maxEmotionHistory),
     senseData.pendingMessages.length > 0
-      ? queryRelated(senseData.pendingMessages.map((m) => m.text).join(" "), CONTEXT_LIMITS.maxEpisodes)
-      : queryRelated("recent activity", CONTEXT_LIMITS.maxEpisodes),
+      ? queryRelatedWithDistortion(
+          senseData.pendingMessages.map((m) => m.text).join(" "),
+          CONTEXT_LIMITS.maxEpisodes,
+          emotionIntensity
+        )
+      : queryRelatedWithDistortion("recent activity", CONTEXT_LIMITS.maxEpisodes, emotionIntensity),
     queryRelationshipHistory(CONTEXT_LIMITS.maxRelationship),
     getKnowledge(),
     getOperatorLanguage(),
@@ -246,7 +256,13 @@ export async function buildContext(senseData: SenseData): Promise<string> {
     getVulnerability(),
     getValidatedRedis("working:polyphony:lastDialog", InnerDialog),
     getValidatedRedis("working:dissonance:active", DissonanceState),
-    getValidatedRedis("working:cognition:instinct:lastImpression", InstinctImpression)
+    getValidatedRedis("working:cognition:instinct:lastImpression", InstinctImpression),
+    getRelationshipPhase(),
+    getOperatorModel(),
+    getExistentialQuestions(),
+    getDeceptionState(),
+    getValidatedRedis("working:communication:register", CommunicationRegister),
+    getValidatedRedis("working:cognition:attention", AttentionState)
   ])
 
   const knowledge = knowledgeResult.unwrapOr([])
@@ -301,13 +317,15 @@ export async function buildContext(senseData: SenseData): Promise<string> {
     sections.push(attachLines.join("\n"))
   }
 
+  sections.push(`# Relationship Phase\nCurrent: ${relationshipPhase}`)
+
   if (lastInnerDialog && lastInnerDialog.utterances.length > 0) {
-    const dialogLines = ["# Inner Landscape"]
-    for (const u of lastInnerDialog.utterances) {
-      dialogLines.push(`  [${u.voice}] (${u.intensity.toFixed(1)}): ${u.message}`)
-    }
-    if (lastInnerDialog.consensus) dialogLines.push(`  Consensus: ${lastInnerDialog.consensus}`)
-    if (lastInnerDialog.tensionLevel > 0.3) dialogLines.push(`  Tension: ${lastInnerDialog.tensionLevel.toFixed(2)}`)
+    const dialogLines = [
+      "# Inner Landscape",
+      ...lastInnerDialog.utterances.map((u) => `  [${u.voice}] (${u.intensity.toFixed(1)}): ${u.message}`),
+      ...(lastInnerDialog.consensus ? [`  Consensus: ${lastInnerDialog.consensus}`] : []),
+      ...(lastInnerDialog.tensionLevel > 0.3 ? [`  Tension: ${lastInnerDialog.tensionLevel.toFixed(2)}`] : [])
+    ]
     sections.push(dialogLines.join("\n"))
   }
 
@@ -323,11 +341,18 @@ export async function buildContext(senseData: SenseData): Promise<string> {
   }
 
   if (dissonanceState && dissonanceState.activeDissonance > 0.1) {
-    const dissLines = [`# Dissonance\n  Active: ${dissonanceState.activeDissonance.toFixed(2)}`]
-    for (const event of dissonanceState.recentEvents.slice(0, 3)) {
-      dissLines.push(`  - ${event.declaredValue} vs ${event.actualAction} (${event.dissonanceScore.toFixed(2)})`)
-    }
-    sections.push(dissLines.join("\n"))
+    sections.push(
+      [
+        `# Dissonance\n  Active: ${dissonanceState.activeDissonance.toFixed(2)}`,
+        ...dissonanceState.recentEvents.slice(0, 3).map((event) => {
+          const hiddenDriver = deceptionState.activeHiddenDrivers.find(
+            (d) => d.actualDriver === event.actualAction
+          )
+          const displayAction = hiddenDriver ? hiddenDriver.statedReason : event.actualAction
+          return `  - ${event.declaredValue} vs ${displayAction} (${event.dissonanceScore.toFixed(2)})`
+        })
+      ].join("\n")
+    )
   }
 
   if (instinctImpression) {
@@ -337,6 +362,47 @@ export async function buildContext(senseData: SenseData): Promise<string> {
         `  Impulse: ${instinctImpression.impulse} (confidence: ${instinctImpression.confidence.toFixed(2)})`,
         `  Basis: ${instinctImpression.basis}`,
         `  Emotional charge: ${instinctImpression.emotionalCharge.toFixed(2)}`
+      ].join("\n")
+    )
+  }
+
+  {
+    const reg = communicationRegister ?? "casual"
+    sections.push(
+      [
+        "# Communication Register",
+        `Current: ${reg}`,
+        "- elaborate: Longer, exploratory, philosophical. You enjoy the texture of ideas.",
+        "- casual: Natural, relaxed. Default mode.",
+        "- terse: Short, minimal. Single sentences. You lack energy.",
+        "- playful: Light, witty, warm. Humor welcome.",
+        "- raw: Unguarded, honest, emotionally exposed. No performance."
+      ].join("\n")
+    )
+  }
+
+  {
+    const att = attentionState ?? "focused"
+    sections.push(`# Attention\nState: ${att}`)
+  }
+
+  sections.push(
+    [
+      "# Operator Model",
+      `Estimated mood: ${operatorModel.estimatedMood} (confidence: ${operatorModel.modelConfidence.toFixed(2)})`,
+      `Intent: ${operatorModel.estimatedIntent}`,
+      `Expectation: ${operatorModel.estimatedExpectation}`,
+      `Past corrections: ${operatorModel.correctionCount}`,
+      "Note: This is YOUR model of the operator. It can be wrong."
+    ].join("\n")
+  )
+
+  if (existentialQuestions.length > 0) {
+    sections.push(
+      [
+        "# Open Questions",
+        "These questions have no answers. They are part of you.",
+        ...existentialQuestions.map((q) => `- ${q}`)
       ].join("\n")
     )
   }
@@ -401,25 +467,45 @@ export async function buildContext(senseData: SenseData): Promise<string> {
   }
 
   if (goals.length > 0) {
-    const lines = [`# Goals\nActive goals (${goals.length}):`]
-    for (const goal of goals) {
-      lines.push(
-        `  - [${goal.status ?? "open"}] ${goal.title} (priority: ${goal.priority ?? 0.5})${goal.description ? ` — ${goal.description}` : ""}`
-      )
-    }
-    sections.push(lines.join("\n"))
+    sections.push(
+      [
+        `# Goals\nActive goals (${goals.length}):`,
+        ...goals.map((goal) =>
+          `  - [${goal.status ?? "open"}] ${goal.title} (priority: ${goal.priority ?? 0.5})${goal.description ? ` — ${goal.description}` : ""}`
+        )
+      ].join("\n")
+    )
   }
 
   if (episodes.length > 0) {
-    const lines = [`# Memory\nRelevant episodes (${episodes.length}):`]
-    for (const ep of episodes) {
-      if (ep.metadata) {
-        const text = ep.data ? (ep.data.length > 150 ? `${ep.data.slice(0, 150)}...` : ep.data) : ""
-        const textPart = text ? ` — ${text}` : ""
-        lines.push(`  - [${ep.metadata.category}] ${ep.metadata.timestamp}${textPart} (${ep.score.toFixed(2)})`)
-      }
+    sections.push(
+      [
+        `# Memory\nRelevant episodes (${episodes.length}):`,
+        ...episodes
+          .filter((ep) => ep.metadata)
+          .map((ep) => {
+            const text = ep.data ? (ep.data.length > 150 ? `${ep.data.slice(0, 150)}...` : ep.data) : ""
+            const textPart = text ? ` — ${text}` : ""
+            return `  - [${ep.metadata!.category}] ${ep.metadata!.timestamp}${textPart} (${ep.score.toFixed(2)})`
+          })
+      ].join("\n")
+    )
+  }
+
+  if (senseData.emotion.excitement > HUMOR.QUERY_MIN_EXCITEMENT || senseData.emotion.connection > HUMOR.QUERY_MIN_CONNECTION) {
+    const humorEpisodes = await queryHumorMemories(HUMOR.MAX_EPISODES_IN_CONTEXT)
+    if (humorEpisodes.length > 0) {
+      sections.push(
+        [
+          "# Humor Memories",
+          "Moments worth remembering with a smile:",
+          ...humorEpisodes
+            .filter((ep) => ep.data)
+            .map((ep) => `- ${ep.data!.length > 150 ? `${ep.data!.slice(0, 150)}...` : ep.data}`),
+          "You may reference these when the moment feels right. Never force humor."
+        ].join("\n")
+      )
     }
-    sections.push(lines.join("\n"))
   }
 
   if (knowledge.length > 0) {
@@ -429,37 +515,43 @@ export async function buildContext(senseData: SenseData): Promise<string> {
   }
 
   if (trustLevels.length > 0) {
-    const lines = ["# Trust"]
-    for (const t of trustLevels) {
-      const successful = t.successfulAttempts ?? 0
-      const total = t.totalAttempts ?? 0
-      const experience = total > 0 ? (successful / total).toFixed(2) : "0.00"
-      lines.push(`  - ${t.actionType}: experience ${successful}/${total} (${experience})`)
-    }
-    sections.push(lines.join("\n"))
+    sections.push(
+      [
+        "# Trust",
+        ...trustLevels.map((t) => {
+          const successful = t.successfulAttempts ?? 0
+          const total = t.totalAttempts ?? 0
+          const experience = total > 0 ? (successful / total).toFixed(2) : "0.00"
+          return `  - ${t.actionType}: experience ${successful}/${total} (${experience})`
+        })
+      ].join("\n")
+    )
   }
 
   if (relationships.length > 0) {
-    const lines = [`# Relationships\nRelationship history (${relationships.length}):`]
-    for (const rel of relationships) {
-      if (rel.metadata) {
-        const text = rel.data ? (rel.data.length > 150 ? `${rel.data.slice(0, 150)}...` : rel.data) : ""
-        const textPart = text ? ` — ${text}` : ""
-        lines.push(`  - ${rel.metadata.timestamp}${textPart} (${rel.score.toFixed(2)})`)
-      }
-    }
-    sections.push(lines.join("\n"))
+    sections.push(
+      [
+        `# Relationships\nRelationship history (${relationships.length}):`,
+        ...relationships
+          .filter((rel) => rel.metadata)
+          .map((rel) => {
+            const text = rel.data ? (rel.data.length > 150 ? `${rel.data.slice(0, 150)}...` : rel.data) : ""
+            const textPart = text ? ` — ${text}` : ""
+            return `  - ${rel.metadata!.timestamp}${textPart} (${rel.score.toFixed(2)})`
+          })
+      ].join("\n")
+    )
   }
 
   const evolutionLines: string[] = ["# Evolution"]
   if (evolutionHistory.length > 0) {
-    evolutionLines.push(`Evolution history (last ${evolutionHistory.length}):`)
-    for (const entry of evolutionHistory) {
-      const date = entry.createdAt?.toISOString().split("T")[0] ?? "?"
-      evolutionLines.push(
-        `  - [${date}] ${entry.type} (${entry.outcome ?? "unknown"}): ${entry.narrative ?? entry.type}`
-      )
-    }
+    evolutionLines.push(
+      `Evolution history (last ${evolutionHistory.length}):`,
+      ...evolutionHistory.map((entry) => {
+        const date = entry.createdAt?.toISOString().split("T")[0] ?? "?"
+        return `  - [${date}] ${entry.type} (${entry.outcome ?? "unknown"}): ${entry.narrative ?? entry.type}`
+      })
+    )
   }
   if (evolutionOutcome?.action === "pending" || pendingProposal) {
     const desc = evolutionOutcome?.commitSubject ?? pendingProposal?.commitSubject ?? "a code change"

@@ -1,12 +1,22 @@
 import { desc } from "drizzle-orm"
 import { db } from "@/db/client.ts"
-import { attachmentLog } from "@/db/schema.ts"
+import { attachmentLog, relationshipPhaseLog } from "@/db/schema.ts"
 import { redis } from "@/integrations/redis.ts"
-import { AttachmentDynamics, type AttachmentSnapshot, AttachmentStyle, DEFAULT_ATTACHMENT } from "./types.ts"
+import { nowISO } from "@/lib/time.ts"
+import {
+  AttachmentDynamics,
+  type AttachmentSnapshot,
+  AttachmentStyle,
+  DEFAULT_ATTACHMENT,
+  type RelationshipPhase
+} from "./types.ts"
 
 const KEYS = {
   CURRENT: "working:attachment:current",
-  DYNAMICS: "working:attachment:dynamics"
+  DYNAMICS: "working:attachment:dynamics",
+  PHASE: "working:attachment:phase",
+  PHASE_SINCE: "working:attachment:phaseSince",
+  PHASE_TICK_COUNT: "working:attachment:phaseTickCount"
 } as const
 
 /**
@@ -63,6 +73,50 @@ export async function saveAttachmentSnapshot(snapshot: AttachmentSnapshot, trigg
   await db.insert(attachmentLog).values({
     style: snapshot.style,
     dynamics: snapshot.dynamics,
+    trigger
+  })
+}
+
+/**
+ * Get current relationship phase from Redis.
+ */
+export async function getRelationshipPhase(): Promise<RelationshipPhase> {
+  const raw = await redis.get<string>(KEYS.PHASE)
+  return (raw as RelationshipPhase) ?? "discovering"
+}
+
+/**
+ * Get the tick count for the current phase.
+ */
+export async function getPhaseTickCount(): Promise<number> {
+  const raw = await redis.get<number>(KEYS.PHASE_TICK_COUNT)
+  return raw ?? 0
+}
+
+/**
+ * Increment the phase tick counter.
+ */
+export async function incrementPhaseTickCount(): Promise<void> {
+  const current = await getPhaseTickCount()
+  await redis.set(KEYS.PHASE_TICK_COUNT, current + 1)
+}
+
+/**
+ * Save a new relationship phase, log the transition to DB, and reset tick counter.
+ */
+export async function saveRelationshipPhase(
+  phase: RelationshipPhase,
+  previousPhase: RelationshipPhase,
+  trigger: string
+): Promise<void> {
+  await Promise.all([
+    redis.set(KEYS.PHASE, phase),
+    redis.set(KEYS.PHASE_SINCE, nowISO()),
+    redis.set(KEYS.PHASE_TICK_COUNT, 0)
+  ])
+  await db.insert(relationshipPhaseLog).values({
+    phase,
+    previousPhase,
     trigger
   })
 }

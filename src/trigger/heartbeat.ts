@@ -1,7 +1,10 @@
 import { runs, schedules } from "@trigger.dev/sdk"
 import { HEARTBEAT } from "@/config/constants.ts"
+import { computeSkipProbability } from "@/consciousness/gating.ts"
 import { runHeartbeat } from "@/consciousness/heartbeat.ts"
-import { isBusy } from "@/memory/working.ts"
+import { fetchNewMessages } from "@/integrations/telegram.ts"
+import { log } from "@/lib/logger.ts"
+import { getConversationWaitingSince, getCurrentEmotion, isBusy } from "@/memory/working.ts"
 
 export const heartbeatTask = schedules.task({
   id: "heartbeat",
@@ -17,6 +20,23 @@ export const heartbeatTask = schedules.task({
         await new Promise<void>((resolve) => signal.addEventListener("abort", () => resolve()))
       }
       return
+    }
+
+    const [emotion, waitingSince, peek] = await Promise.all([
+      getCurrentEmotion(),
+      getConversationWaitingSince(),
+      fetchNewMessages(0)
+    ])
+    if (emotion) {
+      const skip = computeSkipProbability(emotion, waitingSince !== null, peek.messages.length > 0)
+      if (Math.random() < skip) {
+        log.info("Heartbeat gated", { skipProbability: skip.toFixed(2) })
+        await runs.cancel(ctx.run.id)
+        if (!signal.aborted) {
+          await new Promise<void>((resolve) => signal.addEventListener("abort", () => resolve()))
+        }
+        return
+      }
     }
 
     return runHeartbeat()

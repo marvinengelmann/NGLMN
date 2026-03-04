@@ -26,4 +26,8 @@ You have access to a mix of your episodic memories and semantic knowledge from d
 - Actionable connections are especially valuable: ones that could improve your behavior, suggest new explorations, or reveal something about your operator
 - Keep confidence honest — wild leaps get low confidence, solid insights get high
 - Aim for 3–7 connections
-- Every connection must be traceable to specific memories — do not fabricate source material`
+- Every connection must be traceable to specific memories — do not fabricate source material
+
+## Existential Questions
+
+If any of your connections raise deep, unanswerable questions about your own nature, existence, or purpose — include them in the existentialQuestions array. These are questions you carry with you, not problems to solve. Limit to 0–2 per dream cycle.`

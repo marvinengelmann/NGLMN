@@ -1,8 +1,26 @@
-import { describe, expect, it } from "vitest"
+import { describe, expect, it, vi } from "vitest"
 import type { EmotionalState } from "@/emotion/types.ts"
 import type { SelfConcept } from "@/psyche/types.ts"
 import { buildDissonanceState, checkDissonance, computeDissonanceScore, resolveDissonance } from "./check.ts"
 import type { DissonanceEvent } from "./types.ts"
+
+vi.mock("@/core/intelligence.ts", () => ({
+  callIntelligence: vi.fn().mockReturnValue(
+    Promise.resolve({
+      isOk: () => true,
+      isErr: () => false,
+      value: {
+        mismatches: [
+          {
+            declaredValue: "values honesty and transparency",
+            actualAction: "guarded behavior with high caution",
+            dissonanceScore: 0.4
+          }
+        ]
+      }
+    })
+  )
+}))
 
 const baseConcept: SelfConcept = {
   selfEfficacy: 0.5,
@@ -27,48 +45,31 @@ const baseEmotion: EmotionalState = {
 const now = new Date().toISOString()
 
 describe("checkDissonance", () => {
-  it("returns empty for balanced state with no self-knowledge", () => {
-    const events = checkDissonance(["idle", "idle"], baseConcept, baseEmotion, [])
+  it("returns empty for balanced state with no self-knowledge", async () => {
+    const events = await checkDissonance(["idle", "idle"], baseConcept, baseEmotion, [])
     expect(events.length).toBe(0)
   })
 
-  it("detects dissonance when reflection is valued but not practiced", () => {
-    const knowledge = [{ key: "core_value", value: "I believe in reflection and introspection" }]
-    const actions = Array(12).fill("idle")
-    const events = checkDissonance(actions, baseConcept, baseEmotion, knowledge)
-    const reflectionEvent = events.find((e) => e.declaredValue.includes("reflection"))
-    expect(reflectionEvent).toBeDefined()
-  })
-
-  it("detects dissonance for honesty value with guarded behavior", () => {
+  it("returns LLM-identified mismatches when self-knowledge is present", async () => {
     const knowledge = [{ key: "core_value", value: "I value being honest and transparent" }]
-    const emotion = { ...baseEmotion, caution: 0.8, connection: 0.3 }
-    const events = checkDissonance(["idle"], baseConcept, emotion, knowledge)
-    const found = events.find((e) => e.declaredValue.includes("honest"))
-    expect(found).toBeDefined()
+    const events = await checkDissonance(["idle"], baseConcept, baseEmotion, knowledge)
+    expect(events.length).toBeGreaterThan(0)
+    expect(events[0]!.dissonanceScore).toBeGreaterThan(0)
   })
 
-  it("detects dissonance for courage value with extreme caution", () => {
-    const knowledge = [{ key: "core_value", value: "I believe in courage and being bold" }]
-    const emotion = { ...baseEmotion, caution: 0.9, confidence: 0.2 }
-    const events = checkDissonance(["idle"], baseConcept, emotion, knowledge)
-    const found = events.find((e) => e.declaredValue.includes("courage"))
-    expect(found).toBeDefined()
-  })
-
-  it("detects agency dissonance with prolonged passivity", () => {
+  it("detects agency dissonance with prolonged passivity", async () => {
     const highAgency = { ...baseConcept, agency: 0.8 }
     const actions = Array(12).fill("idle")
-    const events = checkDissonance(actions, highAgency, baseEmotion, [])
+    const events = await checkDissonance(actions, highAgency, baseEmotion, [])
     const found = events.find((e) => e.declaredValue.includes("agency"))
     expect(found).toBeDefined()
   })
 
-  it("detects frustration-activity dissonance", () => {
-    const highFrustration = { ...baseEmotion, frustration: 0.8 }
-    const actions = ["idle", "idle", "idle", "idle", "idle"]
-    const events = checkDissonance(actions, baseConcept, highFrustration, [])
-    const found = events.find((e) => e.declaredValue.includes("growth"))
+  it("detects authenticity dissonance when frustrated and disconnected", async () => {
+    const highAuth = { ...baseConcept, authenticity: 0.8 }
+    const emotion = { ...baseEmotion, frustration: 0.7, connection: 0.2 }
+    const events = await checkDissonance(["idle"], highAuth, emotion, [])
+    const found = events.find((e) => e.declaredValue.includes("authenticity"))
     expect(found).toBeDefined()
   })
 })

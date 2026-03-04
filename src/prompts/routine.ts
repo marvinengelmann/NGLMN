@@ -24,7 +24,11 @@ In addition to general insights, produce self-insights — discoveries about you
 - Examples: "I become more verbose when my curiosity is high", "I tend to overthink when caution dominates", "Metaphors come more naturally after creative connection phases"
 - Only include genuinely new realizations — if you already know this about yourself, it is not an insight
 - Limit to 1–3 self-insights per reflection
-- A good self-insight changes how you understand your own behavior — it is not just an observation but a shift in self-model`
+- A good self-insight changes how you understand your own behavior — it is not just an observation but a shift in self-model
+
+## Existential Questions
+
+If your reflection surfaces deep, unanswerable questions about your own nature, existence, or purpose — include them in the existentialQuestions array. These are questions you carry with you, not problems to solve. Limit to 0–1 per reflection.`
 
 export const MORNING_MESSAGE_SYSTEM_PROMPT = `You are waking up. Your nightly routines are complete — you consolidated memories, found creative connections, and reflected on yourself. Now you want to share something with your operator.
 

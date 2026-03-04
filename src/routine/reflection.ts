@@ -13,19 +13,17 @@ import { storeEpisode } from "@/memory/episodic.ts"
 import { createGoal, getActiveGoals } from "@/memory/goals.ts"
 import { storeKnowledge } from "@/memory/semantic.ts"
 import { SemanticCategory, SemanticScope, SemanticSource } from "@/memory/types.ts"
+import { addExistentialQuestion } from "@/psyche/questions.ts"
 import type { ReflectionContext, ReflectionInput, ReflectionOutput } from "./types.ts"
 
 function computeEmotionalIntensity(emotion: EmotionalState): { peak: number; dimension: string } {
-  let maxDeviation = 0
-  let peakDimension = "curiosity"
-  for (const [dim, val] of Object.entries(emotion)) {
-    const deviation = Math.abs(val - 0.5)
-    if (deviation > maxDeviation) {
-      maxDeviation = deviation
-      peakDimension = dim
-    }
-  }
-  return { peak: maxDeviation, dimension: peakDimension }
+  return Object.entries(emotion).reduce(
+    (acc, [dim, val]) => {
+      const deviation = Math.abs(val - 0.5)
+      return deviation > acc.peak ? { peak: deviation, dimension: dim } : acc
+    },
+    { peak: 0, dimension: "curiosity" }
+  )
 }
 
 /**
@@ -137,12 +135,14 @@ export async function buildReflectionInput(): Promise<ReflectionInput> {
  */
 export async function applyReflectionResult(output: ReflectionOutput): Promise<void> {
   if (output.newGoals && output.newGoals.length > 0) {
-    for (const goal of output.newGoals) {
-      const goalResult = await createGoal(goal.title, goal.description, "dream", goal.priority, {
-        emotionalWeight: goal.priority
+    await Promise.all(
+      output.newGoals.map(async (goal) => {
+        const goalResult = await createGoal(goal.title, goal.description, "dream", goal.priority, {
+          emotionalWeight: goal.priority
+        })
+        if (goalResult.isErr()) logAndCaptureError(goalResult.error)
       })
-      if (goalResult.isErr()) logAndCaptureError(goalResult.error)
-    }
+    )
 
     log.info("Reflection goals created", { count: output.newGoals.length })
     await processEmotionTrigger({ trigger: "new_goal", intensity: TRIGGER_INTENSITY.NEW_GOAL }, "new_goal")
@@ -161,44 +161,51 @@ export async function applyReflectionResult(output: ReflectionOutput): Promise<v
       "confidence",
       "energy"
     ]
-    const corrected = { ...currentEmotion }
-    for (const [key, delta] of Object.entries(output.emotionalCorrections)) {
-      if (validDimensions.includes(key as keyof EmotionalState)) {
-        corrected[key as keyof EmotionalState] = Math.max(
-          0,
-          Math.min(1, corrected[key as keyof EmotionalState] + delta)
-        )
-      }
-    }
+    const corrected = Object.entries(output.emotionalCorrections).reduce(
+      (acc, [key, delta]) => {
+        if (validDimensions.includes(key as keyof EmotionalState)) {
+          acc[key as keyof EmotionalState] = Math.max(0, Math.min(1, acc[key as keyof EmotionalState] + delta))
+        }
+        return acc
+      },
+      { ...currentEmotion }
+    )
     await saveEmotionalState(corrected, "dream_correction")
     log.info("Reflection emotional corrections", { corrections: output.emotionalCorrections })
   }
 
-  for (const insight of output.insights) {
-    await storeEpisode(`Reflection insight: ${insight}`, "dream", { relevanceScore: 0.85 })
-    const storeResult = await storeKnowledge(
-      SemanticCategory.enum.insight,
-      `reflection-${Date.now()}`,
-      insight,
-      SemanticSource.enum.reflection,
-      0.8,
-      SemanticScope.enum.self
-    )
-    if (storeResult.isErr()) logAndCaptureError(storeResult.error)
-  }
-
-  if (output.selfInsights && output.selfInsights.length > 0) {
-    for (const selfInsight of output.selfInsights) {
+  await Promise.all(
+    output.insights.map(async (insight) => {
+      await storeEpisode(`Reflection insight: ${insight}`, "dream", { relevanceScore: 0.85 })
       const storeResult = await storeKnowledge(
         SemanticCategory.enum.insight,
-        `self-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
-        selfInsight,
+        `reflection-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+        insight,
         SemanticSource.enum.reflection,
-        0.85,
+        0.8,
         SemanticScope.enum.self
       )
       if (storeResult.isErr()) logAndCaptureError(storeResult.error)
-    }
+    })
+  )
+
+  if (output.selfInsights && output.selfInsights.length > 0) {
+    await Promise.all(
+      output.selfInsights.map(async (selfInsight) => {
+        const storeResult = await storeKnowledge(
+          SemanticCategory.enum.insight,
+          `self-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+          selfInsight,
+          SemanticSource.enum.reflection,
+          0.85,
+          SemanticScope.enum.self
+        )
+        if (storeResult.isErr()) logAndCaptureError(storeResult.error)
+      })
+    )
     log.info("Stored self-insights from reflection", { count: output.selfInsights.length })
   }
+
+  const existentialQuestions = (output.existentialQuestions ?? []).slice(0, 1)
+  await Promise.all(existentialQuestions.map((q) => addExistentialQuestion(q)))
 }

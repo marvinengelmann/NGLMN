@@ -27,7 +27,8 @@ const TRIGGER_EFFECTS: Record<EmotionTrigger, EmotionDeltas> = {
   weather_update: { curiosity: 0.03, excitement: 0.04, boredom: -0.03 },
   git_activity: { curiosity: 0.05, excitement: 0.03 },
   dream_correction: {},
-  morning_calibration: { energy: 0.5 }
+  morning_calibration: { energy: 0.5 },
+  nostalgia_wave: { connection: 0.08, satisfaction: 0.04, excitement: -0.03, boredom: -0.05, energy: -0.02 }
 }
 
 /**

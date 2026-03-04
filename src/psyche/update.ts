@@ -14,6 +14,7 @@ export interface SelfConceptContext {
   vulnerabilityOpen: boolean
   dissonanceDetected: boolean
   elapsedHours: number
+  modelCorrected?: boolean
 }
 
 /**
@@ -38,6 +39,10 @@ export function updateSelfConcept(current: SelfConcept, context: SelfConceptCont
 
   if (context.vulnerabilityOpen) authenticity += 0.01
   if (context.dissonanceDetected) authenticity -= 0.02
+  if (context.modelCorrected) {
+    selfEfficacy -= 0.01
+    authenticity += 0.01
+  }
 
   return {
     selfEfficacy: clamp(selfEfficacy),
