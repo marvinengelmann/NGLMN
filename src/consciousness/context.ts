@@ -73,13 +73,14 @@ function describeSomaticDimension(dim: string, val: number): string {
 }
 
 export function formatConversationMessage(
-  msg: { role: string; text: string; messageId?: number | null },
+  msg: { role: string; text: string; messageId?: number | null; isVoice?: boolean | null },
   maxLength?: number
 ): string {
   const role = msg.role === "operator" ? "Operator" : "You (ANIMA)"
   const idPrefix = msg.messageId ? `[#${msg.messageId}] ` : ""
+  const voiceTag = msg.isVoice ? "[Voice] " : ""
   const text = maxLength ? msg.text.slice(0, maxLength) : msg.text
-  return `${idPrefix}[${role}]: ${text}`
+  return `${idPrefix}${voiceTag}[${role}]: ${text}`
 }
 
 function formatConversationSlot(slot: ConversationSlot, label: string): string {
@@ -591,7 +592,8 @@ export async function buildContext(senseData: SenseData): Promise<string> {
   if (senseData.pendingMessages.length > 0) {
     const msgLines = senseData.pendingMessages.map((msg) => {
       const idPrefix = msg.messageId ? `[#${msg.messageId}] ` : ""
-      return `  ${idPrefix}[${msg.from}]: ${msg.text}`
+      const voiceTag = msg.isVoice ? `[Voice Message, ${msg.voiceDurationSeconds ?? 0}s] ` : ""
+      return `  ${idPrefix}${voiceTag}[${msg.from}]: ${msg.text}`
     })
     sections.push(
       `# Messages\nNew messages from operator (${senseData.pendingMessages.length}):\n${msgLines.join("\n")}`

@@ -31,7 +31,10 @@ const EnvSchema = z.object({
 
   DAYTONA_API_KEY: z.string().optional(),
 
-  CONTEXT7_API_KEY: z.string().optional()
+  CONTEXT7_API_KEY: z.string().optional(),
+
+  ELEVENLABS_API_KEY: z.string().optional(),
+  ELEVENLABS_VOICE_ID: z.string().default("9GYSBtwJVgyLbYO5E3Ld")
 })
 
 type EnvKey = keyof z.infer<typeof EnvSchema>

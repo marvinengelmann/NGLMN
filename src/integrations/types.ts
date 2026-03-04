@@ -35,7 +35,9 @@ export const PendingMessage = z.object({
   text: z.string().max(10_000),
   date: z.number(),
   messageId: z.number().optional(),
-  replyToText: z.string().max(10_000).optional()
+  replyToText: z.string().max(10_000).optional(),
+  isVoice: z.boolean().default(false),
+  voiceDurationSeconds: z.number().optional()
 })
 export type PendingMessage = z.infer<typeof PendingMessage>
 

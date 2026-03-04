@@ -24,7 +24,9 @@ export const AnimaDecision = z.object({
   messages: z.array(
     z.object({
       text: z.string(),
-      replyTo: z.number().optional()
+      replyTo: z.number().optional(),
+      asVoice: z.boolean().default(false),
+      voiceText: z.string().optional()
     })
   ),
   expectsReply: z.boolean(),

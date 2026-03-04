@@ -1,7 +1,14 @@
 import { computeTypingDuration, simulateTyping, splitIntoParagraphs } from "@/communication/timing.ts"
 import { MESSAGE_DELAY, THINKING } from "@/config/constants.ts"
 import type { AnimaDecision } from "@/consciousness/types.ts"
-import { sendMessageWithReply, sendTypingAction } from "@/integrations/telegram.ts"
+import { textToSpeech } from "@/integrations/elevenlabs.ts"
+import {
+  sendMessageWithReply,
+  sendRecordVoiceAction,
+  sendTypingAction,
+  sendVoiceToOperator
+} from "@/integrations/telegram.ts"
+import { convertMp3ToOggOpus } from "@/lib/audio.ts"
 import { log } from "@/lib/logger.ts"
 import { nowISO } from "@/lib/time.ts"
 import { pushRecentResponse, pushToActiveConversation, setGuardianResult } from "@/memory/working.ts"
@@ -29,22 +36,39 @@ export async function sendMessages(decision: AnimaDecision): Promise<MessagingRe
       continue
     }
 
-    const paragraphs = splitIntoParagraphs(msg.text)
-    for (let i = 0; i < paragraphs.length; i++) {
-      const paragraph = paragraphs[i]
-      if (!paragraph) continue
+    if (msg.asVoice && msg.voiceText) {
+      try {
+        await sendRecordVoiceAction()
+        const mp3Buffer = await textToSpeech(msg.voiceText)
+        const oggBuffer = await convertMp3ToOggOpus(mp3Buffer)
+        const sentId = await sendVoiceToOperator(oggBuffer, msg.replyTo)
 
-      if (i > 0) {
-        const pause =
-          THINKING.INTER_PARAGRAPH_MIN_MS +
-          Math.random() * (THINKING.INTER_PARAGRAPH_MAX_MS - THINKING.INTER_PARAGRAPH_MIN_MS)
-        await new Promise((resolve) => setTimeout(resolve, pause))
+        await pushToActiveConversation([
+          { role: "anima", text: msg.text, timestamp: nowISO(), messageId: sentId, isVoice: true }
+        ])
+      } catch (error) {
+        log.warn("Voice send failed, falling back to text", { error: String(error) })
+        const sentId = await sendMessageWithReply(msg.text, msg.replyTo)
+        await pushToActiveConversation([{ role: "anima", text: msg.text, timestamp: nowISO(), messageId: sentId }])
       }
+    } else {
+      const paragraphs = splitIntoParagraphs(msg.text)
+      for (let i = 0; i < paragraphs.length; i++) {
+        const paragraph = paragraphs[i]
+        if (!paragraph) continue
 
-      await simulateTyping(computeTypingDuration(paragraph), sendTypingAction)
-      const sentId = await sendMessageWithReply(paragraph, i === 0 ? msg.replyTo : undefined)
+        if (i > 0) {
+          const pause =
+            THINKING.INTER_PARAGRAPH_MIN_MS +
+            Math.random() * (THINKING.INTER_PARAGRAPH_MAX_MS - THINKING.INTER_PARAGRAPH_MIN_MS)
+          await new Promise((resolve) => setTimeout(resolve, pause))
+        }
 
-      await pushToActiveConversation([{ role: "anima", text: paragraph, timestamp: nowISO(), messageId: sentId }])
+        await simulateTyping(computeTypingDuration(paragraph), sendTypingAction)
+        const sentId = await sendMessageWithReply(paragraph, i === 0 ? msg.replyTo : undefined)
+
+        await pushToActiveConversation([{ role: "anima", text: paragraph, timestamp: nowISO(), messageId: sentId }])
+      }
     }
 
     allTexts.push(msg.text)

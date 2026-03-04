@@ -7,7 +7,8 @@ export const ConversationMessage = z.object({
   role: z.enum(["operator", "anima"]),
   text: z.string(),
   timestamp: z.string(),
-  messageId: z.number()
+  messageId: z.number(),
+  isVoice: z.boolean().optional()
 })
 export type ConversationMessage = z.infer<typeof ConversationMessage>
 

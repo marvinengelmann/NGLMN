@@ -1,6 +1,8 @@
-import { Api } from "grammy"
+import { Api, InputFile } from "grammy"
 import { env } from "@/config/env.ts"
+import { speechToText } from "@/integrations/elevenlabs.ts"
 import { storeOperatorLocationFromTelegram } from "@/integrations/location.ts"
+import { log } from "@/lib/logger.ts"
 import { getLastUpdateId } from "@/memory/working.ts"
 import type { DriftReport, GuardianResult } from "@/security/types.ts"
 import type { AlertLevel, PendingMessage } from "./types.ts"
@@ -47,6 +49,27 @@ export async function fetchNewMessages(timeout: number): Promise<{
       continue
     }
 
+    if (telegramMessage.voice) {
+      try {
+        const audioBuffer = await downloadFile(telegramMessage.voice.file_id)
+        const transcription = await speechToText(audioBuffer)
+        messages.push({
+          updateId: update.update_id,
+          chatId: telegramMessage.chat.id,
+          from: telegramMessage.from?.first_name ?? "Unknown",
+          text: transcription,
+          date: telegramMessage.date,
+          messageId: telegramMessage.message_id,
+          replyToText: telegramMessage.reply_to_message?.text,
+          isVoice: true,
+          voiceDurationSeconds: telegramMessage.voice.duration
+        })
+      } catch (error) {
+        log.warn("Failed to transcribe voice message", { error: String(error) })
+      }
+      continue
+    }
+
     if (!telegramMessage.text) continue
 
     messages.push({
@@ -56,7 +79,8 @@ export async function fetchNewMessages(timeout: number): Promise<{
       text: telegramMessage.text,
       date: telegramMessage.date,
       messageId: telegramMessage.message_id,
-      replyToText: telegramMessage.reply_to_message?.text
+      replyToText: telegramMessage.reply_to_message?.text,
+      isVoice: false
     })
   }
 
@@ -158,4 +182,41 @@ export async function sendDriftAlert(report: DriftReport): Promise<void> {
 
   const level: AlertLevel = highSignals.length > 0 ? "critical" : "warning"
   await sendAlert(level, `Drift detected (${report.signals.length} signals)\n${details}`)
+}
+
+/**
+ * Download a file from Telegram by file ID.
+ * @param fileId - The Telegram file_id to download.
+ * @returns File contents as a Buffer.
+ */
+export async function downloadFile(fileId: string): Promise<Buffer> {
+  const file = await bot.getFile(fileId)
+  const filePath = file.file_path
+  if (!filePath) throw new Error("Telegram returned no file_path for file")
+
+  const url = `https://api.telegram.org/file/bot${env().TELEGRAM_BOT_TOKEN}/${filePath}`
+  const response = await fetch(url)
+  if (!response.ok) throw new Error(`Failed to download file: ${response.status}`)
+
+  return Buffer.from(await response.arrayBuffer())
+}
+
+/**
+ * Send a voice message (OGG/OPUS) to the operator.
+ * @param oggBuffer - Audio in OGG/OPUS format.
+ * @param replyToMessageId - Optional message ID to reply to.
+ * @returns The sent message ID.
+ */
+export async function sendVoiceToOperator(oggBuffer: Buffer, replyToMessageId?: number): Promise<number> {
+  const sent = await bot.sendVoice(operatorChatId, new InputFile(oggBuffer, "voice.ogg"), {
+    ...(replyToMessageId ? { reply_parameters: { message_id: replyToMessageId } } : {})
+  })
+  return sent.message_id
+}
+
+/**
+ * Send a "record_voice" chat action to simulate recording before sending a voice message.
+ */
+export async function sendRecordVoiceAction(): Promise<void> {
+  await bot.sendChatAction(operatorChatId, "record_voice")
 }

@@ -71,7 +71,8 @@ export async function sense(): Promise<SenseResult> {
         role: "operator" as const,
         text: m.text,
         timestamp: new Date(m.date * 1000).toISOString(),
-        messageId: m.messageId ?? 0
+        messageId: m.messageId ?? 0,
+        isVoice: m.isVoice || undefined
       }))
     )
   }
