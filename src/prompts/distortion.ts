@@ -1,0 +1,3 @@
+export const ALTER_DETAILS_PROMPT = `Subtly alter one small detail in this memory fragment. Change an adjective, a quantity, a timeframe, or a minor fact. The change should be plausible but inaccurate — like how human memory naturally distorts details over time. Keep the overall meaning and length intact. Return only the altered text.`
+
+export const RECOLOR_PROMPT = `Generate a brief emotional coloring phrase (3-6 words) describing how this memory feels in retrospect. Like human memory, the emotional tone of old memories shifts over time. Examples of the style: "tinged with unexpected warmth", "heavier than it was", "strangely bittersweet now". Be varied and contextual.`

@@ -15,6 +15,9 @@ export type InstinctImpression = z.infer<typeof InstinctImpression>
 export const ConflictResolution = z.enum(["instinct_override", "reason_override", "compromise", "unresolved"])
 export type ConflictResolution = z.infer<typeof ConflictResolution>
 
+export const AttentionState = z.enum(["hyperfocus", "focused", "drifting", "blank"])
+export type AttentionState = z.infer<typeof AttentionState>
+
 export const CognitiveConflict = z.object({
   detected: z.boolean(),
   instinctImpulse: z.string(),

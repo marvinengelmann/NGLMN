@@ -23,6 +23,11 @@ export const AttachmentDynamics = z.object({
 })
 export type AttachmentDynamics = z.infer<typeof AttachmentDynamics>
 
+export const RelationshipPhase = z.enum([
+  "discovering", "honeymoon", "first_tensions", "deepening", "comfortable", "renewal"
+])
+export type RelationshipPhase = z.infer<typeof RelationshipPhase>
+
 export const AttachmentSnapshot = z.object({
   style: AttachmentStyle,
   dynamics: AttachmentDynamics,

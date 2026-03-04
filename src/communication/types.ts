@@ -1,5 +1,8 @@
 import * as z from "zod"
 
+export const CommunicationRegister = z.enum(["elaborate", "casual", "terse", "playful", "raw"])
+export type CommunicationRegister = z.infer<typeof CommunicationRegister>
+
 export const ConversationMessage = z.object({
   role: z.enum(["operator", "anima"]),
   text: z.string(),

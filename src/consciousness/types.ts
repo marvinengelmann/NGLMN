@@ -1,6 +1,7 @@
 import * as z from "zod"
 import { AttachmentDynamics } from "@/attachment/types.ts"
-import { CognitiveConflict, InstinctImpression } from "@/cognition/types.ts"
+import { AttentionState, CognitiveConflict, InstinctImpression } from "@/cognition/types.ts"
+import { CommunicationRegister } from "@/communication/types.ts"
 import { DissonanceState } from "@/dissonance/types.ts"
 import { DreamThinkResult } from "@/dream/types.ts"
 import { EmotionalState, MoodContext } from "@/emotion/types.ts"
@@ -11,6 +12,7 @@ import { InnerDialog } from "@/polyphony/types.ts"
 import { SelfConcept } from "@/psyche/types.ts"
 import { MorningThinkResult, ReflectionOutput } from "@/routine/types.ts"
 import { SomaticState } from "@/soma/types.ts"
+import { OperatorModel } from "@/mind/types.ts"
 import { VulnerabilityState } from "@/vulnerability/types.ts"
 import { WorkflowDefinition } from "@/workflow/types.ts"
 
@@ -37,7 +39,11 @@ export const AnimaDecision = z.object({
       capabilityGap: z.string().optional()
     })
     .optional(),
-  workflowId: z.string().uuid().nullable().default(null)
+  workflowId: z.string().uuid().nullable().default(null),
+  corrections: z.array(z.object({
+    text: z.string(),
+    replyTo: z.number().optional()
+  })).default([])
 })
 export type AnimaDecision = z.infer<typeof AnimaDecision>
 
@@ -89,7 +95,10 @@ export const FeelingResult = z.object({
   dissonance: DissonanceState,
   vulnerability: VulnerabilityState,
   attachmentDynamics: AttachmentDynamics,
-  selfConcept: SelfConcept
+  selfConcept: SelfConcept,
+  register: CommunicationRegister,
+  attentionState: AttentionState,
+  operatorModel: OperatorModel
 })
 export type FeelingResult = z.infer<typeof FeelingResult>
 

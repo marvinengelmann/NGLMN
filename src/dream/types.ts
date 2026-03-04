@@ -29,7 +29,8 @@ export const CreativeConnectionsOutput = z.object({
       actionable: z.boolean(),
       suggestedGoal: z.string().nullable()
     })
-  )
+  ),
+  existentialQuestions: z.array(z.string()).default([])
 })
 export type CreativeConnectionsOutput = z.infer<typeof CreativeConnectionsOutput>
 

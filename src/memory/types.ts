@@ -26,7 +26,7 @@ export const RelationType = z.enum([
 ])
 export type RelationType = z.infer<typeof RelationType>
 
-export const EpisodicCategory = z.enum(["interaction", "task", "observation", "dream", "evolution", "relationship"])
+export const EpisodicCategory = z.enum(["interaction", "task", "observation", "dream", "evolution", "relationship", "humor"])
 export type EpisodicCategory = z.infer<typeof EpisodicCategory>
 
 export const EpisodeMetadata = z.object({
