@@ -125,6 +125,19 @@ export const MESSAGE_DELAY = {
   MAX_JITTER_MS: 1500
 } as const
 
+export const SOMA = {
+  HALF_LIVES: {
+    tension: 180,
+    warmth: 360,
+    heartRate: 60,
+    breathing: 120,
+    gravity: 480,
+    openness: 540
+  },
+  MEMORY_BLEND_WEIGHT: 0.15,
+  MEMORY_QUERY_TOP_K: 5
+} as const
+
 export const REFLECTION = {
   COOLDOWN_HOURS: 6,
   INTENSITY_THRESHOLD: 0.45,

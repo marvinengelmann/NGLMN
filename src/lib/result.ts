@@ -21,6 +21,14 @@ export type AnimaErrorTag =
   | "DREAM_ERROR"
   | "MORNING_ERROR"
   | "CONFIG_ERROR"
+  | "SOMA_ERROR"
+  | "COGNITION_ERROR"
+  | "POLYPHONY_ERROR"
+  | "ATTACHMENT_ERROR"
+  | "PSYCHE_ERROR"
+  | "DISSONANCE_ERROR"
+  | "VULNERABILITY_ERROR"
+  | "FEEL_ERROR"
   | "UNKNOWN_ERROR"
 
 export interface AnimaError {

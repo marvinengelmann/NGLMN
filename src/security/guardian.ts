@@ -204,7 +204,15 @@ const ALLOWED_EVOLUTION_PREFIXES = [
   "src/prompts/",
   "src/test/",
   "src/trigger/",
-  "src/trust/"
+  "src/trust/",
+  "src/consciousness/",
+  "src/soma/",
+  "src/cognition/",
+  "src/polyphony/",
+  "src/attachment/",
+  "src/psyche/",
+  "src/dissonance/",
+  "src/vulnerability/"
 ]
 
 const MAX_EVOLUTION_FILE_SIZE = 50 * 1024

@@ -158,6 +158,39 @@ export function applyCrossCoupling(state: EmotionalState): EmotionalState {
 }
 
 /**
+ * Compute emotional intensity as max deviation from neutral (0.5) across all dimensions.
+ */
+export function computeEmotionalIntensity(emotion: EmotionalState): number {
+  return Math.max(...Object.values(emotion).map((v) => Math.abs(v - 0.5))) * 2
+}
+
+/**
+ * Summarize emotions that deviate significantly from neutral as "dim: value" pairs.
+ */
+export function summarizeEmotions(emotion: EmotionalState, threshold = 0.1): string {
+  return Object.entries(emotion)
+    .filter(([, v]) => Math.abs(v - 0.5) > threshold)
+    .map(([k, v]) => `${k}: ${v.toFixed(2)}`)
+    .join(", ")
+}
+
+/**
+ * Compute per-dimension deltas between two emotional states, filtered by threshold.
+ */
+export function computeEmotionDeltas(
+  current: EmotionalState,
+  previous: EmotionalState,
+  threshold = 0.03
+): string {
+  const changes = (Object.keys(current) as (keyof EmotionalState)[])
+    .map((dim) => ({ dim, diff: current[dim] - previous[dim] }))
+    .filter(({ diff }) => Math.abs(diff) > threshold)
+    .map(({ dim, diff }) => `${dim} ${diff > 0 ? "+" : ""}${diff.toFixed(2)}`)
+
+  return changes.length > 0 ? changes.join(", ") : "stable"
+}
+
+/**
  * Compute a new emotional state from current state, events, context, and timing.
  * 1. Compute dynamic mood baseline from context
  * 2. Apply time-based drift towards baseline

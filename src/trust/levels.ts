@@ -48,3 +48,22 @@ export async function ensureTrustLevel(actionType: ActionType): Promise<void> {
 export async function getAllTrustLevels() {
   return db.select().from(trustLevels)
 }
+
+/**
+ * Compute aggregate trust experience (0-1) across all action types.
+ * Returns 0.5 if no trust data exists yet.
+ */
+export async function getAggregateTrustExperience(): Promise<number> {
+  const levels = await getAllTrustLevels()
+  if (levels.length === 0) return 0.5
+
+  let totalAttempts = 0
+  let totalSuccesses = 0
+  for (const level of levels) {
+    totalAttempts += level.totalAttempts ?? 0
+    totalSuccesses += level.successfulAttempts ?? 0
+  }
+
+  if (totalAttempts === 0) return 0.5
+  return Math.min(1, totalSuccesses / totalAttempts)
+}

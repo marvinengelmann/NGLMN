@@ -27,6 +27,14 @@ export function nowFilename(): string {
 }
 
 /**
+ * Returns elapsed minutes since the given ISO timestamp, minimum 1.
+ */
+export function elapsedMinutesSince(timestamp: string | null): number {
+  if (!timestamp) return 1
+  return Math.max(1, (Date.now() - new Date(timestamp).getTime()) / 60000)
+}
+
+/**
  * Returns a promise that resolves after the specified number of milliseconds.
  */
 export function sleep(ms: number): Promise<void> {

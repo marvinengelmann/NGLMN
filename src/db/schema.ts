@@ -212,3 +212,80 @@ export const semanticRelations = pgTable(
 
 export type SemanticRelationInsert = typeof semanticRelations.$inferInsert
 export type SemanticRelationSelect = typeof semanticRelations.$inferSelect
+
+export const somaticHistory = pgTable(
+  "somatic_history",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    state: jsonb("state").notNull(),
+    trigger: text("trigger").notNull(),
+    tickId: text("tick_id"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow()
+  },
+  (table) => [index("idx_somatic_history_created").on(table.createdAt)]
+)
+
+export type SomaticHistoryInsert = typeof somaticHistory.$inferInsert
+export type SomaticHistorySelect = typeof somaticHistory.$inferSelect
+
+export const psycheSnapshots = pgTable(
+  "psyche_snapshots",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    selfConcept: jsonb("self_concept").notNull(),
+    aspirations: jsonb("aspirations"),
+    fears: jsonb("fears"),
+    narrativeSummary: text("narrative_summary"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow()
+  },
+  (table) => [index("idx_psyche_snapshots_created").on(table.createdAt)]
+)
+
+export type PsycheSnapshotInsert = typeof psycheSnapshots.$inferInsert
+export type PsycheSnapshotSelect = typeof psycheSnapshots.$inferSelect
+
+export const narrativeEntries = pgTable(
+  "narrative_entries",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    content: text("content").notNull(),
+    emotionalColoring: text("emotional_coloring").notNull(),
+    significance: real("significance").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow()
+  },
+  (table) => [index("idx_narrative_entries_created").on(table.createdAt)]
+)
+
+export type NarrativeEntryInsert = typeof narrativeEntries.$inferInsert
+export type NarrativeEntrySelect = typeof narrativeEntries.$inferSelect
+
+export const attachmentLog = pgTable(
+  "attachment_log",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    style: jsonb("style").notNull(),
+    dynamics: jsonb("dynamics").notNull(),
+    trigger: text("trigger").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow()
+  },
+  (table) => [index("idx_attachment_log_created").on(table.createdAt)]
+)
+
+export type AttachmentLogInsert = typeof attachmentLog.$inferInsert
+export type AttachmentLogSelect = typeof attachmentLog.$inferSelect
+
+export const dissonanceLog = pgTable(
+  "dissonance_log",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    declaredValue: text("declared_value").notNull(),
+    actualAction: text("actual_action").notNull(),
+    dissonanceScore: real("dissonance_score").notNull(),
+    resolution: text("resolution"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow()
+  },
+  (table) => [index("idx_dissonance_log_created").on(table.createdAt)]
+)
+
+export type DissonanceLogInsert = typeof dissonanceLog.$inferInsert
+export type DissonanceLogSelect = typeof dissonanceLog.$inferSelect
