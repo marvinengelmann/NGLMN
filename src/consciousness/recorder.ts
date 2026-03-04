@@ -1,4 +1,4 @@
-import type { AnimaDecision, MaintainInput, ThinkResult, TickSummary } from "@/consciousness/types.ts"
+import type { AnimaDecision, DeliberateResult, MaintainInput, TickSummary } from "@/consciousness/types.ts"
 import { db } from "@/db/client.ts"
 import { dreamLog, tickLog } from "@/db/schema.ts"
 import { saveEmotionalState } from "@/emotion/state.ts"
@@ -43,11 +43,11 @@ export async function logTick(input: MaintainInput, durationMs: number): Promise
 /**
  * Log action-specific results (dream, morning, reflect) to the dream_log table.
  */
-export async function logActionResult(decision: AnimaDecision, thinkResult: ThinkResult): Promise<void> {
+export async function logActionResult(decision: AnimaDecision, deliberateResult: DeliberateResult): Promise<void> {
   switch (decision.action) {
     case "dream": {
-      if (!thinkResult.dreamResult) break
-      const dr = thinkResult.dreamResult
+      if (!deliberateResult.dreamResult) break
+      const dr = deliberateResult.dreamResult
       await db.insert(dreamLog).values({
         phase: "dream",
         summary: `Dream: ${dr.consolidation ? "consolidation" : "no-consolidation"}, ${dr.creative ? "creative" : "no-creative"}, ${dr.insights.length} insights`,
@@ -61,8 +61,8 @@ export async function logActionResult(decision: AnimaDecision, thinkResult: Thin
     }
 
     case "morning": {
-      if (!thinkResult.morningResult) break
-      const mr = thinkResult.morningResult
+      if (!deliberateResult.morningResult) break
+      const mr = deliberateResult.morningResult
       await db.insert(dreamLog).values({
         phase: "morning",
         summary: `Morning: ${mr.reflection.insights.length} reflection insights, message ${mr.morningMessage ? "sent" : "empty"}`,
@@ -76,11 +76,11 @@ export async function logActionResult(decision: AnimaDecision, thinkResult: Thin
     }
 
     case "reflect": {
-      if (!thinkResult.reflectionResult) break
+      if (!deliberateResult.reflectionResult) break
       await db.insert(dreamLog).values({
         phase: "reflection",
-        summary: `Reflection: ${thinkResult.reflectionResult.insights.length} insights`,
-        insights: thinkResult.reflectionResult
+        summary: `Reflection: ${deliberateResult.reflectionResult.insights.length} insights`,
+        insights: deliberateResult.reflectionResult
       })
       break
     }

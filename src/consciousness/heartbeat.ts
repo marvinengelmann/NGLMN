@@ -11,12 +11,13 @@ import {
   setConversationWaitingSince
 } from "@/memory/working.ts"
 import { act } from "./act.ts"
+import { deliberate } from "./deliberate.ts"
+import { feel } from "./feel.ts"
 import { maintain } from "./maintain.ts"
 import { sense } from "./sense.ts"
-import { think } from "./think.ts"
 
 /**
- * Run the heartbeat loop: SENSE → THINK → ACT, repeat while in conversation.
+ * Run the heartbeat loop: SENSE → FEEL → DELIBERATE → ACT, repeat while in conversation.
  * MAINTAIN runs once at the end.
  */
 export async function runHeartbeat() {
@@ -29,20 +30,23 @@ export async function runHeartbeat() {
   await setBusy(tickId)
 
   try {
-    let lastDecision: Awaited<ReturnType<typeof think>> | null = null
+    let lastDecision: Awaited<ReturnType<typeof deliberate>> | null = null
     let lastActResult: Awaited<ReturnType<typeof act>> | null = null
     let lastSenseResult: Awaited<ReturnType<typeof sense>> | null = null
+    let lastFeelResult: Awaited<ReturnType<typeof feel>> | null = null
 
     while (true) {
       const senseResult = await sense()
-      const thinkResult = await think(senseResult)
-      const actResult = await act(thinkResult, senseResult)
+      const feelResult = await feel(senseResult)
+      const deliberateResult = await deliberate(senseResult, feelResult)
+      const actResult = await act(deliberateResult, senseResult, feelResult)
 
-      lastDecision = thinkResult
+      lastDecision = deliberateResult
       lastActResult = actResult
       lastSenseResult = senseResult
+      lastFeelResult = feelResult
 
-      if (!thinkResult.decision.expectsReply) break
+      if (!deliberateResult.decision.expectsReply) break
 
       const waitingSince = await getConversationWaitingSince()
       if (!waitingSince) {
@@ -58,7 +62,7 @@ export async function runHeartbeat() {
 
     await clearConversationWaitingSince()
 
-    if (lastDecision && lastActResult && lastSenseResult) {
+    if (lastDecision && lastActResult && lastSenseResult && lastFeelResult) {
       return await maintain(
         {
           tickId,
@@ -68,7 +72,8 @@ export async function runHeartbeat() {
           actResult: lastActResult,
           senseResult: lastSenseResult
         },
-        lastDecision
+        lastDecision,
+        lastFeelResult
       )
     }
   } finally {

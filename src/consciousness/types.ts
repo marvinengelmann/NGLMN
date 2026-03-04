@@ -1,10 +1,17 @@
 import * as z from "zod"
+import { AttachmentDynamics } from "@/attachment/types.ts"
+import { CognitiveConflict, InstinctImpression } from "@/cognition/types.ts"
+import { DissonanceState } from "@/dissonance/types.ts"
 import { DreamThinkResult } from "@/dream/types.ts"
 import { EmotionalState, MoodContext } from "@/emotion/types.ts"
 import { HealthCheckResult } from "@/health/types.ts"
 import { PendingMessage, WeatherData } from "@/integrations/types.ts"
 import { PerceptionSummary } from "@/perception/types.ts"
+import { InnerDialog } from "@/polyphony/types.ts"
+import { SelfConcept } from "@/psyche/types.ts"
 import { MorningThinkResult, ReflectionOutput } from "@/routine/types.ts"
+import { SomaticState } from "@/soma/types.ts"
+import { VulnerabilityState } from "@/vulnerability/types.ts"
 import { WorkflowDefinition } from "@/workflow/types.ts"
 
 export const AnimaAction = z.enum(["idle", "reflect", "update_goal", "evolve", "dream", "morning"])
@@ -76,13 +83,26 @@ export const SenseData = z.object({
 })
 export type SenseData = z.infer<typeof SenseData>
 
-export const ThinkResult = z.object({
+export const FeelingResult = z.object({
+  soma: SomaticState,
+  instinct: InstinctImpression,
+  dissonance: DissonanceState,
+  vulnerability: VulnerabilityState,
+  attachmentDynamics: AttachmentDynamics,
+  selfConcept: SelfConcept
+})
+export type FeelingResult = z.infer<typeof FeelingResult>
+
+export const DeliberateResult = z.object({
   decision: AnimaDecision,
   dreamResult: DreamThinkResult.optional(),
   reflectionResult: ReflectionOutput.optional(),
-  morningResult: MorningThinkResult.optional()
+  morningResult: MorningThinkResult.optional(),
+  innerDialog: InnerDialog.optional(),
+  cognitiveConflict: CognitiveConflict.optional(),
+  instinctOverride: z.boolean().default(false)
 })
-export type ThinkResult = z.infer<typeof ThinkResult>
+export type DeliberateResult = z.infer<typeof DeliberateResult>
 
 export const ActResult = z.object({
   responseSent: z.boolean(),

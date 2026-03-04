@@ -1,23 +1,35 @@
 import { sendMessages } from "@/communication/messaging.ts"
 import { EMOTIONAL_THRESHOLDS, TRIGGER_INTENSITY } from "@/config/constants.ts"
+import { db } from "@/db/client.ts"
+import { narrativeEntries } from "@/db/schema.ts"
+import { isDissonanceSignificant } from "@/dissonance/check.ts"
 import { executeDream } from "@/dream/executor.ts"
 import { saveEmotionalState } from "@/emotion/state.ts"
-import { computeEmotionalUpdate } from "@/emotion/update.ts"
+import { computeEmotionalIntensity, computeEmotionalUpdate, summarizeEmotions } from "@/emotion/update.ts"
 import { runEvolutionCycle } from "@/evolution/cycle.ts"
 import { log } from "@/lib/logger.ts"
 import { logAndCaptureError, trySafe } from "@/lib/result.ts"
 import { storeEpisode, storeRelationshipEpisode } from "@/memory/episodic.ts"
 import { executeGoalUpdate } from "@/memory/goals.ts"
+import { generateNarrativeEntry } from "@/psyche/narrative.ts"
+import { savePsycheSnapshot, saveSelfConcept } from "@/psyche/state.ts"
+import { updateSelfConcept } from "@/psyche/update.ts"
 import { executeMorning, executeReflection } from "@/routine/executor.ts"
+import { saveSomaticState } from "@/soma/state.ts"
+import { computeSomaticUpdate } from "@/soma/update.ts"
 import { executeWorkflow } from "@/workflow/engine.ts"
-import type { ActResult, SenseResult, ThinkResult } from "./types.ts"
+import type { ActResult, DeliberateResult, FeelingResult, SenseResult } from "./types.ts"
 
 /**
  * ACT phase — pure executor. No LLM calls, no decisions.
- * Sends messages and executes the action decided by THINK.
+ * Sends messages, executes action, then updates soma + psyche post-action.
  */
-export async function act(thinkResult: ThinkResult, senseResult: SenseResult): Promise<ActResult> {
-  const { decision } = thinkResult
+export async function act(
+  deliberateResult: DeliberateResult,
+  senseResult: SenseResult,
+  feelResult: FeelingResult
+): Promise<ActResult> {
+  const { decision } = deliberateResult
   let responseSent = false
   let responseText: string | undefined
 
@@ -27,7 +39,7 @@ export async function act(thinkResult: ThinkResult, senseResult: SenseResult): P
     responseText = result.responseText
   }
 
-  await executeAction(thinkResult)
+  await executeAction(deliberateResult)
 
   if (decision.workflowId) {
     const workflow = senseResult.triggeredWorkflows.find((wf) => wf.id === decision.workflowId)
@@ -50,6 +62,50 @@ export async function act(thinkResult: ThinkResult, senseResult: SenseResult): P
       { trigger: "message_sent", intensity: TRIGGER_INTENSITY.MESSAGE_SENT }
     ])
     await saveEmotionalState(outcomeEmotion, "message_sent")
+
+    const postActionSoma = computeSomaticUpdate(feelResult.soma, outcomeEmotion, 0)
+    await saveSomaticState(postActionSoma, "post_action")
+  }
+
+  const isAutoAction = decision.action !== "idle" && decision.action !== "reflect"
+  const updatedConcept = updateSelfConcept(feelResult.selfConcept, {
+    recentTaskSuccess: responseSent,
+    recentTaskFailure: false,
+    messageSentCount: decision.messages.length,
+    emotionalIntensity: computeEmotionalIntensity(senseResult.emotion),
+    operatorEngagement: senseResult.pendingMessages.length > 0,
+    autonomousAction: isAutoAction,
+    vulnerabilityOpen: feelResult.vulnerability.windowOpen,
+    dissonanceDetected: isDissonanceSignificant(feelResult.dissonance.activeDissonance),
+    elapsedHours: 1 / 60
+  })
+  await saveSelfConcept(updatedConcept)
+
+  if (decision.action === "reflect" || decision.action === "morning") {
+    const emotionSummary = summarizeEmotions(senseResult.emotion)
+
+    const entry = await generateNarrativeEntry(
+      `${decision.action}: ${decision.reasoning.slice(0, 200)}`,
+      emotionSummary,
+      updatedConcept
+    )
+    if (entry) {
+      await db.insert(narrativeEntries).values({
+        content: entry.content,
+        emotionalColoring: entry.emotionalColoring,
+        significance: entry.significance
+      })
+
+      await savePsycheSnapshot({
+        selfConcept: updatedConcept,
+        aspirations: [],
+        fears: [],
+        narrativeSummary: `[${entry.emotionalColoring}] ${entry.content}`,
+        timestamp: entry.timestamp
+      })
+
+      log.info("Narrative entry persisted", { significance: entry.significance })
+    }
   }
 
   const summary = `${decision.action}: ${decision.reasoning.slice(0, 200)}`
@@ -64,15 +120,15 @@ export async function act(thinkResult: ThinkResult, senseResult: SenseResult): P
   return { responseSent, responseText, actionExecuted: decision.action }
 }
 
-async function executeAction(thinkResult: ThinkResult): Promise<void> {
-  const { decision } = thinkResult
+async function executeAction(deliberateResult: DeliberateResult): Promise<void> {
+  const { decision } = deliberateResult
 
   switch (decision.action) {
     case "idle":
       break
 
     case "reflect": {
-      const reflectionOutput = thinkResult.reflectionResult
+      const reflectionOutput = deliberateResult.reflectionResult
       if (reflectionOutput) {
         const result = await trySafe("REFLECTION_ERROR", () => executeReflection(reflectionOutput))
         if (result.isErr()) logAndCaptureError(result.error, { phase: "act_reflect" })
@@ -102,7 +158,7 @@ async function executeAction(thinkResult: ThinkResult): Promise<void> {
     }
 
     case "dream": {
-      const dreamResult = thinkResult.dreamResult
+      const dreamResult = deliberateResult.dreamResult
       if (dreamResult) {
         const result = await trySafe("DREAM_ERROR", () => executeDream(dreamResult))
         if (result.isErr()) logAndCaptureError(result.error, { phase: "act_dream" })
@@ -112,7 +168,7 @@ async function executeAction(thinkResult: ThinkResult): Promise<void> {
     }
 
     case "morning": {
-      const morningResult = thinkResult.morningResult
+      const morningResult = deliberateResult.morningResult
       if (morningResult) {
         const result = await trySafe("MORNING_ERROR", () => executeMorning(morningResult))
         if (result.isErr()) logAndCaptureError(result.error, { phase: "act_morning" })

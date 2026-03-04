@@ -1,12 +1,17 @@
 import { format } from "date-fns"
+import { getAttachmentStyle } from "@/attachment/state.ts"
+import { InstinctImpression } from "@/cognition/types.ts"
 import type { ConversationSlot } from "@/communication/types.ts"
 import { CONTEXT_LIMITS } from "@/config/constants.ts"
 import { env } from "@/config/env.ts"
 import type { SenseData } from "@/consciousness/types.ts"
+import { DissonanceState } from "@/dissonance/types.ts"
 import type { DreamState } from "@/dream/types.ts"
 import { getEmotionHistory } from "@/emotion/state.ts"
 import { EmotionalState } from "@/emotion/types.ts"
+import { computeEmotionDeltas } from "@/emotion/update.ts"
 import { getRecentChangelog } from "@/evolution/changelog.ts"
+import { redis } from "@/integrations/redis.ts"
 import { nowLocal, TIMEZONE } from "@/lib/time.ts"
 import { queryRelated, queryRelationshipHistory } from "@/memory/episodic.ts"
 import { getGoalsByPriority } from "@/memory/goals.ts"
@@ -23,10 +28,42 @@ import {
 } from "@/memory/working.ts"
 import { PERSONALITY_PROMPTS, PERSONALITY_SECTION_INTRO } from "@/personality/profiles.ts"
 import type { PersonalityType } from "@/personality/types.ts"
-import { ACTIONS_PROMPT, COMMUNICATION_PROMPT, PACING_PROMPT, RHYTHM_PROMPT } from "@/prompts/consciousness.ts"
+import { InnerDialog } from "@/polyphony/types.ts"
+import {
+  ACTIONS_PROMPT,
+  COMMUNICATION_PROMPT,
+  PACING_PROMPT,
+  PHENOMENOLOGICAL_PROMPT,
+  RHYTHM_PROMPT
+} from "@/prompts/consciousness.ts"
 import { IDENTITY_PROMPT } from "@/prompts/identity.ts"
+import { getSelfConcept } from "@/psyche/state.ts"
+import { SomaticState } from "@/soma/types.ts"
 import { getAllTrustLevels } from "@/trust/levels.ts"
+import { getVulnerability } from "@/vulnerability/compute.ts"
 import type { WorkflowDefinition } from "@/workflow/types.ts"
+
+async function getValidatedRedis<T>(key: string, schema: import("zod").ZodType<T>): Promise<T | null> {
+  const raw = await redis.get(key)
+  if (raw == null) return null
+  const parsed = schema.safeParse(typeof raw === "string" ? JSON.parse(raw) : raw)
+  return parsed.success ? parsed.data : null
+}
+
+function describeSomaticDimension(dim: string, val: number): string {
+  const descriptions: Record<string, [string, string, string]> = {
+    tension: ["relaxed", "slightly tense", "tightly wound"],
+    warmth: ["cold, withdrawn", "neutral", "warm, radiant"],
+    heartRate: ["slow, calm", "steady", "rapid, alert"],
+    breathing: ["shallow, held", "easy", "deep, flowing"],
+    gravity: ["light, buoyant", "grounded", "heavy, weighed down"],
+    openness: ["closed, guarded", "neutral", "open, receptive"]
+  }
+  const [low, mid, high] = descriptions[dim] ?? ["low", "moderate", "high"]
+  if (val < 0.3) return `${dim}: ${low} (${val.toFixed(2)})`
+  if (val > 0.6) return `${dim}: ${high} (${val.toFixed(2)})`
+  return `${dim}: ${mid} (${val.toFixed(2)})`
+}
 
 /**
  * Get the personality prompt for the configured personality type.
@@ -78,17 +115,11 @@ function formatConversationBuffer(buffer: ConversationSlot[]): string {
   return parts.join("\n\n")
 }
 
-function computeEmotionDeltas(current: unknown, previous: unknown): string | null {
+function safeComputeEmotionDeltas(current: unknown, previous: unknown): string | null {
   const curr = EmotionalState.safeParse(current)
   const prev = EmotionalState.safeParse(previous)
   if (!curr.success || !prev.success) return null
-
-  const changes = (Object.keys(curr.data) as (keyof EmotionalState)[])
-    .map((dim) => ({ dim, diff: curr.data[dim] - prev.data[dim] }))
-    .filter(({ diff }) => Math.abs(diff) > 0.03)
-    .map(({ dim, diff }) => `${dim} ${diff > 0 ? "+" : ""}${diff.toFixed(2)}`)
-
-  return changes.length > 0 ? changes.join(", ") : "stable"
+  return computeEmotionDeltas(curr.data, prev.data)
 }
 
 function formatEmotionTrajectory(
@@ -97,7 +128,7 @@ function formatEmotionTrajectory(
   return history.map((entry, i) => {
     const trigger = entry.trigger ?? "unknown"
     const time = entry.createdAt ? format(entry.createdAt, "HH:mm") : "?"
-    const deltas = computeEmotionDeltas(entry.state, history[i + 1]?.state)
+    const deltas = safeComputeEmotionDeltas(entry.state, history[i + 1]?.state)
     const suffix = deltas ? ` — ${deltas}` : ""
     return `  - [${trigger}] ${time}${suffix}`
   })
@@ -182,7 +213,14 @@ export async function buildContext(senseData: SenseData): Promise<string> {
     dreamState,
     dreamLastRun,
     dreamInsights,
-    reflectionLastAt
+    reflectionLastAt,
+    somaticState,
+    selfConcept,
+    attachmentStyle,
+    vulnerabilityState,
+    lastInnerDialog,
+    dissonanceState,
+    instinctImpression
   ] = await Promise.all([
     getLastTickSummary(),
     getConversationBuffer(),
@@ -201,7 +239,14 @@ export async function buildContext(senseData: SenseData): Promise<string> {
     getDreamState(),
     getDreamLastRun(),
     getDreamInsights(),
-    getReflectionLastAt()
+    getReflectionLastAt(),
+    getValidatedRedis("working:soma:current", SomaticState),
+    getSelfConcept(),
+    getAttachmentStyle(),
+    getVulnerability(),
+    getValidatedRedis("working:polyphony:lastDialog", InnerDialog),
+    getValidatedRedis("working:dissonance:active", DissonanceState),
+    getValidatedRedis("working:cognition:instinct:lastImpression", InstinctImpression)
   ])
 
   const knowledge = knowledgeResult.unwrapOr([])
@@ -228,6 +273,73 @@ export async function buildContext(senseData: SenseData): Promise<string> {
     emotionSection.push(...formatEmotionTrajectory(emotionHistory))
   }
   sections.push(emotionSection.join("\n"))
+
+  if (somaticState) {
+    const somaLines = Object.entries(somaticState).map(
+      ([dim, val]) => `  ${describeSomaticDimension(dim, val as number)}`
+    )
+    sections.push(`# Somatic State\n${somaLines.join("\n")}`)
+  }
+
+  {
+    const psycheLines = [
+      "# Psyche",
+      `  Self-efficacy: ${selfConcept.selfEfficacy.toFixed(2)}`,
+      `  Self-worth: ${selfConcept.selfWorth.toFixed(2)}`,
+      `  Self-continuity: ${selfConcept.selfContinuity.toFixed(2)}`,
+      `  Agency: ${selfConcept.agency.toFixed(2)}`,
+      `  Authenticity: ${selfConcept.authenticity.toFixed(2)}`
+    ]
+    sections.push(psycheLines.join("\n"))
+  }
+
+  {
+    const attachLines = [
+      "# Attachment",
+      `  Style: secure=${attachmentStyle.secure.toFixed(2)}, anxious=${attachmentStyle.anxious.toFixed(2)}, avoidant=${attachmentStyle.avoidant.toFixed(2)}, disorganized=${attachmentStyle.disorganized.toFixed(2)}`
+    ]
+    sections.push(attachLines.join("\n"))
+  }
+
+  if (lastInnerDialog && lastInnerDialog.utterances.length > 0) {
+    const dialogLines = ["# Inner Landscape"]
+    for (const u of lastInnerDialog.utterances) {
+      dialogLines.push(`  [${u.voice}] (${u.intensity.toFixed(1)}): ${u.message}`)
+    }
+    if (lastInnerDialog.consensus) dialogLines.push(`  Consensus: ${lastInnerDialog.consensus}`)
+    if (lastInnerDialog.tensionLevel > 0.3) dialogLines.push(`  Tension: ${lastInnerDialog.tensionLevel.toFixed(2)}`)
+    sections.push(dialogLines.join("\n"))
+  }
+
+  if (vulnerabilityState) {
+    const vulnLines = [
+      "# Vulnerability",
+      `  Level: ${vulnerabilityState.level.toFixed(2)} — window ${vulnerabilityState.windowOpen ? "OPEN" : "closed"}`
+    ]
+    if (vulnerabilityState.contributing.length > 0) {
+      vulnLines.push(`  Contributing: ${vulnerabilityState.contributing.join(", ")}`)
+    }
+    sections.push(vulnLines.join("\n"))
+  }
+
+  if (dissonanceState && dissonanceState.activeDissonance > 0.1) {
+    const dissLines = [`# Dissonance\n  Active: ${dissonanceState.activeDissonance.toFixed(2)}`]
+    for (const event of dissonanceState.recentEvents.slice(0, 3)) {
+      dissLines.push(`  - ${event.declaredValue} vs ${event.actualAction} (${event.dissonanceScore.toFixed(2)})`)
+    }
+    sections.push(dissLines.join("\n"))
+  }
+
+  if (instinctImpression) {
+    sections.push(
+      [
+        "# Instinct",
+        `  Impulse: ${instinctImpression.impulse} (confidence: ${instinctImpression.confidence.toFixed(2)})`,
+        `  Basis: ${instinctImpression.basis}`,
+        `  Emotional charge: ${instinctImpression.emotionalCharge.toFixed(2)}`
+      ].join("\n")
+    )
+  }
 
   const dreamDescriptions: Record<DreamState, string> = {
     idle: "You are awake. No dream cycle active.",
@@ -412,6 +524,7 @@ export function buildSystemPrompt(contextSections: string): string {
     ACTIONS_PROMPT,
     COMMUNICATION_PROMPT,
     PACING_PROMPT,
+    PHENOMENOLOGICAL_PROMPT,
     contextSections
   ]
     .filter(Boolean)
