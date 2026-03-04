@@ -1,6 +1,6 @@
 import * as z from "zod"
 import { DreamThinkResult } from "@/dream/types.ts"
-import { EmotionalState } from "@/emotion/types.ts"
+import { EmotionalState, MoodContext } from "@/emotion/types.ts"
 import { HealthCheckResult } from "@/health/types.ts"
 import { PendingMessage, WeatherData } from "@/integrations/types.ts"
 import { PerceptionSummary } from "@/perception/types.ts"
@@ -59,7 +59,8 @@ export const SenseResult = z.object({
   emotion: EmotionalState,
   health: HealthCheckResult.nullable(),
   conversationState: ConversationState.nullable(),
-  triggeredWorkflows: z.array(WorkflowDefinition).default([])
+  triggeredWorkflows: z.array(WorkflowDefinition).default([]),
+  moodContext: MoodContext
 })
 export type SenseResult = z.infer<typeof SenseResult>
 
@@ -70,7 +71,8 @@ export const SenseData = z.object({
   health: HealthCheckResult.nullable(),
   weather: WeatherData.nullable(),
   conversationState: ConversationState.nullable(),
-  triggeredWorkflows: z.array(WorkflowDefinition).default([])
+  triggeredWorkflows: z.array(WorkflowDefinition).default([]),
+  moodContext: MoodContext
 })
 export type SenseData = z.infer<typeof SenseData>
 

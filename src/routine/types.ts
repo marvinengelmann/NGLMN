@@ -17,7 +17,9 @@ export const ReflectionInput = z.object({
         boredom: z.number().min(0).max(1),
         excitement: z.number().min(0).max(1),
         caution: z.number().min(0).max(1),
-        connection: z.number().min(0).max(1)
+        connection: z.number().min(0).max(1),
+        confidence: z.number().min(0).max(1).default(0.5),
+        energy: z.number().min(0).max(1).default(0.8)
       }),
       trigger: z.string().nullable(),
       createdAt: z.string()

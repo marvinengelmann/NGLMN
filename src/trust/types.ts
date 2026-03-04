@@ -16,8 +16,6 @@ export type AutonomyLevel = z.infer<typeof AutonomyLevel>
 export const TrustAssessment = z.object({
   canAct: z.boolean(),
   requiresApproval: z.boolean(),
-  fearLevel: z.number().min(0).max(1),
-  confidenceLevel: z.number().min(0).max(1),
   experienceFactor: z.number().min(0).max(1),
   reason: z.string(),
   autonomyLevel: AutonomyLevel.optional()

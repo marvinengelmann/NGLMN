@@ -1,5 +1,5 @@
-import { DEFAULT_EMOTIONAL_STATE, type EmotionalState, type MetricsSnapshot } from "@/emotion/types.ts"
-import { clampState } from "./update.ts"
+import type { EmotionalState, MetricsSnapshot, MoodContext } from "@/emotion/types.ts"
+import { clampState, computeMoodBaseline } from "./update.ts"
 
 const MORNING_BASELINE_WEIGHT = 0.7
 const MORNING_CURRENT_WEIGHT = 0.3
@@ -7,18 +7,22 @@ const MORNING_CURRENT_WEIGHT = 0.3
 /**
  * Morning recalibration: strong drift towards baseline.
  * Formula: 0.3 * current + 0.7 * baseline
+ * Energy explicitly set to 0.8 for morning boost.
  */
-export function morningRecalibration(current: EmotionalState): EmotionalState {
-  const baseline = DEFAULT_EMOTIONAL_STATE
-  return clampState({
+export function morningRecalibration(current: EmotionalState, context: MoodContext): EmotionalState {
+  const baseline = computeMoodBaseline(context)
+  const result: EmotionalState = {
     curiosity: current.curiosity * MORNING_CURRENT_WEIGHT + baseline.curiosity * MORNING_BASELINE_WEIGHT,
     satisfaction: current.satisfaction * MORNING_CURRENT_WEIGHT + baseline.satisfaction * MORNING_BASELINE_WEIGHT,
     frustration: current.frustration * MORNING_CURRENT_WEIGHT + baseline.frustration * MORNING_BASELINE_WEIGHT,
     boredom: current.boredom * MORNING_CURRENT_WEIGHT + baseline.boredom * MORNING_BASELINE_WEIGHT,
     excitement: current.excitement * MORNING_CURRENT_WEIGHT + baseline.excitement * MORNING_BASELINE_WEIGHT,
     caution: current.caution * MORNING_CURRENT_WEIGHT + baseline.caution * MORNING_BASELINE_WEIGHT,
-    connection: current.connection * MORNING_CURRENT_WEIGHT + baseline.connection * MORNING_BASELINE_WEIGHT
-  })
+    connection: current.connection * MORNING_CURRENT_WEIGHT + baseline.connection * MORNING_BASELINE_WEIGHT,
+    confidence: current.confidence * MORNING_CURRENT_WEIGHT + baseline.confidence * MORNING_BASELINE_WEIGHT,
+    energy: 0.8
+  }
+  return clampState(result)
 }
 
 /**
@@ -46,6 +50,14 @@ export function metricsRecalibration(current: EmotionalState, metrics: MetricsSn
 
   if (metrics.rollbackCount > 0 && result.caution < 0.5) {
     result.caution += 0.1 * Math.min(metrics.rollbackCount, 3)
+  }
+
+  if (result.confidence > 0.7 && metrics.errorRate > 0.4) {
+    result.confidence -= 0.1
+  }
+
+  if (result.energy > 0.7 && metrics.idleRatio > 0.9) {
+    result.energy -= 0.05
   }
 
   return clampState(result)

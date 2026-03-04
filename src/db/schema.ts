@@ -97,8 +97,6 @@ export type GoalSelect = typeof goals.$inferSelect
 export const trustLevels = pgTable("trust_levels", {
   id: uuid("id").primaryKey().defaultRandom(),
   actionType: text("action_type").notNull(),
-  fear: real("fear").default(0.8),
-  confidence: real("confidence").default(0.1),
   totalAttempts: integer("total_attempts").default(0),
   successfulAttempts: integer("successful_attempts").default(0),
   lastAttemptAt: timestamp("last_attempt_at", { withTimezone: true }),

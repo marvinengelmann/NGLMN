@@ -1,5 +1,5 @@
 {
-  "id": "66bd8c54-3ee6-4c60-961a-931e1f830dcf",
+  "id": "4a32d826-267f-43ca-8828-02255a961bc2",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
@@ -802,20 +802,6 @@
           "type": "text",
           "primaryKey": false,
           "notNull": true
-        },
-        "fear": {
-          "name": "fear",
-          "type": "real",
-          "primaryKey": false,
-          "notNull": false,
-          "default": 0.8
-        },
-        "confidence": {
-          "name": "confidence",
-          "type": "real",
-          "primaryKey": false,
-          "notNull": false,
-          "default": 0.1
         },
         "total_attempts": {
           "name": "total_attempts",

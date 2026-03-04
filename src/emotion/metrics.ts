@@ -40,6 +40,18 @@ export function checkEmotionalAccuracy(emotion: EmotionalState, metrics: Metrics
     )
   }
 
+  if (emotion.confidence < 0.3 && metrics.successRate > 0.8) {
+    discrepancies.push(
+      `Low confidence (${emotion.confidence.toFixed(2)}) despite high success rate (${metrics.successRate.toFixed(2)})`
+    )
+  }
+
+  if (emotion.confidence > 0.8 && metrics.errorRate > 0.4) {
+    discrepancies.push(
+      `High confidence (${emotion.confidence.toFixed(2)}) despite significant error rate (${metrics.errorRate.toFixed(2)})`
+    )
+  }
+
   return discrepancies
 }
 

@@ -1,24 +1,32 @@
-import { differenceInSeconds, parseISO } from "date-fns"
+import { differenceInMinutes, differenceInSeconds, parseISO } from "date-fns"
 import { detectConversationBoundary } from "@/communication/conversation.ts"
 import { HEALTH_CHECK_INTERVAL, HEARTBEAT } from "@/config/constants.ts"
 import { getEmotionalState, saveEmotionalState } from "@/emotion/state.ts"
-import type { EmotionUpdateEvent } from "@/emotion/types.ts"
+import type { EmotionUpdateEvent, MoodContext } from "@/emotion/types.ts"
 import { computeEmotionalUpdate } from "@/emotion/update.ts"
 import { collectHealthStatus } from "@/health/check.ts"
 import { fetchNewMessages } from "@/integrations/telegram.ts"
 import { log } from "@/lib/logger.ts"
 import { setEmotionContext } from "@/lib/sentry.ts"
 import { nowISO } from "@/lib/time.ts"
+import { getActiveGoals } from "@/memory/goals.ts"
 import {
+  clearOperatorSilentFlag,
   getActiveConversation,
   getConversationWaitingSince,
+  getDreamState,
   getHealthCheck,
+  getLastEmotionTimestamp,
+  getOperatorSilentFlag,
+  getTriggerTimestamps,
   pushToActiveConversation,
   setConversationWaitingSince,
   setHealthCheck,
+  setLastEmotionTimestamp,
   setLastUpdateId,
   setOperatorLastActivity,
   setPerceptionSummary,
+  setTriggerTimestamp,
   startNewConversation
 } from "@/memory/working.ts"
 import { readGitActivity, readOwnState, readTelegramActivity, readWeatherData } from "@/perception/sensors.ts"
@@ -86,7 +94,6 @@ export async function sense(): Promise<SenseResult> {
   }
 
   const allTriggers: EmotionUpdateEvent[] = [
-    { trigger: "tick_start", intensity: 0.5 },
     ...ownState.triggers,
     ...telegramActivity.triggers,
     ...weatherResult.triggers,
@@ -96,13 +103,51 @@ export async function sense(): Promise<SenseResult> {
       : [])
   ]
 
+  if (newMessages.length > 0) {
+    const wasSilent = await getOperatorSilentFlag()
+    if (wasSilent) {
+      allTriggers.push({ trigger: "operator_returned", intensity: 0.7, detail: "Operator returned after silence" })
+      await clearOperatorSilentFlag()
+    }
+  }
+
+  const [lastEmotionTs, triggerTimestamps, activeGoals, dreamState] = await Promise.all([
+    getLastEmotionTimestamp(),
+    getTriggerTimestamps(),
+    getActiveGoals(),
+    getDreamState()
+  ])
+
+  const elapsedMinutes = lastEmotionTs ? differenceInMinutes(new Date(), parseISO(lastEmotionTs)) : 1
+
+  const moodContext: MoodContext = {
+    operatorSilenceMinutes: telegramActivity.lastMessageAge > 0 ? telegramActivity.lastMessageAge / 60 : 0,
+    inConversation: waitingSince != null,
+    systemHealthy: ownState.healthStatus === "healthy",
+    budgetOk: ownState.budgetPercent < 80,
+    hasActiveGoals: activeGoals.length > 0,
+    isDreaming: dreamState === "dreaming"
+  }
+
   const currentEmotion = await getEmotionalState()
-  const updatedEmotion = computeEmotionalUpdate(currentEmotion, allTriggers)
-  await saveEmotionalState(updatedEmotion, "tick_start")
+  const updatedEmotion = computeEmotionalUpdate(
+    currentEmotion,
+    allTriggers,
+    moodContext,
+    Math.max(1, elapsedMinutes),
+    triggerTimestamps
+  )
+  await saveEmotionalState(updatedEmotion, allTriggers[0]?.trigger ?? "message_received")
+  await setLastEmotionTimestamp(nowISO())
   setEmotionContext(updatedEmotion)
 
+  const now = nowISO()
+  for (const event of allTriggers) {
+    await setTriggerTimestamp(event.trigger, now)
+  }
+
   const perception: PerceptionSummary = {
-    timestamp: nowISO(),
+    timestamp: now,
     ownState: {
       budgetPercent: ownState.budgetPercent,
       lastTickAge: ownState.lastTickAge,
@@ -152,7 +197,8 @@ export async function sense(): Promise<SenseResult> {
     health,
     weather: weatherResult.weatherData,
     conversationState,
-    triggeredWorkflows
+    triggeredWorkflows,
+    moodContext
   }
 
   const contextString = await buildContext(senseData)
@@ -174,6 +220,7 @@ export async function sense(): Promise<SenseResult> {
     emotion: updatedEmotion,
     health,
     conversationState,
-    triggeredWorkflows
+    triggeredWorkflows,
+    moodContext
   }
 }

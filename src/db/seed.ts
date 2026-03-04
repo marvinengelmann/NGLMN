@@ -16,13 +16,13 @@ import { setLastTickSummary } from "@/memory/working.ts"
 import { db } from "./client.ts"
 import { emotionHistory, trustLevels } from "./schema.ts"
 
-const ACTION_TYPE_DEFAULTS: Array<{ actionType: string; fear: number; confidence: number }> = [
-  { actionType: "add_goal", fear: 0.5, confidence: 0.2 },
-  { actionType: "git_commit", fear: 0.7, confidence: 0.1 },
-  { actionType: "prompt_modification", fear: 0.8, confidence: 0.1 },
-  { actionType: "workflow_creation", fear: 0.8, confidence: 0.1 },
-  { actionType: "deployment", fear: 0.9, confidence: 0.05 },
-  { actionType: "code_modification", fear: 0.9, confidence: 0.05 }
+const ACTION_TYPE_DEFAULTS: Array<{ actionType: string }> = [
+  { actionType: "add_goal" },
+  { actionType: "git_commit" },
+  { actionType: "prompt_modification" },
+  { actionType: "workflow_creation" },
+  { actionType: "deployment" },
+  { actionType: "code_modification" }
 ]
 
 async function seed() {
@@ -32,8 +32,6 @@ async function seed() {
   for (const entry of ACTION_TYPE_DEFAULTS) {
     await db.insert(trustLevels).values({
       actionType: entry.actionType,
-      fear: entry.fear,
-      confidence: entry.confidence,
       totalAttempts: 0,
       successfulAttempts: 0
     })
@@ -43,7 +41,7 @@ async function seed() {
   console.log("\nSeeding initial emotional state...")
   await db.insert(emotionHistory).values({
     state: DEFAULT_EMOTIONAL_STATE,
-    trigger: "tick_start"
+    trigger: "morning_calibration"
   })
   console.log("  + Initial emotional state")
 

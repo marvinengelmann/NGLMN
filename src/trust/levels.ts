@@ -3,9 +3,6 @@ import { db } from "@/db/client.ts"
 import { trustLevels } from "@/db/schema.ts"
 import type { ActionType } from "./types.ts"
 
-const DEFAULT_FEAR = 0.8
-const DEFAULT_CONFIDENCE = 0.1
-
 /**
  * Get the trust level for a specific action type.
  */
@@ -16,13 +13,17 @@ export async function getTrustLevel(actionType: ActionType) {
   if (!row) {
     return {
       actionType,
-      fear: DEFAULT_FEAR,
-      confidence: DEFAULT_CONFIDENCE,
       totalAttempts: 0,
-      successfulAttempts: 0
+      successfulAttempts: 0,
+      lastAttemptAt: null as Date | null
     }
   }
-  return row
+  return {
+    actionType: row.actionType,
+    totalAttempts: row.totalAttempts ?? 0,
+    successfulAttempts: row.successfulAttempts ?? 0,
+    lastAttemptAt: row.lastAttemptAt
+  }
 }
 
 /**
@@ -35,8 +36,6 @@ export async function ensureTrustLevel(actionType: ActionType): Promise<void> {
   if (existing.length === 0) {
     await db.insert(trustLevels).values({
       actionType,
-      fear: DEFAULT_FEAR,
-      confidence: DEFAULT_CONFIDENCE,
       totalAttempts: 0,
       successfulAttempts: 0
     })

@@ -35,7 +35,15 @@ async function dump() {
     health,
     weather: null,
     conversationState: null,
-    triggeredWorkflows: []
+    triggeredWorkflows: [],
+    moodContext: {
+      operatorSilenceMinutes: 0,
+      inConversation: false,
+      systemHealthy: true,
+      budgetOk: true,
+      hasActiveGoals: false,
+      isDreaming: false
+    }
   }
 
   const contextString = await buildContext(senseData)

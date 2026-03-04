@@ -1,6 +1,6 @@
 import { differenceInHours, parseISO } from "date-fns"
 import { desc, eq } from "drizzle-orm"
-import { EMOTIONAL_THRESHOLDS, REFLECTION } from "@/config/constants.ts"
+import { REFLECTION, TRIGGER_INTENSITY } from "@/config/constants.ts"
 import { getBudgetState } from "@/core/budget.ts"
 import { db } from "@/db/client.ts"
 import { evolutionLog, tickLog } from "@/db/schema.ts"
@@ -60,6 +60,12 @@ export function shouldTriggerReflection(ctx: ReflectionContext): { trigger: bool
   }
   if (e.curiosity > d && e.boredom > d) {
     return { trigger: true, reason: "Emotional dissonance: curious yet bored — seeking meaning" }
+  }
+  if (e.confidence > d && e.caution > d) {
+    return { trigger: true, reason: "Emotional dissonance: confident yet cautious — conflicting impulses" }
+  }
+  if (e.energy < 0.3 && e.excitement > 0.7) {
+    return { trigger: true, reason: "Emotional dissonance: exhausted yet excited — needs resolution" }
   }
 
   return { trigger: false, reason: "No introspective urge" }
@@ -139,7 +145,7 @@ export async function applyReflectionResult(output: ReflectionOutput): Promise<v
     }
 
     log.info("Reflection goals created", { count: output.newGoals.length })
-    await processEmotionTrigger({ trigger: "new_goal", intensity: EMOTIONAL_THRESHOLDS.NEW_GOAL_INTENSITY }, "new_goal")
+    await processEmotionTrigger({ trigger: "new_goal", intensity: TRIGGER_INTENSITY.NEW_GOAL }, "new_goal")
   }
 
   if (output.emotionalCorrections && Object.keys(output.emotionalCorrections).length > 0) {
@@ -151,7 +157,9 @@ export async function applyReflectionResult(output: ReflectionOutput): Promise<v
       "boredom",
       "excitement",
       "caution",
-      "connection"
+      "connection",
+      "confidence",
+      "energy"
     ]
     const corrected = { ...currentEmotion }
     for (const [key, delta] of Object.entries(output.emotionalCorrections)) {

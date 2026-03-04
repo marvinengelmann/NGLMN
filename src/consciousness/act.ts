@@ -1,5 +1,5 @@
 import { sendMessages } from "@/communication/messaging.ts"
-import { EMOTIONAL_THRESHOLDS } from "@/config/constants.ts"
+import { EMOTIONAL_THRESHOLDS, TRIGGER_INTENSITY } from "@/config/constants.ts"
 import { executeDream } from "@/dream/executor.ts"
 import { saveEmotionalState } from "@/emotion/state.ts"
 import { computeEmotionalUpdate } from "@/emotion/update.ts"
@@ -47,7 +47,7 @@ export async function act(thinkResult: ThinkResult, senseResult: SenseResult): P
 
   if (responseSent) {
     const outcomeEmotion = computeEmotionalUpdate(senseResult.emotion, [
-      { trigger: "message_sent", intensity: EMOTIONAL_THRESHOLDS.MESSAGE_SENT_INTENSITY }
+      { trigger: "message_sent", intensity: TRIGGER_INTENSITY.MESSAGE_SENT }
     ])
     await saveEmotionalState(outcomeEmotion, "message_sent")
   }

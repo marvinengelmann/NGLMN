@@ -4,15 +4,10 @@ import { getTrustLevel } from "./levels.ts"
 import type { ActionType, AutonomyLevel, TrustAssessment } from "./types.ts"
 
 /**
- * Determine the autonomy level based on confidence, fear, and experience.
+ * Determine the autonomy level based on experience and canAct.
  */
-export function getAutonomyLevel(
-  confidence: number,
-  _fear: number,
-  experience: number,
-  canAct: boolean
-): AutonomyLevel {
-  if (confidence < 0.15) return "locked"
+export function getAutonomyLevel(experience: number, canAct: boolean): AutonomyLevel {
+  if (experience === 0) return "locked"
   if (!canAct) return "approval_required"
   if (experience < 0.7) return "supervised"
   return "independent"
@@ -20,46 +15,37 @@ export function getAutonomyLevel(
 
 /**
  * Assess whether ANIMA can act autonomously for a given action type.
+ * Uses emotion system's confidence/caution instead of per-action fear/confidence.
  */
 export async function canActAutonomously(actionType: ActionType): Promise<TrustAssessment> {
   const trust = await getTrustLevel(actionType)
 
   const totalAttempts = trust.totalAttempts ?? 0
   const successfulAttempts = trust.successfulAttempts ?? 0
-  const fear = trust.fear ?? 0.8
-  const confidence = trust.confidence ?? 0.1
 
-  const experienceFactor = totalAttempts > 0 ? Math.min(1, successfulAttempts / Math.max(1, totalAttempts)) : 0
+  const experience = totalAttempts > 0 ? Math.min(1, successfulAttempts / Math.max(1, totalAttempts)) : 0
 
   const riskLevel = TRUST.RISK_LEVELS[actionType]
-  const confidenceForAction = confidence * (0.5 + experienceFactor * 0.5)
-  let fearForAction = fear * riskLevel
 
   const emotion = await getCurrentEmotion()
-  if (emotion) {
-    if (emotion.caution > 0.5) {
-      fearForAction += 0.1 * (emotion.caution - 0.5)
-    }
-    if (emotion.excitement > 0.5) {
-      fearForAction -= 0.05 * (emotion.excitement - 0.5)
-    }
-    fearForAction = Math.max(0, fearForAction)
-  }
+  const emotionConfidence = emotion?.confidence ?? 0.5
+  const emotionCaution = emotion?.caution ?? 0.5
 
-  const canAct = confidenceForAction > fearForAction + TRUST.BASE_THRESHOLD
+  const effectiveConfidence = experience * 0.5 + emotionConfidence * 0.5
+  const effectiveCaution = riskLevel * (emotionCaution * 0.5 + 0.25)
+
+  const canAct = effectiveConfidence > effectiveCaution
 
   const reason = canAct
-    ? `Confidence (${confidenceForAction.toFixed(2)}) exceeds fear+threshold (${(fearForAction + TRUST.BASE_THRESHOLD).toFixed(2)})`
-    : `Confidence (${confidenceForAction.toFixed(2)}) below fear+threshold (${(fearForAction + TRUST.BASE_THRESHOLD).toFixed(2)})`
+    ? `Effective confidence (${effectiveConfidence.toFixed(2)}) exceeds effective caution (${effectiveCaution.toFixed(2)})`
+    : `Effective confidence (${effectiveConfidence.toFixed(2)}) below effective caution (${effectiveCaution.toFixed(2)})`
 
-  const autonomyLevel = getAutonomyLevel(confidence, fear, experienceFactor, canAct)
+  const autonomyLevel = getAutonomyLevel(experience, canAct)
 
   return {
     canAct,
     requiresApproval: !canAct,
-    fearLevel: fear,
-    confidenceLevel: confidence,
-    experienceFactor,
+    experienceFactor: experience,
     reason,
     autonomyLevel
   }

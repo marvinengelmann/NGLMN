@@ -1,5 +1,5 @@
 import { and, desc, eq, inArray } from "drizzle-orm"
-import { EMOTIONAL_THRESHOLDS } from "@/config/constants.ts"
+import { TRIGGER_INTENSITY } from "@/config/constants.ts"
 import type { AnimaDecision } from "@/consciousness/types.ts"
 import { db } from "@/db/client.ts"
 import type { GoalSelect } from "@/db/schema.ts"
@@ -145,13 +145,10 @@ export async function executeGoalUpdate(decision: AnimaDecision): Promise<void> 
 
   if (parsed.data === "done") {
     await processEmotionTrigger(
-      { trigger: "goal_completed", intensity: EMOTIONAL_THRESHOLDS.GOAL_COMPLETED_INTENSITY },
+      { trigger: "goal_completed", intensity: TRIGGER_INTENSITY.GOAL_COMPLETED },
       "goal_completed"
     )
   } else if (parsed.data === "failed") {
-    await processEmotionTrigger(
-      { trigger: "goal_failed", intensity: EMOTIONAL_THRESHOLDS.GOAL_FAILED_INTENSITY },
-      "goal_failed"
-    )
+    await processEmotionTrigger({ trigger: "goal_failed", intensity: TRIGGER_INTENSITY.GOAL_FAILED }, "goal_failed")
   }
 }

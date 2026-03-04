@@ -11,7 +11,8 @@ export async function logTick(input: MaintainInput, durationMs: number): Promise
   await pushRecentTickDuration(durationMs)
   await pushRecentAction(input.decision.action)
 
-  await saveEmotionalState(input.senseResult.emotion, "tick_start", input.tickId)
+  const primaryTrigger = input.senseResult.perception.emotionalTriggers[0]?.trigger ?? "message_received"
+  await saveEmotionalState(input.senseResult.emotion, primaryTrigger, input.tickId)
 
   const tickSummary: TickSummary = {
     tickId: input.tickId,

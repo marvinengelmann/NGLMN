@@ -1,5 +1,6 @@
 import type { SenseResult } from "@/consciousness/types.ts"
-import { callIntelligence, TextOutput } from "@/core/intelligence.ts"
+import { callIntelligence } from "@/core/intelligence.ts"
+import { TextOutput } from "@/core/types.ts"
 import { metricsRecalibration, morningRecalibration } from "@/emotion/calibration.ts"
 import { collectMetrics } from "@/emotion/metrics.ts"
 import { log } from "@/lib/logger.ts"
@@ -16,7 +17,7 @@ import { type MorningThinkResult, ReflectionOutput } from "@/routine/types.ts"
 export async function thinkMorning(senseResult: SenseResult): Promise<MorningThinkResult> {
   const metrics = await collectMetrics()
   const afterMetrics = metricsRecalibration(senseResult.emotion, metrics)
-  const recalibratedEmotion = morningRecalibration(afterMetrics)
+  const recalibratedEmotion = morningRecalibration(afterMetrics, senseResult.moodContext)
 
   const reflectionInput = await buildReflectionInput()
   const reflectionResult = await callIntelligence({

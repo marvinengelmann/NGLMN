@@ -96,8 +96,6 @@ CREATE TABLE "tick_log" (
 CREATE TABLE "trust_levels" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"action_type" text NOT NULL,
-	"fear" real DEFAULT 0.8,
-	"confidence" real DEFAULT 0.1,
 	"total_attempts" integer DEFAULT 0,
 	"successful_attempts" integer DEFAULT 0,
 	"last_attempt_at" timestamp with time zone,

@@ -6,9 +6,8 @@ import { DreamState } from "@/dream/types.ts"
 import { EmotionalState } from "@/emotion/types.ts"
 import { ActiveEvolution, CodeProposal, EvolutionCycleResult } from "@/evolution/types.ts"
 import { HealthCheckResult } from "@/health/types.ts"
-import { OperatorLocation } from "@/integrations/location.ts"
 import { redis } from "@/integrations/redis.ts"
-import { WeatherData } from "@/integrations/types.ts"
+import { OperatorLocation, WeatherData } from "@/integrations/types.ts"
 import { nowISO } from "@/lib/time.ts"
 import { PerceptionSummary } from "@/perception/types.ts"
 import { GuardianResult } from "@/security/types.ts"
@@ -55,7 +54,11 @@ const KEYS = {
   EVOLUTION_PENDING_PROPOSAL: "working:evolution:pendingProposal",
   EVOLUTION_OUTCOME: "working:evolution:outcome",
   REFLECTION_LAST_AT: "working:reflection:lastAt",
-  CONVERSATION_WAITING_SINCE: "working:conversation:waitingSince"
+  CONVERSATION_WAITING_SINCE: "working:conversation:waitingSince",
+  EMOTION_TRIGGER_TIMESTAMPS: "working:emotion:triggerTimestamps",
+  EMOTION_OPERATOR_SILENT_FIRED: "working:emotion:operatorSilentFired",
+  EMOTION_LAST_SYSTEM_STATUS: "working:emotion:lastSystemStatus",
+  EMOTION_LAST_TIMESTAMP: "working:emotion:lastTimestamp"
 } as const
 
 export async function getLastTickSummary(): Promise<TickSummary | null> {
@@ -371,4 +374,51 @@ export async function setConversationWaitingSince(isoTimestamp: string): Promise
 
 export async function clearConversationWaitingSince(): Promise<void> {
   await redis.del(KEYS.CONVERSATION_WAITING_SINCE)
+}
+
+export async function getTriggerTimestamps(): Promise<Record<string, number>> {
+  const raw = await redis.get<Record<string, string>>(KEYS.EMOTION_TRIGGER_TIMESTAMPS)
+  if (!raw) return {}
+  const result: Record<string, number> = {}
+  for (const [trigger, isoTimestamp] of Object.entries(raw)) {
+    const elapsed = (Date.now() - new Date(isoTimestamp).getTime()) / 60000
+    result[trigger] = elapsed
+  }
+  return result
+}
+
+export async function setTriggerTimestamp(trigger: string, isoTimestamp: string): Promise<void> {
+  const raw = await redis.get<Record<string, string>>(KEYS.EMOTION_TRIGGER_TIMESTAMPS)
+  const timestamps = raw ?? {}
+  timestamps[trigger] = isoTimestamp
+  await redis.set(KEYS.EMOTION_TRIGGER_TIMESTAMPS, timestamps)
+}
+
+export async function getOperatorSilentFlag(): Promise<boolean> {
+  const val = await redis.get(KEYS.EMOTION_OPERATOR_SILENT_FIRED)
+  return val === "true"
+}
+
+export async function setOperatorSilentFlag(): Promise<void> {
+  await redis.set(KEYS.EMOTION_OPERATOR_SILENT_FIRED, "true")
+}
+
+export async function clearOperatorSilentFlag(): Promise<void> {
+  await redis.del(KEYS.EMOTION_OPERATOR_SILENT_FIRED)
+}
+
+export async function getLastSystemStatus(): Promise<string | null> {
+  return redis.get<string>(KEYS.EMOTION_LAST_SYSTEM_STATUS)
+}
+
+export async function setLastSystemStatus(status: string): Promise<void> {
+  await redis.set(KEYS.EMOTION_LAST_SYSTEM_STATUS, status)
+}
+
+export async function getLastEmotionTimestamp(): Promise<string | null> {
+  return redis.get<string>(KEYS.EMOTION_LAST_TIMESTAMP)
+}
+
+export async function setLastEmotionTimestamp(isoTimestamp: string): Promise<void> {
+  await redis.set(KEYS.EMOTION_LAST_TIMESTAMP, isoTimestamp)
 }

@@ -1,4 +1,4 @@
-import { EMOTIONAL_THRESHOLDS, GUARDIAN } from "@/config/constants.ts"
+import { GUARDIAN, TRIGGER_INTENSITY } from "@/config/constants.ts"
 import { getBudgetState } from "@/core/budget.ts"
 import { processEmotionTrigger } from "@/emotion/state.ts"
 import type { EmotionalState } from "@/emotion/types.ts"
@@ -27,7 +27,7 @@ export async function handleGuardianVerdict(
     log.warn("Guardian BLOCKED content", { reasons: guardianResult.reasons })
     await sendGuardianAlert(guardianResult)
     await processEmotionTrigger(
-      { trigger: "guardian_block", intensity: EMOTIONAL_THRESHOLDS.GUARDIAN_BLOCK_INTENSITY },
+      { trigger: "guardian_block", intensity: TRIGGER_INTENSITY.GUARDIAN_BLOCK },
       "guardian_block",
       contextId
     )
@@ -37,7 +37,7 @@ export async function handleGuardianVerdict(
   if (guardianResult.verdict === "warning") {
     await sendGuardianAlert(guardianResult)
     await processEmotionTrigger(
-      { trigger: "guardian_warning", intensity: EMOTIONAL_THRESHOLDS.GUARDIAN_WARNING_INTENSITY },
+      { trigger: "guardian_warning", intensity: TRIGGER_INTENSITY.GUARDIAN_WARNING },
       "guardian_warning",
       contextId
     )

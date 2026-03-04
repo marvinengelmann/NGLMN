@@ -7,10 +7,19 @@ import { resolveOperatorLocation } from "@/integrations/location.ts"
 import { getCachedOrFetchWeather } from "@/integrations/openweather.ts"
 import type { WeatherData } from "@/integrations/types.ts"
 import { log } from "@/lib/logger.ts"
-import { getHealthCheck, getLastTickSummary, getOperatorLastActivity } from "@/memory/working.ts"
+import {
+  getHealthCheck,
+  getLastSystemStatus,
+  getLastTickSummary,
+  getOperatorLastActivity,
+  getOperatorSilentFlag,
+  setLastSystemStatus,
+  setOperatorSilentFlag
+} from "@/memory/working.ts"
 
 /**
  * Read ANIMA's own state and generate emotional triggers from it.
+ * Uses one-shot transition triggers for system_degraded/system_recovered.
  */
 export async function readOwnState(): Promise<{
   budgetPercent: number
@@ -28,41 +37,32 @@ export async function readOwnState(): Promise<{
 
   const triggers: EmotionUpdateEvent[] = []
 
-  if (budgetPercent > 80) {
+  const lastStatus = await getLastSystemStatus()
+  const isHealthy = healthStatus === "healthy"
+  const wasHealthy = lastStatus === "healthy" || lastStatus == null
+
+  if (!isHealthy && wasHealthy) {
     triggers.push({
-      trigger: "perception_negative",
-      intensity: Math.min(1, budgetPercent / 100),
-      detail: `Budget at ${budgetPercent.toFixed(0)}%`
+      trigger: "system_degraded",
+      intensity: healthStatus === "critical" ? 0.8 : 0.4,
+      detail: `Health status transitioned to ${healthStatus}`
+    })
+  } else if (isHealthy && !wasHealthy) {
+    triggers.push({
+      trigger: "system_recovered",
+      intensity: 0.5,
+      detail: "Health status recovered to healthy"
     })
   }
 
-  if (healthStatus === "critical") {
-    triggers.push({
-      trigger: "perception_negative",
-      intensity: 0.8,
-      detail: "Health status is critical"
-    })
-  } else if (healthStatus === "degraded") {
-    triggers.push({
-      trigger: "perception_negative",
-      intensity: 0.4,
-      detail: "Health status is degraded"
-    })
-  }
-
-  if (healthStatus === "healthy" && budgetPercent < 50) {
-    triggers.push({
-      trigger: "perception_positive",
-      intensity: 0.3,
-      detail: "Systems healthy, budget comfortable"
-    })
-  }
+  await setLastSystemStatus(healthStatus)
 
   return { budgetPercent, lastTickAge, errorCount, healthStatus, triggers }
 }
 
 /**
- * Read Telegram activity and generate emotional triggers from it.
+ * Read Telegram activity and generate one-shot transition triggers.
+ * operator_went_silent fires once when crossing the 1h silence threshold.
  */
 export async function readTelegramActivity(): Promise<{
   pendingCount: number
@@ -78,11 +78,15 @@ export async function readTelegramActivity(): Promise<{
   const triggers: EmotionUpdateEvent[] = []
 
   if (!operatorActive && lastMessageAge > 3600) {
-    triggers.push({
-      trigger: "operator_silence",
-      intensity: Math.min(1, lastMessageAge / 7200),
-      detail: `No operator activity for ${Math.floor(lastMessageAge / 60)} minutes`
-    })
+    const alreadyFired = await getOperatorSilentFlag()
+    if (!alreadyFired) {
+      triggers.push({
+        trigger: "operator_went_silent",
+        intensity: Math.min(1, lastMessageAge / 7200),
+        detail: `No operator activity for ${Math.floor(lastMessageAge / 60)} minutes`
+      })
+      await setOperatorSilentFlag()
+    }
   }
 
   return { pendingCount: 0, lastMessageAge, operatorActive, triggers }
@@ -158,7 +162,7 @@ export async function readGitActivity(): Promise<{
 
     if (selfCommitCount > 0) {
       triggers.push({
-        trigger: "perception_positive",
+        trigger: "git_activity",
         intensity: Math.min(1, selfCommitCount * 0.15),
         detail: `${selfCommitCount} self-evolution commit(s) in last 24h`
       })

@@ -9,7 +9,17 @@ export const WorkflowTrigger = z.discriminatedUnion("type", [
   }),
   z.object({
     type: z.literal("emotion"),
-    dimension: z.enum(["curiosity", "satisfaction", "frustration", "boredom", "excitement", "caution", "connection"]),
+    dimension: z.enum([
+      "curiosity",
+      "satisfaction",
+      "frustration",
+      "boredom",
+      "excitement",
+      "caution",
+      "connection",
+      "confidence",
+      "energy"
+    ]),
     operator: z.enum(["gt", "lt"]),
     threshold: z.number().min(0).max(1),
     sustainedTicks: z.number().int().positive().optional()

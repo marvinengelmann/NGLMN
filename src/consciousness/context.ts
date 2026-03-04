@@ -21,9 +21,10 @@ import {
   getPendingEvolutionProposal,
   getReflectionLastAt
 } from "@/memory/working.ts"
+import { PERSONALITY_PROMPTS, PERSONALITY_SECTION_INTRO } from "@/personality/profiles.ts"
+import type { PersonalityType } from "@/personality/types.ts"
 import { ACTIONS_PROMPT, COMMUNICATION_PROMPT, PACING_PROMPT, RHYTHM_PROMPT } from "@/prompts/consciousness.ts"
 import { IDENTITY_PROMPT } from "@/prompts/identity.ts"
-import { PERSONALITY_PROMPTS, PERSONALITY_SECTION_INTRO, type PersonalityType } from "@/prompts/personality.ts"
 import { getAllTrustLevels } from "@/trust/levels.ts"
 import type { WorkflowDefinition } from "@/workflow/types.ts"
 
@@ -318,10 +319,10 @@ export async function buildContext(senseData: SenseData): Promise<string> {
   if (trustLevels.length > 0) {
     const lines = ["# Trust"]
     for (const t of trustLevels) {
-      const fear = (t.fear ?? 0).toFixed(2)
-      const confidence = (t.confidence ?? 0).toFixed(2)
-      const attempts = `${t.successfulAttempts ?? 0}/${t.totalAttempts ?? 0} successful`
-      lines.push(`  - ${t.actionType}: fear=${fear} confidence=${confidence} (${attempts})`)
+      const successful = t.successfulAttempts ?? 0
+      const total = t.totalAttempts ?? 0
+      const experience = total > 0 ? (successful / total).toFixed(2) : "0.00"
+      lines.push(`  - ${t.actionType}: experience ${successful}/${total} (${experience})`)
     }
     sections.push(lines.join("\n"))
   }
