@@ -1,23 +1,15 @@
 import { desc, eq } from "drizzle-orm"
-import * as z from "zod"
 import { callIntelligence } from "@/core/intelligence.ts"
 import { db } from "@/db/client.ts"
 import { promptVersions } from "@/db/schema.ts"
 import type { MetricsSnapshot } from "@/emotion/types.ts"
+import { PromptProposalOutput } from "@/evolution/types.ts"
 import { log } from "@/lib/logger.ts"
 import { logAndCaptureError } from "@/lib/result.ts"
 import { PROMPT_EVOLUTION_SYSTEM_PROMPT } from "@/prompts/evolution.ts"
 import { canActAutonomously } from "@/trust/assessment.ts"
 import { recordSuccess } from "@/trust/history.ts"
 import { writeChangelogEntry } from "./changelog.ts"
-
-export const PromptProposalOutput = z.object({
-  shouldChange: z.boolean(),
-  newPrompt: z.string().nullable(),
-  changelog: z.string(),
-  reasoning: z.string()
-})
-export type PromptProposalOutput = z.infer<typeof PromptProposalOutput>
 
 interface PromptProposal extends PromptProposalOutput {
   autonomous: boolean

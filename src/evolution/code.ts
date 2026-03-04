@@ -1,5 +1,11 @@
-import * as z from "zod"
 import { callIntelligence } from "@/core/intelligence.ts"
+import {
+  type CodeProposal,
+  CodeProposalOrFileRequest,
+  CodeProposalOutput,
+  FileSelectionOutput,
+  type PreviousAttempt
+} from "@/evolution/types.ts"
 import { fetchLibraryDocs } from "@/integrations/context7.ts"
 import {
   createBranch,
@@ -22,63 +28,12 @@ import { validateEvolution } from "@/security/guardian.ts"
 import { canActAutonomously } from "@/trust/assessment.ts"
 import { recordFailure, recordSuccess } from "@/trust/history.ts"
 import { writeChangelogEntry } from "./changelog.ts"
-import type { CodeProposal, PreviousAttempt } from "./types.ts"
 
 const SOURCE_CONTEXT_TOKEN_BUDGET = 50_000
 const PROPOSAL_MAX_TOKENS = 50_000
 const MAX_RELEVANT_FILES = 15
 const MAX_REQUEST_ROUNDS = 10
-const FILES_PER_REQUEST = 10
 const FACTORIES_PATH = "src/test/factories.ts"
-
-export const FileSelectionOutput = z.object({
-  paths: z.array(z.string()).max(MAX_RELEVANT_FILES)
-})
-export type FileSelectionOutput = z.infer<typeof FileSelectionOutput>
-
-export const CodeProposalOutput = z.object({
-  type: z.literal("proposal").default("proposal"),
-  shouldEvolve: z.boolean(),
-  files: z.array(
-    z.object({
-      path: z.string(),
-      content: z.string(),
-      description: z.string()
-    })
-  ),
-  commitSubject: z.string(),
-  commitBody: z.string(),
-  testExpectations: z.array(z.string()),
-  reasoning: z.string()
-})
-export type CodeProposalOutput = z.infer<typeof CodeProposalOutput>
-
-export const FileRequestOutput = z.object({
-  type: z.literal("request_files"),
-  paths: z.array(z.string()).max(FILES_PER_REQUEST),
-  reason: z.string()
-})
-export type FileRequestOutput = z.infer<typeof FileRequestOutput>
-
-export const CodeProposalOrFileRequest = z.object({
-  type: z.enum(["proposal", "request_files"]),
-  shouldEvolve: z.boolean().optional(),
-  files: z
-    .array(
-      z.object({
-        path: z.string(),
-        content: z.string(),
-        description: z.string()
-      })
-    )
-    .optional(),
-  commitSubject: z.string().optional(),
-  commitBody: z.string().optional(),
-  testExpectations: z.array(z.string()).optional(),
-  reasoning: z.string().optional(),
-  paths: z.array(z.string()).max(FILES_PER_REQUEST).optional(),
-  reason: z.string().optional()
-})
 
 interface SourceFileContext {
   path: string
@@ -225,7 +180,7 @@ function emptyProposal(reasoning: string): CodeProposal {
   }
 }
 
-function failedProposal(reasoning: string): z.infer<typeof CodeProposalOrFileRequest> & { failed: true } {
+function failedProposal(reasoning: string): CodeProposalOrFileRequest {
   return {
     type: "proposal" as const,
     shouldEvolve: false,
@@ -243,7 +198,7 @@ async function resolveFileRequests(
   files: SourceFileContext[],
   round: number,
   failedPaths: Set<string> = new Set()
-): Promise<z.infer<typeof CodeProposalOrFileRequest> & { failed?: boolean }> {
+): Promise<CodeProposalOrFileRequest> {
   const tokensUsed = files.reduce((sum, f) => sum + estimateTokens(f.content), 0)
   const budgetExhausted = tokensUsed >= SOURCE_CONTEXT_TOKEN_BUDGET
   const forceProposal = budgetExhausted || round >= MAX_REQUEST_ROUNDS

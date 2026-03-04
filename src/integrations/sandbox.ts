@@ -1,20 +1,7 @@
 import type { Sandbox } from "@daytonaio/sdk"
 import { Daytona, Image } from "@daytonaio/sdk"
-import * as z from "zod"
+import type { SandboxResult } from "@/integrations/types.ts"
 import { log } from "@/lib/logger.ts"
-
-export const SandboxResult = z.object({
-  passed: z.boolean(),
-  biomeCheckPassed: z.boolean(),
-  tscCheckPassed: z.boolean(),
-  testsPassed: z.number(),
-  testsFailed: z.number(),
-  healthCheckPassed: z.boolean(),
-  stdout: z.string(),
-  stderr: z.string(),
-  durationMs: z.number()
-})
-export type SandboxResult = z.infer<typeof SandboxResult>
 
 const SANDBOX_IMAGE = Image.base("ubuntu:22.04")
   .runCommands("apt-get update && apt-get install -y git curl unzip")

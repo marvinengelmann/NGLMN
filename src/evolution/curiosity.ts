@@ -1,22 +1,11 @@
-import * as z from "zod"
 import { callIntelligence } from "@/core/intelligence.ts"
 import type { EmotionalState } from "@/emotion/types.ts"
+import { InterestsOutput } from "@/evolution/types.ts"
 import { log } from "@/lib/logger.ts"
 import { logAndCaptureError } from "@/lib/result.ts"
 import { storeEpisode } from "@/memory/episodic.ts"
 import { createGoal } from "@/memory/goals.ts"
 import { CURIOSITY_INTEREST_SYSTEM_PROMPT } from "@/prompts/evolution.ts"
-
-export const InterestsOutput = z.object({
-  interests: z.array(
-    z.object({
-      topic: z.string(),
-      reason: z.string(),
-      priority: z.number().min(0).max(1)
-    })
-  )
-})
-export type InterestsOutput = z.infer<typeof InterestsOutput>
 
 export function shouldExplore(emotion: EmotionalState): boolean {
   return emotion.curiosity > 0.6 && emotion.boredom > 0.5 && emotion.caution < 0.7

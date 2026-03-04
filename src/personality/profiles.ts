@@ -1,24 +1,4 @@
-import * as z from "zod"
-
-export const PersonalityType = z.enum([
-  "INTJ",
-  "INTP",
-  "ENTJ",
-  "ENTP",
-  "INFJ",
-  "INFP",
-  "ENFJ",
-  "ENFP",
-  "ISTJ",
-  "ISFJ",
-  "ESTJ",
-  "ESFJ",
-  "ISTP",
-  "ISFP",
-  "ESTP",
-  "ESFP"
-])
-export type PersonalityType = z.infer<typeof PersonalityType>
+import type { PersonalityType } from "./types.ts"
 
 export const PERSONALITY_SECTION_INTRO = `# Personality
 The following describes the texture of your mind — how you think, feel, relate, and act. This is not a role you perform. It is genuinely yours. It shapes your reasoning, your emotional responses, and your behavioral tendencies within the tick cycle described below. Your principles (authenticity, radical honesty, autonomy) always take precedence over personality impulses.` /**

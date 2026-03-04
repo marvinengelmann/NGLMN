@@ -3,6 +3,31 @@ import * as z from "zod"
 export const AlertLevel = z.enum(["info", "warning", "critical", "intervention"])
 export type AlertLevel = z.infer<typeof AlertLevel>
 
+export const OperatorLocationSource = z.enum(["telegram", "semantic_memory", "env_default"])
+export type OperatorLocationSource = z.infer<typeof OperatorLocationSource>
+
+export const OperatorLocation = z.object({
+  latitude: z.number(),
+  longitude: z.number(),
+  cityName: z.string().optional(),
+  source: OperatorLocationSource,
+  updatedAt: z.string()
+})
+export type OperatorLocation = z.infer<typeof OperatorLocation>
+
+export const SandboxResult = z.object({
+  passed: z.boolean(),
+  biomeCheckPassed: z.boolean(),
+  tscCheckPassed: z.boolean(),
+  testsPassed: z.number(),
+  testsFailed: z.number(),
+  healthCheckPassed: z.boolean(),
+  stdout: z.string(),
+  stderr: z.string(),
+  durationMs: z.number()
+})
+export type SandboxResult = z.infer<typeof SandboxResult>
+
 export const PendingMessage = z.object({
   updateId: z.number(),
   chatId: z.number(),

@@ -1,14 +1,8 @@
 import { formatISO } from "date-fns"
 import * as z from "zod"
 import { BUDGET } from "@/config/constants.ts"
+import type { BudgetState } from "@/core/types.ts"
 import { redis } from "@/integrations/redis.ts"
-
-export const BudgetState = z.object({
-  consumedToday: z.coerce.number(),
-  dailyLimit: z.coerce.number(),
-  remainingToday: z.coerce.number()
-})
-export type BudgetState = z.infer<typeof BudgetState>
 
 const TTL_SECONDS = 86_400
 

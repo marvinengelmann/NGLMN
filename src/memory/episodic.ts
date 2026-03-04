@@ -1,5 +1,6 @@
 import { parseISO, subDays } from "date-fns"
-import { callIntelligence, TextOutput } from "@/core/intelligence.ts"
+import { callIntelligence } from "@/core/intelligence.ts"
+import { TextOutput } from "@/core/types.ts"
 import { vectorIndex } from "@/integrations/vector.ts"
 import { log } from "@/lib/logger.ts"
 import { nowISO } from "@/lib/time.ts"

@@ -1,9 +1,9 @@
 import { eq } from "drizzle-orm"
-import * as z from "zod"
 import type { TickSummary } from "@/consciousness/types.ts"
 import { callIntelligence } from "@/core/intelligence.ts"
 import { db } from "@/db/client.ts"
 import { workflows } from "@/db/schema.ts"
+import { WorkflowProposalOutput } from "@/evolution/types.ts"
 import { log } from "@/lib/logger.ts"
 import type { AnimaResultAsync } from "@/lib/result.ts"
 import { logAndCaptureError, trySafe } from "@/lib/result.ts"
@@ -12,19 +12,7 @@ import { validateOutput } from "@/security/guardian.ts"
 import { canActAutonomously } from "@/trust/assessment.ts"
 import { recordSuccess } from "@/trust/history.ts"
 import { getActiveWorkflowCount, getActiveWorkflows, MAX_ACTIVE_WORKFLOWS } from "@/workflow/engine.ts"
-import { WorkflowOutputAction, WorkflowTrigger } from "@/workflow/types.ts"
 import { writeChangelogEntry } from "./changelog.ts"
-
-export const WorkflowProposalOutput = z.object({
-  shouldCreate: z.boolean(),
-  reasoning: z.string(),
-  name: z.string(),
-  description: z.string(),
-  trigger: WorkflowTrigger,
-  instruction: z.string(),
-  outputAction: WorkflowOutputAction
-})
-export type WorkflowProposalOutput = z.infer<typeof WorkflowProposalOutput>
 
 interface WorkflowProposal extends WorkflowProposalOutput {
   autonomous: boolean
