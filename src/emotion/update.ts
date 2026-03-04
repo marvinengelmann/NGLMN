@@ -178,11 +178,7 @@ export function summarizeEmotions(emotion: EmotionalState, threshold = 0.1): str
 /**
  * Compute per-dimension deltas between two emotional states, filtered by threshold.
  */
-export function computeEmotionDeltas(
-  current: EmotionalState,
-  previous: EmotionalState,
-  threshold = 0.03
-): string {
+export function computeEmotionDeltas(current: EmotionalState, previous: EmotionalState, threshold = 0.03): string {
   const changes = (Object.keys(current) as (keyof EmotionalState)[])
     .map((dim) => ({ dim, diff: current[dim] - previous[dim] }))
     .filter(({ diff }) => Math.abs(diff) > threshold)

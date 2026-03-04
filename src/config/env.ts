@@ -31,12 +31,11 @@ const EnvSchema = z.object({
 
   DAYTONA_API_KEY: z.string().optional(),
 
-  CONTEXT7_API_KEY: z.string().optional(),
-
+  CONTEXT7_API_KEY: z.string().optional()
 })
 
 type EnvKey = keyof z.infer<typeof EnvSchema>
-export type Env = z.infer<typeof EnvSchema>
+type Env = z.infer<typeof EnvSchema>
 
 const validated = new Map<string, unknown>()
 

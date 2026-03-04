@@ -90,11 +90,14 @@ describe("computeDissonanceScore", () => {
   })
 
   it("decays older events", () => {
-    const recent: DissonanceEvent[] = [
-      { declaredValue: "a", actualAction: "b", dissonanceScore: 0.8, timestamp: now }
-    ]
+    const recent: DissonanceEvent[] = [{ declaredValue: "a", actualAction: "b", dissonanceScore: 0.8, timestamp: now }]
     const old: DissonanceEvent[] = [
-      { declaredValue: "a", actualAction: "b", dissonanceScore: 0.8, timestamp: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString() }
+      {
+        declaredValue: "a",
+        actualAction: "b",
+        dissonanceScore: 0.8,
+        timestamp: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()
+      }
     ]
     expect(computeDissonanceScore(old)).toBeLessThan(computeDissonanceScore(recent))
   })

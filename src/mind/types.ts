@@ -1,8 +1,6 @@
 import * as z from "zod"
 
-export const OperatorMood = z.enum([
-  "happy", "neutral", "stressed", "sad", "excited", "frustrated", "tired", "unknown"
-])
+export const OperatorMood = z.enum(["happy", "neutral", "stressed", "sad", "excited", "frustrated", "tired", "unknown"])
 export type OperatorMood = z.infer<typeof OperatorMood>
 
 export const OperatorModel = z.object({

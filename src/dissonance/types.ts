@@ -19,11 +19,15 @@ export const DissonanceEvent = z.object({
 export type DissonanceEvent = z.infer<typeof DissonanceEvent>
 
 export const ValueActionAnalysis = z.object({
-  mismatches: z.array(z.object({
-    declaredValue: z.string(),
-    actualAction: z.string(),
-    dissonanceScore: z.number().min(0).max(1)
-  })).default([])
+  mismatches: z
+    .array(
+      z.object({
+        declaredValue: z.string(),
+        actualAction: z.string(),
+        dissonanceScore: z.number().min(0).max(1)
+      })
+    )
+    .default([])
 })
 export type ValueActionAnalysis = z.infer<typeof ValueActionAnalysis>
 

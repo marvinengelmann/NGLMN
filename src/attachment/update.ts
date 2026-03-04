@@ -15,12 +15,10 @@ export function isOperatorReturning(pendingMessageCount: number, operatorSilence
  * Detect whether any attachment style dimension changed beyond a threshold.
  */
 export function hasStyleChanged(current: AttachmentStyle, updated: AttachmentStyle): boolean {
-  return (Object.keys(current) as (keyof AttachmentStyle)[]).some(
-    (k) => Math.abs(current[k] - updated[k]) > 0.0001
-  )
+  return (Object.keys(current) as (keyof AttachmentStyle)[]).some((k) => Math.abs(current[k] - updated[k]) > 0.0001)
 }
 
-export interface AttachmentContext {
+interface AttachmentContext {
   operatorSilenceMinutes: number
   operatorJustReturned: boolean
   inConversation: boolean

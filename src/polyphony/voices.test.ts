@@ -35,20 +35,26 @@ describe("selectActiveVoices", () => {
   })
 
   it("includes guardian when caution is high", () => {
-    const voices = selectActiveVoices({ ...baseEmotion, caution: 0.8 }, {
-      dissonanceScore: 0,
-      action: "idle",
-      hasMessages: false
-    })
+    const voices = selectActiveVoices(
+      { ...baseEmotion, caution: 0.8 },
+      {
+        dissonanceScore: 0,
+        action: "idle",
+        hasMessages: false
+      }
+    )
     expect(voices).toContain("guardian")
   })
 
   it("includes explorer when curiosity is high", () => {
-    const voices = selectActiveVoices({ ...baseEmotion, curiosity: 0.8 }, {
-      dissonanceScore: 0,
-      action: "idle",
-      hasMessages: false
-    })
+    const voices = selectActiveVoices(
+      { ...baseEmotion, curiosity: 0.8 },
+      {
+        dissonanceScore: 0,
+        action: "idle",
+        hasMessages: false
+      }
+    )
     expect(voices).toContain("explorer")
   })
 

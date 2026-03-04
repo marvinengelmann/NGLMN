@@ -4,7 +4,7 @@ import { nowISO } from "@/lib/time.ts"
 import type { SelfConcept } from "@/psyche/types.ts"
 import type { DeceptionState, HiddenDriver } from "./types.ts"
 
-export interface DeceptionContext {
+interface DeceptionContext {
   dissonance: DissonanceState
   selfConcept: SelfConcept
   vulnerabilityOpen: boolean
@@ -25,9 +25,7 @@ export function shouldHideDriver(context: {
   if (context.selfConcept.authenticity >= DECEPTION.HIDE_AUTHENTICITY_THRESHOLD) return false
 
   const probability =
-    (1 - context.selfConcept.authenticity) *
-    context.dissonance.activeDissonance *
-    DECEPTION.HIDE_PROBABILITY_SCALE
+    (1 - context.selfConcept.authenticity) * context.dissonance.activeDissonance * DECEPTION.HIDE_PROBABILITY_SCALE
 
   return Math.random() < probability
 }
@@ -78,10 +76,7 @@ export function shouldDiscoverDriver(
 /**
  * Process one full deception cycle: potentially hide new drivers, discover old ones.
  */
-export function processDeceptionCycle(
-  state: DeceptionState,
-  context: DeceptionContext
-): DeceptionState {
+export function processDeceptionCycle(state: DeceptionState, context: DeceptionContext): DeceptionState {
   const updated = {
     activeHiddenDrivers: [...state.activeHiddenDrivers],
     totalHidden: state.totalHidden,
@@ -97,10 +92,7 @@ export function processDeceptionCycle(
     return true
   })
 
-  if (
-    updated.activeHiddenDrivers.length < DECEPTION.MAX_ACTIVE_DRIVERS &&
-    shouldHideDriver(context)
-  ) {
+  if (updated.activeHiddenDrivers.length < DECEPTION.MAX_ACTIVE_DRIVERS && shouldHideDriver(context)) {
     const toHide = selectDriverToHide(context.dissonance.recentEvents)
     if (toHide) {
       updated.activeHiddenDrivers.push({

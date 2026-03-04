@@ -4,7 +4,12 @@ import { callIntelligence } from "@/core/intelligence.ts"
 import { clamp01 } from "@/lib/math.ts"
 import type { EpisodeMetadata } from "@/memory/types.ts"
 import { ALTER_DETAILS_PROMPT, RECOLOR_PROMPT } from "@/prompts/distortion.ts"
-import { DetailAlterationResult, type DistortedMemory, type DistortionRecord, EmotionalRecoloringResult } from "./types.ts"
+import {
+  DetailAlterationResult,
+  type DistortedMemory,
+  type DistortionRecord,
+  EmotionalRecoloringResult
+} from "./types.ts"
 
 type QueryResult = {
   id: string
@@ -46,9 +51,7 @@ export async function applyDistortions(
       let data = ep.data
       let metadata = ep.metadata ? { ...ep.metadata } : undefined
 
-      const ageDays = ep.metadata?.timestamp
-        ? differenceInDays(now, parseISO(ep.metadata.timestamp))
-        : 0
+      const ageDays = ep.metadata?.timestamp ? differenceInDays(now, parseISO(ep.metadata.timestamp)) : 0
       const relevance = ep.metadata?.relevanceScore ?? 0.5
 
       const probability = computeDistortionProbability({
@@ -66,9 +69,11 @@ export async function applyDistortions(
       switch (distortionType) {
         case "temporal_confusion":
           if (metadata?.timestamp) {
-            const shiftDays = Math.floor(Math.random() * DISTORTION.TEMPORAL_SHIFT_MAX_DAYS * 2) - DISTORTION.TEMPORAL_SHIFT_MAX_DAYS
+            const shiftDays =
+              Math.floor(Math.random() * DISTORTION.TEMPORAL_SHIFT_MAX_DAYS * 2) - DISTORTION.TEMPORAL_SHIFT_MAX_DAYS
             const originalDate = parseISO(metadata.timestamp)
-            const shifted = shiftDays > 0 ? addDays(originalDate, shiftDays) : subDays(originalDate, Math.abs(shiftDays))
+            const shifted =
+              shiftDays > 0 ? addDays(originalDate, shiftDays) : subDays(originalDate, Math.abs(shiftDays))
             metadata = { ...metadata, timestamp: format(shifted, "yyyy-MM-dd'T'HH:mm:ss.SSSxxx") }
             distortions.push({ type: "temporal_confusion", originalEpisodeId: ep.id, alteredField: "timestamp" })
           }
@@ -84,7 +89,11 @@ export async function applyDistortions(
             })
             if (result.isOk()) {
               metadata = { ...metadata, emotionalState: result.value.recoloring }
-              distortions.push({ type: "emotional_recoloring", originalEpisodeId: ep.id, alteredField: "emotionalState" })
+              distortions.push({
+                type: "emotional_recoloring",
+                originalEpisodeId: ep.id,
+                alteredField: "emotionalState"
+              })
             }
           }
           break
@@ -122,10 +131,7 @@ export async function applyDistortions(
   )
 }
 
-function selectDistortionType(
-  allEpisodes: QueryResult[],
-  current: QueryResult
-): DistortionRecord["type"] {
+function selectDistortionType(allEpisodes: QueryResult[], current: QueryResult): DistortionRecord["type"] {
   const hasConflationCandidate = allEpisodes.some(
     (ep) => ep.id !== current.id && ep.score > DISTORTION.CONFLATION_MIN_SCORE
   )
@@ -139,9 +145,7 @@ function selectDistortionType(
 }
 
 function findConflationCandidate(episodes: QueryResult[], current: QueryResult): QueryResult | undefined {
-  return episodes.find(
-    (ep) => ep.id !== current.id && ep.score > DISTORTION.CONFLATION_MIN_SCORE
-  )
+  return episodes.find((ep) => ep.id !== current.id && ep.score > DISTORTION.CONFLATION_MIN_SCORE)
 }
 
 function extractFragment(text: string): string | null {

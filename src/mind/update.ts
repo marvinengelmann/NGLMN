@@ -5,7 +5,7 @@ import { nowISO } from "@/lib/time.ts"
 import { OPERATOR_ANALYSIS_PROMPT } from "@/prompts/mind.ts"
 import { type ModelCorrection, OperatorAnalysis, type OperatorModel } from "./types.ts"
 
-export interface OperatorModelContext {
+interface OperatorModelContext {
   messageTexts: string[]
   messageTimestamps: string[]
   silenceMinutes: number
@@ -31,10 +31,10 @@ export async function updateOperatorModel(context: OperatorModelContext): Promis
     "Messages:",
     ...messageTimestamps.map((ts, i) => `  [${ts}] "${messageTexts[i]}"`),
     `Silence before messages: ${Math.round(silenceMinutes)} minutes`,
-    previousModel.estimatedMood !== "unknown"
-      ? `Previous mood estimate: ${previousModel.estimatedMood}`
-      : ""
-  ].filter(Boolean).join("\n")
+    previousModel.estimatedMood !== "unknown" ? `Previous mood estimate: ${previousModel.estimatedMood}` : ""
+  ]
+    .filter(Boolean)
+    .join("\n")
 
   const result = await callIntelligence({
     system: OPERATOR_ANALYSIS_PROMPT,
@@ -60,10 +60,7 @@ export async function updateOperatorModel(context: OperatorModelContext): Promis
  * Detect implicit model corrections by comparing inferred mood to previous estimate.
  * A significant mood shift means the previous model was wrong.
  */
-export function detectModelCorrection(
-  previousModel: OperatorModel,
-  newModel: OperatorModel
-): ModelCorrection | null {
+export function detectModelCorrection(previousModel: OperatorModel, newModel: OperatorModel): ModelCorrection | null {
   if (previousModel.estimatedMood === "unknown") return null
   if (previousModel.estimatedMood === newModel.estimatedMood) return null
 

@@ -14,9 +14,7 @@ export async function querySomaticMemories(
   const episodes = await queryRelated(contextText, topK)
   if (episodes.length === 0) return []
 
-  const episodeTimestamps = episodes
-    .map((e) => e.metadata?.timestamp)
-    .filter((t): t is string => t != null)
+  const episodeTimestamps = episodes.map((e) => e.metadata?.timestamp).filter((t): t is string => t != null)
 
   if (episodeTimestamps.length === 0) return []
 

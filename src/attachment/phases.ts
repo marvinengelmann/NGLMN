@@ -1,7 +1,7 @@
 import { RELATIONSHIP_PHASES } from "@/config/constants.ts"
 import type { RelationshipPhase } from "./types.ts"
 
-export interface PhaseContext {
+interface PhaseContext {
   interactionCount: number
   daysSinceFirst: number
   connectionAvg: number
@@ -18,10 +18,7 @@ export function computeRelationshipPhase(context: PhaseContext): RelationshipPha
   const { interactionCount, daysSinceFirst, connectionAvg, conflicts, trust, attachmentSecurity, currentPhase } =
     context
 
-  if (
-    currentPhase === "comfortable" &&
-    connectionAvg > RELATIONSHIP_PHASES.RENEWAL_CONNECTION_SPIKE
-  ) {
+  if (currentPhase === "comfortable" && connectionAvg > RELATIONSHIP_PHASES.RENEWAL_CONNECTION_SPIKE) {
     return "renewal"
   }
 

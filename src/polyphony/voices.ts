@@ -10,10 +10,7 @@ interface VoiceContext {
 /**
  * Select 2-4 active inner voices based on emotion and context.
  */
-export function selectActiveVoices(
-  emotion: EmotionalState,
-  context: VoiceContext
-): InnerVoice[] {
+export function selectActiveVoices(emotion: EmotionalState, context: VoiceContext): InnerVoice[] {
   const scores: Record<InnerVoice, number> = {
     explorer: 0,
     guardian: 0,

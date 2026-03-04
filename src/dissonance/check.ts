@@ -103,7 +103,7 @@ export function computeDissonanceScore(events: DissonanceEvent[]): number {
       const resolutionWeight = event.resolution && event.resolution !== "unresolved" ? 0.3 : 1.0
       const eventDate = new Date(event.timestamp)
       const hoursAgo = Number.isNaN(eventDate.getTime()) ? 0 : differenceInHours(now, eventDate)
-      const temporalDecay = Math.pow(0.5, Math.max(0, hoursAgo) / 6)
+      const temporalDecay = 0.5 ** (Math.max(0, hoursAgo) / 6)
       return {
         total: acc.total + event.dissonanceScore * resolutionWeight * temporalDecay,
         weightSum: acc.weightSum + temporalDecay

@@ -4,7 +4,7 @@ function clamp(value: number): number {
   return Math.max(0, Math.min(1, value))
 }
 
-export interface SelfConceptContext {
+interface SelfConceptContext {
   recentTaskSuccess: boolean
   recentTaskFailure: boolean
   messageSentCount: number
