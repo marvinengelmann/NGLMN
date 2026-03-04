@@ -289,3 +289,61 @@ export const dissonanceLog = pgTable(
 
 export type DissonanceLogInsert = typeof dissonanceLog.$inferInsert
 export type DissonanceLogSelect = typeof dissonanceLog.$inferSelect
+
+export const relationshipPhaseLog = pgTable(
+  "relationship_phase_log",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    phase: text("phase").notNull(),
+    previousPhase: text("previous_phase"),
+    trigger: text("trigger").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow()
+  },
+  (table) => [index("idx_relationship_phase_log_created").on(table.createdAt)]
+)
+
+export type RelationshipPhaseLogInsert = typeof relationshipPhaseLog.$inferInsert
+export type RelationshipPhaseLogSelect = typeof relationshipPhaseLog.$inferSelect
+
+export const operatorModelLog = pgTable(
+  "operator_model_log",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    model: jsonb("model"),
+    trigger: text("trigger").notNull(),
+    correction: jsonb("correction"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow()
+  },
+  (table) => [index("idx_operator_model_log_created").on(table.createdAt)]
+)
+
+export type OperatorModelLogInsert = typeof operatorModelLog.$inferInsert
+export type OperatorModelLogSelect = typeof operatorModelLog.$inferSelect
+
+export const distortionLog = pgTable(
+  "distortion_log",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    type: text("type").notNull(),
+    originalEpisodeId: text("original_episode_id").notNull(),
+    alteredField: text("altered_field").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow()
+  },
+  (table) => [index("idx_distortion_log_created").on(table.createdAt)]
+)
+
+export type DistortionLogInsert = typeof distortionLog.$inferInsert
+export type DistortionLogSelect = typeof distortionLog.$inferSelect
+
+export const deceptionLog = pgTable(
+  "deception_log",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    actualDriver: text("actual_driver").notNull(),
+    statedReason: text("stated_reason").notNull(),
+    hiddenSince: timestamp("hidden_since", { withTimezone: true }).notNull(),
+    discoveredAt: timestamp("discovered_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow()
+  },
+  (table) => [index("idx_deception_log_created").on(table.createdAt)]
+)
