@@ -1,5 +1,5 @@
 import { sendMessages } from "@/communication/messaging.ts"
-import { MESSAGE_DELAY, EMOTIONAL_THRESHOLDS, TRIGGER_INTENSITY } from "@/config/constants.ts"
+import { EMOTIONAL_THRESHOLDS, MESSAGE_DELAY, TRIGGER_INTENSITY } from "@/config/constants.ts"
 import { db } from "@/db/client.ts"
 import { narrativeEntries } from "@/db/schema.ts"
 import { isDissonanceSignificant } from "@/dissonance/check.ts"
@@ -44,9 +44,7 @@ export async function act(
         await prev
         const delay = MESSAGE_DELAY.MIN_BETWEEN_MESSAGES_MS + Math.random() * MESSAGE_DELAY.MAX_JITTER_MS
         await new Promise((resolve) => setTimeout(resolve, delay))
-        await trySafe("TELEGRAM_ERROR", () =>
-          sendMessageWithReply(correction.text, correction.replyTo)
-        )
+        await trySafe("TELEGRAM_ERROR", () => sendMessageWithReply(correction.text, correction.replyTo))
       }, Promise.resolve())
     }
   }
@@ -121,8 +119,12 @@ export async function act(
   }
 
   const summary = `${decision.action}: ${decision.reasoning.slice(0, 200)}`
-  if (responseSent && feelResult.register === "playful" && senseResult.emotion.connection > EMOTIONAL_THRESHOLDS.CONNECTION_HIGH) {
-    await storeHumorEpisode(summary)
+  if (
+    responseSent &&
+    feelResult.register === "playful" &&
+    senseResult.emotion.connection > EMOTIONAL_THRESHOLDS.CONNECTION_HIGH
+  ) {
+    await storeHumorEpisode(summary, { isInsideJoke: senseResult.pendingMessages.length > 0 })
   } else if (responseSent && senseResult.emotion.connection > EMOTIONAL_THRESHOLDS.CONNECTION_HIGH) {
     await storeRelationshipEpisode(summary)
   } else {

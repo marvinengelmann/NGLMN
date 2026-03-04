@@ -46,7 +46,8 @@ export async function deliberate(senseResult: SenseResult, feelResult: FeelingRe
   if (shouldInstinctOverride(feelResult.instinct, feelResult.soma)) {
     log.info("Instinct override triggered", { impulse: feelResult.instinct.impulse })
 
-    const action = feelResult.instinct.impulse === "avoid" || feelResult.instinct.impulse === "withdraw" ? "idle" : "reflect"
+    const action =
+      feelResult.instinct.impulse === "avoid" || feelResult.instinct.impulse === "withdraw" ? "idle" : "reflect"
     const decision: AnimaDecision = {
       reasoning: `Instinct override: ${feelResult.instinct.basis}`,
       messages: [],

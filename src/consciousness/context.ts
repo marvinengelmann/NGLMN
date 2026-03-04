@@ -1,6 +1,6 @@
 import { format } from "date-fns"
 import { getAttachmentStyle, getRelationshipPhase } from "@/attachment/state.ts"
-import { AttentionState } from "@/cognition/types.ts"
+import { AttentionState, InstinctImpression } from "@/cognition/types.ts"
 import { CommunicationRegister, type ConversationSlot } from "@/communication/types.ts"
 import { CONTEXT_LIMITS, HUMOR } from "@/config/constants.ts"
 import type { SenseData } from "@/consciousness/types.ts"
@@ -9,14 +9,19 @@ import { DissonanceState } from "@/dissonance/types.ts"
 import type { DreamState } from "@/dream/types.ts"
 import { getEmotionHistory } from "@/emotion/state.ts"
 import { EmotionalState } from "@/emotion/types.ts"
-import { computeEmotionDeltas, computeEmotionalIntensity } from "@/emotion/update.ts"
+import { computeEmotionalIntensity, computeEmotionDeltas } from "@/emotion/update.ts"
 import { getRecentChangelog } from "@/evolution/changelog.ts"
-import { InstinctImpression } from "@/cognition/types.ts"
 import { redis } from "@/integrations/redis.ts"
 import { nowLocal, TIMEZONE } from "@/lib/time.ts"
-import { queryHumorMemories, queryRelatedWithDistortion, queryRelationshipHistory } from "@/memory/episodic.ts"
+import {
+  queryHumorCallbacks,
+  queryHumorMemories,
+  queryRelatedWithDistortion,
+  queryRelationshipHistory
+} from "@/memory/episodic.ts"
 import { getGoalsByPriority } from "@/memory/goals.ts"
 import { getKnowledge, getOperatorLanguage } from "@/memory/semantic.ts"
+import type { EpisodeMetadata } from "@/memory/types.ts"
 import {
   getConversationBuffer,
   getDreamInsights,
@@ -27,7 +32,7 @@ import {
   getPendingEvolutionProposal,
   getReflectionLastAt
 } from "@/memory/working.ts"
-import { PERSONALITY_PROMPT } from "@/prompts/personality.ts"
+import { getOperatorModel } from "@/mind/state.ts"
 import { InnerDialog } from "@/polyphony/types.ts"
 import {
   ACTIONS_PROMPT,
@@ -37,10 +42,10 @@ import {
   RHYTHM_PROMPT
 } from "@/prompts/consciousness.ts"
 import { IDENTITY_PROMPT } from "@/prompts/identity.ts"
-import { getSelfConcept } from "@/psyche/state.ts"
+import { PERSONALITY_PROMPT } from "@/prompts/personality.ts"
 import { getExistentialQuestions } from "@/psyche/questions.ts"
+import { getSelfConcept } from "@/psyche/state.ts"
 import { SomaticState } from "@/soma/types.ts"
-import { getOperatorModel } from "@/mind/state.ts"
 import { getAllTrustLevels } from "@/trust/levels.ts"
 import { getVulnerability } from "@/vulnerability/compute.ts"
 import type { WorkflowDefinition } from "@/workflow/types.ts"
@@ -79,10 +84,7 @@ export function formatConversationMessage(
 
 function formatConversationSlot(slot: ConversationSlot, label: string): string {
   if (slot.messages.length === 0) return ""
-  return [
-    `${label}:`,
-    ...slot.messages.map((msg) => `  ${formatConversationMessage(msg)}`)
-  ].join("\n")
+  return [`${label}:`, ...slot.messages.map((msg) => `  ${formatConversationMessage(msg)}`)].join("\n")
 }
 
 function formatConversationBuffer(buffer: ConversationSlot[]): string {
@@ -335,9 +337,7 @@ export async function buildContext(senseData: SenseData): Promise<string> {
       [
         `# Dissonance\n  Active: ${dissonanceState.activeDissonance.toFixed(2)}`,
         ...dissonanceState.recentEvents.slice(0, 3).map((event) => {
-          const hiddenDriver = deceptionState.activeHiddenDrivers.find(
-            (d) => d.actualDriver === event.actualAction
-          )
+          const hiddenDriver = deceptionState.activeHiddenDrivers.find((d) => d.actualDriver === event.actualAction)
           const displayAction = hiddenDriver ? hiddenDriver.statedReason : event.actualAction
           return `  - ${event.declaredValue} vs ${displayAction} (${event.dissonanceScore.toFixed(2)})`
         })
@@ -460,8 +460,9 @@ export async function buildContext(senseData: SenseData): Promise<string> {
     sections.push(
       [
         `# Goals\nActive goals (${goals.length}):`,
-        ...goals.map((goal) =>
-          `  - [${goal.status ?? "open"}] ${goal.title} (priority: ${goal.priority ?? 0.5})${goal.description ? ` — ${goal.description}` : ""}`
+        ...goals.map(
+          (goal) =>
+            `  - [${goal.status ?? "open"}] ${goal.title} (priority: ${goal.priority ?? 0.5})${goal.description ? ` — ${goal.description}` : ""}`
         )
       ].join("\n")
     )
@@ -482,17 +483,40 @@ export async function buildContext(senseData: SenseData): Promise<string> {
     )
   }
 
-  if (senseData.emotion.excitement > HUMOR.QUERY_MIN_EXCITEMENT || senseData.emotion.connection > HUMOR.QUERY_MIN_CONNECTION) {
+  if (
+    senseData.emotion.excitement > HUMOR.QUERY_MIN_EXCITEMENT ||
+    senseData.emotion.connection > HUMOR.QUERY_MIN_CONNECTION
+  ) {
     const humorEpisodes = await queryHumorMemories(HUMOR.MAX_EPISODES_IN_CONTEXT)
-    if (humorEpisodes.length > 0) {
+
+    let callbackEpisodes: typeof humorEpisodes = []
+    if (senseData.pendingMessages.length > 0) {
+      const currentContext = senseData.pendingMessages.map((m) => m.text).join(" ")
+      callbackEpisodes = await queryHumorCallbacks(currentContext, HUMOR.CALLBACK_MAX, HUMOR.CALLBACK_MIN_SCORE)
+    }
+
+    const seen = new Set<string>()
+    const allHumor = [...callbackEpisodes, ...humorEpisodes]
+      .filter((ep) => {
+        if (seen.has(ep.id)) return false
+        seen.add(ep.id)
+        return true
+      })
+      .slice(0, HUMOR.MAX_EPISODES_IN_CONTEXT)
+
+    if (allHumor.length > 0) {
       sections.push(
         [
           "# Humor Memories",
           "Moments worth remembering with a smile:",
-          ...humorEpisodes
+          ...allHumor
             .filter((ep) => ep.data)
-            .map((ep) => `- ${ep.data!.length > 150 ? `${ep.data!.slice(0, 150)}...` : ep.data}`),
-          "You may reference these when the moment feels right. Never force humor."
+            .map((ep) => {
+              const tag = (ep.metadata as EpisodeMetadata | undefined)?.isInsideJoke ? " [inside joke]" : ""
+              const data = ep.data as string
+              return `- ${data.length > 150 ? `${data.slice(0, 150)}...` : data}${tag}`
+            }),
+          "You may reference these when the moment feels right — especially inside jokes, as callbacks. Never force humor."
         ].join("\n")
       )
     }

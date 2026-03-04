@@ -205,9 +205,22 @@ export async function summarizeOldEpisodes(
  */
 export async function storeHumorEpisode(
   summary: string,
-  metadata?: { emotionalState?: string; tickId?: string }
+  metadata?: { emotionalState?: string; tickId?: string; isInsideJoke?: boolean }
 ): Promise<string> {
-  return storeEpisode(summary, "humor", { relevanceScore: 0.75, ...metadata })
+  const id = crypto.randomUUID()
+  await vectorIndex.upsert({
+    id,
+    data: summary,
+    metadata: {
+      category: "humor" as const,
+      timestamp: nowISO(),
+      relevanceScore: 0.75,
+      emotionalState: metadata?.emotionalState,
+      tickId: metadata?.tickId,
+      isInsideJoke: metadata?.isInsideJoke ?? false
+    }
+  })
+  return id
 }
 
 /**
@@ -222,6 +235,22 @@ export async function queryHumorMemories(topK: number = 3): Promise<
   }>
 > {
   return queryRelated("funny embarrassing absurd humorous moment", topK, "category = 'humor'")
+}
+
+export async function queryHumorCallbacks(
+  currentContext: string,
+  topK: number,
+  minScore: number
+): Promise<Array<{ id: string; score: number; metadata: EpisodeMetadata | undefined; data: string | undefined }>> {
+  const results = await queryRelated(currentContext, topK + 2, "category = 'humor'")
+  return results
+    .filter((r) => r.score > minScore)
+    .sort((a, b) => {
+      const aInside = (a.metadata as EpisodeMetadata | undefined)?.isInsideJoke ? 1 : 0
+      const bInside = (b.metadata as EpisodeMetadata | undefined)?.isInsideJoke ? 1 : 0
+      return bInside !== aInside ? bInside - aInside : b.score - a.score
+    })
+    .slice(0, topK)
 }
 
 /**

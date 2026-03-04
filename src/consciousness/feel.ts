@@ -12,15 +12,15 @@ import { saveEmotionalState } from "@/emotion/state.ts"
 import { applyEvent } from "@/emotion/update.ts"
 import { log } from "@/lib/logger.ts"
 import { elapsedMinutesSince } from "@/lib/time.ts"
+import { queryRelated } from "@/memory/episodic.ts"
 import { getKnowledge } from "@/memory/semantic.ts"
 import { getConsecutiveIdleTicks, getConversationWaitingSince, getRecentActions } from "@/memory/working.ts"
+import { getOperatorModel, saveOperatorModel } from "@/mind/state.ts"
+import { detectModelCorrection, updateOperatorModel } from "@/mind/update.ts"
 import { getSelfConcept } from "@/psyche/state.ts"
-import { queryRelated } from "@/memory/episodic.ts"
 import { querySomaticMemories } from "@/soma/memory.ts"
 import { getSomaticLastTimestamp, getSomaticState, saveSomaticState } from "@/soma/state.ts"
 import { computeSomaticUpdate } from "@/soma/update.ts"
-import { getOperatorModel, saveOperatorModel } from "@/mind/state.ts"
-import { detectModelCorrection, updateOperatorModel } from "@/mind/update.ts"
 import { getAggregateTrustExperience } from "@/trust/levels.ts"
 import { computeIntimacyScore, computeVulnerability, saveVulnerability } from "@/vulnerability/compute.ts"
 import type { FeelingResult, SenseResult } from "./types.ts"
@@ -30,17 +30,25 @@ import type { FeelingResult, SenseResult } from "./types.ts"
  * Updates somatic markers, instinct, dissonance, attachment, vulnerability, and self-concept.
  */
 export async function feel(senseResult: SenseResult): Promise<FeelingResult> {
-  const [currentSoma, lastSomaTs, selfConcept, attachmentStyle, trustExperience, previousOperatorModel, waitingSince, deceptionState] =
-    await Promise.all([
-      getSomaticState(),
-      getSomaticLastTimestamp(),
-      getSelfConcept(),
-      getAttachmentStyle(),
-      getAggregateTrustExperience(),
-      getOperatorModel(),
-      getConversationWaitingSince(),
-      getDeceptionState()
-    ])
+  const [
+    currentSoma,
+    lastSomaTs,
+    selfConcept,
+    attachmentStyle,
+    trustExperience,
+    previousOperatorModel,
+    waitingSince,
+    deceptionState
+  ] = await Promise.all([
+    getSomaticState(),
+    getSomaticLastTimestamp(),
+    getSelfConcept(),
+    getAttachmentStyle(),
+    getAggregateTrustExperience(),
+    getOperatorModel(),
+    getConversationWaitingSince(),
+    getDeceptionState()
+  ])
 
   const elapsed = elapsedMinutesSince(lastSomaTs)
 
@@ -50,12 +58,8 @@ export async function feel(senseResult: SenseResult): Promise<FeelingResult> {
   const soma = computeSomaticUpdate(currentSoma, senseResult.emotion, elapsed, somaticMemories)
   await saveSomaticState(soma, "feel_phase")
 
-  const episodicHits = messageText
-    ? await queryRelated(messageText, 5)
-    : []
-  const nostalgia = episodicHits.length > 0
-    ? detectNostalgia(episodicHits, new Date())
-    : null
+  const episodicHits = messageText ? await queryRelated(messageText, 5) : []
+  const nostalgia = episodicHits.length > 0 ? detectNostalgia(episodicHits, new Date()) : null
   if (nostalgia) {
     const updatedEmotion = applyEvent(senseResult.emotion, nostalgia)
     await saveEmotionalState(updatedEmotion, "nostalgia_wave")

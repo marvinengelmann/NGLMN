@@ -7,12 +7,12 @@ import { DreamThinkResult } from "@/dream/types.ts"
 import { EmotionalState, MoodContext } from "@/emotion/types.ts"
 import { HealthCheckResult } from "@/health/types.ts"
 import { PendingMessage, WeatherData } from "@/integrations/types.ts"
+import { OperatorModel } from "@/mind/types.ts"
 import { PerceptionSummary } from "@/perception/types.ts"
 import { InnerDialog } from "@/polyphony/types.ts"
 import { SelfConcept } from "@/psyche/types.ts"
 import { MorningThinkResult, ReflectionOutput } from "@/routine/types.ts"
 import { SomaticState } from "@/soma/types.ts"
-import { OperatorModel } from "@/mind/types.ts"
 import { VulnerabilityState } from "@/vulnerability/types.ts"
 import { WorkflowDefinition } from "@/workflow/types.ts"
 
@@ -40,10 +40,14 @@ export const AnimaDecision = z.object({
     })
     .optional(),
   workflowId: z.string().uuid().nullable().default(null),
-  corrections: z.array(z.object({
-    text: z.string(),
-    replyTo: z.number().optional()
-  })).default([])
+  corrections: z
+    .array(
+      z.object({
+        text: z.string(),
+        replyTo: z.number().optional()
+      })
+    )
+    .default([])
 })
 export type AnimaDecision = z.infer<typeof AnimaDecision>
 

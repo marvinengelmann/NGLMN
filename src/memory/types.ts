@@ -26,7 +26,15 @@ export const RelationType = z.enum([
 ])
 export type RelationType = z.infer<typeof RelationType>
 
-export const EpisodicCategory = z.enum(["interaction", "task", "observation", "dream", "evolution", "relationship", "humor"])
+export const EpisodicCategory = z.enum([
+  "interaction",
+  "task",
+  "observation",
+  "dream",
+  "evolution",
+  "relationship",
+  "humor"
+])
 export type EpisodicCategory = z.infer<typeof EpisodicCategory>
 
 export const EpisodeMetadata = z.object({
@@ -34,6 +42,7 @@ export const EpisodeMetadata = z.object({
   timestamp: z.string(),
   relevanceScore: z.number().min(0).max(1),
   emotionalState: z.string().optional(),
-  tickId: z.string().optional()
+  tickId: z.string().optional(),
+  isInsideJoke: z.boolean().optional()
 })
 export type EpisodeMetadata = z.infer<typeof EpisodeMetadata>

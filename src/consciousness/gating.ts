@@ -6,11 +6,7 @@ import { clamp01 } from "@/lib/math.ts"
  * Compute the probability that a heartbeat tick should be skipped.
  * Active conversations and pending messages always prevent skipping.
  */
-export function computeSkipProbability(
-  emotion: EmotionalState,
-  inConversation: boolean,
-  hasMessages: boolean
-): number {
+export function computeSkipProbability(emotion: EmotionalState, inConversation: boolean, hasMessages: boolean): number {
   if (inConversation || hasMessages) return 0
 
   const raw =

@@ -1,3 +1,4 @@
+import { computeRelationshipPhase, shouldTransitionPhase } from "@/attachment/phases.ts"
 import {
   getAttachmentStyle,
   getPhaseTickCount,
@@ -6,7 +7,6 @@ import {
   saveAttachmentStyle,
   saveRelationshipPhase
 } from "@/attachment/state.ts"
-import { computeRelationshipPhase, shouldTransitionPhase } from "@/attachment/phases.ts"
 import { hasStyleChanged, updateAttachmentStyle } from "@/attachment/update.ts"
 import { log } from "@/lib/logger.ts"
 import { incrementConsecutiveIdleTicks, resetConsecutiveIdleTicks } from "@/memory/working.ts"
@@ -32,10 +32,7 @@ export async function maintain(
     await saveAttachmentStyle(updatedStyle)
   }
 
-  const [currentPhase, phaseTickCount] = await Promise.all([
-    getRelationshipPhase(),
-    getPhaseTickCount()
-  ])
+  const [currentPhase, phaseTickCount] = await Promise.all([getRelationshipPhase(), getPhaseTickCount()])
 
   const computedPhase = computeRelationshipPhase({
     interactionCount: input.senseResult.pendingMessages.length,
