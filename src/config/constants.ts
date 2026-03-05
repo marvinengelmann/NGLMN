@@ -9,7 +9,7 @@ export const MAX_OUTPUT_TOKENS = 30_000
 export const HEARTBEAT = {
   CRON: "* * * * *",
   CONCURRENCY: 10,
-  BUSY_TTL: 300,
+  BUSY_TTL: 1800,
   CONVERSATION_POLL_TIMEOUT: 60,
   MAX_CONVERSATION_WAIT: 300
 } as const
