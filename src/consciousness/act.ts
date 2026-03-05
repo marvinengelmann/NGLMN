@@ -1,3 +1,4 @@
+import { differenceInMinutes, parseISO } from "date-fns"
 import { sendMessages } from "@/communication/messaging.ts"
 import { EMOTIONAL_THRESHOLDS, MESSAGE_DELAY, TRIGGER_INTENSITY } from "@/config/constants.ts"
 import { db } from "@/db/client.ts"
@@ -5,13 +6,19 @@ import { narrativeEntries } from "@/db/schema.ts"
 import { isDissonanceSignificant } from "@/dissonance/check.ts"
 import { executeDream } from "@/dream/executor.ts"
 import { saveEmotionalState } from "@/emotion/state.ts"
-import { computeEmotionalIntensity, computeEmotionalUpdate, summarizeEmotions } from "@/emotion/update.ts"
+import {
+  computeEmotionalIntensity,
+  computeEmotionalUpdate,
+  computeValence,
+  summarizeEmotions
+} from "@/emotion/update.ts"
 import { runEvolutionCycle } from "@/evolution/cycle.ts"
 import { sendMessageWithReply } from "@/integrations/telegram.ts"
 import { log } from "@/lib/logger.ts"
 import { logAndCaptureError, trySafe } from "@/lib/result.ts"
 import { storeEpisode, storeHumorEpisode, storeRelationshipEpisode } from "@/memory/episodic.ts"
 import { executeGoalUpdate } from "@/memory/goals.ts"
+import { getLastTickSummary } from "@/memory/working.ts"
 import { generateNarrativeEntry } from "@/psyche/narrative.ts"
 import { savePsycheSnapshot, saveSelfConcept } from "@/psyche/state.ts"
 import { updateSelfConcept } from "@/psyche/update.ts"
@@ -59,7 +66,7 @@ export async function act(
   if (decision.workflowId) {
     const workflow = senseResult.triggeredWorkflows.find((wf) => wf.id === decision.workflowId)
     if (workflow) {
-      const result = await trySafe("WORKFLOW_ERROR", () => executeWorkflow(workflow, senseResult.systemPrompt))
+      const result = await trySafe("WORKFLOW_ERROR", () => executeWorkflow(workflow, deliberateResult.systemPrompt))
       if (result.isErr()) {
         logAndCaptureError(result.error, { phase: "act_workflow", workflowId: workflow.id })
       } else {
@@ -73,7 +80,7 @@ export async function act(
   }
 
   if (responseSent) {
-    const outcomeEmotion = computeEmotionalUpdate(senseResult.emotion, [
+    const outcomeEmotion = computeEmotionalUpdate(feelResult.emotion, [
       { trigger: "message_sent", intensity: TRIGGER_INTENSITY.MESSAGE_SENT }
     ])
     await saveEmotionalState(outcomeEmotion, "message_sent")
@@ -82,22 +89,25 @@ export async function act(
     await saveSomaticState(postActionSoma, "post_action")
   }
 
+  const lastTick = await getLastTickSummary()
+  const elapsedHours = lastTick ? differenceInMinutes(new Date(), parseISO(lastTick.timestamp)) / 60 : 1 / 60
+
   const isAutoAction = decision.action !== "idle" && decision.action !== "reflect"
   const updatedConcept = updateSelfConcept(feelResult.selfConcept, {
     recentTaskSuccess: responseSent,
     recentTaskFailure: false,
     messageSentCount: decision.messages.length,
-    emotionalIntensity: computeEmotionalIntensity(senseResult.emotion),
+    emotionalIntensity: computeEmotionalIntensity(feelResult.emotion),
     operatorEngagement: senseResult.pendingMessages.length > 0,
     autonomousAction: isAutoAction,
     vulnerabilityOpen: feelResult.vulnerability.windowOpen,
     dissonanceDetected: isDissonanceSignificant(feelResult.dissonance.activeDissonance),
-    elapsedHours: 1 / 60
+    elapsedHours
   })
   await saveSelfConcept(updatedConcept)
 
   if (decision.action === "reflect" || decision.action === "morning") {
-    const emotionSummary = summarizeEmotions(senseResult.emotion)
+    const emotionSummary = summarizeEmotions(feelResult.emotion)
 
     const entry = await generateNarrativeEntry(
       `${decision.action}: ${decision.reasoning.slice(0, 200)}`,
@@ -124,17 +134,19 @@ export async function act(
   }
 
   const summary = `${decision.action}: ${decision.reasoning.slice(0, 200)}`
+  const valence = computeValence(feelResult.emotion)
   if (
     responseSent &&
     feelResult.register === "playful" &&
-    senseResult.emotion.connection > EMOTIONAL_THRESHOLDS.CONNECTION_HIGH
+    feelResult.emotion.connection > EMOTIONAL_THRESHOLDS.CONNECTION_HIGH
   ) {
     await storeHumorEpisode(summary, { isInsideJoke: senseResult.pendingMessages.length > 0 })
-  } else if (responseSent && senseResult.emotion.connection > EMOTIONAL_THRESHOLDS.CONNECTION_HIGH) {
-    await storeRelationshipEpisode(summary)
+  } else if (responseSent && feelResult.emotion.connection > EMOTIONAL_THRESHOLDS.CONNECTION_HIGH) {
+    await storeRelationshipEpisode(summary, { valence })
   } else {
     await storeEpisode(summary, responseSent ? "interaction" : "observation", {
-      relevanceScore: EMOTIONAL_THRESHOLDS.RELEVANCE_DEFAULT
+      relevanceScore: EMOTIONAL_THRESHOLDS.RELEVANCE_DEFAULT,
+      valence
     })
   }
 

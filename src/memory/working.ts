@@ -11,7 +11,8 @@ import { OperatorLocation, WeatherData } from "@/integrations/types.ts"
 import { nowISO } from "@/lib/time.ts"
 import { PerceptionSummary } from "@/perception/types.ts"
 import { GuardianResult } from "@/security/types.ts"
-import type { ActionType } from "@/trust/types.ts"
+import type { ActionType, TrustEvent } from "@/trust/types.ts"
+import { TrustEventLog } from "@/trust/types.ts"
 
 function parseRedisJson<T>(schema: z.ZodType<T>, raw: unknown, key: string): T {
   try {
@@ -61,6 +62,11 @@ const KEYS = {
   EMOTION_LAST_SYSTEM_STATUS: "working:emotion:lastSystemStatus",
   EMOTION_LAST_TIMESTAMP: "working:emotion:lastTimestamp",
   CONSECUTIVE_IDLE_TICKS: "working:cognition:consecutiveIdleTicks",
+  RELATIONSHIP_CONFLICT_COUNT: "working:relationship:conflictCount",
+  RELATIONSHIP_FIRST_INTERACTION_AT: "working:relationship:firstInteractionAt",
+  RELATIONSHIP_TOTAL_INTERACTIONS: "working:relationship:totalInteractions",
+  DREAM_NARRATIVE: "working:dream:narrative",
+  DRIFT_THROTTLE: "working:drift:throttle",
   trustLevel: (actionType: string) => `working:trust:${actionType}` as const
 } as const
 
@@ -440,18 +446,91 @@ export async function resetConsecutiveIdleTicks(): Promise<void> {
   await redis.set(KEYS.CONSECUTIVE_IDLE_TICKS, 0)
 }
 
-interface TrustLevelData {
+interface LegacyTrustLevelData {
   totalAttempts: number
   successfulAttempts: number
 }
 
-const DEFAULT_TRUST_LEVEL: TrustLevelData = { totalAttempts: 0, successfulAttempts: 0 }
+export async function getTrustEventLog(actionType: ActionType): Promise<TrustEvent[]> {
+  const raw = await redis.get(KEYS.trustLevel(actionType))
+  if (raw == null) return []
 
-export async function getTrustLevelData(actionType: ActionType): Promise<TrustLevelData> {
-  const raw = await redis.get<TrustLevelData>(KEYS.trustLevel(actionType))
-  return raw ?? DEFAULT_TRUST_LEVEL
+  const parsed = typeof raw === "string" ? JSON.parse(raw) : raw
+  const logResult = TrustEventLog.safeParse(parsed)
+  if (logResult.success) return logResult.data
+
+  const legacy = parsed as LegacyTrustLevelData
+  if (typeof legacy.totalAttempts === "number") {
+    const events: TrustEvent[] = []
+    const now = new Date().toISOString()
+    for (let i = 0; i < legacy.successfulAttempts; i++) {
+      events.push({ success: true, timestamp: now })
+    }
+    for (let i = 0; i < legacy.totalAttempts - legacy.successfulAttempts; i++) {
+      events.push({ success: false, timestamp: now })
+    }
+    await setTrustEventLog(actionType, events)
+    return events
+  }
+
+  return []
 }
 
-export async function setTrustLevelData(actionType: ActionType, data: TrustLevelData): Promise<void> {
-  await redis.set(KEYS.trustLevel(actionType), data)
+export async function setTrustEventLog(actionType: ActionType, events: TrustEvent[]): Promise<void> {
+  const capped = events.slice(-100)
+  await redis.set(KEYS.trustLevel(actionType), capped)
+}
+
+export async function pushTrustEvent(actionType: ActionType, event: TrustEvent): Promise<void> {
+  const events = await getTrustEventLog(actionType)
+  events.push(event)
+  await setTrustEventLog(actionType, events)
+}
+
+export async function getConflictCount(): Promise<number> {
+  const raw = await redis.get<number>(KEYS.RELATIONSHIP_CONFLICT_COUNT)
+  return raw ?? 0
+}
+
+export async function incrementConflictCount(): Promise<void> {
+  const current = await getConflictCount()
+  await redis.set(KEYS.RELATIONSHIP_CONFLICT_COUNT, current + 1)
+}
+
+export async function getFirstInteractionAt(): Promise<string | null> {
+  return redis.get<string>(KEYS.RELATIONSHIP_FIRST_INTERACTION_AT)
+}
+
+export async function setFirstInteractionAt(isoTimestamp: string): Promise<void> {
+  await redis.set(KEYS.RELATIONSHIP_FIRST_INTERACTION_AT, isoTimestamp)
+}
+
+export async function getTotalInteractions(): Promise<number> {
+  const raw = await redis.get<number>(KEYS.RELATIONSHIP_TOTAL_INTERACTIONS)
+  return raw ?? 0
+}
+
+export async function incrementTotalInteractions(): Promise<void> {
+  const current = await getTotalInteractions()
+  await redis.set(KEYS.RELATIONSHIP_TOTAL_INTERACTIONS, current + 1)
+}
+
+export async function getDreamNarrative(): Promise<string | null> {
+  return redis.get<string>(KEYS.DREAM_NARRATIVE)
+}
+
+export async function setDreamNarrative(narrative: string): Promise<void> {
+  await redis.set(KEYS.DREAM_NARRATIVE, narrative)
+}
+
+export async function clearDreamNarrative(): Promise<void> {
+  await redis.del(KEYS.DREAM_NARRATIVE)
+}
+
+export async function setDriftThrottle(severity: string, ttlSeconds: number): Promise<void> {
+  await redis.set(KEYS.DRIFT_THROTTLE, severity, { ex: ttlSeconds })
+}
+
+export async function getDriftThrottle(): Promise<string | null> {
+  return redis.get<string>(KEYS.DRIFT_THROTTLE)
 }

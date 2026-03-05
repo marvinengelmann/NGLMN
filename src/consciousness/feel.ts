@@ -8,13 +8,19 @@ import { getDeceptionState, saveDeceptionState } from "@/deception/state.ts"
 import { buildDissonanceState, checkDissonance, resolveDissonance } from "@/dissonance/check.ts"
 import { saveDissonanceState } from "@/dissonance/state.ts"
 import { detectNostalgia } from "@/emotion/nostalgia.ts"
-import { saveEmotionalState } from "@/emotion/state.ts"
-import { applyEvent } from "@/emotion/update.ts"
+import { getEmotionalState, saveEmotionalState } from "@/emotion/state.ts"
+import { applyEvent, computeEmotionalUpdate } from "@/emotion/update.ts"
 import { log } from "@/lib/logger.ts"
-import { elapsedMinutesSince } from "@/lib/time.ts"
+import { setEmotionContext } from "@/lib/sentry.ts"
+import { elapsedMinutesSince, nowISO } from "@/lib/time.ts"
 import { queryRelated } from "@/memory/episodic.ts"
 import { getKnowledge } from "@/memory/semantic.ts"
-import { getConsecutiveIdleTicks, getRecentActions } from "@/memory/working.ts"
+import {
+  getConsecutiveIdleTicks,
+  getRecentActions,
+  setLastEmotionTimestamp,
+  setTriggerTimestamp
+} from "@/memory/working.ts"
 import { getOperatorModel, saveOperatorModel } from "@/mind/state.ts"
 import { detectModelCorrection, updateOperatorModel } from "@/mind/update.ts"
 import { getSelfConcept } from "@/psyche/state.ts"
@@ -30,6 +36,21 @@ import type { FeelingResult, SenseResult } from "./types.ts"
  * Updates somatic markers, instinct, dissonance, attachment, vulnerability, and self-concept.
  */
 export async function feel(senseResult: SenseResult): Promise<FeelingResult> {
+  const currentEmotion = await getEmotionalState()
+  const emotion = computeEmotionalUpdate(
+    currentEmotion,
+    senseResult.rawTriggers,
+    senseResult.moodContext,
+    Math.max(1, senseResult.elapsedMinutes),
+    senseResult.triggerTimestamps
+  )
+  await saveEmotionalState(emotion, senseResult.rawTriggers[0]?.trigger ?? "message_received")
+  await setLastEmotionTimestamp(nowISO())
+  setEmotionContext(emotion)
+  for (const event of senseResult.rawTriggers) {
+    await setTriggerTimestamp(event.trigger, nowISO())
+  }
+
   const [
     currentSoma,
     lastSomaTs,
@@ -53,17 +74,17 @@ export async function feel(senseResult: SenseResult): Promise<FeelingResult> {
   const messageText = senseResult.pendingMessages.map((m) => m.text).join(" ")
   const somaticMemories = messageText ? await querySomaticMemories(messageText) : []
 
-  const soma = computeSomaticUpdate(currentSoma, senseResult.emotion, elapsed, somaticMemories)
+  const soma = computeSomaticUpdate(currentSoma, emotion, elapsed, somaticMemories)
   await saveSomaticState(soma, "feel_phase")
 
   const episodicHits = messageText ? await queryRelated(messageText, 5) : []
   const nostalgia = episodicHits.length > 0 ? detectNostalgia(episodicHits, new Date()) : null
   if (nostalgia) {
-    const updatedEmotion = applyEvent(senseResult.emotion, nostalgia)
+    const updatedEmotion = applyEvent(emotion, nostalgia)
     await saveEmotionalState(updatedEmotion, "nostalgia_wave")
   }
 
-  const instinct = await computeInstinctImpression(senseResult.pendingMessages, senseResult.emotion, soma)
+  const instinct = await computeInstinctImpression(senseResult.pendingMessages, emotion, soma)
 
   const [knowledgeResult, recentActions] = await Promise.all([
     getKnowledge("insight", undefined, "self"),
@@ -72,10 +93,10 @@ export async function feel(senseResult: SenseResult): Promise<FeelingResult> {
 
   const selfKnowledge = knowledgeResult.isOk() ? knowledgeResult.value.map((k) => ({ key: k.key, value: k.value })) : []
 
-  let dissonanceEvents = await checkDissonance(recentActions, selfConcept, senseResult.emotion, selfKnowledge)
+  let dissonanceEvents = await checkDissonance(recentActions, selfConcept, emotion, selfKnowledge)
   dissonanceEvents = dissonanceEvents.map((event) => ({
     ...event,
-    resolution: resolveDissonance(event, senseResult.emotion)
+    resolution: resolveDissonance(event, emotion)
   }))
   const dissonance = buildDissonanceState(dissonanceEvents)
   await saveDissonanceState(dissonance)
@@ -96,9 +117,9 @@ export async function feel(senseResult: SenseResult): Promise<FeelingResult> {
     operatorSilenceMinutes,
     operatorJustReturned,
     inConversation: senseResult.moodContext.inConversation,
-    connectionLevel: senseResult.emotion.connection,
-    frustrationLevel: senseResult.emotion.frustration,
-    cautionLevel: senseResult.emotion.caution,
+    connectionLevel: emotion.connection,
+    frustrationLevel: emotion.frustration,
+    cautionLevel: emotion.caution,
     trustExperience
   })
 
@@ -121,20 +142,20 @@ export async function feel(senseResult: SenseResult): Promise<FeelingResult> {
   const vulnerability = await computeVulnerability({
     trustExperience,
     attachmentSecurity: attachmentStyle.secure,
-    connectionLevel: senseResult.emotion.connection,
+    connectionLevel: emotion.connection,
     somaticOpenness: soma.openness,
     hourOfDay,
-    recentIntimacyScore: computeIntimacyScore(senseResult.emotion.connection, selfConcept.selfWorth),
+    recentIntimacyScore: computeIntimacyScore(emotion.connection, selfConcept.selfWorth),
     authenticity: selfConcept.authenticity,
-    energyLevel: senseResult.emotion.energy
+    energyLevel: emotion.energy
   })
   await saveVulnerability(vulnerability)
 
-  const register = computeCommunicationRegister(senseResult.emotion, soma, vulnerability)
+  const register = computeCommunicationRegister(emotion, soma, vulnerability)
 
   const consecutiveIdleTicks = await getConsecutiveIdleTicks()
   const attentionState = computeAttentionState(
-    senseResult.emotion,
+    emotion,
     soma,
     senseResult.pendingMessages.length > 0,
     consecutiveIdleTicks
@@ -151,6 +172,7 @@ export async function feel(senseResult: SenseResult): Promise<FeelingResult> {
   })
 
   return {
+    emotion,
     soma,
     instinct,
     dissonance,

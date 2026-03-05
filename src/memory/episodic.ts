@@ -1,4 +1,4 @@
-import { parseISO, subDays } from "date-fns"
+import { differenceInDays, parseISO, subDays } from "date-fns"
 import { callIntelligence } from "@/core/intelligence.ts"
 import { TextOutput } from "@/core/types.ts"
 import { applyDistortions } from "@/distortion/compute.ts"
@@ -19,6 +19,7 @@ export async function storeEpisode(
     relevanceScore?: number
     emotionalState?: string
     tickId?: string
+    valence?: number
   } = {}
 ): Promise<string> {
   const id = crypto.randomUUID()
@@ -32,7 +33,8 @@ export async function storeEpisode(
       timestamp: now,
       relevanceScore: metadata.relevanceScore ?? 0.5,
       emotionalState: metadata.emotionalState,
-      tickId: metadata.tickId
+      tickId: metadata.tickId,
+      valence: metadata.valence
     }
   })
 
@@ -82,6 +84,7 @@ export async function storeRelationshipEpisode(
   metadata: {
     emotionalState?: string
     tickId?: string
+    valence?: number
   } = {}
 ): Promise<string> {
   return storeEpisode(summary, "relationship", {
@@ -292,4 +295,43 @@ export async function getRecentByCategory(
     metadata: r.metadata,
     data: r.data as string | undefined
   }))
+}
+
+/**
+ * Delete old, low-relevance episodes to implement a forgetting curve.
+ * Skips relationship and humor categories to preserve meaningful bonds.
+ */
+export async function forgetOldEpisodes(
+  ageThresholdDays: number = 90,
+  relevanceThreshold: number = 0.2
+): Promise<number> {
+  const categories: EpisodicCategory[] = ["interaction", "task", "observation", "dream", "evolution"]
+  const idsToDelete: string[] = []
+
+  for (const category of categories) {
+    const results = await vectorIndex.query({
+      data: `old ${category} memories to forget`,
+      topK: 50,
+      includeMetadata: true,
+      filter: `category = '${category}'`
+    })
+
+    for (const r of results) {
+      const meta = r.metadata as EpisodeMetadata | undefined
+      if (!meta) continue
+      if ((meta.relevanceScore ?? 1) >= relevanceThreshold) continue
+      try {
+        if (differenceInDays(new Date(), parseISO(meta.timestamp)) >= ageThresholdDays) {
+          idsToDelete.push(r.id as string)
+        }
+      } catch {}
+    }
+  }
+
+  if (idsToDelete.length > 0) {
+    await vectorIndex.delete(idsToDelete)
+    log.info("Forgot old episodes", { count: idsToDelete.length })
+  }
+
+  return idsToDelete.length
 }

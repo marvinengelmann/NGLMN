@@ -2,17 +2,18 @@ import type { AnimaDecision, DeliberateResult, MaintainInput, TickSummary } from
 import { db } from "@/db/client.ts"
 import { routineLog, tickLog } from "@/db/schema.ts"
 import { saveEmotionalState } from "@/emotion/state.ts"
+import type { EmotionalState } from "@/emotion/types.ts"
 import { pushRecentAction, pushRecentTickDuration, setLastTickSummary } from "@/memory/working.ts"
 
 /**
  * Log the tick: persist durations, actions, emotion, tick summary, and tick log entry.
  */
-export async function logTick(input: MaintainInput, durationMs: number): Promise<TickSummary> {
+export async function logTick(input: MaintainInput, durationMs: number, emotion: EmotionalState): Promise<TickSummary> {
   await pushRecentTickDuration(durationMs)
   await pushRecentAction(input.decision.action)
 
   const primaryTrigger = input.senseResult.perception.emotionalTriggers[0]?.trigger ?? "message_received"
-  await saveEmotionalState(input.senseResult.emotion, primaryTrigger, input.tickId)
+  await saveEmotionalState(emotion, primaryTrigger, input.tickId)
 
   const tickSummary: TickSummary = {
     tickId: input.tickId,

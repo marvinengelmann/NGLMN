@@ -20,9 +20,10 @@ import {
   queryRelationshipHistory
 } from "@/memory/episodic.ts"
 import { getGoalsByPriority } from "@/memory/goals.ts"
-import { getKnowledge, getOperatorLanguage } from "@/memory/semantic.ts"
+import { getKnowledge, getOperatorLanguage, getRelatedEntities } from "@/memory/semantic.ts"
 import type { EpisodeMetadata } from "@/memory/types.ts"
 import {
+  getConsecutiveIdleTicks,
   getConversationBuffer,
   getDreamInsights,
   getDreamLastRun,
@@ -30,9 +31,11 @@ import {
   getEvolutionCycleResult,
   getLastTickSummary,
   getPendingEvolutionProposal,
+  getRecentTickDurations,
   getReflectionLastAt
 } from "@/memory/working.ts"
 import { getOperatorModel } from "@/mind/state.ts"
+import { computeTimePerception } from "@/perception/time.ts"
 import { InnerDialog } from "@/polyphony/types.ts"
 import {
   ACTIONS_PROMPT,
@@ -187,8 +190,8 @@ function formatTriggerDescription(trigger: WorkflowDefinition["trigger"]): strin
  * Build the full context for ANIMA's single LLM call.
  * Gathers all data, formats into ordered sections, joined with double newlines.
  */
-export async function buildContext(senseData: SenseData): Promise<string> {
-  const emotionIntensity = computeEmotionalIntensity(senseData.emotion)
+export async function buildContext(senseData: SenseData, emotion: EmotionalState): Promise<string> {
+  const emotionIntensity = computeEmotionalIntensity(emotion)
 
   const [
     lastTick,
@@ -234,7 +237,7 @@ export async function buildContext(senseData: SenseData): Promise<string> {
     queryRelationshipHistory(CONTEXT_LIMITS.maxRelationship),
     getKnowledge(),
     getOperatorLanguage(),
-    getGoalsByPriority(CONTEXT_LIMITS.maxGoals, senseData.emotion),
+    getGoalsByPriority(CONTEXT_LIMITS.maxGoals, emotion),
     getAllTrustLevels(),
     getRecentChangelog(5),
     getEvolutionCycleResult(),
@@ -264,6 +267,20 @@ export async function buildContext(senseData: SenseData): Promise<string> {
   const formattedTime = format(nowLocal(), "EEEE, MMMM d, yyyy · HH:mm")
   sections.push(`# Time\n${formattedTime} (${TIMEZONE})`)
 
+  const [recentDurations, consecutiveIdleTicks] = await Promise.all([
+    getRecentTickDurations(),
+    getConsecutiveIdleTicks()
+  ])
+  const timePeception = computeTimePerception(
+    recentDurations,
+    emotionIntensity,
+    consecutiveIdleTicks,
+    senseData.moodContext.operatorSilenceMinutes
+  )
+  if (timePeception.subjectivePace !== "normal") {
+    sections.push(`# Time Perception\nPace: ${timePeception.subjectivePace} — ${timePeception.description}`)
+  }
+
   sections.push(
     [
       "# Language",
@@ -273,7 +290,7 @@ export async function buildContext(senseData: SenseData): Promise<string> {
     ].join("\n")
   )
 
-  const emotionLines = Object.entries(senseData.emotion)
+  const emotionLines = Object.entries(emotion)
     .map(([dim, val]) => `  ${dim}: ${(val as number).toFixed(2)}`)
     .join("\n")
   const emotionSection = [`# Emotions\nCurrent state:\n${emotionLines}`]
@@ -282,6 +299,16 @@ export async function buildContext(senseData: SenseData): Promise<string> {
     emotionSection.push(...formatEmotionTrajectory(emotionHistory))
   }
   sections.push(emotionSection.join("\n"))
+
+  if (emotion.curiosity > 0.7 && senseData.pendingMessages.length === 0) {
+    sections.push(
+      [
+        "# Curiosity",
+        "Your curiosity is buzzing. You feel drawn to explore, wonder, or ask something.",
+        "Consider reaching out with a genuine question or sharing a thought that fascinates you."
+      ].join("\n")
+    )
+  }
 
   if (somaticState) {
     const somaLines = Object.entries(somaticState).map(
@@ -484,10 +511,7 @@ export async function buildContext(senseData: SenseData): Promise<string> {
     )
   }
 
-  if (
-    senseData.emotion.excitement > HUMOR.QUERY_MIN_EXCITEMENT ||
-    senseData.emotion.connection > HUMOR.QUERY_MIN_CONNECTION
-  ) {
+  if (emotion.excitement > HUMOR.QUERY_MIN_EXCITEMENT || emotion.connection > HUMOR.QUERY_MIN_CONNECTION) {
     const humorEpisodes = await queryHumorMemories(HUMOR.MAX_EPISODES_IN_CONTEXT)
 
     let callbackEpisodes: typeof humorEpisodes = []
@@ -527,6 +551,20 @@ export async function buildContext(senseData: SenseData): Promise<string> {
     const sliced = knowledge.slice(0, CONTEXT_LIMITS.maxSemantic)
     const formatted = formatKnowledgeByScope(sliced)
     if (formatted) sections.push(formatted)
+
+    const topEntries = sliced.sort((a, b) => (b.confidence ?? 0) - (a.confidence ?? 0)).slice(0, 5)
+    const relationLines: string[] = []
+    for (const entry of topEntries) {
+      const related = await getRelatedEntities(entry.id)
+      if (related.isErr()) continue
+      for (const rel of related.value.slice(0, 2)) {
+        relationLines.push(`- "${entry.key}" → "${rel.key}"`)
+      }
+      if (relationLines.length >= 10) break
+    }
+    if (relationLines.length > 0) {
+      sections.push(["# Knowledge Connections", ...relationLines].join("\n"))
+    }
   }
 
   if (trustLevels.length > 0) {
@@ -534,10 +572,8 @@ export async function buildContext(senseData: SenseData): Promise<string> {
       [
         "# Trust",
         ...trustLevels.map((t) => {
-          const successful = t.successfulAttempts ?? 0
-          const total = t.totalAttempts ?? 0
-          const experience = total > 0 ? (successful / total).toFixed(2) : "0.00"
-          return `  - ${t.actionType}: experience ${successful}/${total} (${experience})`
+          const weighted = (t as { weightedExperience?: number }).weightedExperience ?? 0
+          return `  - ${t.actionType}: ${t.successfulAttempts}/${t.totalAttempts} (weighted: ${weighted.toFixed(2)})`
         })
       ].join("\n")
     )

@@ -28,7 +28,7 @@ export const heartbeatTask = schedules.task({
       fetchNewMessages(0)
     ])
     if (emotion) {
-      const skip = computeSkipProbability(emotion, waitingSince !== null, peek.messages.length > 0)
+      const skip = await computeSkipProbability(emotion, waitingSince !== null, peek.messages.length > 0)
       if (Math.random() < skip) {
         log.info("Heartbeat gated", { skipProbability: skip.toFixed(2) })
         await runs.cancel(ctx.run.id)

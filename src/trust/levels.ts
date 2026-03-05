@@ -1,15 +1,38 @@
-import { getTrustLevelData } from "@/memory/working.ts"
-import { ActionType, type ActionType as ActionTypeT } from "./types.ts"
+import { parseISO } from "date-fns"
+import { getTrustEventLog } from "@/memory/working.ts"
+import { ActionType, type ActionType as ActionTypeT, type TrustEvent } from "./types.ts"
+
+const HALF_LIFE_DAYS = 30
+
+function computeWeight(event: TrustEvent, now: Date): number {
+  const eventDate = parseISO(event.timestamp)
+  const daysSince = (now.getTime() - eventDate.getTime()) / (1000 * 60 * 60 * 24)
+  return 2 ** (-daysSince / HALF_LIFE_DAYS)
+}
+
+function computeWeightedExperience(events: TrustEvent[]): number {
+  if (events.length === 0) return 0
+  const now = new Date()
+  let weightedSuccess = 0
+  let totalWeight = 0
+  for (const event of events) {
+    const weight = computeWeight(event, now)
+    totalWeight += weight
+    if (event.success) weightedSuccess += weight
+  }
+  return totalWeight > 0 ? weightedSuccess / totalWeight : 0
+}
 
 /**
- * Get the trust level for a specific action type.
+ * Get the trust level for a specific action type with time-weighted experience.
  */
 export async function getTrustLevel(actionType: ActionTypeT) {
-  const data = await getTrustLevelData(actionType)
+  const events = await getTrustEventLog(actionType)
   return {
     actionType,
-    totalAttempts: data.totalAttempts,
-    successfulAttempts: data.successfulAttempts
+    totalAttempts: events.length,
+    successfulAttempts: events.filter((e) => e.success).length,
+    weightedExperience: computeWeightedExperience(events)
   }
 }
 
@@ -22,18 +45,19 @@ export async function getAllTrustLevels() {
 
 /**
  * Compute aggregate trust experience (0-1) across all action types.
- * Returns 0.5 if no trust data exists yet.
+ * Uses time-weighted decay. Returns 0.5 if no trust data exists yet.
  */
 export async function getAggregateTrustExperience(): Promise<number> {
   const levels = await getAllTrustLevels()
-
-  let totalAttempts = 0
-  let totalSuccesses = 0
+  let totalWeight = 0
+  let totalWeighted = 0
   for (const level of levels) {
-    totalAttempts += level.totalAttempts
-    totalSuccesses += level.successfulAttempts
+    if (level.totalAttempts > 0) {
+      totalWeight += level.totalAttempts
+      totalWeighted += level.weightedExperience * level.totalAttempts
+    }
   }
 
-  if (totalAttempts === 0) return 0.5
-  return Math.min(1, totalSuccesses / totalAttempts)
+  if (totalWeight === 0) return 0.5
+  return Math.min(1, totalWeighted / totalWeight)
 }

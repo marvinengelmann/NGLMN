@@ -31,7 +31,6 @@ async function dump() {
       telegramActivity: { pendingCount: 0, lastMessageAge: 0, operatorActive: false },
       emotionalTriggers: []
     },
-    emotion,
     health,
     weather: null,
     conversationState: null,
@@ -46,7 +45,7 @@ async function dump() {
     }
   }
 
-  const contextString = await buildContext(senseData)
+  const contextString = await buildContext(senseData, emotion)
   const systemPrompt = buildSystemPrompt(contextString)
 
   console.log("=".repeat(80))

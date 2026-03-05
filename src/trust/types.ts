@@ -13,6 +13,15 @@ export type ActionType = z.infer<typeof ActionType>
 export const AutonomyLevel = z.enum(["locked", "approval_required", "supervised", "independent"])
 export type AutonomyLevel = z.infer<typeof AutonomyLevel>
 
+export const TrustEvent = z.object({
+  success: z.boolean(),
+  timestamp: z.string()
+})
+export type TrustEvent = z.infer<typeof TrustEvent>
+
+export const TrustEventLog = z.array(TrustEvent).default([])
+export type TrustEventLog = z.infer<typeof TrustEventLog>
+
 export const TrustAssessment = z.object({
   canAct: z.boolean(),
   requiresApproval: z.boolean(),

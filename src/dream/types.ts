@@ -47,9 +47,15 @@ export type ConsolidationResult = z.infer<typeof ConsolidationResult>
 export const DreamState = z.enum(["idle", "dreaming", "waking"])
 export type DreamState = z.infer<typeof DreamState>
 
+export const DreamNarrativeOutput = z.object({
+  narrative: z.string().max(500)
+})
+export type DreamNarrativeOutput = z.infer<typeof DreamNarrativeOutput>
+
 export const DreamThinkResult = z.object({
   consolidation: ConsolidationOutput.nullable(),
   creative: CreativeConnectionsOutput.nullable(),
-  insights: z.array(z.string())
+  insights: z.array(z.string()),
+  narrative: z.string().nullable()
 })
 export type DreamThinkResult = z.infer<typeof DreamThinkResult>

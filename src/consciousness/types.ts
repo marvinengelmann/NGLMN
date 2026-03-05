@@ -4,7 +4,7 @@ import { AttentionState, CognitiveConflict, InstinctImpression } from "@/cogniti
 import { CommunicationRegister } from "@/communication/types.ts"
 import { DissonanceState } from "@/dissonance/types.ts"
 import { DreamThinkResult } from "@/dream/types.ts"
-import { EmotionalState, MoodContext } from "@/emotion/types.ts"
+import { EmotionalState, EmotionUpdateEvent, MoodContext } from "@/emotion/types.ts"
 import { HealthCheckResult } from "@/health/types.ts"
 import { PendingMessage, WeatherData } from "@/integrations/types.ts"
 import { OperatorModel } from "@/mind/types.ts"
@@ -71,22 +71,21 @@ export const ConversationState = z.object({
 export type ConversationState = z.infer<typeof ConversationState>
 
 export const SenseResult = z.object({
-  systemPrompt: z.string(),
-  userPrompt: z.string(),
   pendingMessages: z.array(PendingMessage),
   perception: PerceptionSummary,
-  emotion: EmotionalState,
   health: HealthCheckResult.nullable(),
   conversationState: ConversationState.nullable(),
   triggeredWorkflows: z.array(WorkflowDefinition).default([]),
-  moodContext: MoodContext
+  moodContext: MoodContext,
+  rawTriggers: z.array(EmotionUpdateEvent),
+  elapsedMinutes: z.number(),
+  triggerTimestamps: z.record(z.string(), z.number())
 })
 export type SenseResult = z.infer<typeof SenseResult>
 
 export const SenseData = z.object({
   pendingMessages: z.array(PendingMessage),
   perception: PerceptionSummary,
-  emotion: EmotionalState,
   health: HealthCheckResult.nullable(),
   weather: WeatherData.nullable(),
   conversationState: ConversationState.nullable(),
@@ -96,6 +95,7 @@ export const SenseData = z.object({
 export type SenseData = z.infer<typeof SenseData>
 
 export const FeelingResult = z.object({
+  emotion: EmotionalState,
   soma: SomaticState,
   instinct: InstinctImpression,
   dissonance: DissonanceState,
@@ -110,6 +110,7 @@ export type FeelingResult = z.infer<typeof FeelingResult>
 
 export const DeliberateResult = z.object({
   decision: AnimaDecision,
+  systemPrompt: z.string(),
   dreamResult: DreamThinkResult.optional(),
   reflectionResult: ReflectionOutput.optional(),
   morningResult: MorningThinkResult.optional(),

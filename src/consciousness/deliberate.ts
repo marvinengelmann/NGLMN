@@ -8,13 +8,26 @@ import { queryRelated } from "@/memory/episodic.ts"
 import { generateInnerDialog } from "@/polyphony/dialog.ts"
 import { selectActiveVoices, shouldRunDialog } from "@/polyphony/voices.ts"
 import { thinkMorning, thinkReflect } from "@/routine/thinking.ts"
-import { AnimaDecision, type DeliberateResult, type FeelingResult, type SenseResult } from "./types.ts"
+import { buildContext, buildSystemPrompt } from "./context.ts"
+import { AnimaDecision, type DeliberateResult, type FeelingResult, type SenseData, type SenseResult } from "./types.ts"
 
 /**
  * DELIBERATE phase — main LLM decision with polyphony and instinct integration.
  */
 export async function deliberate(senseResult: SenseResult, feelResult: FeelingResult): Promise<DeliberateResult> {
-  const activeVoices = selectActiveVoices(senseResult.emotion, {
+  const senseData: SenseData = {
+    pendingMessages: senseResult.pendingMessages,
+    perception: senseResult.perception,
+    health: senseResult.health,
+    weather: senseResult.perception.weatherData ?? null,
+    conversationState: senseResult.conversationState,
+    triggeredWorkflows: senseResult.triggeredWorkflows,
+    moodContext: senseResult.moodContext
+  }
+  const contextString = await buildContext(senseData, feelResult.emotion)
+  const systemPrompt = buildSystemPrompt(contextString)
+
+  const activeVoices = selectActiveVoices(feelResult.emotion, {
     dissonanceScore: feelResult.dissonance.activeDissonance,
     action: "pending",
     hasMessages: senseResult.pendingMessages.length > 0
@@ -23,7 +36,7 @@ export async function deliberate(senseResult: SenseResult, feelResult: FeelingRe
   let innerDialog: DeliberateResult["innerDialog"]
   if (
     shouldRunDialog(
-      senseResult.emotion,
+      feelResult.emotion,
       senseResult.pendingMessages.length > 0,
       feelResult.dissonance.activeDissonance,
       "pending"
@@ -32,7 +45,7 @@ export async function deliberate(senseResult: SenseResult, feelResult: FeelingRe
     innerDialog =
       (await generateInnerDialog({
         activeVoices,
-        emotion: senseResult.emotion,
+        emotion: feelResult.emotion,
         soma: feelResult.soma,
         situationSummary:
           senseResult.pendingMessages.length > 0
@@ -59,13 +72,14 @@ export async function deliberate(senseResult: SenseResult, feelResult: FeelingRe
 
     return {
       decision,
+      systemPrompt,
       instinctOverride: true,
       innerDialog,
       cognitiveConflict: detectCognitiveConflict(feelResult.instinct, action)
     }
   }
 
-  let userPrompt = senseResult.userPrompt
+  let userPrompt = "Process your current perception and decide what to do."
 
   if (feelResult.attentionState === "blank") {
     log.info("Attention blank — forcing idle")
@@ -78,6 +92,7 @@ export async function deliberate(senseResult: SenseResult, feelResult: FeelingRe
         workflowId: null,
         corrections: []
       },
+      systemPrompt,
       instinctOverride: true,
       innerDialog
     }
@@ -90,8 +105,22 @@ export async function deliberate(senseResult: SenseResult, feelResult: FeelingRe
     }
   }
 
+  if (innerDialog?.utterances.length) {
+    const dialogSection = [
+      "\n## Inner Dialog",
+      `Active voices: ${innerDialog.activeVoices.join(", ")}`,
+      ...innerDialog.utterances.map((u) => `[${u.voice}] (${u.intensity.toFixed(1)}): ${u.message}`),
+      ...(innerDialog.consensus ? [`Consensus: ${innerDialog.consensus}`] : []),
+      ...(innerDialog.dominantVoice ? [`Dominant voice: ${innerDialog.dominantVoice}`] : []),
+      `Tension: ${innerDialog.tensionLevel.toFixed(2)}`,
+      "",
+      "Consider the inner dialog. The consensus and dominant voice should inform your reasoning."
+    ].join("\n")
+    userPrompt = `${userPrompt}\n${dialogSection}`
+  }
+
   const callResult = await callIntelligence({
-    system: senseResult.systemPrompt,
+    system: systemPrompt,
     userMessage: userPrompt,
     schema: AnimaDecision
   })
@@ -108,6 +137,7 @@ export async function deliberate(senseResult: SenseResult, feelResult: FeelingRe
         workflowId: null,
         corrections: []
       },
+      systemPrompt,
       instinctOverride: false
     }
   }
@@ -123,15 +153,15 @@ export async function deliberate(senseResult: SenseResult, feelResult: FeelingRe
 
   const cognitiveConflict = detectCognitiveConflict(feelResult.instinct, decision.action)
 
-  const base = { decision, innerDialog, cognitiveConflict, instinctOverride: false as const }
+  const base = { decision, systemPrompt, innerDialog, cognitiveConflict, instinctOverride: false as const }
 
   switch (decision.action) {
     case "dream":
       return { ...base, dreamResult: await thinkDream() }
     case "morning":
-      return { ...base, morningResult: await thinkMorning(senseResult) }
+      return { ...base, morningResult: await thinkMorning(systemPrompt, feelResult.emotion, senseResult.moodContext) }
     case "reflect":
-      return { ...base, reflectionResult: await thinkReflect(senseResult) }
+      return { ...base, reflectionResult: await thinkReflect(systemPrompt) }
     default:
       return base
   }

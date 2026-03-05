@@ -1,6 +1,7 @@
 import type { EmotionalState } from "@/emotion/types.ts"
 import type { PendingMessage } from "@/integrations/types.ts"
 import { queryRelated } from "@/memory/episodic.ts"
+import type { EpisodeMetadata } from "@/memory/types.ts"
 import type { SomaticState } from "@/soma/types.ts"
 import type { InstinctImpression } from "./types.ts"
 
@@ -30,9 +31,14 @@ export async function computeInstinctImpression(
   let avoidScore = 0
 
   for (const ep of episodes) {
-    if (ep.score > 0.7) approachScore += 0.2
-    else if (ep.score < 0.3) avoidScore += 0.2
-    else approachScore += 0.05
+    const valence = (ep.metadata as EpisodeMetadata | undefined)?.valence
+    if (ep.score > 0.7) {
+      if (valence != null && valence < -0.2) avoidScore += 0.25
+      else if (valence != null && valence > 0.2) approachScore += 0.25
+      else approachScore += 0.1
+    } else if (ep.score > 0.4) {
+      approachScore += 0.05
+    }
   }
 
   const emotionalCharge = maxDeviation(emotion)

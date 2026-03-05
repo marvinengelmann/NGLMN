@@ -1,9 +1,18 @@
 import { callIntelligence } from "@/core/intelligence.ts"
 import { gatherConsolidationData } from "@/dream/consolidation.ts"
 import { gatherCreativeData } from "@/dream/creative.ts"
-import { ConsolidationOutput, CreativeConnectionsOutput, type DreamThinkResult } from "@/dream/types.ts"
+import {
+  ConsolidationOutput,
+  CreativeConnectionsOutput,
+  DreamNarrativeOutput,
+  type DreamThinkResult
+} from "@/dream/types.ts"
 import { log } from "@/lib/logger.ts"
-import { CONSOLIDATION_SYSTEM_PROMPT, CREATIVE_CONNECTIONS_SYSTEM_PROMPT } from "@/prompts/dream.ts"
+import {
+  CONSOLIDATION_SYSTEM_PROMPT,
+  CREATIVE_CONNECTIONS_SYSTEM_PROMPT,
+  DREAM_NARRATIVE_SYSTEM_PROMPT
+} from "@/prompts/dream.ts"
 
 /**
  * Run dream-specific thinking: consolidation + creative LLM calls.
@@ -50,11 +59,27 @@ export async function thinkDream(): Promise<DreamThinkResult> {
     }
   }
 
+  let narrative: string | null = null
+  if (allInsights.length > 0) {
+    const narrativeResult = await callIntelligence({
+      system: DREAM_NARRATIVE_SYSTEM_PROMPT,
+      userMessage: `Dream insights:\n${allInsights.join("\n")}`,
+      schema: DreamNarrativeOutput,
+      maxTokens: 256
+    })
+    if (narrativeResult.isOk()) {
+      narrative = narrativeResult.value.narrative
+    } else {
+      log.warn("thinkDream: narrative LLM failed", { error: narrativeResult.error.message })
+    }
+  }
+
   log.info("thinkDream complete", {
     consolidation: consolidation != null,
     creative: creative != null,
-    insights: allInsights.length
+    insights: allInsights.length,
+    hasNarrative: narrative != null
   })
 
-  return { consolidation, creative, insights: allInsights }
+  return { consolidation, creative, insights: allInsights, narrative }
 }

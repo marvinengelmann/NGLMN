@@ -1,13 +1,12 @@
 import { differenceInMinutes, differenceInSeconds, parseISO } from "date-fns"
 import { detectConversationBoundary } from "@/communication/conversation.ts"
 import { HEALTH_CHECK_INTERVAL, HEARTBEAT } from "@/config/constants.ts"
-import { getEmotionalState, saveEmotionalState } from "@/emotion/state.ts"
+import { analyzeMessageSentiment } from "@/emotion/analyze.ts"
+import { getEmotionalState } from "@/emotion/state.ts"
 import type { EmotionUpdateEvent, MoodContext } from "@/emotion/types.ts"
-import { computeEmotionalUpdate } from "@/emotion/update.ts"
 import { collectHealthStatus } from "@/health/check.ts"
 import { fetchNewMessages } from "@/integrations/telegram.ts"
 import { log } from "@/lib/logger.ts"
-import { setEmotionContext } from "@/lib/sentry.ts"
 import { nowISO } from "@/lib/time.ts"
 import { getActiveGoals } from "@/memory/goals.ts"
 import {
@@ -15,25 +14,25 @@ import {
   getActiveConversation,
   getConversationWaitingSince,
   getDreamState,
+  getFirstInteractionAt,
   getHealthCheck,
   getLastEmotionTimestamp,
   getOperatorSilentFlag,
   getTriggerTimestamps,
+  incrementTotalInteractions,
   pushToActiveConversation,
   setConversationWaitingSince,
+  setFirstInteractionAt,
   setHealthCheck,
-  setLastEmotionTimestamp,
   setLastUpdateId,
   setOperatorLastActivity,
   setPerceptionSummary,
-  setTriggerTimestamp,
   startNewConversation
 } from "@/memory/working.ts"
 import { readGitActivity, readOwnState, readTelegramActivity, readWeatherData } from "@/perception/sensors.ts"
 import type { PerceptionSummary } from "@/perception/types.ts"
 import { checkWorkflowTriggers, getActiveWorkflows, getRecentTickSummaries } from "@/workflow/engine.ts"
-import { buildContext, buildSystemPrompt } from "./context.ts"
-import type { ConversationState, SenseData, SenseResult } from "./types.ts"
+import type { ConversationState, SenseResult } from "./types.ts"
 
 /**
  * SENSE phase — pure perception, no processing or decisions.
@@ -50,6 +49,9 @@ export async function sense(): Promise<SenseResult> {
   }
 
   if (newMessages.length > 0) {
+    await incrementTotalInteractions()
+    const firstAt = await getFirstInteractionAt()
+    if (!firstAt) await setFirstInteractionAt(nowISO())
     await setOperatorLastActivity(nowISO())
     if (inConversation) await setConversationWaitingSince(nowISO())
 
@@ -100,7 +102,13 @@ export async function sense(): Promise<SenseResult> {
     ...weatherResult.triggers,
     ...gitActivity.triggers,
     ...(newMessages.length > 0
-      ? [{ trigger: "message_received" as const, intensity: 0.6, detail: `${newMessages.length} new message(s)` }]
+      ? await (async () => {
+          const sentimentResult = await analyzeMessageSentiment(newMessages)
+          if (sentimentResult.isOk()) return sentimentResult.value
+          return [
+            { trigger: "message_received" as const, intensity: 0.6, detail: `${newMessages.length} new message(s)` }
+          ]
+        })()
       : [])
   ]
 
@@ -130,22 +138,7 @@ export async function sense(): Promise<SenseResult> {
     isDreaming: dreamState === "dreaming"
   }
 
-  const currentEmotion = await getEmotionalState()
-  const updatedEmotion = computeEmotionalUpdate(
-    currentEmotion,
-    allTriggers,
-    moodContext,
-    Math.max(1, elapsedMinutes),
-    triggerTimestamps
-  )
-  await saveEmotionalState(updatedEmotion, allTriggers[0]?.trigger ?? "message_received")
-  await setLastEmotionTimestamp(nowISO())
-  setEmotionContext(updatedEmotion)
-
   const now = nowISO()
-  for (const event of allTriggers) {
-    await setTriggerTimestamp(event.trigger, now)
-  }
 
   const perception: PerceptionSummary = {
     timestamp: now,
@@ -186,24 +179,11 @@ export async function sense(): Promise<SenseResult> {
   if (activeWorkflows.length > 0) {
     const recentTicks = await getRecentTickSummaries(50)
     const recentActions = recentTicks.map((t) => t.action)
-    triggeredWorkflows = await checkWorkflowTriggers(activeWorkflows, updatedEmotion, perception, recentActions)
+    const currentEmotion = await getEmotionalState()
+    triggeredWorkflows = await checkWorkflowTriggers(activeWorkflows, currentEmotion, perception, recentActions)
   } else {
     triggeredWorkflows = []
   }
-
-  const senseData: SenseData = {
-    pendingMessages: newMessages,
-    perception,
-    emotion: updatedEmotion,
-    health,
-    weather: weatherResult.weatherData,
-    conversationState,
-    triggeredWorkflows,
-    moodContext
-  }
-
-  const contextString = await buildContext(senseData)
-  const systemPrompt = buildSystemPrompt(contextString)
 
   log.info("Sense completed", {
     messages: newMessages.length,
@@ -214,14 +194,14 @@ export async function sense(): Promise<SenseResult> {
   })
 
   return {
-    systemPrompt,
-    userPrompt: "Process your current perception and decide what to do.",
     pendingMessages: newMessages,
     perception,
-    emotion: updatedEmotion,
     health,
     conversationState,
     triggeredWorkflows,
-    moodContext
+    moodContext,
+    rawTriggers: allTriggers,
+    elapsedMinutes,
+    triggerTimestamps
   }
 }

@@ -1,8 +1,8 @@
-import type { SenseResult } from "@/consciousness/types.ts"
 import { callIntelligence } from "@/core/intelligence.ts"
 import { TextOutput } from "@/core/types.ts"
 import { metricsRecalibration, morningRecalibration } from "@/emotion/calibration.ts"
 import { collectMetrics } from "@/emotion/metrics.ts"
+import type { EmotionalState, MoodContext } from "@/emotion/types.ts"
 import { log } from "@/lib/logger.ts"
 import { getOperatorLanguage } from "@/memory/semantic.ts"
 import { getDreamInsights } from "@/memory/working.ts"
@@ -14,14 +14,18 @@ import { type MorningThinkResult, ReflectionOutput } from "@/routine/types.ts"
 /**
  * Run morning-specific thinking: metrics recalibration, reflection, and morning message generation.
  */
-export async function thinkMorning(senseResult: SenseResult): Promise<MorningThinkResult> {
+export async function thinkMorning(
+  systemPrompt: string,
+  emotion: EmotionalState,
+  moodContext: MoodContext
+): Promise<MorningThinkResult> {
   const metrics = await collectMetrics()
-  const afterMetrics = metricsRecalibration(senseResult.emotion, metrics)
-  const recalibratedEmotion = morningRecalibration(afterMetrics, senseResult.moodContext)
+  const afterMetrics = metricsRecalibration(emotion, metrics)
+  const recalibratedEmotion = morningRecalibration(afterMetrics, moodContext)
 
   const reflectionInput = await buildReflectionInput()
   const reflectionResult = await callIntelligence({
-    system: senseResult.systemPrompt,
+    system: systemPrompt,
     userMessage: `${REFLECTION_SYSTEM_PROMPT}\n\n${JSON.stringify(reflectionInput)}`,
     schema: ReflectionOutput,
     maxTokens: 4096
@@ -34,10 +38,10 @@ export async function thinkMorning(senseResult: SenseResult): Promise<MorningThi
 
   const [dreamInsights, operatorLanguage] = await Promise.all([getDreamInsights(), getOperatorLanguage()])
 
-  const { systemInstruction, context } = buildMorningContext(dreamInsights, recalibratedEmotion, operatorLanguage)
+  const { systemInstruction, context } = await buildMorningContext(dreamInsights, recalibratedEmotion, operatorLanguage)
 
   const messageResult = await callIntelligence({
-    system: senseResult.systemPrompt,
+    system: systemPrompt,
     userMessage: `${systemInstruction}\n\n${context}`,
     schema: TextOutput,
     maxTokens: 1024
@@ -59,10 +63,10 @@ export async function thinkMorning(senseResult: SenseResult): Promise<MorningThi
 /**
  * Run ad-hoc reflection thinking.
  */
-export async function thinkReflect(senseResult: SenseResult): Promise<ReflectionOutput> {
+export async function thinkReflect(systemPrompt: string): Promise<ReflectionOutput> {
   const reflectionInput = await buildReflectionInput()
   const result = await callIntelligence({
-    system: senseResult.systemPrompt,
+    system: systemPrompt,
     userMessage: `${REFLECTION_SYSTEM_PROMPT}\n\n${JSON.stringify(reflectionInput)}`,
     schema: ReflectionOutput,
     maxTokens: 4096

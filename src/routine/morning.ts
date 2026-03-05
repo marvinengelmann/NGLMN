@@ -3,22 +3,34 @@ import { sendToOperator } from "@/integrations/telegram.ts"
 import { log } from "@/lib/logger.ts"
 import { captureError } from "@/lib/sentry.ts"
 import { storeEpisode } from "@/memory/episodic.ts"
-import { clearDreamInsights, pushToActiveConversation, setDreamState } from "@/memory/working.ts"
+import {
+  clearDreamInsights,
+  clearDreamNarrative,
+  getDreamNarrative,
+  pushToActiveConversation,
+  setDreamState
+} from "@/memory/working.ts"
 import { MORNING_MESSAGE_SYSTEM_PROMPT } from "@/prompts/routine.ts"
 
 /**
  * Build the context for the morning message LLM call — pure THINK helper.
  * No LLM call, just data assembly for the prompt.
  */
-export function buildMorningContext(
+export async function buildMorningContext(
   dreamInsights: string[] | null,
   emotion: EmotionalState,
   operatorLanguage: string
-): { systemInstruction: string; context: string } {
+): Promise<{ systemInstruction: string; context: string }> {
+  const dreamNarrative = await getDreamNarrative()
   const context = {
     operatorLanguage,
     dreamInsights: dreamInsights ?? [],
+    dreamNarrative: dreamNarrative ?? undefined,
     currentMood: emotion
+  }
+
+  if (dreamNarrative) {
+    await clearDreamNarrative()
   }
 
   return {

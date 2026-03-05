@@ -6,7 +6,7 @@ import { sendDriftAlert, sendGuardianAlert } from "@/integrations/telegram.ts"
 import { log } from "@/lib/logger.ts"
 import { addBreadcrumb } from "@/lib/sentry.ts"
 import { nowISO } from "@/lib/time.ts"
-import { getRecentActions, getRecentResponses, getRecentTickDurations } from "@/memory/working.ts"
+import { getRecentActions, getRecentResponses, getRecentTickDurations, setDriftThrottle } from "@/memory/working.ts"
 import { detectInjection } from "./defense.ts"
 import type { DriftReport, DriftSignal, GuardianResult } from "./types.ts"
 
@@ -283,6 +283,12 @@ export async function handleDriftCheck(): Promise<DriftReport> {
     log.warn("Drift detected", { signals: driftReport.signals.length })
     addBreadcrumb("drift", "Unhealthy drift detected", { signals: driftReport.signals }, "warning")
     await sendDriftAlert(driftReport)
+
+    const severities = driftReport.signals.map((s) => s.severity)
+    const maxSeverity = severities.includes("high") ? "high" : severities.includes("medium") ? "medium" : "low"
+    if (maxSeverity !== "low") {
+      await setDriftThrottle(maxSeverity, 900)
+    }
   }
   return driftReport
 }

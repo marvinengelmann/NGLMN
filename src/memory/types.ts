@@ -43,6 +43,7 @@ export const EpisodeMetadata = z.object({
   relevanceScore: z.number().min(0).max(1),
   emotionalState: z.string().optional(),
   tickId: z.string().optional(),
-  isInsideJoke: z.boolean().optional()
+  isInsideJoke: z.boolean().optional(),
+  valence: z.number().min(-1).max(1).optional()
 })
 export type EpisodeMetadata = z.infer<typeof EpisodeMetadata>

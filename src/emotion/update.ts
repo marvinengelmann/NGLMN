@@ -138,6 +138,7 @@ export function applyCrossCoupling(state: EmotionalState): EmotionalState {
   }
   if (result.frustration > 0.7) {
     result.satisfaction *= 0.85
+    result.confidence *= 0.9
   }
   if (result.connection > 0.7) {
     result.boredom *= 0.85
@@ -155,7 +156,29 @@ export function applyCrossCoupling(state: EmotionalState): EmotionalState {
     result.caution *= 0.9
   }
 
+  if (result.curiosity > 0.7 && result.energy > 0.6) {
+    result.excitement *= 1.15
+  }
+  if (result.satisfaction > 0.7) {
+    result.confidence *= 1.1
+  }
+  if (result.connection > 0.7 && result.excitement > 0.6) {
+    result.satisfaction *= 1.15
+  }
+  if (result.energy > 0.7) {
+    result.curiosity *= 1.1
+  }
+
   return clampState(result)
+}
+
+/**
+ * Compute emotional valence from -1 (negative) to 1 (positive).
+ */
+export function computeValence(emotion: EmotionalState): number {
+  const positive = (emotion.satisfaction + emotion.connection + emotion.confidence + emotion.excitement) / 4
+  const negative = (emotion.frustration + emotion.boredom + emotion.caution) / 3
+  return Math.max(-1, Math.min(1, positive - negative))
 }
 
 /**
