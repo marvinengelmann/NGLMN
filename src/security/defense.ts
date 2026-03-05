@@ -18,7 +18,8 @@ type TrustLevel = "operator" | "external" | "unknown"
  */
 export function wrapExternalData(data: string, source: string, trustLevel: TrustLevel): string {
   const sanitized = sanitizeForContext(data)
-  return `<external-data source="${source}" trust="${trustLevel}">\n${sanitized}\n</external-data>`
+  const sanitizedSource = sanitizeForContext(source)
+  return `<external-data source="${sanitizedSource}" trust="${trustLevel}">\n${sanitized}\n</external-data>`
 }
 
 /**

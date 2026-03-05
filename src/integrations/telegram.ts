@@ -44,7 +44,9 @@ export async function fetchNewMessages(timeout: number): Promise<{
     const telegramMessage = update.message
     if (!telegramMessage) continue
 
-    if (telegramMessage.location && String(telegramMessage.chat.id) === operatorChatId) {
+    if (String(telegramMessage.chat.id) !== operatorChatId) continue
+
+    if (telegramMessage.location) {
       await storeOperatorLocationFromTelegram(telegramMessage.location.latitude, telegramMessage.location.longitude)
       continue
     }
