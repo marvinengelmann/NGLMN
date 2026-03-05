@@ -31,7 +31,7 @@ export async function evaluatePerception(): Promise<PerceptionSummary> {
       healthStatus: ownState.healthStatus
     },
     telegramActivity: {
-      pendingCount: telegram.pendingCount,
+      pendingCount: 0,
       lastMessageAge: telegram.lastMessageAge,
       operatorActive: telegram.operatorActive
     },

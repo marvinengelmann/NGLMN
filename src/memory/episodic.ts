@@ -112,14 +112,24 @@ export async function queryRelationshipHistory(topK: number = 5): Promise<
  * Used during dream consolidation to deprioritize stale or redundant episodes.
  */
 export async function downgradeEpisodes(ids: string[], factor: number = 0.5): Promise<number> {
+  const existing = await vectorIndex.fetch(ids, { includeMetadata: true })
+  const currentScores = new Map<string, number>()
+  for (const entry of existing.filter(Boolean)) {
+    if (entry) {
+      const meta = entry.metadata as EpisodeMetadata | undefined
+      currentScores.set(entry.id as string, meta?.relevanceScore ?? 0.5)
+    }
+  }
+
   const results = await Promise.allSettled(
-    ids.map((id) =>
-      vectorIndex.update<Partial<EpisodeMetadata>>({
+    ids.map((id) => {
+      const currentScore = currentScores.get(id) ?? 0.5
+      return vectorIndex.update<Partial<EpisodeMetadata>>({
         id,
-        metadata: { relevanceScore: factor },
+        metadata: { relevanceScore: Math.max(0, currentScore * factor) },
         metadataUpdateMode: "PATCH"
       })
-    )
+    })
   )
   results
     .filter((r): r is PromiseRejectedResult => r.status === "rejected")

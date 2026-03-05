@@ -63,11 +63,17 @@ export async function saveSelfConcept(concept: SelfConcept): Promise<void> {
  */
 export async function getRecentSnapshots(limit = 5): Promise<PsycheSnapshot[]> {
   const rows = await db.select().from(psycheSnapshots).orderBy(desc(psycheSnapshots.createdAt)).limit(limit)
-  return rows.map((r) => ({
-    selfConcept: SelfConcept.parse(r.selfConcept),
-    aspirations: (r.aspirations as string[]) ?? [],
-    fears: (r.fears as string[]) ?? [],
-    narrativeSummary: r.narrativeSummary ?? "",
-    timestamp: r.createdAt.toISOString()
-  }))
+  return rows
+    .map((r) => {
+      const parsed = SelfConcept.safeParse(r.selfConcept)
+      if (!parsed.success) return null
+      return {
+        selfConcept: parsed.data,
+        aspirations: (r.aspirations as string[]) ?? [],
+        fears: (r.fears as string[]) ?? [],
+        narrativeSummary: r.narrativeSummary ?? "",
+        timestamp: r.createdAt.toISOString()
+      }
+    })
+    .filter((r): r is PsycheSnapshot => r != null)
 }

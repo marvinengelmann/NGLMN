@@ -65,7 +65,6 @@ export async function readOwnState(): Promise<{
  * operator_went_silent fires once when crossing the 1h silence threshold.
  */
 export async function readTelegramActivity(): Promise<{
-  pendingCount: number
   lastMessageAge: number
   operatorActive: boolean
   triggers: EmotionUpdateEvent[]
@@ -89,7 +88,7 @@ export async function readTelegramActivity(): Promise<{
     }
   }
 
-  return { pendingCount: 0, lastMessageAge, operatorActive, triggers }
+  return { lastMessageAge, operatorActive, triggers }
 }
 
 const STORM_CONDITIONS = ["Thunderstorm", "Squall", "Tornado"]
