@@ -82,19 +82,18 @@ export async function applyConsolidationResult(output: ConsolidationOutput): Pro
   }
 
   const validRelationTypes = RelationTypeSchema.options
-  for (const conn of output.connections) {
-    if (createdEntryIds.length >= 2 && conn.episodeIds.length >= 2) {
-      const relType = validRelationTypes.includes(conn.connectionType as RelationType)
-        ? (conn.connectionType as RelationType)
-        : "related_to"
-      const sourceIdx = Math.min(0, createdEntryIds.length - 1)
-      const targetIdx = Math.min(1, createdEntryIds.length - 1)
-      const sourceEntryId = createdEntryIds[sourceIdx]
-      const targetEntryId = createdEntryIds[targetIdx]
-      if (sourceEntryId && targetEntryId && sourceIdx !== targetIdx) {
-        const relationResult = await storeRelation(sourceEntryId, targetEntryId, relType, conn.description)
-        if (relationResult.isErr()) logAndCaptureError(relationResult.error)
-      }
+  for (const [i, conn] of output.connections.entries()) {
+    if (createdEntryIds.length < 2) continue
+    const relType = validRelationTypes.includes(conn.connectionType as RelationType)
+      ? (conn.connectionType as RelationType)
+      : "related_to"
+    const sourceIdx = i % createdEntryIds.length
+    const targetIdx = (i + 1) % createdEntryIds.length
+    const sourceEntryId = createdEntryIds[sourceIdx]
+    const targetEntryId = createdEntryIds[targetIdx]
+    if (sourceEntryId && targetEntryId && sourceIdx !== targetIdx) {
+      const relationResult = await storeRelation(sourceEntryId, targetEntryId, relType, conn.description)
+      if (relationResult.isErr()) logAndCaptureError(relationResult.error)
     }
   }
 
