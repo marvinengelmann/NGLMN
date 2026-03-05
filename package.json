@@ -18,6 +18,7 @@
     "db:seed": "bun run src/db/seed.ts",
     "reinstall": "rm -rf node_modules bun.lock && bun install",
     "reset": "bun run scripts/reset.ts",
+    "reset:prod": "bun run scripts/reset.ts --prod",
     "dump": "bun run scripts/dump.ts"
   },
   "dependencies": {

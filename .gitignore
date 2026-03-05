@@ -6,6 +6,7 @@ coverage
 
 # dotenv environment variable files
 .env.local
+.env.production
 
 # trigger.dev
 .trigger

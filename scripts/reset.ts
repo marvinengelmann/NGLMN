@@ -1,9 +1,9 @@
 /**
- * Reset: wipes ALL ANIMA data for local development.
+ * Reset: wipes ALL ANIMA data.
  * Drops all Postgres tables (public + drizzle schemas), flushes Redis, and clears the Vector index.
- * Migrations run automatically on first Trigger.dev task init.
+ * Migrations and seeding run automatically on worker start via init.ts.
  *
- * Usage: bun run reset
+ * Usage: bun run reset (local) | bun run reset:prod (production)
  */
 
 import * as readline from "node:readline"
@@ -12,7 +12,8 @@ import { Redis } from "@upstash/redis"
 import { Index } from "@upstash/vector"
 import { config } from "dotenv"
 
-config({ path: ".env.local" })
+const envFile = process.argv[2] === "--prod" ? ".env.production" : ".env.local"
+config({ path: envFile, override: true })
 
 const DATABASE_URL = process.env.DATABASE_URL
 const REDIS_URL = process.env.UPSTASH_REDIS_REST_URL
@@ -21,7 +22,7 @@ const VECTOR_URL = process.env.UPSTASH_VECTOR_REST_URL
 const VECTOR_TOKEN = process.env.UPSTASH_VECTOR_REST_TOKEN
 
 if (!DATABASE_URL || !REDIS_URL || !REDIS_TOKEN || !VECTOR_URL || !VECTOR_TOKEN) {
-  console.error("Missing required env vars. Check .env.local")
+  console.error(`Missing required env vars. Check ${envFile}`)
   process.exit(1)
   throw new Error("unreachable")
 }
@@ -70,7 +71,7 @@ async function resetAll() {
   await vectorIndex.reset({ all: true })
   console.log("      Vector index cleared")
 
-  console.log("\nDone! Migrations run automatically on first Trigger.dev task init.\n")
+  console.log("\nDone!\n")
 }
 
 resetAll().catch((err) => {

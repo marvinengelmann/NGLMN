@@ -2,7 +2,8 @@ import { config } from "dotenv"
 import { defineConfig } from "drizzle-kit"
 import { env } from "@/config/env"
 
-config({ path: ".env.local" })
+const envFile = process.argv.includes("--prod") ? ".env.production" : ".env.local"
+config({ path: envFile, override: true })
 
 export default defineConfig({
   schema: "./src/db/schema.ts",
