@@ -34,7 +34,8 @@ export async function act(
   let responseSent = false
   let responseText: string | undefined
 
-  if (decision.messages.length > 0) {
+  const routineHandlesMessaging = decision.action === "morning" || decision.action === "dream"
+  if (decision.messages.length > 0 && !routineHandlesMessaging) {
     const messagingResult = await trySafe("TELEGRAM_ERROR", () => sendMessages(decision))
     if (messagingResult.isOk()) {
       responseSent = messagingResult.value.responseSent
