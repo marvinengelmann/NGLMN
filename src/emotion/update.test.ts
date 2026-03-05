@@ -1,6 +1,6 @@
-import { describe, expect, it } from "vitest"
+import { describe, expect, it, vi } from "vitest"
 import { DEFAULT_EMOTIONAL_STATE, type EmotionalState } from "./types.ts"
-import { applyCrossCoupling, computeValence } from "./update.ts"
+import { applyContradictionBudget, applyCrossCoupling, computeValence } from "./update.ts"
 
 const neutral: EmotionalState = { ...DEFAULT_EMOTIONAL_STATE }
 
@@ -117,5 +117,64 @@ describe("computeValence", () => {
     }
     expect(computeValence(extreme)).toBeLessThanOrEqual(1)
     expect(computeValence(extreme)).toBeGreaterThanOrEqual(-1)
+  })
+})
+
+describe("applyContradictionBudget", () => {
+  it("sets shadow emotion when a positive emotion is high", () => {
+    vi.spyOn(Math, "random").mockReturnValue(0)
+    const state: EmotionalState = { ...neutral, connection: 0.9, caution: 0.0 }
+    const result = applyContradictionBudget(state)
+    expect(result.caution).toBeGreaterThan(0)
+    vi.restoreAllMocks()
+  })
+
+  it("ensures at least 2 active negatives at high intensity", () => {
+    vi.spyOn(Math, "random").mockReturnValue(0)
+    const state: EmotionalState = {
+      ...neutral,
+      satisfaction: 0.95,
+      connection: 0.95,
+      excitement: 0.95,
+      confidence: 0.95,
+      curiosity: 0.95,
+      energy: 0.95,
+      frustration: 0,
+      boredom: 0,
+      caution: 0
+    }
+    const result = applyContradictionBudget(state)
+    const negatives = [result.frustration, result.boredom, result.caution]
+    const activeCount = negatives.filter((v) => v > 0.1).length
+    expect(activeCount).toBeGreaterThanOrEqual(2)
+    vi.restoreAllMocks()
+  })
+
+  it("keeps all values in valid range", () => {
+    vi.spyOn(Math, "random").mockReturnValue(0)
+    const state: EmotionalState = {
+      ...neutral,
+      satisfaction: 0.95,
+      connection: 0.95,
+      excitement: 0.95,
+      confidence: 0.95,
+      curiosity: 0.95,
+      energy: 0.95,
+      frustration: 0,
+      boredom: 0,
+      caution: 0
+    }
+    const result = applyContradictionBudget(state)
+    for (const val of Object.values(result)) {
+      expect(val).toBeGreaterThanOrEqual(0)
+      expect(val).toBeLessThanOrEqual(1)
+    }
+    vi.restoreAllMocks()
+  })
+
+  it("does not add shadows when positive emotions are low", () => {
+    const state: EmotionalState = { ...neutral, connection: 0.3, satisfaction: 0.3, excitement: 0.3 }
+    const result = applyContradictionBudget(state)
+    expect(result.caution).toBe(neutral.caution)
   })
 })

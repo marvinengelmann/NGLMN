@@ -1,7 +1,14 @@
 import { describe, expect, it } from "vitest"
 import type { EmotionalState } from "@/emotion/types.ts"
 import { DEFAULT_SOMATIC_STATE, type SomaticState } from "./types.ts"
-import { applySomaticHysteresis, applySomaticMemory, computeSomaticTarget, computeSomaticUpdate } from "./update.ts"
+import {
+  applySomaticHysteresis,
+  applySomaticMemory,
+  computeSomaticTarget,
+  computeSomaticUpdate,
+  drainSocialBattery,
+  rechargeSocialBattery
+} from "./update.ts"
 
 const baseEmotion: EmotionalState = {
   curiosity: 0.5,
@@ -137,5 +144,52 @@ describe("computeSomaticUpdate", () => {
       expect(val).toBeGreaterThanOrEqual(0)
       expect(val).toBeLessThanOrEqual(1)
     }
+  })
+})
+
+describe("drainSocialBattery", () => {
+  it("decreases battery on sent messages", () => {
+    const result = drainSocialBattery(DEFAULT_SOMATIC_STATE, 3, 0)
+    expect(result.socialBattery).toBeLessThan(DEFAULT_SOMATIC_STATE.socialBattery)
+  })
+
+  it("decreases battery on received messages", () => {
+    const result = drainSocialBattery(DEFAULT_SOMATIC_STATE, 0, 5)
+    expect(result.socialBattery).toBeLessThan(DEFAULT_SOMATIC_STATE.socialBattery)
+  })
+
+  it("drains more for sent than received messages", () => {
+    const sentDrain = drainSocialBattery(DEFAULT_SOMATIC_STATE, 1, 0)
+    const receivedDrain = drainSocialBattery(DEFAULT_SOMATIC_STATE, 0, 1)
+    const sentDelta = DEFAULT_SOMATIC_STATE.socialBattery - sentDrain.socialBattery
+    const receivedDelta = DEFAULT_SOMATIC_STATE.socialBattery - receivedDrain.socialBattery
+    expect(sentDelta).toBeGreaterThan(receivedDelta)
+  })
+
+  it("clamps battery to minimum 0", () => {
+    const lowBattery: SomaticState = { ...DEFAULT_SOMATIC_STATE, socialBattery: 0.01 }
+    const result = drainSocialBattery(lowBattery, 10, 10)
+    expect(result.socialBattery).toBeGreaterThanOrEqual(0)
+  })
+})
+
+describe("rechargeSocialBattery", () => {
+  it("increases battery during idle", () => {
+    const lowBattery: SomaticState = { ...DEFAULT_SOMATIC_STATE, socialBattery: 0.3 }
+    const result = rechargeSocialBattery(lowBattery, false)
+    expect(result.socialBattery).toBeGreaterThan(0.3)
+  })
+
+  it("recharges faster during dream", () => {
+    const lowBattery: SomaticState = { ...DEFAULT_SOMATIC_STATE, socialBattery: 0.3 }
+    const idleResult = rechargeSocialBattery(lowBattery, false)
+    const dreamResult = rechargeSocialBattery(lowBattery, true)
+    expect(dreamResult.socialBattery).toBeGreaterThan(idleResult.socialBattery)
+  })
+
+  it("clamps battery to maximum 1", () => {
+    const highBattery: SomaticState = { ...DEFAULT_SOMATIC_STATE, socialBattery: 0.99 }
+    const result = rechargeSocialBattery(highBattery, true)
+    expect(result.socialBattery).toBeLessThanOrEqual(1)
   })
 })
