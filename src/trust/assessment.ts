@@ -20,10 +20,7 @@ export function getAutonomyLevel(experience: number, canAct: boolean): AutonomyL
 export async function canActAutonomously(actionType: ActionType): Promise<TrustAssessment> {
   const trust = await getTrustLevel(actionType)
 
-  const totalAttempts = trust.totalAttempts ?? 0
-  const successfulAttempts = trust.successfulAttempts ?? 0
-
-  const experience = totalAttempts > 0 ? Math.min(1, successfulAttempts / Math.max(1, totalAttempts)) : 0
+  const experience = trust.weightedExperience
 
   const riskLevel = TRUST.RISK_LEVELS[actionType]
 

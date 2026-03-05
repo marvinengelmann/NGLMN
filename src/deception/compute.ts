@@ -2,6 +2,7 @@ import { DECEPTION } from "@/config/constants.ts"
 import type { DissonanceEvent, DissonanceState } from "@/dissonance/types.ts"
 import { nowISO } from "@/lib/time.ts"
 import type { SelfConcept } from "@/psyche/types.ts"
+import { logDeceptionEvent } from "./state.ts"
 import type { DeceptionState, HiddenDriver } from "./types.ts"
 
 interface DeceptionContext {
@@ -78,21 +79,27 @@ export function shouldDiscoverDriver(
 /**
  * Process one full deception cycle: potentially hide new drivers, discover old ones.
  */
-export function processDeceptionCycle(state: DeceptionState, context: DeceptionContext): DeceptionState {
+export async function processDeceptionCycle(state: DeceptionState, context: DeceptionContext): Promise<DeceptionState> {
   const updated = {
     activeHiddenDrivers: [...state.activeHiddenDrivers],
     totalHidden: state.totalHidden,
     totalDiscovered: state.totalDiscovered
   }
 
+  const discoveredDrivers: HiddenDriver[] = []
   updated.activeHiddenDrivers = updated.activeHiddenDrivers.filter((driver) => {
     if (shouldDiscoverDriver(driver, context.isDreaming, context.isReflecting, context.vulnerabilityOpen)) {
       driver.discoveredAt = nowISO()
       updated.totalDiscovered++
+      discoveredDrivers.push(driver)
       return false
     }
     return true
   })
+
+  for (const driver of discoveredDrivers) {
+    await logDeceptionEvent(driver)
+  }
 
   if (updated.activeHiddenDrivers.length < DECEPTION.MAX_ACTIVE_DRIVERS && shouldHideDriver(context)) {
     const toHide = selectDriverToHide(context.dissonance.recentEvents)

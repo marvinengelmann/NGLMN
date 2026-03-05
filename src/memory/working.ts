@@ -84,12 +84,8 @@ export async function isBusy(): Promise<boolean> {
 }
 
 export async function tryAcquireBusy(tickId: string): Promise<boolean> {
-  const acquired = await redis.setnx(KEYS.BUSY, tickId)
-  if (acquired === 1) {
-    await redis.expire(KEYS.BUSY, HEARTBEAT.BUSY_TTL)
-    return true
-  }
-  return false
+  const result = await redis.set(KEYS.BUSY, tickId, { nx: true, ex: HEARTBEAT.BUSY_TTL })
+  return result === "OK"
 }
 
 export async function setBusy(tickId: string): Promise<void> {
