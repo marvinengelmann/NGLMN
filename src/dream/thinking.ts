@@ -43,7 +43,8 @@ export async function thinkDream(): Promise<DreamThinkResult> {
   }
 
   const creativeData = await gatherCreativeData()
-  if (creativeData !== "{}") {
+  const parsedCreative = JSON.parse(creativeData) as { episodes: unknown[]; knowledge: unknown[] }
+  if (parsedCreative.episodes.length > 0 || parsedCreative.knowledge.length > 0) {
     const creativeResult = await callIntelligence({
       system: CREATIVE_CONNECTIONS_SYSTEM_PROMPT,
       userMessage: creativeData,

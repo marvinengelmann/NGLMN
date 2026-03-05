@@ -31,7 +31,7 @@ export async function canActAutonomously(actionType: ActionType): Promise<TrustA
   const effectiveConfidence = experience * 0.5 + emotionConfidence * 0.5
   const effectiveCaution = riskLevel * (emotionCaution * 0.5 + 0.25)
 
-  const canAct = effectiveConfidence > effectiveCaution
+  const canAct = experience > 0 && effectiveConfidence > effectiveCaution
 
   const reason = canAct
     ? `Effective confidence (${effectiveConfidence.toFixed(2)}) exceeds effective caution (${effectiveCaution.toFixed(2)})`
