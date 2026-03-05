@@ -29,6 +29,7 @@ export function updateSelfConcept(current: SelfConcept, context: SelfConceptCont
 
   if (context.operatorEngagement) selfWorth += 0.01
   if (context.emotionalIntensity > 0.6) selfWorth += 0.005
+  selfWorth += (0.5 - selfWorth) * 0.005
 
   selfContinuity += 0.001 * Math.min(context.elapsedHours, 6)
   selfContinuity = Math.min(selfContinuity, 0.95)

@@ -63,11 +63,13 @@ export async function maintain(
     await incrementConflictCount()
   }
 
+  const effectiveConflictCount = isConflict ? conflictCount + 1 : conflictCount
+
   const computedPhase = computeRelationshipPhase({
     interactionCount: totalInteractions,
     daysSinceFirst,
     connectionAvg: feelResult.emotion.connection,
-    conflicts: conflictCount + (isConflict ? 1 : 0),
+    conflicts: effectiveConflictCount,
     trust: updatedStyle.secure,
     attachmentSecurity: updatedStyle.secure,
     currentPhase

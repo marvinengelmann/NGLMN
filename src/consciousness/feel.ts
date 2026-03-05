@@ -104,15 +104,6 @@ export async function feel(senseResult: SenseResult): Promise<FeelingResult> {
   const dissonance = buildDissonanceState(dissonanceEvents)
   await saveDissonanceState(dissonance)
 
-  const updatedDeception = processDeceptionCycle(deceptionState, {
-    dissonance,
-    selfConcept,
-    vulnerabilityOpen: false,
-    isDreaming: senseResult.moodContext.isDreaming,
-    isReflecting: false
-  })
-  await saveDeceptionState(updatedDeception)
-
   const operatorSilenceMinutes = senseResult.moodContext.operatorSilenceMinutes
   const operatorJustReturned = isOperatorReturning(senseResult.pendingMessages.length, operatorSilenceMinutes)
 
@@ -153,6 +144,15 @@ export async function feel(senseResult: SenseResult): Promise<FeelingResult> {
     energyLevel: emotion.energy
   })
   await saveVulnerability(vulnerability)
+
+  const updatedDeception = await processDeceptionCycle(deceptionState, {
+    dissonance,
+    selfConcept,
+    vulnerabilityOpen: vulnerability.windowOpen,
+    isDreaming: senseResult.moodContext.isDreaming,
+    isReflecting: false
+  })
+  await saveDeceptionState(updatedDeception)
 
   const register = computeCommunicationRegister(emotion, soma, vulnerability)
 
