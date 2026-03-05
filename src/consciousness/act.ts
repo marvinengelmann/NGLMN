@@ -51,7 +51,7 @@ export async function act(
       logAndCaptureError(messagingResult.error, { phase: "act_messaging" })
     }
 
-    if (decision.corrections.length > 0) {
+    if (responseSent && decision.corrections.length > 0) {
       await decision.corrections.reduce(async (prev, correction) => {
         await prev
         const delay = MESSAGE_DELAY.MIN_BETWEEN_MESSAGES_MS + Math.random() * MESSAGE_DELAY.MAX_JITTER_MS
@@ -95,7 +95,7 @@ export async function act(
   const isAutoAction = decision.action !== "idle" && decision.action !== "reflect"
   const updatedConcept = updateSelfConcept(feelResult.selfConcept, {
     recentTaskSuccess: responseSent,
-    recentTaskFailure: false,
+    recentTaskFailure: decision.messages.length > 0 && !routineHandlesMessaging && !responseSent,
     messageSentCount: decision.messages.length,
     emotionalIntensity: computeEmotionalIntensity(feelResult.emotion),
     operatorEngagement: senseResult.pendingMessages.length > 0,

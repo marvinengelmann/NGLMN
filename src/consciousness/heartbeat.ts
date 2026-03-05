@@ -64,8 +64,6 @@ export async function runHeartbeat() {
       }
     }
 
-    await clearConversationWaitingSince()
-
     if (lastDecision && lastActResult && lastSenseResult && lastFeelResult) {
       return await maintain(
         {
@@ -81,6 +79,7 @@ export async function runHeartbeat() {
       )
     }
   } finally {
+    await clearConversationWaitingSince()
     await clearBusy()
   }
 }

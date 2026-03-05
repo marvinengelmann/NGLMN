@@ -112,11 +112,12 @@ export async function sense(): Promise<SenseResult> {
       : [])
   ]
 
+  let shouldClearSilentFlag = false
   if (newMessages.length > 0) {
     const wasSilent = await getOperatorSilentFlag()
     if (wasSilent) {
       allTriggers.push({ trigger: "operator_returned", intensity: 0.7, detail: "Operator returned after silence" })
-      await clearOperatorSilentFlag()
+      shouldClearSilentFlag = true
     }
   }
 
@@ -183,6 +184,10 @@ export async function sense(): Promise<SenseResult> {
     triggeredWorkflows = await checkWorkflowTriggers(activeWorkflows, currentEmotion, perception, recentActions)
   } else {
     triggeredWorkflows = []
+  }
+
+  if (shouldClearSilentFlag) {
+    await clearOperatorSilentFlag()
   }
 
   log.info("Sense completed", {
