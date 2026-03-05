@@ -19,7 +19,13 @@ export async function textToSpeech(voiceText: string): Promise<Buffer> {
   const stream = await getClient().textToSpeech.convert(env().ELEVENLABS_VOICE_ID, {
     text: voiceText,
     model_id: "eleven_v3",
-    output_format: "mp3_44100_128"
+    output_format: "mp3_44100_128",
+    voice_settings: {
+      stability: 0.15,
+      similarity_boost: 0.8,
+      style: 1.0,
+      use_speaker_boost: true
+    }
   })
 
   const chunks: Uint8Array[] = []
