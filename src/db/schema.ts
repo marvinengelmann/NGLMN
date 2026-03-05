@@ -94,18 +94,6 @@ export const goals = pgTable(
 export type GoalInsert = typeof goals.$inferInsert
 export type GoalSelect = typeof goals.$inferSelect
 
-export const trustLevels = pgTable("trust_levels", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  actionType: text("action_type").notNull(),
-  totalAttempts: integer("total_attempts").default(0),
-  successfulAttempts: integer("successful_attempts").default(0),
-  lastAttemptAt: timestamp("last_attempt_at", { withTimezone: true }),
-  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow()
-})
-
-export type TrustLevelInsert = typeof trustLevels.$inferInsert
-export type TrustLevelSelect = typeof trustLevels.$inferSelect
-
 export const emotionHistory = pgTable(
   "emotion_history",
   {

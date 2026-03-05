@@ -104,10 +104,7 @@ export async function applyPromptChange(promptId: string, newContent: string, ch
   const changelogResult = await writeChangelogEntry("prompt", `${promptId}: ${changelog}`, "success")
   if (changelogResult.isErr()) logAndCaptureError(changelogResult.error)
 
-  const successResult = await recordSuccess("prompt_modification")
-  if (successResult.isErr()) {
-    logAndCaptureError(successResult.error)
-  }
+  await recordSuccess("prompt_modification")
 
   return newVersion
 }

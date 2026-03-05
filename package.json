@@ -15,7 +15,6 @@
     "test:coverage": "vitest run --coverage",
     "db:generate": "bunx drizzle-kit generate",
     "db:migrate": "bunx drizzle-kit migrate",
-    "db:seed": "bun run src/db/seed.ts",
     "reinstall": "rm -rf node_modules bun.lock && bun install",
     "reset": "bun run scripts/reset.ts",
     "reset:prod": "bun run scripts/reset.ts --prod",

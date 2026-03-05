@@ -322,7 +322,7 @@ export async function executeCodeEvolution(proposal: CodeProposal): Promise<{
       fileCount: proposal.files.length,
       commitSubject: proposal.commitSubject
     })
-    ;(await recordFailure("code_modification")).mapErr(logAndCaptureError)
+    await recordFailure("code_modification")
     return { success: false, error: `Guardian blocked: ${guardianResult.reasons.join(", ")}` }
   }
 
@@ -365,7 +365,7 @@ export async function executeCodeEvolution(proposal: CodeProposal): Promise<{
     if (sandboxResult.passed) {
       await mergeBranch(branchName)
       log.info("Evolution merged", { branchName, commitSubject: proposal.commitSubject })
-      ;(await recordSuccess("code_modification")).mapErr(logAndCaptureError)
+      await recordSuccess("code_modification")
       ;(await writeChangelogEntry("code", `${commitPrefix}: ${proposal.commitSubject}`, "success")).mapErr(
         logAndCaptureError
       )
@@ -385,7 +385,7 @@ export async function executeCodeEvolution(proposal: CodeProposal): Promise<{
         stderr: sandboxResult.stderr.slice(0, 500)
       })
       await deleteBranch(branchName)
-      ;(await recordFailure("code_modification")).mapErr(logAndCaptureError)
+      await recordFailure("code_modification")
       ;(
         await writeChangelogEntry(
           "code",
@@ -413,7 +413,7 @@ export async function executeCodeEvolution(proposal: CodeProposal): Promise<{
       log.warn("Failed to clean up evolution branch", { branchName, error: String(e) })
     }
 
-    ;(await recordFailure("code_modification")).mapErr(logAndCaptureError)
+    await recordFailure("code_modification")
     const errorMsg = error instanceof Error ? error.message : String(error)
     return { success: false, error: errorMsg }
   }

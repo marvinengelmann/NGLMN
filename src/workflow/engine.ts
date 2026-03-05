@@ -248,18 +248,18 @@ export async function executeWorkflow(
     })
 
     if (callResult.isErr()) {
-      ;(await recordFailure("workflow_creation")).mapErr(logAndCaptureError)
+      await recordFailure("workflow_creation")
       return workflowFailure(workflow, callResult.error.message)
     }
 
     const output = JSON.stringify(callResult.value)
     const postResult = await trySafe("WORKFLOW_ERROR", () => finalizeWorkflow(workflow, output))
     if (postResult.isErr()) {
-      ;(await recordFailure("workflow_creation")).mapErr(logAndCaptureError)
+      await recordFailure("workflow_creation")
       return workflowFailure(workflow, postResult.error.message)
     }
 
-    ;(await recordSuccess("workflow_creation")).mapErr(logAndCaptureError)
+    await recordSuccess("workflow_creation")
     return { workflowId: workflow.id, workflowName: workflow.name, success: true, output }
   }
 
@@ -271,7 +271,7 @@ export async function executeWorkflow(
   })
 
   if (callResult.isErr()) {
-    ;(await recordFailure("workflow_creation")).mapErr(logAndCaptureError)
+    await recordFailure("workflow_creation")
     return workflowFailure(workflow, callResult.error.message)
   }
 
@@ -280,11 +280,11 @@ export async function executeWorkflow(
   const postResult = await trySafe("WORKFLOW_ERROR", () => finalizeWorkflow(workflow, output))
 
   if (postResult.isErr()) {
-    ;(await recordFailure("workflow_creation")).mapErr(logAndCaptureError)
+    await recordFailure("workflow_creation")
     return workflowFailure(workflow, postResult.error.message)
   }
 
-  ;(await recordSuccess("workflow_creation")).mapErr(logAndCaptureError)
+  await recordSuccess("workflow_creation")
   return {
     workflowId: workflow.id,
     workflowName: workflow.name,

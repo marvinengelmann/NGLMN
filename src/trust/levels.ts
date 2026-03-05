@@ -1,44 +1,15 @@
-import { eq } from "drizzle-orm"
-import { db } from "@/db/client.ts"
-import { trustLevels } from "@/db/schema.ts"
-import type { ActionType } from "./types.ts"
+import { getTrustLevelData } from "@/memory/working.ts"
+import { ActionType, type ActionType as ActionTypeT } from "./types.ts"
 
 /**
  * Get the trust level for a specific action type.
  */
-export async function getTrustLevel(actionType: ActionType) {
-  const rows = await db.select().from(trustLevels).where(eq(trustLevels.actionType, actionType)).limit(1)
-
-  const row = rows[0]
-  if (!row) {
-    return {
-      actionType,
-      totalAttempts: 0,
-      successfulAttempts: 0,
-      lastAttemptAt: null as Date | null
-    }
-  }
+export async function getTrustLevel(actionType: ActionTypeT) {
+  const data = await getTrustLevelData(actionType)
   return {
-    actionType: row.actionType,
-    totalAttempts: row.totalAttempts ?? 0,
-    successfulAttempts: row.successfulAttempts ?? 0,
-    lastAttemptAt: row.lastAttemptAt
-  }
-}
-
-/**
- * Ensure a trust level entry exists for the given action type.
- * Creates one with defaults if it doesn't exist.
- */
-export async function ensureTrustLevel(actionType: ActionType): Promise<void> {
-  const existing = await db.select().from(trustLevels).where(eq(trustLevels.actionType, actionType)).limit(1)
-
-  if (existing.length === 0) {
-    await db.insert(trustLevels).values({
-      actionType,
-      totalAttempts: 0,
-      successfulAttempts: 0
-    })
+    actionType,
+    totalAttempts: data.totalAttempts,
+    successfulAttempts: data.successfulAttempts
   }
 }
 
@@ -46,7 +17,7 @@ export async function ensureTrustLevel(actionType: ActionType): Promise<void> {
  * Get all trust level entries.
  */
 export async function getAllTrustLevels() {
-  return db.select().from(trustLevels)
+  return Promise.all(ActionType.options.map((actionType) => getTrustLevel(actionType)))
 }
 
 /**
@@ -55,13 +26,12 @@ export async function getAllTrustLevels() {
  */
 export async function getAggregateTrustExperience(): Promise<number> {
   const levels = await getAllTrustLevels()
-  if (levels.length === 0) return 0.5
 
   let totalAttempts = 0
   let totalSuccesses = 0
   for (const level of levels) {
-    totalAttempts += level.totalAttempts ?? 0
-    totalSuccesses += level.successfulAttempts ?? 0
+    totalAttempts += level.totalAttempts
+    totalSuccesses += level.successfulAttempts
   }
 
   if (totalAttempts === 0) return 0.5

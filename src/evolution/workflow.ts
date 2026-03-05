@@ -100,8 +100,7 @@ export function applyWorkflow(proposal: WorkflowProposal): AnimaResultAsync<stri
     )
     if (changelogResult.isErr()) logAndCaptureError(changelogResult.error)
 
-    const successResult = await recordSuccess("workflow_creation")
-    if (successResult.isErr()) logAndCaptureError(successResult.error)
+    await recordSuccess("workflow_creation")
 
     return first.id
   })

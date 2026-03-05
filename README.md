@@ -68,7 +68,7 @@ cp .env.example .env.local
 Required services: Vercel AI Gateway, Neon Postgres, Upstash Redis + Vector, Trigger.dev, Telegram Bot.
 Optional: GitHub (self-evolution), Daytona (sandbox), OpenWeather (weather sensor), ElevenLabs (voice messages).
 
-Database migrations and seed data are applied automatically on first worker start.
+Database migrations are applied automatically on every worker start.
 
 ## Development
 
@@ -171,17 +171,18 @@ ANIMA deploys automatically through Trigger.dev on every push to `master`.
 │                │ │             │ │                │
 │ emotion        │ │ episodes    │ │ knowledge      │
 │ soma state     │ │ dreams      │ │ goals          │
-│ conversation   │ │ reflections │ │ trust          │
-│ vulnerability  │ │ relations   │ │ evolution      │
-│ attachment     │ │ humor       │ │ narrative      │
-│ dissonance     │ │             │ │ psyche         │
-│ polyphony      │ │             │ │ somatic hist.  │
-│ operator model │ │             │ │ attachment     │
-│ deception      │ │             │ │ dissonance log │
-│ attention      │ │             │ │ operator model │
-│ register       │ │             │ │ distortion log │
-│ busy / dream   │ │             │ │ deception log  │
-│ drift cache    │ │             │ │ rel. phases    │
+│ conversation   │ │ reflections │ │ evolution      │
+│ vulnerability  │ │ relations   │ │ narrative      │
+│ attachment     │ │ humor       │ │ psyche         │
+│ dissonance     │ │             │ │ somatic hist.  │
+│ polyphony      │ │             │ │ attachment     │
+│ operator model │ │             │ │ dissonance log │
+│ deception      │ │             │ │ operator model │
+│ attention      │ │             │ │ distortion log │
+│ register       │ │             │ │ deception log  │
+│ busy / dream   │ │             │ │ rel. phases    │
+│ trust levels   │ │             │ │                │
+│ drift cache    │ │             │ │                │
 └────────────────┘ └─────────────┘ └────────────────┘
 
 Cross-cutting: Guardian · Trust · Emotion Engine · Personality
@@ -197,7 +198,7 @@ src/
 ├── config/          # Environment validation, constants (soma, emotion, reflection, mood baselines)
 ├── consciousness/   # Heartbeat loop, SENSE/FEEL/DELIBERATE/ACT/MAINTAIN phases, context builder
 ├── core/            # LLM interface, budget tracking, initialization
-├── db/              # Drizzle schema, migrations, seed
+├── db/              # Drizzle schema
 ├── deception/       # Self-deception: hidden drivers vs stated reasons, discovery through dreams and reflection
 ├── dissonance/      # Cognitive dissonance: value-action mismatch detection, temporal decay, resolution strategies
 ├── distortion/      # Memory distortion: probabilistic alteration of recalled episodes (temporal, detail, conflation, recoloring)

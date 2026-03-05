@@ -11,6 +11,7 @@ import { OperatorLocation, WeatherData } from "@/integrations/types.ts"
 import { nowISO } from "@/lib/time.ts"
 import { PerceptionSummary } from "@/perception/types.ts"
 import { GuardianResult } from "@/security/types.ts"
+import type { ActionType } from "@/trust/types.ts"
 
 function parseRedisJson<T>(schema: z.ZodType<T>, raw: unknown, key: string): T {
   try {
@@ -59,7 +60,8 @@ const KEYS = {
   EMOTION_OPERATOR_SILENT_FIRED: "working:emotion:operatorSilentFired",
   EMOTION_LAST_SYSTEM_STATUS: "working:emotion:lastSystemStatus",
   EMOTION_LAST_TIMESTAMP: "working:emotion:lastTimestamp",
-  CONSECUTIVE_IDLE_TICKS: "working:cognition:consecutiveIdleTicks"
+  CONSECUTIVE_IDLE_TICKS: "working:cognition:consecutiveIdleTicks",
+  trustLevel: (actionType: string) => `working:trust:${actionType}` as const
 } as const
 
 export async function getLastTickSummary(): Promise<TickSummary | null> {
@@ -436,4 +438,20 @@ export async function incrementConsecutiveIdleTicks(): Promise<void> {
 
 export async function resetConsecutiveIdleTicks(): Promise<void> {
   await redis.set(KEYS.CONSECUTIVE_IDLE_TICKS, 0)
+}
+
+interface TrustLevelData {
+  totalAttempts: number
+  successfulAttempts: number
+}
+
+const DEFAULT_TRUST_LEVEL: TrustLevelData = { totalAttempts: 0, successfulAttempts: 0 }
+
+export async function getTrustLevelData(actionType: ActionType): Promise<TrustLevelData> {
+  const raw = await redis.get<TrustLevelData>(KEYS.trustLevel(actionType))
+  return raw ?? DEFAULT_TRUST_LEVEL
+}
+
+export async function setTrustLevelData(actionType: ActionType, data: TrustLevelData): Promise<void> {
+  await redis.set(KEYS.trustLevel(actionType), data)
 }
