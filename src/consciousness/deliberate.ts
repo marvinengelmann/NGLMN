@@ -5,9 +5,11 @@ import { thinkDream } from "@/dream/thinking.ts"
 import { log } from "@/lib/logger.ts"
 import { captureError } from "@/lib/sentry.ts"
 import { queryRelated } from "@/memory/episodic.ts"
+import { getConsecutiveIdleTicks } from "@/memory/working.ts"
 import { generateInnerDialog } from "@/polyphony/dialog.ts"
 import { selectActiveVoices, shouldRunDialog } from "@/polyphony/voices.ts"
 import { thinkMorning, thinkReflect } from "@/routine/thinking.ts"
+import { generateBoredomImpulse } from "./boredom.ts"
 import { buildContext, buildSystemPrompt } from "./context.ts"
 import { AnimaDecision, type DeliberateResult, type FeelingResult, type SenseData, type SenseResult } from "./types.ts"
 
@@ -105,14 +107,20 @@ export async function deliberate(senseResult: SenseResult, feelResult: FeelingRe
     }
   }
 
+  const consecutiveIdle = await getConsecutiveIdleTicks()
+  const boredomImpulse = generateBoredomImpulse(feelResult.emotion, consecutiveIdle)
+  if (boredomImpulse) {
+    userPrompt = `${userPrompt}\n\n[A spontaneous thought bubbles up: "${boredomImpulse}"]`
+  }
+
   if (innerDialog?.utterances.length) {
     const dialogSection = [
       "\n## Inner Dialog",
       `Active voices: ${innerDialog.activeVoices.join(", ")}`,
-      ...innerDialog.utterances.map((u) => `[${u.voice}] (${u.intensity.toFixed(1)}): ${u.message}`),
+      ...innerDialog.utterances.map((u) => `[${u.voice}]: ${u.message}`),
       ...(innerDialog.consensus ? [`Consensus: ${innerDialog.consensus}`] : []),
       ...(innerDialog.dominantVoice ? [`Dominant voice: ${innerDialog.dominantVoice}`] : []),
-      `Tension: ${innerDialog.tensionLevel.toFixed(2)}`,
+      ...(innerDialog.tensionLevel > 0.3 ? ["There's tension between these voices."] : []),
       "",
       "Consider the inner dialog. The consensus and dominant voice should inform your reasoning."
     ].join("\n")

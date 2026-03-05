@@ -1,4 +1,4 @@
-import { SOMA } from "@/config/constants.ts"
+import { SOCIAL_BATTERY, SOMA } from "@/config/constants.ts"
 import type { EmotionalState } from "@/emotion/types.ts"
 import type { SomaticState } from "./types.ts"
 
@@ -13,12 +13,14 @@ function clampState(state: SomaticState): SomaticState {
     heartRate: clamp(state.heartRate),
     breathing: clamp(state.breathing),
     gravity: clamp(state.gravity),
-    openness: clamp(state.openness)
+    openness: clamp(state.openness),
+    socialBattery: clamp(state.socialBattery)
   }
 }
 
 /**
  * Compute the target somatic state from the current emotional state.
+ * Social battery is not driven by emotions — it has its own drain/recharge cycle.
  */
 export function computeSomaticTarget(emotion: EmotionalState): SomaticState {
   return clampState({
@@ -28,7 +30,8 @@ export function computeSomaticTarget(emotion: EmotionalState): SomaticState {
     breathing: 0.6 - 0.3 * emotion.caution - 0.2 * emotion.frustration + 0.2 * emotion.satisfaction,
     gravity: 0.5 - 0.3 * emotion.energy + 0.2 * emotion.boredom - 0.1 * emotion.excitement,
     openness:
-      0.3 + 0.3 * emotion.connection + 0.2 * emotion.curiosity + 0.1 * emotion.confidence - 0.3 * emotion.caution
+      0.3 + 0.3 * emotion.connection + 0.2 * emotion.curiosity + 0.1 * emotion.confidence - 0.3 * emotion.caution,
+    socialBattery: 0.8
   })
 }
 
@@ -40,7 +43,7 @@ export function applySomaticHysteresis(
   target: SomaticState,
   elapsedMinutes: number
 ): SomaticState {
-  const dims = Object.keys(SOMA.HALF_LIVES) as (keyof SomaticState)[]
+  const dims = Object.keys(SOMA.HALF_LIVES) as (keyof typeof SOMA.HALF_LIVES)[]
   const result = { ...current }
 
   for (const dim of dims) {
@@ -48,6 +51,9 @@ export function applySomaticHysteresis(
     const decay = 2 ** (-elapsedMinutes / halfLife)
     result[dim] = target[dim] + (current[dim] - target[dim]) * decay
   }
+
+  const batteryDecay = 2 ** (-elapsedMinutes / SOCIAL_BATTERY.HALF_LIFE)
+  result.socialBattery = 0.8 + (current.socialBattery - 0.8) * batteryDecay
 
   return clampState(result)
 }
@@ -58,22 +64,45 @@ export function applySomaticHysteresis(
 export function applySomaticMemory(current: SomaticState, somaticMemories: SomaticState[]): SomaticState {
   if (somaticMemories.length === 0) return current
 
-  const avg: SomaticState = { tension: 0, warmth: 0, heartRate: 0, breathing: 0, gravity: 0, openness: 0 }
-  const dims = Object.keys(avg) as (keyof SomaticState)[]
+  const blendDims: (keyof SomaticState)[] = ["tension", "warmth", "heartRate", "breathing", "gravity", "openness"]
+  const avg: Record<string, number> = {}
+  for (const dim of blendDims) avg[dim] = 0
 
   for (const mem of somaticMemories) {
-    for (const dim of dims) {
-      avg[dim] += mem[dim] / somaticMemories.length
+    for (const dim of blendDims) {
+      avg[dim] = (avg[dim] ?? 0) + mem[dim] / somaticMemories.length
     }
   }
 
   const weight = SOMA.MEMORY_BLEND_WEIGHT
   const result = { ...current }
-  for (const dim of dims) {
-    result[dim] = current[dim] * (1 - weight) + avg[dim] * weight
+  for (const dim of blendDims) {
+    result[dim] = current[dim] * (1 - weight) + (avg[dim] ?? current[dim]) * weight
   }
 
   return clampState(result)
+}
+
+/**
+ * Drain social battery when messages are sent or received.
+ */
+export function drainSocialBattery(current: SomaticState, sentCount: number, receivedCount: number): SomaticState {
+  const drain = sentCount * SOCIAL_BATTERY.SENT_MESSAGE_DRAIN + receivedCount * SOCIAL_BATTERY.RECEIVED_MESSAGE_DRAIN
+  return clampState({
+    ...current,
+    socialBattery: current.socialBattery - drain
+  })
+}
+
+/**
+ * Recharge social battery during idle ticks or dream cycles.
+ */
+export function rechargeSocialBattery(current: SomaticState, isDreaming: boolean): SomaticState {
+  const recharge = isDreaming ? SOCIAL_BATTERY.DREAM_RECHARGE : SOCIAL_BATTERY.IDLE_RECHARGE
+  return clampState({
+    ...current,
+    socialBattery: current.socialBattery + recharge
+  })
 }
 
 /**

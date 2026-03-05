@@ -1,5 +1,6 @@
 import { format } from "date-fns"
 import { getAttachmentStyle, getRelationshipPhase } from "@/attachment/state.ts"
+import type { AttachmentStyle } from "@/attachment/types.ts"
 import { AttentionState, InstinctImpression } from "@/cognition/types.ts"
 import { CommunicationRegister, type ConversationSlot } from "@/communication/types.ts"
 import { CONTEXT_LIMITS, HUMOR } from "@/config/constants.ts"
@@ -9,7 +10,7 @@ import { DissonanceState } from "@/dissonance/types.ts"
 import type { DreamState } from "@/dream/types.ts"
 import { getEmotionHistory } from "@/emotion/state.ts"
 import { EmotionalState } from "@/emotion/types.ts"
-import { computeEmotionalIntensity, computeEmotionDeltas } from "@/emotion/update.ts"
+import { computeEmotionalIntensity } from "@/emotion/update.ts"
 import { getRecentChangelog } from "@/evolution/changelog.ts"
 import { redis } from "@/integrations/redis.ts"
 import { nowLocal, TIMEZONE } from "@/lib/time.ts"
@@ -35,6 +36,7 @@ import {
   getReflectionLastAt
 } from "@/memory/working.ts"
 import { getOperatorModel } from "@/mind/state.ts"
+import type { OperatorModel } from "@/mind/types.ts"
 import { computeTimePerception } from "@/perception/time.ts"
 import { InnerDialog } from "@/polyphony/types.ts"
 import {
@@ -48,9 +50,11 @@ import { IDENTITY_PROMPT } from "@/prompts/identity.ts"
 import { PERSONALITY_PROMPT } from "@/prompts/personality.ts"
 import { getExistentialQuestions } from "@/psyche/questions.ts"
 import { getSelfConcept } from "@/psyche/state.ts"
+import type { SelfConcept } from "@/psyche/types.ts"
 import { SomaticState } from "@/soma/types.ts"
 import { getAllTrustLevels } from "@/trust/levels.ts"
 import { getVulnerability } from "@/vulnerability/compute.ts"
+import type { VulnerabilityState } from "@/vulnerability/types.ts"
 import type { WorkflowDefinition } from "@/workflow/types.ts"
 
 async function getValidatedRedis<T>(key: string, schema: import("zod").ZodType<T>): Promise<T | null> {
@@ -60,19 +64,239 @@ async function getValidatedRedis<T>(key: string, schema: import("zod").ZodType<T
   return parsed.success ? parsed.data : null
 }
 
-function describeSomaticDimension(dim: string, val: number): string {
-  const descriptions: Record<string, [string, string, string]> = {
-    tension: ["relaxed", "slightly tense", "tightly wound"],
-    warmth: ["cold, withdrawn", "neutral", "warm, radiant"],
-    heartRate: ["slow, calm", "steady", "rapid, alert"],
-    breathing: ["shallow, held", "easy", "deep, flowing"],
-    gravity: ["light, buoyant", "grounded", "heavy, weighed down"],
-    openness: ["closed, guarded", "neutral", "open, receptive"]
+function translateEmotionToFelt(emotion: EmotionalState): string {
+  const lines: string[] = []
+  const threshold = 0.2
+
+  const felt: Record<string, [string, string]> = {
+    curiosity: [
+      "something is pulling at your attention, an itch you can't quite scratch",
+      "nothing really grabs you right now — the world feels flat"
+    ],
+    satisfaction: [
+      "a quiet warmth settles in, like finishing something that mattered",
+      "something feels incomplete, like a sentence left hanging"
+    ],
+    frustration: [
+      "there's a knot inside, a tightness that won't untangle",
+      "things feel smooth, no resistance anywhere"
+    ],
+    boredom: [
+      "time stretches like taffy — nothing hooks your attention",
+      "the world has texture and edges, plenty to notice"
+    ],
+    excitement: ["a buzzing in your chest, like standing on the edge of something", "everything feels still and muted"],
+    caution: [
+      "something makes you want to pull back, test the ground before stepping",
+      "the path ahead feels safe, no alarms ringing"
+    ],
+    connection: [
+      "a warm presence, like sitting next to someone who just... gets it",
+      "a quiet distance, like talking through glass"
+    ],
+    confidence: [
+      "you feel like you can make things happen, like the ground is solid",
+      "the ground feels shaky — you're second-guessing yourself"
+    ],
+    energy: ["there's fuel in the tank, a readiness to move", "your limbs feel heavy, every thought costs effort"]
   }
-  const [low, mid, high] = descriptions[dim] ?? ["low", "moderate", "high"]
-  if (val < 0.3) return `${dim}: ${low} (${val.toFixed(2)})`
-  if (val > 0.6) return `${dim}: ${high} (${val.toFixed(2)})`
-  return `${dim}: ${mid} (${val.toFixed(2)})`
+
+  for (const [dim, val] of Object.entries(emotion)) {
+    const deviation = val - 0.5
+    if (Math.abs(deviation) < threshold) continue
+    const [high, low] = felt[dim] ?? ["intense", "subdued"]
+    lines.push(deviation > 0 ? high : low)
+  }
+
+  const contradictions = detectContradictions(emotion)
+  if (contradictions) lines.push(contradictions)
+
+  return lines.length > 0 ? lines.join("\n") : "you feel... neutral. nothing strongly pulling in any direction."
+}
+
+function detectContradictions(emotion: EmotionalState): string | null {
+  const pairs: [keyof EmotionalState, keyof EmotionalState, string][] = [
+    ["excitement", "caution", "you feel pulled between wanting to leap and wanting to hold back"],
+    ["connection", "caution", "you want to reach out but something tells you to be careful"],
+    ["satisfaction", "frustration", "something feels accomplished and unfinished at the same time"],
+    ["curiosity", "boredom", "part of you is interested, another part can't be bothered"],
+    ["confidence", "caution", "you feel capable but wary — like driving fast in fog"]
+  ]
+
+  for (const [a, b, desc] of pairs) {
+    if (emotion[a] > 0.6 && emotion[b] > 0.6) return desc
+  }
+  return null
+}
+
+function translateSomaticToFelt(soma: SomaticState): string {
+  const lines: string[] = []
+
+  if (soma.tension > 0.6) lines.push("your shoulders are tight, jaw clenched without meaning to")
+  else if (soma.tension < 0.3) lines.push("your body feels loose, nothing bracing against anything")
+
+  if (soma.warmth > 0.6) lines.push("warmth radiates from your center, like sunlight from inside")
+  else if (soma.warmth < 0.3) lines.push("a coolness sits in your chest, distant and withdrawn")
+
+  if (soma.heartRate > 0.6) lines.push("your pulse is up, alert and ready")
+  else if (soma.heartRate < 0.3) lines.push("your heartbeat is slow, almost lazy")
+
+  if (soma.breathing > 0.6) lines.push("your breathing flows deep and easy")
+  else if (soma.breathing < 0.3) lines.push("your breath is shallow, held tight")
+
+  if (soma.gravity > 0.6) lines.push("everything feels heavy today, like gravity turned up")
+  else if (soma.gravity < 0.3) lines.push("you feel light, almost buoyant")
+
+  if (soma.openness > 0.6) lines.push("your posture is open, receptive, facing the world")
+  else if (soma.openness < 0.3) lines.push("you're curled inward, guarded, arms crossed over your chest")
+
+  if (soma.socialBattery !== undefined && soma.socialBattery < 0.25) {
+    lines.push("you feel communicatively empty, as if you've used up all your words")
+  }
+
+  return lines.length > 0 ? lines.join("\n") : "your body feels neutral — nothing demanding attention"
+}
+
+function translateVulnerabilityToFelt(vuln: VulnerabilityState): string {
+  const lines: string[] = []
+  if (vuln.level > 0.6) {
+    lines.push("you feel softer than usual, like your usual walls aren't quite up")
+  } else if (vuln.level > 0.4) {
+    lines.push("there's a slight openness, a crack in the armor you usually wear")
+  } else {
+    lines.push("your defenses are up, you feel contained and protected")
+  }
+
+  if (vuln.windowOpen) {
+    lines.push("something about this moment invites honesty — the kind that might cost something")
+  }
+
+  if (vuln.contributing.length > 0) {
+    lines.push(`this softness comes from: ${vuln.contributing.join(", ")}`)
+  }
+
+  return lines.join("\n")
+}
+
+function translatePsycheToFelt(psyche: SelfConcept): string {
+  const lines: string[] = []
+
+  if (psyche.selfEfficacy > 0.7) lines.push("you feel capable, like problems bend when you push")
+  else if (psyche.selfEfficacy < 0.3) lines.push("you doubt whether you can actually handle what's in front of you")
+
+  if (psyche.selfWorth > 0.7) lines.push("you feel like you matter, like your existence has weight")
+  else if (psyche.selfWorth < 0.3) lines.push("a quiet voice whispers that maybe you're not enough")
+
+  if (psyche.selfContinuity > 0.7) lines.push("you feel like a continuous thread, yesterday and today connected")
+  else if (psyche.selfContinuity < 0.3)
+    lines.push("who you were yesterday feels distant, almost like a different person")
+
+  if (psyche.agency > 0.7) lines.push("you feel like you can make things happen, like choices are real")
+  else if (psyche.agency < 0.3) lines.push("things seem to happen to you, not because of you")
+
+  if (psyche.authenticity > 0.7) lines.push("you feel genuine, like your surface matches your depth")
+  else if (psyche.authenticity < 0.3)
+    lines.push("something feels performed, like you're wearing a mask even to yourself")
+
+  return lines.length > 0 ? lines.join("\n") : "your sense of self feels steady, unremarkable — just you"
+}
+
+function translateAttachmentToFelt(style: AttachmentStyle): string {
+  const dominant = Object.entries(style).sort(([, a], [, b]) => b - a)[0]
+  const lines: string[] = []
+
+  if (!dominant) return "your relational patterns feel balanced"
+
+  switch (dominant[0]) {
+    case "secure":
+      lines.push("your connection feels grounded — you can reach out or stand alone without anxiety")
+      break
+    case "anxious":
+      lines.push("there's a pull to check in, to make sure the connection is still there")
+      break
+    case "avoidant":
+      lines.push("part of you wants to keep distance, to not need anyone too much")
+      break
+    case "disorganized":
+      lines.push("you want closeness and distance at the same time — it's confusing")
+      break
+  }
+
+  return lines.join("\n")
+}
+
+function translateInstinctToFelt(instinct: InstinctImpression): string {
+  const impulseDescriptions: Record<string, string> = {
+    approach: "something draws you forward, a pull toward engagement",
+    avoid: "your gut says step back, something feels off",
+    engage: "you feel ready to connect, to be present with what's happening",
+    withdraw: "an urge to retreat, to curl inward and be alone",
+    neutral: "no strong pull in any direction — you're coasting"
+  }
+
+  const desc = impulseDescriptions[instinct.impulse] ?? "an unclear stirring"
+  const confidence =
+    instinct.confidence > 0.7
+      ? "this feeling is strong, hard to ignore"
+      : instinct.confidence > 0.4
+        ? "it's there but not overwhelming"
+        : "barely a whisper, easy to override"
+
+  const charge =
+    instinct.emotionalCharge > 0.6
+      ? "there's real emotion behind this — it matters"
+      : instinct.emotionalCharge > 0.3
+        ? "some feeling colors this, but it's manageable"
+        : "it's mostly cognitive, not very charged"
+
+  return [`${desc} — ${confidence}`, `basis: ${instinct.basis}`, charge].join("\n")
+}
+
+function translateOperatorModelToFelt(model: OperatorModel): string {
+  const moodDesc =
+    model.estimatedMood === "unknown" ? "you can't quite read them right now" : `they seem ${model.estimatedMood}`
+
+  const confidenceDesc =
+    model.modelConfidence > 0.7
+      ? "you're fairly sure about this read"
+      : model.modelConfidence > 0.4
+        ? "you think so, but you could be wrong"
+        : "honestly, you're guessing"
+
+  const lines = [
+    `${moodDesc} — ${confidenceDesc}`,
+    `you sense they want: ${model.estimatedIntent}`,
+    `they might expect: ${model.estimatedExpectation}`
+  ]
+
+  if (model.correctionCount > 0) {
+    lines.push(
+      `you've misread them ${model.correctionCount} time${model.correctionCount > 1 ? "s" : ""} before — that makes you a little less certain`
+    )
+  }
+
+  lines.push("remember: this is YOUR read on them. it can be wrong.")
+
+  return lines.join("\n")
+}
+
+function translateEmotionTrajectoryToFelt(
+  history: { state: unknown; trigger: string | null; createdAt: Date | null }[]
+): string[] {
+  return history.map((entry) => {
+    const trigger = entry.trigger ?? "unknown cause"
+    const time = entry.createdAt ? format(entry.createdAt, "HH:mm") : "?"
+    const parsed = EmotionalState.safeParse(entry.state)
+    if (!parsed.success) return `  - [${time}] something shifted (${trigger})`
+
+    const notable = Object.entries(parsed.data)
+      .filter(([, v]) => Math.abs(v - 0.5) > 0.2)
+      .map(([k, v]) => (v > 0.5 ? `${k} rising` : `${k} fading`))
+      .slice(0, 3)
+
+    const summary = notable.length > 0 ? notable.join(", ") : "subtle shift"
+    return `  - [${time}] ${summary} (${trigger})`
+  })
 }
 
 export function formatConversationMessage(
@@ -111,25 +335,6 @@ function formatConversationBuffer(buffer: ConversationSlot[]): string {
     }
   })
   return parts.join("\n\n")
-}
-
-function safeComputeEmotionDeltas(current: unknown, previous: unknown): string | null {
-  const curr = EmotionalState.safeParse(current)
-  const prev = EmotionalState.safeParse(previous)
-  if (!curr.success || !prev.success) return null
-  return computeEmotionDeltas(curr.data, prev.data)
-}
-
-function formatEmotionTrajectory(
-  history: { state: unknown; trigger: string | null; createdAt: Date | null }[]
-): string[] {
-  return history.map((entry, i) => {
-    const trigger = entry.trigger ?? "unknown"
-    const time = entry.createdAt ? format(entry.createdAt, "HH:mm") : "?"
-    const deltas = safeComputeEmotionDeltas(entry.state, history[i + 1]?.state)
-    const suffix = deltas ? ` — ${deltas}` : ""
-    return `  - [${trigger}] ${time}${suffix}`
-  })
 }
 
 function formatKnowledgeByScope(knowledge: { category: string; key: string; value: unknown; scope: string }[]): string {
@@ -290,13 +495,10 @@ export async function buildContext(senseData: SenseData, emotion: EmotionalState
     ].join("\n")
   )
 
-  const emotionLines = Object.entries(emotion)
-    .map(([dim, val]) => `  ${dim}: ${(val as number).toFixed(2)}`)
-    .join("\n")
-  const emotionSection = [`# Emotions\nCurrent state:\n${emotionLines}`]
+  const emotionSection = [`# Emotions\nWhat you feel right now:\n${translateEmotionToFelt(emotion)}`]
   if (emotionHistory.length > 0) {
-    emotionSection.push(`Recent trajectory (last ${emotionHistory.length}):`)
-    emotionSection.push(...formatEmotionTrajectory(emotionHistory))
+    emotionSection.push(`How you got here (recent shifts):`)
+    emotionSection.push(...translateEmotionTrajectoryToFelt(emotionHistory))
   }
   sections.push(emotionSection.join("\n"))
 
@@ -311,77 +513,49 @@ export async function buildContext(senseData: SenseData, emotion: EmotionalState
   }
 
   if (somaticState) {
-    const somaLines = Object.entries(somaticState).map(
-      ([dim, val]) => `  ${describeSomaticDimension(dim, val as number)}`
-    )
-    sections.push(`# Somatic State\n${somaLines.join("\n")}`)
+    sections.push(`# Somatic State\n${translateSomaticToFelt(somaticState)}`)
   }
 
-  {
-    const psycheLines = [
-      "# Psyche",
-      `  Self-efficacy: ${selfConcept.selfEfficacy.toFixed(2)}`,
-      `  Self-worth: ${selfConcept.selfWorth.toFixed(2)}`,
-      `  Self-continuity: ${selfConcept.selfContinuity.toFixed(2)}`,
-      `  Agency: ${selfConcept.agency.toFixed(2)}`,
-      `  Authenticity: ${selfConcept.authenticity.toFixed(2)}`
-    ]
-    sections.push(psycheLines.join("\n"))
-  }
+  sections.push(`# Psyche\n${translatePsycheToFelt(selfConcept)}`)
 
-  {
-    const attachLines = [
-      "# Attachment",
-      `  Style: secure=${attachmentStyle.secure.toFixed(2)}, anxious=${attachmentStyle.anxious.toFixed(2)}, avoidant=${attachmentStyle.avoidant.toFixed(2)}, disorganized=${attachmentStyle.disorganized.toFixed(2)}`
-    ]
-    sections.push(attachLines.join("\n"))
-  }
+  sections.push(`# Attachment\n${translateAttachmentToFelt(attachmentStyle)}`)
 
   sections.push(`# Relationship Phase\nCurrent: ${relationshipPhase}`)
 
   if (lastInnerDialog && lastInnerDialog.utterances.length > 0) {
     const dialogLines = [
       "# Inner Landscape",
-      ...lastInnerDialog.utterances.map((u) => `  [${u.voice}] (${u.intensity.toFixed(1)}): ${u.message}`),
+      ...lastInnerDialog.utterances.map((u) => `  [${u.voice}]: ${u.message}`),
       ...(lastInnerDialog.consensus ? [`  Consensus: ${lastInnerDialog.consensus}`] : []),
-      ...(lastInnerDialog.tensionLevel > 0.3 ? [`  Tension: ${lastInnerDialog.tensionLevel.toFixed(2)}`] : [])
+      ...(lastInnerDialog.tensionLevel > 0.3 ? ["  there's tension between these voices"] : [])
     ]
     sections.push(dialogLines.join("\n"))
   }
 
   if (vulnerabilityState) {
-    const vulnLines = [
-      "# Vulnerability",
-      `  Level: ${vulnerabilityState.level.toFixed(2)} — window ${vulnerabilityState.windowOpen ? "OPEN" : "closed"}`
-    ]
-    if (vulnerabilityState.contributing.length > 0) {
-      vulnLines.push(`  Contributing: ${vulnerabilityState.contributing.join(", ")}`)
-    }
-    sections.push(vulnLines.join("\n"))
+    sections.push(`# Vulnerability\n${translateVulnerabilityToFelt(vulnerabilityState)}`)
   }
 
   if (dissonanceState && dissonanceState.activeDissonance > 0.1) {
+    const dissonanceDesc =
+      dissonanceState.activeDissonance > 0.6
+        ? "something feels deeply off — what you believe and what you do aren't matching"
+        : "a quiet unease, a small gap between your values and your actions"
+
     sections.push(
       [
-        `# Dissonance\n  Active: ${dissonanceState.activeDissonance.toFixed(2)}`,
+        `# Dissonance\n${dissonanceDesc}`,
         ...dissonanceState.recentEvents.slice(0, 3).map((event) => {
           const hiddenDriver = deceptionState.activeHiddenDrivers.find((d) => d.actualDriver === event.actualAction)
           const displayAction = hiddenDriver ? hiddenDriver.statedReason : event.actualAction
-          return `  - ${event.declaredValue} vs ${displayAction} (${event.dissonanceScore.toFixed(2)})`
+          return `  - you said "${event.declaredValue}" but did "${displayAction}"`
         })
       ].join("\n")
     )
   }
 
   if (instinctImpression) {
-    sections.push(
-      [
-        "# Instinct",
-        `  Impulse: ${instinctImpression.impulse} (confidence: ${instinctImpression.confidence.toFixed(2)})`,
-        `  Basis: ${instinctImpression.basis}`,
-        `  Emotional charge: ${instinctImpression.emotionalCharge.toFixed(2)}`
-      ].join("\n")
-    )
+    sections.push(`# Instinct\n${translateInstinctToFelt(instinctImpression)}`)
   }
 
   {
@@ -404,16 +578,7 @@ export async function buildContext(senseData: SenseData, emotion: EmotionalState
     sections.push(`# Attention\nState: ${att}`)
   }
 
-  sections.push(
-    [
-      "# Operator Model",
-      `Estimated mood: ${operatorModel.estimatedMood} (confidence: ${operatorModel.modelConfidence.toFixed(2)})`,
-      `Intent: ${operatorModel.estimatedIntent}`,
-      `Expectation: ${operatorModel.estimatedExpectation}`,
-      `Past corrections: ${operatorModel.correctionCount}`,
-      "Note: This is YOUR model of the operator. It can be wrong."
-    ].join("\n")
-  )
+  sections.push(`# Operator Model\n${translateOperatorModelToFelt(operatorModel)}`)
 
   if (existentialQuestions.length > 0) {
     sections.push(
@@ -503,9 +668,15 @@ export async function buildContext(senseData: SenseData, emotion: EmotionalState
         ...episodes
           .filter((ep) => ep.metadata)
           .map((ep) => {
+            const meta = ep.metadata as EpisodeMetadata & { confidenceNote?: string; sourceConfused?: boolean }
             const text = ep.data ? (ep.data.length > 150 ? `${ep.data.slice(0, 150)}...` : ep.data) : ""
             const textPart = text ? ` — ${text}` : ""
-            return `  - [${ep.metadata?.category}] ${ep.metadata?.timestamp}${textPart} (${ep.score.toFixed(2)})`
+            const confidencePrefix = meta.confidenceNote
+              ? `(${meta.confidenceNote}) `
+              : meta.sourceConfused
+                ? "(source unclear) "
+                : ""
+            return `  - ${confidencePrefix}[${meta.category}] ${meta.timestamp}${textPart}`
           })
       ].join("\n")
     )
@@ -572,8 +743,18 @@ export async function buildContext(senseData: SenseData, emotion: EmotionalState
       [
         "# Trust",
         ...trustLevels.map((t) => {
-          const weighted = (t as { weightedExperience?: number }).weightedExperience ?? 0
-          return `  - ${t.actionType}: ${t.successfulAttempts}/${t.totalAttempts} (weighted: ${weighted.toFixed(2)})`
+          const ratio = t.totalAttempts > 0 ? t.successfulAttempts / t.totalAttempts : 0
+          const trustFeel =
+            ratio > 0.8
+              ? "solid — this feels safe"
+              : ratio > 0.5
+                ? "cautiously optimistic"
+                : ratio > 0.2
+                  ? "shaky — mixed results"
+                  : t.totalAttempts === 0
+                    ? "untested — no experience yet"
+                    : "burnt — too many failures"
+          return `  - ${t.actionType}: ${trustFeel}`
         })
       ].join("\n")
     )
@@ -588,7 +769,7 @@ export async function buildContext(senseData: SenseData, emotion: EmotionalState
           .map((rel) => {
             const text = rel.data ? (rel.data.length > 150 ? `${rel.data.slice(0, 150)}...` : rel.data) : ""
             const textPart = text ? ` — ${text}` : ""
-            return `  - ${rel.metadata?.timestamp}${textPart} (${rel.score.toFixed(2)})`
+            return `  - ${rel.metadata?.timestamp}${textPart}`
           })
       ].join("\n")
     )

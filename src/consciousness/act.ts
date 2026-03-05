@@ -24,8 +24,9 @@ import { savePsycheSnapshot, saveSelfConcept } from "@/psyche/state.ts"
 import { updateSelfConcept } from "@/psyche/update.ts"
 import { executeMorning, executeReflection } from "@/routine/executor.ts"
 import { saveSomaticState } from "@/soma/state.ts"
-import { computeSomaticUpdate } from "@/soma/update.ts"
+import { computeSomaticUpdate, drainSocialBattery } from "@/soma/update.ts"
 import { executeWorkflow } from "@/workflow/engine.ts"
+import { recordActiveTick } from "./gating.ts"
 import type { ActResult, DeliberateResult, FeelingResult, SenseResult } from "./types.ts"
 
 /**
@@ -85,8 +86,15 @@ export async function act(
     ])
     await saveEmotionalState(outcomeEmotion, "message_sent")
 
-    const postActionSoma = computeSomaticUpdate(feelResult.soma, outcomeEmotion, 0)
+    const drainedSoma = drainSocialBattery(
+      feelResult.soma,
+      decision.messages.length,
+      senseResult.pendingMessages.length
+    )
+    const postActionSoma = computeSomaticUpdate(drainedSoma, outcomeEmotion, 0)
     await saveSomaticState(postActionSoma, "post_action")
+
+    await recordActiveTick()
   }
 
   const lastTick = await getLastTickSummary()

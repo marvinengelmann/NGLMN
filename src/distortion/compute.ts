@@ -18,6 +18,10 @@ type QueryResult = {
   metadata: EpisodeMetadata | undefined
 }
 
+const SOURCE_ALTERNATIVES = ["heard somewhere", "read it once", "operator mentioned it", "came up in a dream"]
+
+const CONFIDENCE_NOTES = ["vague memory", "uncertain", "I think...", "feels hazy"]
+
 /**
  * Compute distortion probability for a single memory based on age, relevance, and current emotional intensity.
  */
@@ -124,6 +128,21 @@ export async function applyDistortions(
           }
           break
         }
+
+        case "source_confusion":
+          if (metadata) {
+            const alt = SOURCE_ALTERNATIVES[Math.floor(Math.random() * SOURCE_ALTERNATIVES.length)]
+            metadata = { ...metadata, sourceConfused: true, sourceLabel: alt } as typeof metadata
+            distortions.push({ type: "source_confusion", originalEpisodeId: ep.id, alteredField: "source" })
+          }
+          break
+
+        case "confidence_degradation": {
+          const note = CONFIDENCE_NOTES[Math.floor(Math.random() * CONFIDENCE_NOTES.length)]
+          metadata = { ...metadata, confidenceNote: note } as typeof metadata
+          distortions.push({ type: "confidence_degradation", originalEpisodeId: ep.id, alteredField: "confidence" })
+          break
+        }
       }
 
       return { id: ep.id, score: ep.score, data, metadata, distortions }
@@ -139,9 +158,11 @@ function selectDistortionType(allEpisodes: QueryResult[], current: QueryResult):
   if (hasConflationCandidate && Math.random() < DISTORTION.CONFLATION_PROBABILITY) return "episode_conflation"
 
   const roll = Math.random()
-  if (roll < 0.4) return "temporal_confusion"
-  if (roll < 0.7) return "detail_alteration"
-  return "emotional_recoloring"
+  if (roll < 0.3) return "temporal_confusion"
+  if (roll < 0.55) return "detail_alteration"
+  if (roll < 0.75) return "emotional_recoloring"
+  if (roll < 0.9) return "source_confusion"
+  return "confidence_degradation"
 }
 
 function findConflationCandidate(episodes: QueryResult[], current: QueryResult): QueryResult | undefined {

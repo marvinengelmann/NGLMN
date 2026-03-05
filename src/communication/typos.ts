@@ -1,0 +1,89 @@
+import { TYPOS } from "@/config/constants.ts"
+import type { CommunicationRegister } from "./types.ts"
+
+const TYPO_PROBABILITY: Record<CommunicationRegister, number> = {
+  casual: TYPOS.CASUAL_PROBABILITY,
+  playful: TYPOS.PLAYFUL_PROBABILITY,
+  terse: TYPOS.TERSE_PROBABILITY,
+  elaborate: TYPOS.ELABORATE_PROBABILITY,
+  raw: TYPOS.RAW_PROBABILITY
+}
+
+const CORRECTION_STYLES = [
+  (correct: string) => `*${correct}`,
+  (correct: string) => `${correct}*`,
+  (correct: string) => `lol ich mein ${correct}`,
+  (correct: string) => `*${correct} 😅`,
+  (correct: string) => `${correct}**`
+]
+
+/**
+ * Maybe introduce a typo into a message based on communication register.
+ * Returns the modified text and an optional correction message.
+ */
+export function maybeIntroduceTypo(
+  text: string,
+  register: CommunicationRegister
+): { text: string; correction: string | null } {
+  if (text.length < TYPOS.MIN_TEXT_LENGTH) return { text, correction: null }
+
+  const probability = TYPO_PROBABILITY[register] ?? TYPOS.CASUAL_PROBABILITY
+  if (Math.random() >= probability) return { text, correction: null }
+
+  const words = text.split(" ")
+  if (words.length < 3) return { text, correction: null }
+
+  const wordIndex = 1 + Math.floor(Math.random() * (words.length - 2))
+  const word = words[wordIndex]
+  if (!word || word.length < 3) return { text, correction: null }
+
+  const typoType = Math.random()
+  let typoWord: string
+  const correctedWord: string = word
+
+  if (typoType < 0.4) {
+    const i = Math.floor(Math.random() * (word.length - 1))
+    const chars = [...word]
+    const temp = chars[i]
+    const next = chars[i + 1]
+    if (temp !== undefined && next !== undefined) {
+      chars[i] = next
+      chars[i + 1] = temp
+    }
+    typoWord = chars.join("")
+  } else if (typoType < 0.7) {
+    const i = 1 + Math.floor(Math.random() * (word.length - 1))
+    typoWord = word.slice(0, i) + word.slice(i + 1)
+  } else {
+    const nearby: Record<string, string> = {
+      a: "s",
+      s: "d",
+      d: "f",
+      e: "r",
+      r: "t",
+      t: "z",
+      n: "m",
+      i: "o",
+      o: "p"
+    }
+    const i = Math.floor(Math.random() * word.length)
+    const char = word[i]?.toLowerCase()
+    const replacement = char ? nearby[char] : undefined
+    if (replacement && char) {
+      typoWord = word.slice(0, i) + replacement + word.slice(i + 1)
+    } else {
+      typoWord = word
+    }
+  }
+
+  if (typoWord === word) return { text, correction: null }
+
+  const newWords = [...words]
+  newWords[wordIndex] = typoWord
+  const modifiedText = newWords.join(" ")
+
+  const styleFn = CORRECTION_STYLES[Math.floor(Math.random() * CORRECTION_STYLES.length)]
+  const correction = styleFn ? styleFn(correctedWord) : `*${correctedWord}`
+
+  return { text: modifiedText, correction }
+}

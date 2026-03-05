@@ -65,7 +65,8 @@ describe("applySomaticHysteresis", () => {
       heartRate: 0.8,
       breathing: 0.8,
       gravity: 0.8,
-      openness: 0.8
+      openness: 0.8,
+      socialBattery: 0.8
     }
     const result = applySomaticHysteresis(current, target, 60)
     expect(result.tension).toBeGreaterThan(current.tension)
@@ -73,8 +74,24 @@ describe("applySomaticHysteresis", () => {
   })
 
   it("has slower half-lives than emotion system", () => {
-    const current: SomaticState = { tension: 0, warmth: 0, heartRate: 0, breathing: 0, gravity: 0, openness: 0 }
-    const target: SomaticState = { tension: 1, warmth: 1, heartRate: 1, breathing: 1, gravity: 1, openness: 1 }
+    const current: SomaticState = {
+      tension: 0,
+      warmth: 0,
+      heartRate: 0,
+      breathing: 0,
+      gravity: 0,
+      openness: 0,
+      socialBattery: 0.8
+    }
+    const target: SomaticState = {
+      tension: 1,
+      warmth: 1,
+      heartRate: 1,
+      breathing: 1,
+      gravity: 1,
+      openness: 1,
+      socialBattery: 0.8
+    }
     const after30min = applySomaticHysteresis(current, target, 30)
     expect(after30min.heartRate).toBeLessThan(0.5)
   })
@@ -87,7 +104,8 @@ describe("applySomaticHysteresis", () => {
       heartRate: 0.9,
       breathing: 0.9,
       gravity: 0.9,
-      openness: 0.9
+      openness: 0.9,
+      socialBattery: 0.8
     }
     const result = applySomaticHysteresis(current, target, 100000)
     for (const dim of Object.keys(target) as (keyof SomaticState)[]) {
@@ -104,7 +122,7 @@ describe("applySomaticMemory", () => {
 
   it("blends toward memory average", () => {
     const memories: SomaticState[] = [
-      { tension: 0.8, warmth: 0.8, heartRate: 0.8, breathing: 0.8, gravity: 0.8, openness: 0.8 }
+      { tension: 0.8, warmth: 0.8, heartRate: 0.8, breathing: 0.8, gravity: 0.8, openness: 0.8, socialBattery: 0.8 }
     ]
     const result = applySomaticMemory(DEFAULT_SOMATIC_STATE, memories)
     expect(result.tension).toBeGreaterThan(DEFAULT_SOMATIC_STATE.tension)

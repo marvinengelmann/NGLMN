@@ -1,7 +1,9 @@
 import { computeTypingDuration, simulateTyping, splitIntoParagraphs } from "@/communication/timing.ts"
-import { MESSAGE_DELAY, THINKING } from "@/config/constants.ts"
+import { maybeIntroduceTypo } from "@/communication/typos.ts"
+import { MESSAGE_DELAY, THINKING, TYPOS } from "@/config/constants.ts"
 import type { AnimaDecision } from "@/consciousness/types.ts"
 import { textToSpeech } from "@/integrations/elevenlabs.ts"
+import { redis } from "@/integrations/redis.ts"
 import {
   sendMessageWithReply,
   sendRecordVoiceAction,
@@ -13,18 +15,28 @@ import { log } from "@/lib/logger.ts"
 import { nowISO } from "@/lib/time.ts"
 import { pushRecentResponse, pushToActiveConversation, setGuardianResult } from "@/memory/working.ts"
 import { handleGuardianVerdict, validateOutput } from "@/security/guardian.ts"
+import type { CommunicationRegister } from "./types.ts"
 
 interface MessagingResult {
   responseSent: boolean
   responseText?: string
 }
 
+async function getCurrentRegister(): Promise<CommunicationRegister> {
+  const raw = await redis.get("working:communication:register")
+  if (raw && typeof raw === "string" && ["casual", "playful", "terse", "elaborate", "raw"].includes(raw)) {
+    return raw as CommunicationRegister
+  }
+  return "casual"
+}
+
 /**
  * Send ANIMA's messages to the operator via Telegram with guardian validation,
- * paragraph splitting, and typing simulation.
+ * paragraph splitting, typing simulation, and occasional typos.
  */
 export async function sendMessages(decision: AnimaDecision): Promise<MessagingResult> {
   const allTexts: string[] = []
+  const register = await getCurrentRegister()
 
   for (const msg of decision.messages) {
     const guardianResult = await validateOutput(msg.text)
@@ -52,7 +64,9 @@ export async function sendMessages(decision: AnimaDecision): Promise<MessagingRe
         await pushToActiveConversation([{ role: "anima", text: msg.text, timestamp: nowISO(), messageId: sentId }])
       }
     } else {
-      const paragraphs = splitIntoParagraphs(msg.text)
+      const { text: possiblyTypoed, correction } = maybeIntroduceTypo(msg.text, register)
+
+      const paragraphs = splitIntoParagraphs(possiblyTypoed)
       for (let i = 0; i < paragraphs.length; i++) {
         const paragraph = paragraphs[i]
         if (!paragraph) continue
@@ -68,6 +82,18 @@ export async function sendMessages(decision: AnimaDecision): Promise<MessagingRe
         const sentId = await sendMessageWithReply(paragraph, i === 0 ? msg.replyTo : undefined)
 
         await pushToActiveConversation([{ role: "anima", text: paragraph, timestamp: nowISO(), messageId: sentId }])
+      }
+
+      if (correction) {
+        const delay =
+          TYPOS.CORRECTION_DELAY_MIN_MS +
+          Math.random() * (TYPOS.CORRECTION_DELAY_MAX_MS - TYPOS.CORRECTION_DELAY_MIN_MS)
+        await new Promise((resolve) => setTimeout(resolve, delay))
+        await simulateTyping(computeTypingDuration(correction), sendTypingAction)
+        const correctionId = await sendMessageWithReply(correction)
+        await pushToActiveConversation([
+          { role: "anima", text: correction, timestamp: nowISO(), messageId: correctionId }
+        ])
       }
     }
 

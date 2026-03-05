@@ -8,7 +8,8 @@ const baseSoma = {
   heartRate: 0.5,
   breathing: 0.5,
   gravity: 0.5,
-  openness: 0.5
+  openness: 0.5,
+  socialBattery: 0.8
 }
 
 const neutralImpression: InstinctImpression = {

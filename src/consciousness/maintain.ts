@@ -11,6 +11,7 @@ import {
 } from "@/attachment/state.ts"
 import { hasStyleChanged, updateAttachmentStyle } from "@/attachment/update.ts"
 import { log } from "@/lib/logger.ts"
+import { applyOpinionDrift } from "@/memory/semantic.ts"
 import {
   getConflictCount,
   getFirstInteractionAt,
@@ -21,6 +22,8 @@ import {
   resetConsecutiveIdleTicks
 } from "@/memory/working.ts"
 import { handleDriftCheck } from "@/security/guardian.ts"
+import { getSomaticState, saveSomaticState } from "@/soma/state.ts"
+import { rechargeSocialBattery } from "@/soma/update.ts"
 import { logActionResult, logTick } from "./recorder.ts"
 import type { DeliberateResult, FeelingResult, MaintainInput, TickSummary } from "./types.ts"
 
@@ -84,8 +87,19 @@ export async function maintain(
 
   if (input.decision.action === "idle" && !input.actResult.responseSent) {
     await incrementConsecutiveIdleTicks()
+
+    const currentSoma = await getSomaticState()
+    const isDreaming = input.decision.action === "idle" && input.senseResult.moodContext.isDreaming
+    const rechargedSoma = rechargeSocialBattery(currentSoma, isDreaming)
+    if (rechargedSoma.socialBattery !== currentSoma.socialBattery) {
+      await saveSomaticState(rechargedSoma, "social_battery_recharge")
+    }
   } else {
     await resetConsecutiveIdleTicks()
+  }
+
+  if (Math.random() < 0.05) {
+    await applyOpinionDrift()
   }
 
   const durationMs = Date.now() - input.startTime

@@ -9,6 +9,7 @@ export const OperatorModel = z.object({
   estimatedExpectation: z.string().max(200),
   modelConfidence: z.number().min(0).max(1),
   correctionCount: z.number().default(0),
+  correctionDelay: z.number().default(0),
   lastUpdated: z.string()
 })
 export type OperatorModel = z.infer<typeof OperatorModel>
@@ -35,5 +36,6 @@ export const DEFAULT_OPERATOR_MODEL: OperatorModel = {
   estimatedExpectation: "unknown",
   modelConfidence: 0.2,
   correctionCount: 0,
+  correctionDelay: 0,
   lastUpdated: ""
 }

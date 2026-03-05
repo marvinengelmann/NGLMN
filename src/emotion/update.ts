@@ -1,4 +1,4 @@
-import { EMOTION, MOOD_BASELINE } from "@/config/constants.ts"
+import { CONTRADICTION, EMOTION, MOOD_BASELINE } from "@/config/constants.ts"
 import {
   DEFAULT_EMOTIONAL_STATE,
   type EmotionalState,
@@ -172,6 +172,56 @@ export function applyCrossCoupling(state: EmotionalState): EmotionalState {
   return clampState(result)
 }
 
+type ShadowRule = { shadow: keyof EmotionalState }
+
+const SHADOW_PAIRINGS: Record<string, ShadowRule[]> = {
+  connection: [{ shadow: "caution" }],
+  excitement: [{ shadow: "caution" }, { shadow: "frustration" }],
+  satisfaction: [{ shadow: "boredom" }]
+}
+
+/**
+ * Ensure high positive emotions carry shadow emotions for realism.
+ * Real feelings are almost always mixed.
+ */
+export function applyContradictionBudget(state: EmotionalState): EmotionalState {
+  const result = { ...state }
+  const intensity = computeEmotionalIntensity(result)
+
+  const positives: (keyof EmotionalState)[] = ["satisfaction", "connection", "excitement"]
+  for (const dim of positives) {
+    if (result[dim] < CONTRADICTION.HIGH_EMOTION_THRESHOLD) continue
+    const rules = SHADOW_PAIRINGS[dim]
+    if (!rules || rules.length === 0) continue
+
+    const chosen = rules[Math.floor(Math.random() * rules.length)]
+    if (!chosen) continue
+
+    const shadowMin =
+      CONTRADICTION.MIN_SHADOW_EMOTION +
+      Math.random() * (CONTRADICTION.MAX_SHADOW_EMOTION - CONTRADICTION.MIN_SHADOW_EMOTION)
+    if (result[chosen.shadow] < shadowMin) {
+      result[chosen.shadow] = shadowMin
+    }
+  }
+
+  if (intensity > CONTRADICTION.HIGH_INTENSITY_THRESHOLD) {
+    const negatives: (keyof EmotionalState)[] = ["frustration", "boredom", "caution"]
+    const activeNegatives = negatives.filter((d) => result[d] > CONTRADICTION.MIN_SHADOW_EMOTION)
+    if (activeNegatives.length < 2) {
+      const inactive = negatives.filter((d) => result[d] <= CONTRADICTION.MIN_SHADOW_EMOTION)
+      const toActivate = inactive.slice(0, 2 - activeNegatives.length)
+      for (const dim of toActivate) {
+        result[dim] =
+          CONTRADICTION.MIN_SHADOW_EMOTION +
+          Math.random() * (CONTRADICTION.MAX_SHADOW_EMOTION - CONTRADICTION.MIN_SHADOW_EMOTION)
+      }
+    }
+  }
+
+  return clampState(result)
+}
+
 /**
  * Compute emotional valence from -1 (negative) to 1 (positive).
  */
@@ -244,6 +294,7 @@ export function computeEmotionalUpdate(
   }
 
   state = applyCrossCoupling(state)
+  state = applyContradictionBudget(state)
 
   return clampState(state)
 }

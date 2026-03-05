@@ -1,4 +1,4 @@
-import { MIND } from "@/config/constants.ts"
+import { MIND, MISCALIBRATION } from "@/config/constants.ts"
 import { callIntelligence } from "@/core/intelligence.ts"
 import { log } from "@/lib/logger.ts"
 import { nowISO } from "@/lib/time.ts"
@@ -14,10 +14,23 @@ interface OperatorModelContext {
 
 /**
  * Update the operator model via lightweight LLM analysis of messages.
+ * Includes correction delay (30% chance of keeping old model for 1-2 cycles)
+ * and random confidence dips (5% chance per tick).
  */
 export async function updateOperatorModel(context: OperatorModelContext): Promise<OperatorModel> {
   const { messageTexts, messageTimestamps, silenceMinutes, previousModel } = context
   const model = { ...previousModel, lastUpdated: nowISO() }
+
+  if (model.correctionDelay > 0) {
+    model.correctionDelay -= 1
+    log.debug("Operator model correction delayed", { remainingCycles: model.correctionDelay })
+  }
+
+  if (Math.random() < MISCALIBRATION.RANDOM_CONFIDENCE_DIP_PROBABILITY) {
+    const dip = MISCALIBRATION.DIP_MIN + Math.random() * (MISCALIBRATION.DIP_MAX - MISCALIBRATION.DIP_MIN)
+    model.modelConfidence = Math.max(0.1, model.modelConfidence - dip)
+    log.debug("Random confidence dip", { dip: dip.toFixed(2), newConfidence: model.modelConfidence.toFixed(2) })
+  }
 
   if (messageTexts.length === 0) {
     if (silenceMinutes > MIND.LONG_SILENCE_MINUTES) {
@@ -45,10 +58,25 @@ export async function updateOperatorModel(context: OperatorModelContext): Promis
 
   if (result.isOk()) {
     const analysis = result.value
+
+    if (model.correctionDelay > 0) {
+      model.modelConfidence = analysis.confidence
+      return model
+    }
+
+    const moodChanged = analysis.mood !== previousModel.estimatedMood
+    if (moodChanged && Math.random() < MISCALIBRATION.CORRECTION_DELAY_PROBABILITY) {
+      model.correctionDelay = 1 + Math.floor(Math.random() * MISCALIBRATION.MAX_DELAY_CYCLES)
+      model.modelConfidence = analysis.confidence
+      log.debug("Delaying model correction", { delayCycles: model.correctionDelay })
+      return model
+    }
+
     model.estimatedMood = analysis.mood
     model.estimatedIntent = analysis.intent
     model.estimatedExpectation = analysis.expectation
     model.modelConfidence = analysis.confidence
+    model.correctionDelay = 0
   } else {
     log.warn("Operator analysis LLM failed, keeping previous model", { error: result.error.message })
   }
