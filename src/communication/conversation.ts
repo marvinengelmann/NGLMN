@@ -69,6 +69,6 @@ export async function recallArchivedContext(
   if (relevant.length === 0) return null
 
   return relevant
-    .map((r) => `[Recalled memory, relevance ${r.score.toFixed(2)}]: ${r.metadata?.category ?? "unknown"}`)
+    .map((r) => `[Recalled memory, relevance ${r.score.toFixed(2)}]: ${r.data ?? r.metadata?.category ?? "unknown"}`)
     .join("\n")
 }

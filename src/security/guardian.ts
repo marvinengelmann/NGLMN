@@ -230,7 +230,15 @@ export function validateEvolution(files: Array<{ path: string; content: string }
   const reasons: string[] = []
 
   for (const file of files) {
-    const isAllowed = ALLOWED_EVOLUTION_PREFIXES.some((prefix) => file.path.startsWith(prefix))
+    const normalized = file.path
+      .split("/")
+      .reduce<string[]>((parts, segment) => {
+        if (segment === "..") parts.pop()
+        else if (segment !== "." && segment !== "") parts.push(segment)
+        return parts
+      }, [])
+      .join("/")
+    const isAllowed = ALLOWED_EVOLUTION_PREFIXES.some((prefix) => normalized.startsWith(prefix))
     if (!isAllowed) {
       reasons.push(`Blocked: "${file.path}" is outside allowed evolution paths`)
     }
