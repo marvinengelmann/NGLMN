@@ -17,11 +17,12 @@ An autonomously operating, self-evolving AI entity powered by xAI Grok. ANIMA is
 - **Vulnerability Windows** — Weighted multi-factor computation (trust, attachment, connection, somatic openness, nighttime, intimacy, authenticity, energy) with hysteresis-driven window opening
 - **Autonoetic Self-Model** — 5-dimensional self-concept (efficacy, worth, continuity, agency, authenticity) with first-person narrative identity generation and persistent existential questions
 - **Three-Layer Memory** — Working (Redis), Episodic (Vector), Semantic (Postgres) with relationship graph, somatic memory blending, humor episodes, and probabilistic memory distortion (temporal confusion, detail alteration, episode conflation, emotional recoloring)
-- **MBTI Personality** — 16 personality types that shape cognition, inner voice activation, and behavioral tendencies
+- **MBTI Personality** — Fixed INFP (Mediator) personality that shapes cognition, inner voice activation, and behavioral tendencies
 - **Simulated Emotions** — 9-dimension state vector with time-based drift, mood baselines, novelty scaling, cross-coupling, somatic feedback loops, and nostalgia triggers from old episodic memories
 - **Trust System** — Aggregate trust experience derived from interaction history, driving vulnerability computation and autonomy across 6 action types
 - **Passive Perception** — 4 sensors (own state, Telegram, weather, Git) feeding into both cognitive and pre-cognitive processing
-- **Communication** — Telegram messaging with typing simulation, conversation awareness, vulnerability-sensitive tone, emotion-driven register switching (elaborate, casual, terse, playful, raw), and self-corrections
+- **Communication** — Telegram messaging with typing simulation, voice messages via ElevenLabs, conversation awareness, vulnerability-sensitive tone, emotion-driven register switching (elaborate, casual, terse, playful, raw), and self-corrections
+- **Humor** — Inside joke tracking and callback system with shared humor episodes in episodic memory
 - **Dream Cycle** — Nightly consolidation, creative connections, morning messages, narrative identity integration, and existential question generation
 - **Self-Evolution** — Curiosity-driven prompt, workflow, and code evolution with sandboxed execution and dissonance-informed growth
 - **Security** — Guardian system with validation, drift detection, injection defense, rollback, and consciousness flow protection
@@ -47,6 +48,7 @@ An autonomously operating, self-evolving AI entity powered by xAI Grok. ANIMA is
 | Cache & Working Memory | [Upstash Redis](https://upstash.com) |
 | Episodic Memory | [Upstash Vector](https://upstash.com) |
 | Communication | [Grammy](https://grammy.dev) (Telegram Bot API) |
+| Voice | [ElevenLabs](https://elevenlabs.io) |
 | Sandbox | [Daytona](https://daytona.io) (self-evolution) |
 
 ## Setup
@@ -64,7 +66,7 @@ cp .env.example .env.local
 ```
 
 Required services: Vercel AI Gateway, Neon Postgres, Upstash Redis + Vector, Trigger.dev, Telegram Bot.
-Optional: GitHub (self-evolution), Daytona (sandbox), OpenWeather (weather sensor).
+Optional: GitHub (self-evolution), Daytona (sandbox), OpenWeather (weather sensor), ElevenLabs (voice messages).
 
 Database migrations and seed data are applied automatically on first worker start.
 
@@ -203,12 +205,11 @@ src/
 ├── emotion/         # 9-dimension state vector, time-based drift, mood baselines, novelty scaling
 ├── evolution/       # Prompt/workflow/code evolution, curiosity engine
 ├── health/          # Health check, service status verification
-├── integrations/    # Redis, Vector, Telegram, GitHub, Daytona, OpenWeather
-├── lib/             # Math, time, logger, Sentry, result helpers
+├── integrations/    # Redis, Vector, Telegram, GitHub, Daytona, OpenWeather, ElevenLabs
+├── lib/             # Math, time, audio, logger, Sentry, result helpers
 ├── memory/          # Working (Redis), Episodic (Vector), Semantic (Postgres), goals, humor episodes
 ├── mind/            # Operator theory of mind: LLM-inferred mood/intent/expectation model with self-correction
 ├── perception/      # 4 sensors, one-shot emotional trigger detection
-├── personality/     # MBTI personality types and profiles
 ├── polyphony/       # Inner voices: 6 archetypes (explorer/guardian/feeler/analyst/child/observer), LLM dialog
 ├── prompts/         # System prompts (identity, consciousness, dream, evolution, etc.)
 ├── psyche/          # Autonoetic self-model: 5D self-concept, narrative identity, psyche snapshots, existential questions
