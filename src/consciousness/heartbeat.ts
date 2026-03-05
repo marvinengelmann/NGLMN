@@ -7,8 +7,8 @@ import {
   clearBusy,
   clearConversationWaitingSince,
   getConversationWaitingSince,
-  setBusy,
-  setConversationWaitingSince
+  setConversationWaitingSince,
+  tryAcquireBusy
 } from "@/memory/working.ts"
 import { act } from "./act.ts"
 import { deliberate } from "./deliberate.ts"
@@ -27,7 +27,11 @@ export async function runHeartbeat() {
   const timestamp = nowISO()
   setTickContext({ tickId })
 
-  await setBusy(tickId)
+  const acquired = await tryAcquireBusy(tickId)
+  if (!acquired) {
+    log.info("Heartbeat skipped — busy lock held by another tick")
+    return
+  }
 
   try {
     let lastDecision: Awaited<ReturnType<typeof deliberate>> | null = null
