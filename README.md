@@ -113,12 +113,13 @@ ANIMA deploys automatically through Trigger.dev on every push to `master`.
 │ compute      body      old memory     System 1      value-action         │
 │ from raw     state     triggers       impulse       mismatch             │
 │ triggers                                                                 │
+│                                                                          │
 │ ───► Deception ───► Attachment ───► Operator Model ───► Vulnerability    │
-│      hidden          dynamics        LLM-inferred        window open?    │
-│      drivers         reunion         mood/intent         hysteresis      │
+│      hidden         dynamics        LLM-inferred        window open?     │
+│      drivers        reunion         mood/intent         hysteresis       │
 │                                                                          │
 │ ───► Register ───► Attention                                             │
-│      style          focus state                                          │
+│      style         focus state                                           │
 │      switching                                                           │
 └─────────────────────────────────────┬────────────────────────────────────┘
                                       │ feelResult
@@ -126,9 +127,9 @@ ANIMA deploys automatically through Trigger.dev on every push to `master`.
 │ DELIBERATE                                                               │
 │                                                                          │
 │ Context ───► Polyphony ───► Override? ───► LLM Call ───► Conflict        │
-│ build full    inner          instinct       System 2      instinct       │
-│ prompt        dialog         ~1-2%          decision      vs             │
-│ + time        injected       of ticks       action        reason         │
+│ build full   inner          instinct       System 2      instinct        │
+│ prompt       dialog         ~1-2%          decision      vs              │
+│ + time       injected       of ticks       action        reason          │
 │                                                                          │
 │ ───► Sub-Think                                                           │
 │      dream / morning / reflect                                           │
