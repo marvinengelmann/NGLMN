@@ -37,16 +37,14 @@ import type { FeelingResult, SenseResult } from "./types.ts"
  */
 export async function feel(senseResult: SenseResult): Promise<FeelingResult> {
   const currentEmotion = await getEmotionalState()
-  const emotion = computeEmotionalUpdate(
+  let emotion = computeEmotionalUpdate(
     currentEmotion,
     senseResult.rawTriggers,
     senseResult.moodContext,
     Math.max(1, senseResult.elapsedMinutes),
     senseResult.triggerTimestamps
   )
-  await saveEmotionalState(emotion, senseResult.rawTriggers[0]?.trigger ?? "message_received")
   await setLastEmotionTimestamp(nowISO())
-  setEmotionContext(emotion)
   for (const event of senseResult.rawTriggers) {
     await setTriggerTimestamp(event.trigger, nowISO())
   }
@@ -80,9 +78,14 @@ export async function feel(senseResult: SenseResult): Promise<FeelingResult> {
   const episodicHits = messageText ? await queryRelated(messageText, 5) : []
   const nostalgia = episodicHits.length > 0 ? detectNostalgia(episodicHits, new Date()) : null
   if (nostalgia) {
-    const updatedEmotion = applyEvent(emotion, nostalgia)
-    await saveEmotionalState(updatedEmotion, "nostalgia_wave")
+    emotion = applyEvent(emotion, nostalgia)
   }
+
+  await saveEmotionalState(
+    emotion,
+    nostalgia ? "nostalgia_wave" : (senseResult.rawTriggers[0]?.trigger ?? "message_received")
+  )
+  setEmotionContext(emotion)
 
   const instinct = await computeInstinctImpression(senseResult.pendingMessages, emotion, soma)
 
