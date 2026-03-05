@@ -31,8 +31,8 @@ async function getConsumedToday(): Promise<number> {
  */
 export async function trackApiCost(costUsd: number): Promise<void> {
   const key = getBudgetKey()
-  const current = await getConsumedToday()
-  await redis.set(key, current + costUsd, { ex: TTL_SECONDS })
+  await redis.incrbyfloat(key, costUsd)
+  await redis.expire(key, TTL_SECONDS)
 }
 
 /**

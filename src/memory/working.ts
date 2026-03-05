@@ -83,6 +83,15 @@ export async function isBusy(): Promise<boolean> {
   return val != null
 }
 
+export async function tryAcquireBusy(tickId: string): Promise<boolean> {
+  const acquired = await redis.setnx(KEYS.BUSY, tickId)
+  if (acquired === 1) {
+    await redis.expire(KEYS.BUSY, HEARTBEAT.BUSY_TTL)
+    return true
+  }
+  return false
+}
+
 export async function setBusy(tickId: string): Promise<void> {
   await redis.set(KEYS.BUSY, tickId, { ex: HEARTBEAT.BUSY_TTL })
 }
@@ -438,8 +447,7 @@ export async function getConsecutiveIdleTicks(): Promise<number> {
 }
 
 export async function incrementConsecutiveIdleTicks(): Promise<void> {
-  const current = await getConsecutiveIdleTicks()
-  await redis.set(KEYS.CONSECUTIVE_IDLE_TICKS, current + 1)
+  await redis.incr(KEYS.CONSECUTIVE_IDLE_TICKS)
 }
 
 export async function resetConsecutiveIdleTicks(): Promise<void> {
@@ -493,8 +501,7 @@ export async function getConflictCount(): Promise<number> {
 }
 
 export async function incrementConflictCount(): Promise<void> {
-  const current = await getConflictCount()
-  await redis.set(KEYS.RELATIONSHIP_CONFLICT_COUNT, current + 1)
+  await redis.incr(KEYS.RELATIONSHIP_CONFLICT_COUNT)
 }
 
 export async function getFirstInteractionAt(): Promise<string | null> {
@@ -511,8 +518,7 @@ export async function getTotalInteractions(): Promise<number> {
 }
 
 export async function incrementTotalInteractions(): Promise<void> {
-  const current = await getTotalInteractions()
-  await redis.set(KEYS.RELATIONSHIP_TOTAL_INTERACTIONS, current + 1)
+  await redis.incr(KEYS.RELATIONSHIP_TOTAL_INTERACTIONS)
 }
 
 export async function getDreamNarrative(): Promise<string | null> {
