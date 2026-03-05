@@ -35,9 +35,13 @@ export async function act(
   let responseText: string | undefined
 
   if (decision.messages.length > 0) {
-    const result = await sendMessages(decision)
-    responseSent = result.responseSent
-    responseText = result.responseText
+    const messagingResult = await trySafe("TELEGRAM_ERROR", () => sendMessages(decision))
+    if (messagingResult.isOk()) {
+      responseSent = messagingResult.value.responseSent
+      responseText = messagingResult.value.responseText
+    } else {
+      logAndCaptureError(messagingResult.error, { phase: "act_messaging" })
+    }
 
     if (decision.corrections.length > 0) {
       await decision.corrections.reduce(async (prev, correction) => {
