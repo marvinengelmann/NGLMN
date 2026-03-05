@@ -54,7 +54,7 @@ describe("checkDissonance", () => {
     const knowledge = [{ key: "core_value", value: "I value being honest and transparent" }]
     const events = await checkDissonance(["idle"], baseConcept, baseEmotion, knowledge)
     expect(events.length).toBeGreaterThan(0)
-    expect(events[0]!.dissonanceScore).toBeGreaterThan(0)
+    expect(events[0]?.dissonanceScore).toBeGreaterThan(0)
   })
 
   it("detects agency dissonance with prolonged passivity", async () => {

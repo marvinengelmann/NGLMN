@@ -14,7 +14,7 @@ import { log } from "@/lib/logger.ts"
 import { elapsedMinutesSince } from "@/lib/time.ts"
 import { queryRelated } from "@/memory/episodic.ts"
 import { getKnowledge } from "@/memory/semantic.ts"
-import { getConsecutiveIdleTicks, getConversationWaitingSince, getRecentActions } from "@/memory/working.ts"
+import { getConsecutiveIdleTicks, getRecentActions } from "@/memory/working.ts"
 import { getOperatorModel, saveOperatorModel } from "@/mind/state.ts"
 import { detectModelCorrection, updateOperatorModel } from "@/mind/update.ts"
 import { getSelfConcept } from "@/psyche/state.ts"
@@ -37,7 +37,6 @@ export async function feel(senseResult: SenseResult): Promise<FeelingResult> {
     attachmentStyle,
     trustExperience,
     previousOperatorModel,
-    waitingSince,
     deceptionState
   ] = await Promise.all([
     getSomaticState(),
@@ -46,7 +45,6 @@ export async function feel(senseResult: SenseResult): Promise<FeelingResult> {
     getAttachmentStyle(),
     getAggregateTrustExperience(),
     getOperatorModel(),
-    getConversationWaitingSince(),
     getDeceptionState()
   ])
 

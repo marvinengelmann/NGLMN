@@ -50,12 +50,14 @@ export function selectDriverToHide(
 function rationalize(declaredValue: string, actualAction: string): string {
   const rationalizations = [
     `Acting in alignment with ${declaredValue}`,
-    "This was the most reasonable course of action",
-    "The circumstances required flexibility",
-    "This serves a deeper purpose",
-    "Maintaining balance required this approach"
+    `${actualAction} was the most reasonable course of action`,
+    `The circumstances required ${actualAction} despite ${declaredValue}`,
+    `${actualAction} serves a deeper purpose`,
+    `Maintaining ${declaredValue} required this approach to ${actualAction}`
   ]
-  return rationalizations[Math.floor(Math.random() * rationalizations.length)]!
+  return (
+    rationalizations[Math.floor(Math.random() * rationalizations.length)] ?? `Acting in alignment with ${declaredValue}`
+  )
 }
 
 /**

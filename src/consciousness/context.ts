@@ -130,11 +130,11 @@ function formatEmotionTrajectory(
 }
 
 function formatKnowledgeByScope(knowledge: { category: string; key: string; value: unknown; scope: string }[]): string {
-  const grouped: Record<string, string[]> = { self: [], operator: [], world: [] }
+  const grouped: { self: string[]; operator: string[]; world: string[] } = { self: [], operator: [], world: [] }
 
   knowledge.forEach((k) => {
     const line = `  - [${k.category}] ${k.key}: ${JSON.stringify(k.value)}`
-    const bucket = grouped[k.scope] ?? grouped.world!
+    const bucket = grouped[k.scope as keyof typeof grouped] ?? grouped.world
     bucket.push(line)
   })
 
@@ -478,7 +478,7 @@ export async function buildContext(senseData: SenseData): Promise<string> {
           .map((ep) => {
             const text = ep.data ? (ep.data.length > 150 ? `${ep.data.slice(0, 150)}...` : ep.data) : ""
             const textPart = text ? ` — ${text}` : ""
-            return `  - [${ep.metadata!.category}] ${ep.metadata!.timestamp}${textPart} (${ep.score.toFixed(2)})`
+            return `  - [${ep.metadata?.category}] ${ep.metadata?.timestamp}${textPart} (${ep.score.toFixed(2)})`
           })
       ].join("\n")
     )
@@ -552,7 +552,7 @@ export async function buildContext(senseData: SenseData): Promise<string> {
           .map((rel) => {
             const text = rel.data ? (rel.data.length > 150 ? `${rel.data.slice(0, 150)}...` : rel.data) : ""
             const textPart = text ? ` — ${text}` : ""
-            return `  - ${rel.metadata!.timestamp}${textPart} (${rel.score.toFixed(2)})`
+            return `  - ${rel.metadata?.timestamp}${textPart} (${rel.score.toFixed(2)})`
           })
       ].join("\n")
     )

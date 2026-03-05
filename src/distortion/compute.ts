@@ -151,5 +151,5 @@ function findConflationCandidate(episodes: QueryResult[], current: QueryResult):
 function extractFragment(text: string): string | null {
   const sentences = text.split(/[.!?]+/).filter((s) => s.trim().length > 10)
   if (sentences.length === 0) return null
-  return sentences[Math.floor(Math.random() * sentences.length)]!.trim()
+  return sentences[Math.floor(Math.random() * sentences.length)]?.trim() ?? null
 }

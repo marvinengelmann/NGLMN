@@ -83,12 +83,22 @@ export async function applyCreativeResult(output: CreativeConnectionsOutput): Pr
   const goalConnections = output.connections.filter((conn) => conn.actionable && conn.suggestedGoal)
   const goalResults = await Promise.all(
     goalConnections.map((conn) =>
-      createGoal(conn.suggestedGoal!, `Creative dream connection: ${conn.insight}`, "dream", conn.confidence * 0.5, {
-        emotionalWeight: 0.7
-      })
+      createGoal(
+        conn.suggestedGoal ?? "",
+        `Creative dream connection: ${conn.insight}`,
+        "dream",
+        conn.confidence * 0.5,
+        {
+          emotionalWeight: 0.7
+        }
+      )
     )
   )
-  goalResults.filter((r) => r.isErr()).forEach((r) => logAndCaptureError(r.error))
+  goalResults
+    .filter((r) => r.isErr())
+    .forEach((r) => {
+      logAndCaptureError(r.error)
+    })
   const goalsCreated = goalResults.filter((r) => r.isOk()).length
 
   const existentialCandidates = (output.existentialQuestions ?? []).slice(0, 2)

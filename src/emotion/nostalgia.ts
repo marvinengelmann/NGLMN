@@ -24,7 +24,7 @@ export function detectNostalgia(
 
   const avgAgeDays =
     oldEpisodes.reduce((sum, ep) => {
-      return sum + differenceInDays(now, parseISO(ep.metadata!.timestamp))
+      return sum + differenceInDays(now, parseISO(ep.metadata?.timestamp ?? now.toISOString()))
     }, 0) / oldEpisodes.length
 
   const probability = clamp01(

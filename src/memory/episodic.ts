@@ -3,7 +3,6 @@ import { callIntelligence } from "@/core/intelligence.ts"
 import { TextOutput } from "@/core/types.ts"
 import { applyDistortions } from "@/distortion/compute.ts"
 import type { DistortedMemory } from "@/distortion/types.ts"
-import { computeEmotionalIntensity } from "@/emotion/update.ts"
 import { vectorIndex } from "@/integrations/vector.ts"
 import { log } from "@/lib/logger.ts"
 import { nowISO } from "@/lib/time.ts"
@@ -121,7 +120,9 @@ export async function downgradeEpisodes(ids: string[], factor: number = 0.5): Pr
   )
   results
     .filter((r): r is PromiseRejectedResult => r.status === "rejected")
-    .forEach((r, i) => log.warn("Failed to downgrade episode", { id: ids[i], error: String(r.reason) }))
+    .forEach((r, i) => {
+      log.warn("Failed to downgrade episode", { id: ids[i], error: String(r.reason) })
+    })
   return results.filter((r) => r.status === "fulfilled").length
 }
 
