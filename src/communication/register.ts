@@ -5,6 +5,14 @@ import type { VulnerabilityState } from "@/vulnerability/types.ts"
 import type { CommunicationRegister } from "./types.ts"
 
 /**
+ * Check if social battery is critically low (withdrawn state).
+ * When withdrawn, expectsReply should tend toward false.
+ */
+export function isWithdrawn(soma: SomaticState): boolean {
+  return soma.socialBattery < SOCIAL_BATTERY.WITHDRAWN_THRESHOLD
+}
+
+/**
  * Compute the current communication register based on emotional, somatic, and vulnerability state.
  * Social battery depletion forces terse register regardless of emotional state.
  * Priority order: social battery override > raw > playful > terse > elaborate > casual.

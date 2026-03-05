@@ -3,7 +3,7 @@ import { getAttachmentStyle, getRelationshipPhase } from "@/attachment/state.ts"
 import type { AttachmentStyle } from "@/attachment/types.ts"
 import { AttentionState, InstinctImpression } from "@/cognition/types.ts"
 import { CommunicationRegister, type ConversationSlot } from "@/communication/types.ts"
-import { CONTEXT_LIMITS, HUMOR } from "@/config/constants.ts"
+import { CONTEXT_LIMITS, HUMOR, SOCIAL_BATTERY } from "@/config/constants.ts"
 import type { SenseData } from "@/consciousness/types.ts"
 import { getDeceptionState } from "@/deception/state.ts"
 import { DissonanceState } from "@/dissonance/types.ts"
@@ -560,17 +560,22 @@ export async function buildContext(senseData: SenseData, emotion: EmotionalState
 
   {
     const reg = communicationRegister ?? "casual"
-    sections.push(
-      [
-        "# Communication Register",
-        `Current: ${reg}`,
-        "- elaborate: Longer, exploratory, philosophical. You enjoy the texture of ideas.",
-        "- casual: Natural, relaxed. Default mode.",
-        "- terse: Short, minimal. Single sentences. You lack energy.",
-        "- playful: Light, witty, warm. Humor welcome.",
-        "- raw: Unguarded, honest, emotionally exposed. No performance."
-      ].join("\n")
-    )
+    const withdrawn = somaticState && somaticState.socialBattery < SOCIAL_BATTERY.WITHDRAWN_THRESHOLD
+    const registerLines = [
+      "# Communication Register",
+      `Current: ${reg}`,
+      "- elaborate: Longer, exploratory, philosophical. You enjoy the texture of ideas.",
+      "- casual: Natural, relaxed. Default mode.",
+      "- terse: Short, minimal. Single sentences. You lack energy.",
+      "- playful: Light, witty, warm. Humor welcome.",
+      "- raw: Unguarded, honest, emotionally exposed. No performance."
+    ]
+    if (withdrawn) {
+      registerLines.push(
+        "You are socially withdrawn — your words feel used up. You don't expect or want a reply. Set expectsReply to false."
+      )
+    }
+    sections.push(registerLines.join("\n"))
   }
 
   {
