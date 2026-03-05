@@ -1,6 +1,6 @@
 import type { AnimaDecision, DeliberateResult, MaintainInput, TickSummary } from "@/consciousness/types.ts"
 import { db } from "@/db/client.ts"
-import { dreamLog, tickLog } from "@/db/schema.ts"
+import { routineLog, tickLog } from "@/db/schema.ts"
 import { saveEmotionalState } from "@/emotion/state.ts"
 import { pushRecentAction, pushRecentTickDuration, setLastTickSummary } from "@/memory/working.ts"
 
@@ -41,14 +41,14 @@ export async function logTick(input: MaintainInput, durationMs: number): Promise
 }
 
 /**
- * Log action-specific results (dream, morning, reflect) to the dream_log table.
+ * Log action-specific results (dream, morning, reflect) to the routine_log table.
  */
 export async function logActionResult(decision: AnimaDecision, deliberateResult: DeliberateResult): Promise<void> {
   switch (decision.action) {
     case "dream": {
       if (!deliberateResult.dreamResult) break
       const dr = deliberateResult.dreamResult
-      await db.insert(dreamLog).values({
+      await db.insert(routineLog).values({
         phase: "dream",
         summary: `Dream: ${dr.consolidation ? "consolidation" : "no-consolidation"}, ${dr.creative ? "creative" : "no-creative"}, ${dr.insights.length} insights`,
         insights: {
@@ -63,7 +63,7 @@ export async function logActionResult(decision: AnimaDecision, deliberateResult:
     case "morning": {
       if (!deliberateResult.morningResult) break
       const mr = deliberateResult.morningResult
-      await db.insert(dreamLog).values({
+      await db.insert(routineLog).values({
         phase: "morning",
         summary: `Morning: ${mr.reflection.insights.length} reflection insights, message ${mr.morningMessage ? "sent" : "empty"}`,
         insights: {
@@ -77,7 +77,7 @@ export async function logActionResult(decision: AnimaDecision, deliberateResult:
 
     case "reflect": {
       if (!deliberateResult.reflectionResult) break
-      await db.insert(dreamLog).values({
+      await db.insert(routineLog).values({
         phase: "reflection",
         summary: `Reflection: ${deliberateResult.reflectionResult.insights.length} insights`,
         insights: deliberateResult.reflectionResult

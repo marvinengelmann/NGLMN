@@ -1,0 +1,1 @@
+ALTER TABLE "dream_log" RENAME TO "routine_log";

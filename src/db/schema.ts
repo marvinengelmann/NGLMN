@@ -151,7 +151,7 @@ export const promptVersions = pgTable("prompt_versions", {
 export type PromptVersionInsert = typeof promptVersions.$inferInsert
 export type PromptVersionSelect = typeof promptVersions.$inferSelect
 
-export const dreamLog = pgTable("dream_log", {
+export const routineLog = pgTable("routine_log", {
   id: uuid("id").primaryKey().defaultRandom(),
   phase: text("phase").notNull(),
   summary: text("summary").notNull(),
@@ -162,8 +162,8 @@ export const dreamLog = pgTable("dream_log", {
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow()
 })
 
-export type DreamLogInsert = typeof dreamLog.$inferInsert
-export type DreamLogSelect = typeof dreamLog.$inferSelect
+export type RoutineLogInsert = typeof routineLog.$inferInsert
+export type RoutineLogSelect = typeof routineLog.$inferSelect
 
 export const workflows = pgTable(
   "workflows",
