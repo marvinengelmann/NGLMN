@@ -18,7 +18,7 @@ import { log } from "@/lib/logger.ts"
 import { logAndCaptureError, trySafe } from "@/lib/result.ts"
 import { storeEpisode, storeHumorEpisode, storeRelationshipEpisode } from "@/memory/episodic.ts"
 import { executeGoalUpdate } from "@/memory/goals.ts"
-import { getLastTickSummary } from "@/memory/working.ts"
+import { getLastTickSummary, setDreamState } from "@/memory/working.ts"
 import { generateNarrativeEntry } from "@/psyche/narrative.ts"
 import { savePsycheSnapshot, saveSelfConcept } from "@/psyche/state.ts"
 import { updateSelfConcept } from "@/psyche/update.ts"
@@ -212,8 +212,12 @@ async function executeAction(deliberateResult: DeliberateResult): Promise<void> 
       const morningResult = deliberateResult.morningResult
       if (morningResult) {
         const result = await trySafe("MORNING_ERROR", () => executeMorning(morningResult))
-        if (result.isErr()) logAndCaptureError(result.error, { phase: "act_morning" })
-        else log.info("Morning routine completed")
+        if (result.isErr()) {
+          logAndCaptureError(result.error, { phase: "act_morning" })
+          await setDreamState("idle")
+        } else {
+          log.info("Morning routine completed")
+        }
       }
       break
     }
