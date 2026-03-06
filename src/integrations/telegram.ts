@@ -15,8 +15,16 @@ const operatorChatId = env().TELEGRAM_OPERATOR_CHAT_ID
  * @param text - The message text to send.
  */
 export async function sendToOperator(text: string): Promise<number> {
-  const sent = await bot.sendMessage(operatorChatId, text, { parse_mode: "Markdown" })
-  return sent.message_id
+  try {
+    const sent = await bot.sendMessage(operatorChatId, text, { parse_mode: "Markdown" })
+    return sent.message_id
+  } catch (error) {
+    if (error instanceof Error && error.message.includes("can't parse entities")) {
+      const sent = await bot.sendMessage(operatorChatId, text)
+      return sent.message_id
+    }
+    throw error
+  }
 }
 
 /**
@@ -114,17 +122,23 @@ export async function sendTypingAction(): Promise<void> {
  * Send a message with optional reply-to and return the sent message ID.
  */
 export async function sendMessageWithReply(text: string, replyToMessageId?: number | null): Promise<number> {
+  const replyParams = replyToMessageId ? { reply_parameters: { message_id: replyToMessageId } } : {}
+
   try {
-    const sent = await bot.sendMessage(operatorChatId, text, {
-      parse_mode: "Markdown",
-      ...(replyToMessageId ? { reply_parameters: { message_id: replyToMessageId } } : {})
-    })
+    const sent = await bot.sendMessage(operatorChatId, text, { parse_mode: "Markdown", ...replyParams })
     return sent.message_id
   } catch (error) {
-    if (replyToMessageId && error instanceof Error && error.message.includes("message to be replied not found")) {
-      const sent = await bot.sendMessage(operatorChatId, text, { parse_mode: "Markdown" })
+    if (!(error instanceof Error)) throw error
+
+    if (replyToMessageId && error.message.includes("message to be replied not found")) {
+      return sendMessageWithReply(text)
+    }
+
+    if (error.message.includes("can't parse entities")) {
+      const sent = await bot.sendMessage(operatorChatId, text, replyParams)
       return sent.message_id
     }
+
     throw error
   }
 }

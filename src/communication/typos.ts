@@ -10,11 +10,11 @@ const TYPO_PROBABILITY: Record<CommunicationRegister, number> = {
 }
 
 const CORRECTION_STYLES = [
-  (correct: string) => `*${correct}`,
-  (correct: string) => `${correct}*`,
-  (correct: string) => `lol ich mein ${correct}`,
-  (correct: string) => `*${correct} 😅`,
-  (correct: string) => `${correct}**`
+  (correct: string) => `\\*${correct}`,
+  (correct: string) => `${correct}\\*`,
+  (correct: string) => `lol i mean ${correct}`,
+  (correct: string) => `\\*${correct} 😅`,
+  (correct: string) => `${correct}\\*\\*`
 ]
 
 /**
