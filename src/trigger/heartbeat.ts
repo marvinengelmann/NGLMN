@@ -16,6 +16,7 @@ export const heartbeatTask = schedules.task({
   maxDuration: HEARTBEAT.BUSY_TTL,
   run: async (_, { ctx, signal }) => {
     if (await isBusy()) {
+      log.info("Heartbeat skipped — busy")
       await runs.cancel(ctx.run.id)
       if (!signal.aborted) {
         await new Promise<void>((resolve) => signal.addEventListener("abort", () => resolve(), { once: true }))
