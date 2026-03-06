@@ -10,11 +10,11 @@ import { log } from "@/lib/logger.ts"
 import { captureError } from "@/lib/sentry.ts"
 import { nowLocal } from "@/lib/time.ts"
 import { getDreamLastRun, pushToActiveConversation } from "@/memory/working.ts"
-import { PERSONALITY_PROMPT } from "@/prompts/personality.ts"
 import { LIFECYCLE_MID_EVENT_PROMPT, LIFECYCLE_START_PROMPT } from "@/prompts/lifecycle.ts"
+import { PERSONALITY_PROMPT } from "@/prompts/personality.ts"
 
 const LIFECYCLE_EVENT_KEY = "working:lifecycle:event"
-const LIFECYCLE_EVENT_META_KEY = "working:lifecycle:event:meta"
+const _LIFECYCLE_EVENT_META_KEY = "working:lifecycle:event:meta"
 
 const EVENT_TYPES = [
   { type: "shower", minHours: 0.5, maxHours: 1, notifyProbability: 0.5, interruptible: false },

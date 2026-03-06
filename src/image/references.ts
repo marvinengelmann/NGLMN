@@ -3,7 +3,7 @@ import { resolve } from "node:path"
 
 let cached: Buffer | null = null
 
-const REFERENCE_PATH = resolve(process.cwd(), "src/image/reference/anima.png")
+const REFERENCE_PATH = resolve(process.cwd(), "src/image/reference/anima.jpeg")
 
 /**
  * Load the single reference image of ANIMA's appearance.

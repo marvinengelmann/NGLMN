@@ -2,7 +2,12 @@ import { runs, schedules } from "@trigger.dev/sdk"
 import { HEARTBEAT } from "@/config/constants.ts"
 import { computeSkipProbability } from "@/consciousness/gating.ts"
 import { runHeartbeat } from "@/consciousness/heartbeat.ts"
-import { getActiveLifeEvent, isLifeEventActive, maybeStartLifeEvent, sendLifecycleNotification } from "@/consciousness/lifecycle.ts"
+import {
+  getActiveLifeEvent,
+  isLifeEventActive,
+  maybeStartLifeEvent,
+  sendLifecycleNotification
+} from "@/consciousness/lifecycle.ts"
 import { fetchNewMessages } from "@/integrations/telegram.ts"
 import { log } from "@/lib/logger.ts"
 import { getConversationWaitingSince, getCurrentEmotion, isBusy } from "@/memory/working.ts"
