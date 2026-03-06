@@ -7,28 +7,13 @@ import { DreamState } from "@/dream/types.ts"
 import { EmotionalState } from "@/emotion/types.ts"
 import { ActiveEvolution, CodeProposal, EvolutionCycleResult } from "@/evolution/types.ts"
 import { HealthCheckResult } from "@/health/types.ts"
-import { redis } from "@/integrations/redis.ts"
+import { getValidatedRedis, redis } from "@/integrations/redis.ts"
 import { OperatorLocation, WeatherData } from "@/integrations/types.ts"
 import { nowISO } from "@/lib/time.ts"
 import { PerceptionSummary } from "@/perception/types.ts"
 import { GuardianResult } from "@/security/types.ts"
 import type { ActionType, TrustEvent } from "@/trust/types.ts"
 import { TrustEventLog } from "@/trust/types.ts"
-
-function parseRedisJson<T>(schema: z.ZodType<T>, raw: unknown, key: string): T {
-  try {
-    const parsed = typeof raw === "string" ? JSON.parse(raw) : raw
-    return schema.parse(parsed)
-  } catch (e) {
-    throw new Error(`Failed to parse Redis key "${key}": ${e instanceof Error ? e.message : String(e)}`)
-  }
-}
-
-async function getValidated<T>(key: string, schema: z.ZodType<T>): Promise<T | null> {
-  const raw = await redis.get(key)
-  if (raw == null) return null
-  return parseRedisJson(schema, raw, key)
-}
 
 const KEYS = {
   TICK_LAST: "working:tick:last",
@@ -72,7 +57,7 @@ const KEYS = {
 } as const
 
 export async function getLastTickSummary(): Promise<TickSummary | null> {
-  return getValidated(KEYS.TICK_LAST, TickSummary)
+  return getValidatedRedis(KEYS.TICK_LAST, TickSummary)
 }
 
 export async function setLastTickSummary(summary: TickSummary): Promise<void> {
@@ -118,7 +103,7 @@ export async function setHealthCheck(result: HealthCheckResult): Promise<void> {
 }
 
 export async function getHealthCheck(): Promise<HealthCheckResult | null> {
-  return getValidated(KEYS.HEALTH_LAST_CHECK, HealthCheckResult)
+  return getValidatedRedis(KEYS.HEALTH_LAST_CHECK, HealthCheckResult)
 }
 
 export async function pingRedis(): Promise<boolean> {
@@ -192,7 +177,7 @@ export async function setGuardianResult(result: GuardianResult): Promise<void> {
 }
 
 export async function getGuardianResult(): Promise<GuardianResult | null> {
-  return getValidated(KEYS.GUARDIAN_LAST_RESULT, GuardianResult)
+  return getValidatedRedis(KEYS.GUARDIAN_LAST_RESULT, GuardianResult)
 }
 
 export async function pushRecentResponse(text: string): Promise<void> {
@@ -234,7 +219,7 @@ export async function getLastHealthyCommit(): Promise<string | null> {
 }
 
 export async function getCurrentEmotion(): Promise<EmotionalState | null> {
-  return getValidated(KEYS.EMOTION_CURRENT, EmotionalState)
+  return getValidatedRedis(KEYS.EMOTION_CURRENT, EmotionalState)
 }
 
 export async function setCurrentEmotion(state: EmotionalState): Promise<void> {
@@ -242,7 +227,7 @@ export async function setCurrentEmotion(state: EmotionalState): Promise<void> {
 }
 
 export async function getPerceptionSummary(): Promise<PerceptionSummary | null> {
-  return getValidated(KEYS.PERCEPTION_LATEST, PerceptionSummary)
+  return getValidatedRedis(KEYS.PERCEPTION_LATEST, PerceptionSummary)
 }
 
 export async function setPerceptionSummary(summary: PerceptionSummary): Promise<void> {
@@ -280,7 +265,7 @@ export async function clearDreamInsights(): Promise<void> {
 }
 
 export async function getActiveEvolution(): Promise<ActiveEvolution | null> {
-  return getValidated(KEYS.EVOLUTION_ACTIVE, ActiveEvolution)
+  return getValidatedRedis(KEYS.EVOLUTION_ACTIVE, ActiveEvolution)
 }
 
 export async function setActiveEvolution(evolution: ActiveEvolution): Promise<void> {
@@ -292,7 +277,7 @@ export async function clearActiveEvolution(): Promise<void> {
 }
 
 export async function getPendingEvolutionProposal(): Promise<CodeProposal | null> {
-  return getValidated(KEYS.EVOLUTION_PENDING_PROPOSAL, CodeProposal)
+  return getValidatedRedis(KEYS.EVOLUTION_PENDING_PROPOSAL, CodeProposal)
 }
 
 export async function setPendingEvolutionProposal(proposal: CodeProposal): Promise<void> {
@@ -304,7 +289,7 @@ export async function clearPendingEvolutionProposal(): Promise<void> {
 }
 
 export async function getEvolutionCycleResult(): Promise<EvolutionCycleResult | null> {
-  return getValidated(KEYS.EVOLUTION_OUTCOME, EvolutionCycleResult)
+  return getValidatedRedis(KEYS.EVOLUTION_OUTCOME, EvolutionCycleResult)
 }
 
 export async function setEvolutionCycleResult(outcome: EvolutionCycleResult): Promise<void> {
@@ -350,7 +335,7 @@ export async function getRecentRollbackCount(windowHours: number = 24): Promise<
 const WEATHER_TTL_SECONDS = 1800
 
 export async function getWeatherData(): Promise<WeatherData | null> {
-  return getValidated(KEYS.WEATHER_LATEST, WeatherData)
+  return getValidatedRedis(KEYS.WEATHER_LATEST, WeatherData)
 }
 
 export async function setWeatherData(data: WeatherData): Promise<void> {
@@ -364,7 +349,7 @@ export async function clearWeatherData(): Promise<void> {
 const OPERATOR_LOCATION_TTL_SECONDS = 3600
 
 export async function getOperatorLocation(): Promise<OperatorLocation | null> {
-  return getValidated(KEYS.OPERATOR_LOCATION, OperatorLocation)
+  return getValidatedRedis(KEYS.OPERATOR_LOCATION, OperatorLocation)
 }
 
 export async function setOperatorLocation(

@@ -132,15 +132,17 @@ export async function applyDistortions(
         case "source_confusion":
           if (metadata) {
             const alt = SOURCE_ALTERNATIVES[Math.floor(Math.random() * SOURCE_ALTERNATIVES.length)]
-            metadata = { ...metadata, sourceConfused: true, sourceLabel: alt } as typeof metadata
+            metadata = { ...metadata, sourceConfused: true, sourceLabel: alt }
             distortions.push({ type: "source_confusion", originalEpisodeId: ep.id, alteredField: "source" })
           }
           break
 
         case "confidence_degradation": {
-          const note = CONFIDENCE_NOTES[Math.floor(Math.random() * CONFIDENCE_NOTES.length)]
-          metadata = { ...metadata, confidenceNote: note } as typeof metadata
-          distortions.push({ type: "confidence_degradation", originalEpisodeId: ep.id, alteredField: "confidence" })
+          if (metadata) {
+            const note = CONFIDENCE_NOTES[Math.floor(Math.random() * CONFIDENCE_NOTES.length)]
+            metadata = { ...metadata, confidenceNote: note }
+            distortions.push({ type: "confidence_degradation", originalEpisodeId: ep.id, alteredField: "confidence" })
+          }
           break
         }
       }

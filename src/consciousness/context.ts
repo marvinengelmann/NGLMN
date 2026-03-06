@@ -12,7 +12,7 @@ import { getEmotionHistory } from "@/emotion/state.ts"
 import { EmotionalState } from "@/emotion/types.ts"
 import { computeEmotionalIntensity } from "@/emotion/update.ts"
 import { getRecentChangelog } from "@/evolution/changelog.ts"
-import { redis } from "@/integrations/redis.ts"
+import { getValidatedRedis } from "@/integrations/redis.ts"
 import { nowLocal, TIMEZONE } from "@/lib/time.ts"
 import {
   queryHumorCallbacks,
@@ -56,17 +56,6 @@ import { getAllTrustLevels } from "@/trust/levels.ts"
 import { getVulnerability } from "@/vulnerability/compute.ts"
 import type { VulnerabilityState } from "@/vulnerability/types.ts"
 import type { WorkflowDefinition } from "@/workflow/types.ts"
-
-async function getValidatedRedis<T>(key: string, schema: import("zod").ZodType<T>): Promise<T | null> {
-  const raw = await redis.get(key)
-  if (raw == null) return null
-  try {
-    const parsed = schema.safeParse(typeof raw === "string" ? JSON.parse(raw) : raw)
-    return parsed.success ? parsed.data : null
-  } catch {
-    return null
-  }
-}
 
 function translateEmotionToFelt(emotion: EmotionalState): string {
   const lines: string[] = []
@@ -480,14 +469,14 @@ export async function buildContext(senseData: SenseData, emotion: EmotionalState
     getRecentTickDurations(),
     getConsecutiveIdleTicks()
   ])
-  const timePeception = computeTimePerception(
+  const timePerception = computeTimePerception(
     recentDurations,
     emotionIntensity,
     consecutiveIdleTicks,
     senseData.moodContext.operatorSilenceMinutes
   )
-  if (timePeception.subjectivePace !== "normal") {
-    sections.push(`# Time Perception\nPace: ${timePeception.subjectivePace} — ${timePeception.description}`)
+  if (timePerception.subjectivePace !== "normal") {
+    sections.push(`# Time Perception\nPace: ${timePerception.subjectivePace} — ${timePerception.description}`)
   }
 
   sections.push(
@@ -675,9 +664,9 @@ export async function buildContext(senseData: SenseData, emotion: EmotionalState
       [
         `# Memory\nRelevant episodes (${episodes.length}):`,
         ...episodes
-          .filter((ep) => ep.metadata)
+          .filter((ep): ep is typeof ep & { metadata: EpisodeMetadata } => ep.metadata !== undefined)
           .map((ep) => {
-            const meta = ep.metadata as EpisodeMetadata & { confidenceNote?: string; sourceConfused?: boolean }
+            const meta = ep.metadata
             const text = ep.data ? (ep.data.length > 150 ? `${ep.data.slice(0, 150)}...` : ep.data) : ""
             const textPart = text ? ` — ${text}` : ""
             const confidencePrefix = meta.confidenceNote
@@ -717,8 +706,8 @@ export async function buildContext(senseData: SenseData, emotion: EmotionalState
           ...allHumor
             .filter((ep) => ep.data)
             .map((ep) => {
-              const tag = (ep.metadata as EpisodeMetadata | undefined)?.isInsideJoke ? " [inside joke]" : ""
-              const data = ep.data as string
+              const tag = ep.metadata?.isInsideJoke ? " [inside joke]" : ""
+              const data = ep.data ?? ""
               return `- ${data.length > 150 ? `${data.slice(0, 150)}...` : data}${tag}`
             }),
           "You may reference these when the moment feels right — especially inside jokes, as callbacks. Never force humor."
@@ -733,11 +722,13 @@ export async function buildContext(senseData: SenseData, emotion: EmotionalState
     if (formatted) sections.push(formatted)
 
     const topEntries = sliced.sort((a, b) => (b.confidence ?? 0) - (a.confidence ?? 0)).slice(0, 5)
+    const relatedResults = await Promise.all(topEntries.map((entry) => getRelatedEntities(entry.id)))
     const relationLines: string[] = []
-    for (const entry of topEntries) {
-      const related = await getRelatedEntities(entry.id)
-      if (related.isErr()) continue
-      for (const rel of related.value.slice(0, 2)) {
+    for (const [i, result] of relatedResults.entries()) {
+      if (result.isErr()) continue
+      const entry = topEntries[i]
+      if (!entry) continue
+      for (const rel of result.value.slice(0, 2)) {
         relationLines.push(`- "${entry.key}" → "${rel.key}"`)
       }
       if (relationLines.length >= 10) break

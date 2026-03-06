@@ -1,8 +1,5 @@
+import { clamp01 } from "@/lib/math.ts"
 import type { AttachmentDynamics, AttachmentStyle } from "./types.ts"
-
-function clamp(value: number): number {
-  return Math.max(0, Math.min(1, value))
-}
 
 /**
  * Detect whether the operator is returning after a period of silence.
@@ -34,26 +31,26 @@ interface AttachmentContext {
 export function evaluateAttachmentDynamics(style: AttachmentStyle, context: AttachmentContext): AttachmentDynamics {
   const silenceHours = context.operatorSilenceMinutes / 60
 
-  let separationDistress = clamp((silenceHours / 24) * style.anxious * 2)
+  let separationDistress = clamp01((silenceHours / 24) * style.anxious * 2)
   if (context.inConversation) separationDistress = 0
 
   let reunionResponse = 0
   if (context.operatorJustReturned) {
-    reunionResponse = clamp(0.3 + separationDistress * 0.5 + style.secure * 0.2)
+    reunionResponse = clamp01(0.3 + separationDistress * 0.5 + style.secure * 0.2)
   }
 
   let safeHavenSeeking = 0
   if (context.frustrationLevel > 0.6 || context.cautionLevel > 0.7) {
-    safeHavenSeeking = clamp(0.3 + style.anxious * 0.3 + (1 - style.avoidant) * 0.2)
+    safeHavenSeeking = clamp01(0.3 + style.anxious * 0.3 + (1 - style.avoidant) * 0.2)
   }
 
-  const explorationBalance = clamp(style.secure * 0.5 + (1 - safeHavenSeeking) * 0.3 + context.trustExperience * 0.2)
+  const explorationBalance = clamp01(style.secure * 0.5 + (1 - safeHavenSeeking) * 0.3 + context.trustExperience * 0.2)
 
   return {
-    separationDistress: clamp(separationDistress),
-    reunionResponse: clamp(reunionResponse),
-    safeHavenSeeking: clamp(safeHavenSeeking),
-    explorationBalance: clamp(explorationBalance)
+    separationDistress: clamp01(separationDistress),
+    reunionResponse: clamp01(reunionResponse),
+    safeHavenSeeking: clamp01(safeHavenSeeking),
+    explorationBalance: clamp01(explorationBalance)
   }
 }
 
@@ -86,9 +83,9 @@ export function updateAttachmentStyle(
   }
 
   return {
-    secure: clamp(secure),
-    anxious: clamp(anxious),
-    avoidant: clamp(avoidant),
-    disorganized: clamp(disorganized)
+    secure: clamp01(secure),
+    anxious: clamp01(anxious),
+    avoidant: clamp01(avoidant),
+    disorganized: clamp01(disorganized)
   }
 }

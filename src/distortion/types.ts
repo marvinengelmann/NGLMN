@@ -1,4 +1,5 @@
 import * as z from "zod"
+import { EpisodeMetadata } from "@/memory/types.ts"
 
 export const DistortionType = z.enum([
   "detail_alteration",
@@ -31,7 +32,7 @@ export const DistortedMemory = z.object({
   id: z.string(),
   score: z.number(),
   data: z.string().optional(),
-  metadata: z.any().optional(),
+  metadata: EpisodeMetadata.optional(),
   distortions: z.array(DistortionRecord).default([])
 })
 export type DistortedMemory = z.infer<typeof DistortedMemory>

@@ -12,7 +12,7 @@ import {
 } from "@/integrations/telegram.ts"
 import { convertMp3ToOggOpus } from "@/lib/audio.ts"
 import { log } from "@/lib/logger.ts"
-import { nowISO } from "@/lib/time.ts"
+import { nowISO, sleep } from "@/lib/time.ts"
 import { pushRecentResponse, pushToActiveConversation, setGuardianResult } from "@/memory/working.ts"
 import { handleGuardianVerdict, validateOutput } from "@/security/guardian.ts"
 import type { CommunicationRegister } from "./types.ts"
@@ -74,7 +74,7 @@ export async function sendMessages(decision: AnimaDecision): Promise<MessagingRe
           const pause =
             THINKING.INTER_PARAGRAPH_MIN_MS +
             Math.random() * (THINKING.INTER_PARAGRAPH_MAX_MS - THINKING.INTER_PARAGRAPH_MIN_MS)
-          await new Promise((resolve) => setTimeout(resolve, pause))
+          await sleep(pause)
         }
 
         await simulateTyping(computeTypingDuration(paragraph), sendTypingAction)
@@ -87,7 +87,7 @@ export async function sendMessages(decision: AnimaDecision): Promise<MessagingRe
         const delay =
           TYPOS.CORRECTION_DELAY_MIN_MS +
           Math.random() * (TYPOS.CORRECTION_DELAY_MAX_MS - TYPOS.CORRECTION_DELAY_MIN_MS)
-        await new Promise((resolve) => setTimeout(resolve, delay))
+        await sleep(delay)
         await simulateTyping(computeTypingDuration(correction), sendTypingAction)
         const correctionId = await sendMessageWithReply(correction)
         await pushToActiveConversation([
@@ -101,7 +101,7 @@ export async function sendMessages(decision: AnimaDecision): Promise<MessagingRe
 
     if (message !== decision.messages[decision.messages.length - 1]) {
       const delay = MESSAGE_DELAY.MIN_BETWEEN_MESSAGES_MS + Math.random() * MESSAGE_DELAY.MAX_JITTER_MS
-      await new Promise((resolve) => setTimeout(resolve, delay))
+      await sleep(delay)
     }
   }
 

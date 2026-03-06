@@ -16,6 +16,7 @@ import { runEvolutionCycle } from "@/evolution/cycle.ts"
 import { sendMessageWithReply } from "@/integrations/telegram.ts"
 import { log } from "@/lib/logger.ts"
 import { logAndCaptureError, trySafe } from "@/lib/result.ts"
+import { sleep } from "@/lib/time.ts"
 import { storeEpisode, storeHumorEpisode, storeRelationshipEpisode } from "@/memory/episodic.ts"
 import { executeGoalUpdate } from "@/memory/goals.ts"
 import { getLastTickSummary, setDreamState } from "@/memory/working.ts"
@@ -53,12 +54,10 @@ export async function act(
     }
 
     if (responseSent && decision.corrections.length > 0) {
-      await decision.corrections.reduce(async (previous, correction) => {
-        await previous
-        const delay = MESSAGE_DELAY.MIN_BETWEEN_MESSAGES_MS + Math.random() * MESSAGE_DELAY.MAX_JITTER_MS
-        await new Promise((resolve) => setTimeout(resolve, delay))
+      for (const correction of decision.corrections) {
+        await sleep(MESSAGE_DELAY.MIN_BETWEEN_MESSAGES_MS + Math.random() * MESSAGE_DELAY.MAX_JITTER_MS)
         await trySafe("TELEGRAM_ERROR", () => sendMessageWithReply(correction.text, correction.replyTo))
-      }, Promise.resolve())
+      }
     }
   }
 

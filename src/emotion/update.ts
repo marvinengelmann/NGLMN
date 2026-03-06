@@ -128,48 +128,37 @@ export function applyEvent(
   return clampState(result)
 }
 
+interface CrossCouplingRule {
+  when: (s: EmotionalState) => boolean
+  target: keyof EmotionalState
+  factor: number
+}
+
+const CROSS_COUPLING_RULES: CrossCouplingRule[] = [
+  { when: (s) => s.boredom > 0.7, target: "satisfaction", factor: 0.85 },
+  { when: (s) => s.frustration > 0.7, target: "satisfaction", factor: 0.85 },
+  { when: (s) => s.frustration > 0.7, target: "confidence", factor: 0.9 },
+  { when: (s) => s.connection > 0.7, target: "boredom", factor: 0.85 },
+  { when: (s) => s.excitement > 0.7, target: "boredom", factor: 0.85 },
+  { when: (s) => s.energy < 0.3, target: "excitement", factor: 0.85 },
+  { when: (s) => s.confidence < 0.3, target: "satisfaction", factor: 0.85 },
+  { when: (s) => s.confidence > 0.8, target: "caution", factor: 0.9 },
+  { when: (s) => s.curiosity > 0.7 && s.energy > 0.6, target: "excitement", factor: 1.15 },
+  { when: (s) => s.satisfaction > 0.7, target: "confidence", factor: 1.1 },
+  { when: (s) => s.connection > 0.7 && s.excitement > 0.6, target: "satisfaction", factor: 1.15 },
+  { when: (s) => s.energy > 0.7, target: "curiosity", factor: 1.1 }
+]
+
 /**
  * Post-processing valence rules for emotional consistency.
  */
 export function applyCrossCoupling(state: EmotionalState): EmotionalState {
   const result = { ...state }
-
-  if (result.boredom > 0.7) {
-    result.satisfaction *= 0.85
+  for (const rule of CROSS_COUPLING_RULES) {
+    if (rule.when(result)) {
+      result[rule.target] *= rule.factor
+    }
   }
-  if (result.frustration > 0.7) {
-    result.satisfaction *= 0.85
-    result.confidence *= 0.9
-  }
-  if (result.connection > 0.7) {
-    result.boredom *= 0.85
-  }
-  if (result.excitement > 0.7) {
-    result.boredom *= 0.85
-  }
-  if (result.energy < 0.3) {
-    result.excitement *= 0.85
-  }
-  if (result.confidence < 0.3) {
-    result.satisfaction *= 0.85
-  }
-  if (result.confidence > 0.8) {
-    result.caution *= 0.9
-  }
-
-  if (result.curiosity > 0.7 && result.energy > 0.6) {
-    result.excitement *= 1.15
-  }
-  if (result.satisfaction > 0.7) {
-    result.confidence *= 1.1
-  }
-  if (result.connection > 0.7 && result.excitement > 0.6) {
-    result.satisfaction *= 1.15
-  }
-  if (result.energy > 0.7) {
-    result.curiosity *= 1.1
-  }
-
   return clampState(result)
 }
 

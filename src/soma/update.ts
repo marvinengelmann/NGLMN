@@ -1,20 +1,17 @@
 import { SOCIAL_BATTERY, SOMA } from "@/config/constants.ts"
 import type { EmotionalState } from "@/emotion/types.ts"
+import { clamp01 } from "@/lib/math.ts"
 import type { SomaticState } from "./types.ts"
-
-function clamp(value: number): number {
-  return Math.max(0, Math.min(1, value))
-}
 
 function clampState(state: SomaticState): SomaticState {
   return {
-    tension: clamp(state.tension),
-    warmth: clamp(state.warmth),
-    heartRate: clamp(state.heartRate),
-    breathing: clamp(state.breathing),
-    gravity: clamp(state.gravity),
-    openness: clamp(state.openness),
-    socialBattery: clamp(state.socialBattery)
+    tension: clamp01(state.tension),
+    warmth: clamp01(state.warmth),
+    heartRate: clamp01(state.heartRate),
+    breathing: clamp01(state.breathing),
+    gravity: clamp01(state.gravity),
+    openness: clamp01(state.openness),
+    socialBattery: clamp01(state.socialBattery)
   }
 }
 
