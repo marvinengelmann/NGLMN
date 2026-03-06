@@ -10,11 +10,14 @@ export const redis = Redis.fromEnv()
  */
 export function parseRedisJson<T>(schema: ZodType<T>, raw: unknown, key: string): T | null {
   let value: unknown
-  try {
-    value = typeof raw === "string" ? JSON.parse(raw) : raw
-  } catch {
-    log.warn("Redis JSON parse failed", { key })
-    return null
+  if (typeof raw === "string") {
+    try {
+      value = JSON.parse(raw)
+    } catch {
+      value = raw
+    }
+  } else {
+    value = raw
   }
   const result = schema.safeParse(value)
   if (!result.success) {
