@@ -7,10 +7,10 @@
  */
 
 import "dotenv/config"
+import { estimateTokenCount } from "tokenx"
 import { buildContext, buildSystemPrompt } from "@/consciousness/context.ts"
 import type { SenseData } from "@/consciousness/types.ts"
 import { getEmotionalState } from "@/emotion/state.ts"
-import { estimateTokens } from "@/lib/math.ts"
 import { nowISO } from "@/lib/time.ts"
 import { getHealthCheck, getPerceptionSummary } from "@/memory/working.ts"
 
@@ -55,8 +55,8 @@ async function dump() {
   console.log("=".repeat(80))
 
   console.log("\n--- Stats ---")
-  console.log(`  System prompt tokens: ~${estimateTokens(systemPrompt).toLocaleString()}`)
-  console.log(`  Context tokens:       ~${estimateTokens(contextString).toLocaleString()}`)
+  console.log(`  System prompt tokens: ~${estimateTokenCount(systemPrompt).toLocaleString()}`)
+  console.log(`  Context tokens:       ~${estimateTokenCount(contextString).toLocaleString()}`)
   console.log(`  Total characters:     ${systemPrompt.length.toLocaleString()}`)
   console.log()
 

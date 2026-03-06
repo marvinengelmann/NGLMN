@@ -6,13 +6,6 @@ export function clamp01(value: number): number {
 }
 
 /**
- * Estimate token count from a text string (~4 chars per token).
- */
-export function estimateTokens(text: string): number {
-  return Math.ceil(text.length / 4)
-}
-
-/**
  * Fisher-Yates shuffle — returns a new shuffled copy of the array.
  */
 export function shuffle<T>(array: T[]): T[] {

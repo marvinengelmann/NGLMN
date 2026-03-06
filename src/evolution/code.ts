@@ -1,3 +1,4 @@
+import { estimateTokenCount, sliceByTokens } from "tokenx"
 import { callIntelligence } from "@/core/intelligence.ts"
 import {
   type CodeProposal,
@@ -18,7 +19,6 @@ import {
 } from "@/integrations/github.ts"
 import { validateInSandbox } from "@/integrations/sandbox.ts"
 import { log } from "@/lib/logger.ts"
-import { estimateTokens } from "@/lib/math.ts"
 import { logAndCaptureError } from "@/lib/result.ts"
 import { nowFilename } from "@/lib/time.ts"
 import { storeEpisode } from "@/memory/episodic.ts"
@@ -79,7 +79,7 @@ export async function loadFileContents(
 ): Promise<SourceFileContext[]> {
   const alreadyLoaded = new Set(existing?.map((f) => f.path) ?? [])
   const sourceFiles: SourceFileContext[] = [...(existing ?? [])]
-  let tokensUsed = sourceFiles.reduce((sum, f) => sum + estimateTokens(f.content), 0)
+  let tokensUsed = sourceFiles.reduce((sum, f) => sum + estimateTokenCount(f.content), 0)
 
   for (const path of paths) {
     if (alreadyLoaded.has(path)) continue
@@ -87,17 +87,16 @@ export async function loadFileContents(
 
     try {
       const { content } = await getFileContent(path)
-      const fileTokens = estimateTokens(content)
+      const fileTokens = estimateTokenCount(content)
       const remainingBudget = tokenBudget - tokensUsed
 
       if (fileTokens <= remainingBudget) {
         sourceFiles.push({ path, content, truncated: false })
         tokensUsed += fileTokens
       } else {
-        const charLimit = remainingBudget * 4
         sourceFiles.push({
           path,
-          content: `${content.slice(0, charLimit)}\n// ... truncated ...`,
+          content: `${sliceByTokens(content, 0, remainingBudget)}\n// ... truncated ...`,
           truncated: true
         })
         tokensUsed = tokenBudget
@@ -199,7 +198,7 @@ async function resolveFileRequests(
   round: number,
   failedPaths: Set<string> = new Set()
 ): Promise<CodeProposalOrFileRequest> {
-  const tokensUsed = files.reduce((sum, f) => sum + estimateTokens(f.content), 0)
+  const tokensUsed = files.reduce((sum, f) => sum + estimateTokenCount(f.content), 0)
   const budgetExhausted = tokensUsed >= SOURCE_CONTEXT_TOKEN_BUDGET
   const forceProposal = budgetExhausted || round >= MAX_REQUEST_ROUNDS
 

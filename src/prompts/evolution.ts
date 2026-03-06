@@ -75,7 +75,7 @@ You receive:
 - Path aliases: @/* maps to src/* — always use @/ imports
 - Linting: Biome enforces const over let, no non-null assertions (!), no unused variables
 - When modifying a source file, always update its corresponding .test.ts file to cover the changes
-- Token estimation: use estimateTokens() from @/lib/math.ts (~4 chars per token)
+- Token estimation: use estimateTokenCount() from "tokenx" for accurate token counting
 
 ## Commit Message Style
 

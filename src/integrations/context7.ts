@@ -1,6 +1,6 @@
+import { estimateTokenCount, sliceByTokens } from "tokenx"
 import { fetchWithTimeout } from "@/lib/fetch.ts"
 import { log } from "@/lib/logger.ts"
-import { estimateTokens } from "@/lib/math.ts"
 
 const CONTEXT7_BASE_URL = "https://context7.com"
 const DOCS_TOKEN_BUDGET = 5000
@@ -32,9 +32,9 @@ export async function queryLibraryDocs(libraryId: string, topic: string): Promis
     const text = await response.text()
     if (!text.trim()) return ""
 
-    const tokens = estimateTokens(text)
+    const tokens = estimateTokenCount(text)
     if (tokens > DOCS_TOKEN_BUDGET) {
-      return text.slice(0, DOCS_TOKEN_BUDGET * 4)
+      return sliceByTokens(text, 0, DOCS_TOKEN_BUDGET)
     }
 
     return text
@@ -88,10 +88,10 @@ export async function fetchLibraryDocs(sourceCode: string, topic: string): Promi
   if (docs.length === 0) return ""
 
   const combined = docs.join("\n\n---\n\n")
-  log.debug("Library docs fetched", { libraryCount: docs.length, combinedTokens: estimateTokens(combined) })
-  const tokens = estimateTokens(combined)
+  log.debug("Library docs fetched", { libraryCount: docs.length, combinedTokens: estimateTokenCount(combined) })
+  const tokens = estimateTokenCount(combined)
   if (tokens > DOCS_TOKEN_BUDGET) {
-    return combined.slice(0, DOCS_TOKEN_BUDGET * 4)
+    return sliceByTokens(combined, 0, DOCS_TOKEN_BUDGET)
   }
 
   return combined
