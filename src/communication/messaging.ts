@@ -3,7 +3,6 @@ import { maybeIntroduceTypo } from "@/communication/typos.ts"
 import { MESSAGE_DELAY, THINKING, TYPOS } from "@/config/constants.ts"
 import type { AnimaDecision } from "@/consciousness/types.ts"
 import { textToSpeech } from "@/integrations/elevenlabs.ts"
-import { redis } from "@/integrations/redis.ts"
 import {
   sendMessageWithReply,
   sendRecordVoiceAction,
@@ -15,19 +14,11 @@ import { log } from "@/lib/logger.ts"
 import { nowISO, sleep } from "@/lib/time.ts"
 import { pushRecentResponse, pushToActiveConversation, setGuardianResult } from "@/memory/working.ts"
 import { handleGuardianVerdict, validateOutput } from "@/security/guardian.ts"
-import type { CommunicationRegister } from "./types.ts"
+import { getCommunicationRegister } from "./state.ts"
 
 interface MessagingResult {
   responseSent: boolean
   responseText?: string
-}
-
-async function getCurrentRegister(): Promise<CommunicationRegister> {
-  const raw = await redis.get("working:communication:register")
-  if (raw && typeof raw === "string" && ["casual", "playful", "terse", "elaborate", "raw"].includes(raw)) {
-    return raw as CommunicationRegister
-  }
-  return "casual"
 }
 
 /**
@@ -36,7 +27,7 @@ async function getCurrentRegister(): Promise<CommunicationRegister> {
  */
 export async function sendMessages(decision: AnimaDecision): Promise<MessagingResult> {
   const allTexts: string[] = []
-  const register = await getCurrentRegister()
+  const register = (await getCommunicationRegister()) ?? "casual"
 
   for (const message of decision.messages) {
     const guardianResult = await validateOutput(message.text)

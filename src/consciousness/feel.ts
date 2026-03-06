@@ -3,7 +3,9 @@ import { getAttachmentStyle } from "@/attachment/state.ts"
 import { evaluateAttachmentDynamics, isOperatorReturning } from "@/attachment/update.ts"
 import { computeAttentionState } from "@/cognition/flow.ts"
 import { computeInstinctImpression } from "@/cognition/instinct.ts"
+import { saveAttentionState, saveInstinctImpression } from "@/cognition/state.ts"
 import { computeCommunicationRegister } from "@/communication/register.ts"
+import { saveCommunicationRegister } from "@/communication/state.ts"
 import { processDeceptionCycle } from "@/deception/compute.ts"
 import { getDeceptionState, saveDeceptionState } from "@/deception/state.ts"
 import { buildDissonanceState, checkDissonance, resolveDissonance } from "@/dissonance/check.ts"
@@ -86,6 +88,7 @@ export async function feel(senseResult: SenseResult): Promise<FeelingResult> {
   setEmotionContext(emotion)
 
   const instinct = await computeInstinctImpression(senseResult.pendingMessages, emotion, soma)
+  await saveInstinctImpression(instinct)
 
   const [knowledgeResult, recentActions] = await Promise.all([
     getKnowledge({ category: "insight", scope: "self" }),
@@ -153,6 +156,7 @@ export async function feel(senseResult: SenseResult): Promise<FeelingResult> {
   await saveDeceptionState(updatedDeception)
 
   const register = computeCommunicationRegister(emotion, soma, vulnerability)
+  await saveCommunicationRegister(register)
 
   const consecutiveIdleTicks = await getConsecutiveIdleTicks()
   const attentionState = computeAttentionState(
@@ -161,6 +165,7 @@ export async function feel(senseResult: SenseResult): Promise<FeelingResult> {
     senseResult.pendingMessages.length > 0,
     consecutiveIdleTicks
   )
+  await saveAttentionState(attentionState)
 
   log.info("Feel complete", {
     somaticTension: soma.tension.toFixed(2),
