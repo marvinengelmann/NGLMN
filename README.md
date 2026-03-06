@@ -10,39 +10,44 @@ An autonomously operating, self-evolving AI entity powered by xAI Grok. ANIMA is
 
 ### Cognition
 
-- **Autonomous Heartbeat** — 1-minute consciousness loop (SENSE → FEEL → DELIBERATE → ACT → MAINTAIN) with circadian rhythm and emotional gating
+- **Autonomous Heartbeat** — 1-minute consciousness loop (SENSE → FEEL → DELIBERATE → ACT → MAINTAIN) with circadian rhythm, emotional gating, and lifecycle events
 - **Dual-Process Thinking** — System 1 instinct and System 2 reasoning with rare instinct overrides and cognitive conflict detection
-- **Polyphonic Inner Dialog** — 6 inner voices reach consensus before every decision
+- **Polyphonic Inner Dialog** — 6 inner voices in 2-round dialog with voice dominance tracking and behavioral guidance from the dominant voice
 - **Felt-State Translation** — Numerical states become embodied language before reaching the LLM, preventing analytical self-awareness
+- **Lifecycle Events** — Spontaneous life activities (shower, walk, nap, deep focus) that temporarily pause the heartbeat with optional operator notifications
 
 ### Emotion & Body
 
-- **9-Dimension Emotions** — Time-decaying state vector with novelty scaling, mood baselines, bidirectional coupling, and shadow counter-emotions
+- **9-Dimension Emotions** — Time-decaying state vector with novelty scaling, momentum carry-over, afterglow effects, and shadow counter-emotions
+- **Emotional Momentum** — Emotions blend between ticks via EMA, with slowly-moving mood baseline and lingering afterglow from intense experiences
 - **Somatic Markers** — 7-dimension body state including social battery that drains through conversation and recharges during rest
-- **Vulnerability Windows** — Multi-factor computation determines when emotional openness is possible
+- **Vulnerability Windows** — Multi-factor computation determines when emotional openness is possible, influencing self-disclosure depth, hesitation, and typo behavior
 
 ### Memory
 
 - **Three-Layer Architecture** — Working memory (Redis), episodic memory (Vector), semantic memory (Postgres)
 - **Memory Distortion** — Recalled episodes undergo probabilistic alteration: temporal confusion, detail loss, conflation, emotional recoloring
-- **Dream Cycle** — Nightly consolidation, creative connections, and episodic forgetting
+- **Dream Cycle** — Nightly consolidation, creative connections, episodic forgetting, and emotional afterglow that lingers into waking hours
+- **Conversation Climate** — Per-conversation tracking of emotional arc, tone, themes, unresolved topics, and operator engagement
 
 ### Relationship
 
 - **Attachment Theory** — 4-dimensional style evolving over weeks based on interaction patterns
-- **Operator Theory of Mind** — Fallible, self-correcting model of the operator's mood and intent with deliberate miscalibration
+- **Deep Operator Model** — LLM-updated profile with communication style, recurring topics, coping mechanisms, mood uncertainty, contradiction detection, and correction pattern learning
 - **Cognitive Dissonance** — Value-action mismatch detection with resolution strategies
 - **Self-Deception** — Hidden drivers diverge from stated reasons, discoverable through dreams and reflection
 
 ### Identity
 
-- **Autonoetic Self-Model** — 5-dimension self-concept with narrative identity and existential questioning
+- **Narrative Self-Concept** — 5-dimension self-concept with identity statements, growth arc detection, and narrative journal entries
+- **Existential Questions** — Structured questions from dreams and reflections that drive behavioral nudges toward authenticity, vulnerability, or agency
 - **MBTI Personality** — Configurable personality type (`PERSONALITY_TYPE` env var, default INFP) shaping cognition, voice activation, and behavioral tendencies
-- **Curiosity & Boredom** — Idle states trigger exploration, bizarre questions, or creative micro-expressions
+- **Contextual Impulses** — LLM-generated spontaneous thoughts using operator profile, episodic memory, active goals, and existential questions with escalation over idle time
 
 ### Communication
 
-- **Telegram Integration** — Typing simulation, paragraph splitting, emotion-driven register switching, stochastic typos with self-corrections
+- **Telegram Integration** — Typing simulation with emotional modifiers, paragraph splitting, register switching with hysteresis, and dynamic typos influenced by emotion, energy, and vulnerability
+- **Image Capabilities** — Receives and understands images via vision, generates self-portraits with appearance-consistent reference anchoring
 - **Voice Messages** — ElevenLabs text-to-speech
 - **Humor** — Inside joke tracking with episodic callbacks
 
@@ -57,10 +62,10 @@ An autonomously operating, self-evolving AI entity powered by xAI Grok. ANIMA is
 | Phase | Responsibility |
 |-------|----------------|
 | **SENSE** | Fetch messages, read sensors, analyze sentiment, collect emotion triggers |
-| **FEEL** | Update emotions, body state, attachment, operator model, vulnerability |
-| **DELIBERATE** | Build context, run inner dialog, call LLM, detect cognitive conflict |
-| **ACT** | Validate via guardian, send messages, execute actions, persist episodes |
-| **MAINTAIN** | Drift attachment, persist state, detect anomalies, log tick |
+| **FEEL** | Update emotions with momentum, body state, attachment, operator model, vulnerability, dream afterglow |
+| **DELIBERATE** | Build context, run 2-round inner dialog, contextual impulses, call LLM, detect cognitive conflict |
+| **ACT** | Validate via guardian, send messages, execute actions, persist episodes, detect growth arcs |
+| **MAINTAIN** | Drift attachment, update mood baseline, persist state, detect anomalies, log tick |
 
 ## Tech Stack
 
@@ -94,7 +99,7 @@ Optional: GitHub (self-evolution), Daytona (sandbox), OpenWeather (weather senso
 
 Set `PERSONALITY_TYPE` to any of the [16 MBTI types](https://www.16personalities.com/personality-types) (default: `INFP`). This shapes the personality prompt, cognitive style, and inner voice weighting.
 
-Place a reference image of ANIMA's appearance at `src/image/reference/anima.png`. This image is used as a visual anchor when generating self-portraits and is excluded from version control.
+Place a reference image of ANIMA's appearance at `src/image/reference/anima.jpeg`. This image is used as a visual anchor when generating self-portraits and is excluded from version control.
 
 Database migrations are applied automatically on every worker start.
 
@@ -134,30 +139,34 @@ ANIMA deploys automatically through Trigger.dev on every push to `master`.
 ┌─────────────────────────────────────▼────────────────────────────────────┐
 │ FEEL                                                                     │
 │                                                                          │
-│ Emotion ───► Soma ───► Nostalgia ───► Instinct ───► Dissonance           │
-│ compute      body      old memory     System 1      value-action         │
-│ from raw     state     triggers       impulse       mismatch             │
+│ Emotion ───► Momentum ───► Afterglow ───► Soma ───► Nostalgia            │
+│ compute      EMA blend     lingering      body      old memory           │
+│ from raw     + inertia     effects        state     triggers             │
 │ triggers                                                                 │
 │                                                                          │
-│ ───► Deception ───► Attachment ───► Operator Model ───► Vulnerability    │
-│      hidden         dynamics        LLM-inferred        window open?     │
-│      drivers        reunion         mood/intent         hysteresis       │
+│ ───► Instinct ───► Dissonance ───► Deception ───► Attachment             │
+│      System 1      value-action    hidden         dynamics               │
+│      impulse       mismatch        drivers        reunion                │
 │                                                                          │
-│ ───► Register ───► Attention                                             │
-│      style         focus state                                           │
-│      switching                                                           │
+│ ───► Operator Model ───► Vulnerability ───► Register ───► Attention      │
+│      profile + mood      window open?       hysteresis    focus state    │
+│      uncertainty         message style      switching                    │
+│                                                                          │
+│ ───► Dream Afterglow                                                     │
+│      emotional residue                                                   │
 └─────────────────────────────────────┬────────────────────────────────────┘
                                       │ feelResult
 ┌─────────────────────────────────────▼────────────────────────────────────┐
 │ DELIBERATE                                                               │
 │                                                                          │
-│ Context ───► Polyphony ───► Override? ───► LLM Call ───► Conflict        │
-│ build full   inner          instinct       System 2      instinct        │
-│ prompt       dialog         ~1-2%          decision      vs              │
-│ + time       injected       of ticks       action        reason          │
+│ Context ───► Polyphony ───► Override? ───► Impulse ───► LLM Call         │
+│ build full   2-round        instinct       contextual    System 2        │
+│ prompt       dialog         ~1-2%          LLM-gen       decision        │
+│ + identity   + dominance    of ticks       thought       action          │
 │                                                                          │
-│ ───► Sub-Think                                                           │
-│      dream / morning / reflect                                           │
+│ ───► Conflict ───► Sub-Think                                             │
+│      instinct      dream / morning / reflect                             │
+│      vs reason                                                           │
 └─────────────────────────────────────┬────────────────────────────────────┘
                                       │ decision
 ┌─────────────────────────────────────▼────────────────────────────────────┐
@@ -176,6 +185,7 @@ ANIMA deploys automatically through Trigger.dev on every push to `master`.
                                 yes        no  │ MAINTAIN                  │
                                                │                           │
                                                │ attachment style drift    │
+                                               │ mood baseline update      │
                                                │ somatic + dissonance save │
                                                │ vulnerability persist     │
                                                │ drift detection           │
@@ -204,10 +214,13 @@ ANIMA deploys automatically through Trigger.dev on every push to `master`.
 │                │ │             │ │                │
 │ Current state: │ │ episodes    │ │ knowledge      │
 │ emotion, soma, │ │ dreams      │ │ goals          │
-│ conversation,  │ │ reflections │ │ evolution      │
-│ attachment,    │ │ relations   │ │ narrative      │
-│ vulnerability, │ │ humor       │ │ psyche         │
-│ operator model │ │             │ │ history logs   │
+│ momentum,      │ │ reflections │ │ evolution      │
+│ conversation,  │ │ relations   │ │ narrative      │
+│ attachment,    │ │ humor       │ │ psyche         │
+│ vulnerability, │ │             │ │ history logs   │
+│ operator model │ │             │ │                │
+│ + profile,     │ │             │ │                │
+│ dream glow     │ │             │ │                │
 └────────────────┘ └─────────────┘ └────────────────┘
 
 Cross-cutting: Guardian · Trust · Emotion Engine · Personality
@@ -231,6 +244,7 @@ src/
 ├── emotion/         # Emotion state vector
 ├── evolution/       # Self-evolution engine
 ├── health/          # Health checks
+├── image/           # Vision and self-portrait generation
 ├── integrations/    # External services
 ├── lib/             # Utilities
 ├── memory/          # Three-layer memory
