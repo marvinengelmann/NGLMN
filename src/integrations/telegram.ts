@@ -80,6 +80,29 @@ export async function fetchNewMessages(timeout: number): Promise<{
       continue
     }
 
+    if (telegramMessage.photo && telegramMessage.photo.length > 0) {
+      try {
+        const bestPhoto = telegramMessage.photo.at(-1)
+        if (!bestPhoto) continue
+        const photoBuffer = await downloadFile(bestPhoto.file_id)
+        const base64 = photoBuffer.toString("base64")
+        messages.push({
+          updateId: update.update_id,
+          chatId: telegramMessage.chat.id,
+          from: telegramMessage.from?.first_name ?? "Unknown",
+          text: telegramMessage.caption ?? "",
+          date: telegramMessage.date,
+          messageId: telegramMessage.message_id,
+          replyToText: telegramMessage.reply_to_message?.text,
+          isVoice: false,
+          image: { base64, mimeType: "image/jpeg" }
+        })
+      } catch (error) {
+        log.warn("Failed to download photo", { error: String(error) })
+      }
+      continue
+    }
+
     if (!telegramMessage.text) continue
 
     messages.push({
@@ -235,4 +258,30 @@ export async function sendVoiceToOperator(oggBuffer: Buffer, replyToMessageId?: 
  */
 export async function sendRecordVoiceAction(): Promise<void> {
   await bot.sendChatAction(operatorChatId, "record_voice")
+}
+
+/**
+ * Send a photo to the operator via Telegram.
+ * @param imageBuffer - The image as a Buffer.
+ * @param caption - Optional caption for the photo.
+ * @param replyToMessageId - Optional message ID to reply to.
+ * @returns The sent message ID.
+ */
+export async function sendPhotoToOperator(
+  imageBuffer: Buffer,
+  caption?: string,
+  replyToMessageId?: number
+): Promise<number> {
+  const sent = await bot.sendPhoto(operatorChatId, new InputFile(imageBuffer, "image.jpg"), {
+    ...(caption ? { caption } : {}),
+    ...(replyToMessageId ? { reply_parameters: { message_id: replyToMessageId } } : {})
+  })
+  return sent.message_id
+}
+
+/**
+ * Send an "upload_photo" chat action to show upload animation.
+ */
+export async function sendUploadPhotoAction(): Promise<void> {
+  await bot.sendChatAction(operatorChatId, "upload_photo")
 }

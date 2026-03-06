@@ -127,10 +127,15 @@ export async function deliberate(senseResult: SenseResult, feelResult: FeelingRe
     userPrompt = `${userPrompt}\n${dialogSection}`
   }
 
+  const images = senseResult.pendingMessages
+    .filter((m): m is typeof m & { image: NonNullable<typeof m.image> } => m.image != null)
+    .map((m) => ({ base64: m.image.base64, mimeType: m.image.mimeType }))
+
   const callResult = await callIntelligence({
     system: systemPrompt,
     userMessage: userPrompt,
-    schema: AnimaDecision
+    schema: AnimaDecision,
+    ...(images.length > 0 ? { images } : {})
   })
 
   if (callResult.isErr()) {

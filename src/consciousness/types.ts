@@ -26,7 +26,11 @@ export const AnimaDecision = z.object({
       text: z.string(),
       replyTo: z.number().optional(),
       asVoice: z.boolean().default(false),
-      voiceText: z.string().optional()
+      voiceText: z.string().optional(),
+      withImage: z.boolean().default(false),
+      imagePrompt: z.string().optional(),
+      imageSelf: z.boolean().default(false),
+      imageAspectRatio: z.enum(["1:1", "16:9", "9:16"]).default("1:1")
     })
   ),
   expectsReply: z.boolean(),

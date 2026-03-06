@@ -34,7 +34,9 @@ const EnvSchema = z.object({
   CONTEXT7_API_KEY: z.string().optional(),
 
   ELEVENLABS_API_KEY: z.string().optional(),
-  ELEVENLABS_VOICE_ID: z.string().default("9GYSBtwJVgyLbYO5E3Ld")
+  ELEVENLABS_VOICE_ID: z.string().default("9GYSBtwJVgyLbYO5E3Ld"),
+
+  XAI_API_KEY: z.string().optional()
 })
 
 type EnvKey = keyof z.infer<typeof EnvSchema>

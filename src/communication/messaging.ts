@@ -2,11 +2,14 @@ import { computeTypingDuration, simulateTyping, splitIntoParagraphs } from "@/co
 import { maybeIntroduceTypo } from "@/communication/typos.ts"
 import { MESSAGE_DELAY, THINKING, TYPOS } from "@/config/constants.ts"
 import type { AnimaDecision } from "@/consciousness/types.ts"
+import { generateAnimaImage } from "@/image/generate.ts"
 import { textToSpeech } from "@/integrations/elevenlabs.ts"
 import {
   sendMessageWithReply,
+  sendPhotoToOperator,
   sendRecordVoiceAction,
   sendTypingAction,
+  sendUploadPhotoAction,
   sendVoiceToOperator
 } from "@/integrations/telegram.ts"
 import { convertMp3ToOggOpus } from "@/lib/audio.ts"
@@ -39,7 +42,29 @@ export async function sendMessages(decision: AnimaDecision): Promise<MessagingRe
       continue
     }
 
-    if (message.asVoice && message.voiceText) {
+    if (message.withImage && message.imagePrompt) {
+      try {
+        await sendUploadPhotoAction()
+        const imageResult = await generateAnimaImage(message.imagePrompt, message.imageSelf, message.imageAspectRatio)
+
+        if (imageResult.isOk()) {
+          const sentId = await sendPhotoToOperator(imageResult.value, message.text || undefined, message.replyTo)
+          await pushToActiveConversation([
+            { role: "anima", text: message.text || "[Image]", timestamp: nowISO(), messageId: sentId, hasImage: true }
+          ])
+        } else {
+          log.warn("Image generation failed, falling back to text", { error: imageResult.error.message })
+          const sentId = await sendMessageWithReply(message.text, message.replyTo)
+          await pushToActiveConversation([
+            { role: "anima", text: message.text, timestamp: nowISO(), messageId: sentId }
+          ])
+        }
+      } catch (error) {
+        log.warn("Image send failed, falling back to text", { error: String(error) })
+        const sentId = await sendMessageWithReply(message.text, message.replyTo)
+        await pushToActiveConversation([{ role: "anima", text: message.text, timestamp: nowISO(), messageId: sentId }])
+      }
+    } else if (message.asVoice && message.voiceText) {
       try {
         await sendRecordVoiceAction()
         const mp3Buffer = await textToSpeech(message.voiceText)

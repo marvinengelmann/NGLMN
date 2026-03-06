@@ -14,7 +14,10 @@ interface CallIntelligenceOptions<T extends z.ZodType> {
   schema: T
   maxTokens?: number
   reasoning?: boolean
+  images?: Array<{ base64: string; mimeType: string }>
 }
+
+const VISION_MODEL = "xai/grok-2-vision-1212"
 
 /**
  * Unified LLM call — uses generateText with Output.object for structured output.
@@ -24,10 +27,25 @@ export function callIntelligence<T extends z.ZodType>(
   options: CallIntelligenceOptions<T>
 ): AnimaResultAsync<z.infer<T>> {
   return trySafe("LLM_ERROR", async () => {
+    const hasImages = options.images && options.images.length > 0
+    const model = hasImages ? VISION_MODEL : options.reasoning === false ? FAST : REASONING
+
+    const messageContent: Array<{ type: "text"; text: string } | { type: "image"; image: string; mimeType?: string }> =
+      [
+        { type: "text", text: options.userMessage },
+        ...(options.images ?? []).map((img) => ({
+          type: "image" as const,
+          image: img.base64,
+          mimeType: img.mimeType
+        }))
+      ]
+
     const result = await generateText({
-      model: options.reasoning === false ? FAST : REASONING,
+      model,
       system: options.system,
-      prompt: options.userMessage,
+      ...(hasImages
+        ? { messages: [{ role: "user" as const, content: messageContent }] }
+        : { prompt: options.userMessage }),
       output: Output.object({ schema: options.schema }),
       maxOutputTokens: options.maxTokens ?? MAX_OUTPUT_TOKENS
     })

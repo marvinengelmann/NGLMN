@@ -71,10 +71,11 @@ export async function sense(): Promise<SenseResult> {
     await pushToActiveConversation(
       newMessages.map((m) => ({
         role: "operator" as const,
-        text: m.text,
+        text: m.text || (m.image ? "[Photo]" : ""),
         timestamp: new Date(m.date * 1000).toISOString(),
         messageId: m.messageId ?? 0,
-        isVoice: m.isVoice || undefined
+        isVoice: m.isVoice || undefined,
+        hasImage: m.image ? true : undefined
       }))
     )
   }

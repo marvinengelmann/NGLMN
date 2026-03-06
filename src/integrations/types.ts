@@ -37,7 +37,13 @@ export const PendingMessage = z.object({
   messageId: z.number().optional(),
   replyToText: z.string().max(10_000).optional(),
   isVoice: z.boolean().default(false),
-  voiceDurationSeconds: z.number().optional()
+  voiceDurationSeconds: z.number().optional(),
+  image: z
+    .object({
+      base64: z.string(),
+      mimeType: z.enum(["image/jpeg", "image/png", "image/webp"])
+    })
+    .optional()
 })
 export type PendingMessage = z.infer<typeof PendingMessage>
 

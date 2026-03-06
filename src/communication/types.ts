@@ -8,7 +8,8 @@ export const ConversationMessage = z.object({
   text: z.string(),
   timestamp: z.string(),
   messageId: z.number(),
-  isVoice: z.boolean().optional()
+  isVoice: z.boolean().optional(),
+  hasImage: z.boolean().optional()
 })
 export type ConversationMessage = z.infer<typeof ConversationMessage>
 

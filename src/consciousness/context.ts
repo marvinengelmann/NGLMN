@@ -300,14 +300,21 @@ function translateEmotionTrajectoryToFelt(
 }
 
 export function formatConversationMessage(
-  message: { role: string; text: string; messageId?: number | null; isVoice?: boolean | null },
+  message: {
+    role: string
+    text: string
+    messageId?: number | null
+    isVoice?: boolean | null
+    hasImage?: boolean | null
+  },
   maxLength?: number
 ): string {
   const role = message.role === "operator" ? "Operator" : "You (ANIMA)"
   const idPrefix = message.messageId ? `[#${message.messageId}] ` : ""
   const voiceTag = message.isVoice ? "[Voice] " : ""
+  const photoTag = message.hasImage ? "[Photo] " : ""
   const text = maxLength ? message.text.slice(0, maxLength) : message.text
-  return `${idPrefix}${voiceTag}[${role}]: ${text}`
+  return `${idPrefix}${photoTag}${voiceTag}[${role}]: ${text}`
 }
 
 function formatConversationSlot(slot: ConversationSlot, label: string): string {
@@ -468,7 +475,9 @@ function buildPerceptionSections(
     const messageLines = senseData.pendingMessages.map((message) => {
       const idPrefix = message.messageId ? `[#${message.messageId}] ` : ""
       const voiceTag = message.isVoice ? `[Voice Message, ${message.voiceDurationSeconds ?? 0}s] ` : ""
-      return `  ${idPrefix}${voiceTag}[${message.from}]: ${message.text}`
+      const photoTag = message.image ? "[Photo] " : ""
+      const text = message.text || (message.image ? "[no caption]" : "")
+      return `  ${idPrefix}${photoTag}${voiceTag}[${message.from}]: ${text}`
     })
     sections.push(
       `# Messages\nNew messages from operator (${senseData.pendingMessages.length}):\n${messageLines.join("\n")}`
