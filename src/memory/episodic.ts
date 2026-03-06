@@ -334,7 +334,13 @@ export async function forgetOldEpisodes(
         if (differenceInDays(new Date(), parseISO(meta.timestamp)) >= ageThresholdDays) {
           idsToDelete.push(r.id as string)
         }
-      } catch {}
+      } catch (e) {
+        log.warn("Failed to parse episode timestamp during forgetting", {
+          id: r.id,
+          timestamp: meta.timestamp,
+          error: e instanceof Error ? e.message : String(e)
+        })
+      }
     }
   }
 

@@ -4,6 +4,7 @@ import { db } from "@/db/client.ts"
 import type { SemanticMemorySelect, SemanticRelationSelect } from "@/db/schema.ts"
 import { semanticMemory, semanticRelations } from "@/db/schema.ts"
 import { log } from "@/lib/logger.ts"
+import { shuffle } from "@/lib/math.ts"
 import type { AnimaResultAsync } from "@/lib/result.ts"
 import { trySafe } from "@/lib/result.ts"
 import { type RelationType, type SemanticCategory, SemanticScope, type SemanticSource } from "@/memory/types.ts"
@@ -168,7 +169,7 @@ export async function applyOpinionDrift(): Promise<void> {
   if (preferences.length === 0) return
 
   const count = Math.min(preferences.length, 1 + Math.floor(Math.random() * 2))
-  const shuffled = preferences.sort(() => Math.random() - 0.5).slice(0, count)
+  const shuffled = shuffle(preferences).slice(0, count)
 
   for (const pref of shuffled) {
     const drift = 0.05 + Math.random() * 0.05
