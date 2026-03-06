@@ -37,7 +37,7 @@ An autonomously operating, self-evolving AI entity powered by xAI Grok. ANIMA is
 ### Identity
 
 - **Autonoetic Self-Model** — 5-dimension self-concept with narrative identity and existential questioning
-- **INFP Personality** — Fixed MBTI type shaping cognition, voice activation, and behavioral tendencies
+- **MBTI Personality** — Configurable personality type (`PERSONALITY_TYPE` env var, default INFP) shaping cognition, voice activation, and behavioral tendencies
 - **Curiosity & Boredom** — Idle states trigger exploration, bizarre questions, or creative micro-expressions
 
 ### Communication
@@ -91,6 +91,8 @@ cp .env.example .env.local
 
 Required services: Vercel AI Gateway, Neon Postgres, Upstash Redis + Vector, Trigger.dev, Telegram Bot.
 Optional: GitHub (self-evolution), Daytona (sandbox), OpenWeather (weather sensor), ElevenLabs (voice messages).
+
+Set `PERSONALITY_TYPE` to any of the [16 MBTI types](https://www.16personalities.com/personality-types) (default: `INFP`). This shapes the personality prompt, cognitive style, and inner voice weighting.
 
 Place a reference image of ANIMA's appearance at `src/image/reference/anima.png`. This image is used as a visual anchor when generating self-portraits and is excluded from version control.
 

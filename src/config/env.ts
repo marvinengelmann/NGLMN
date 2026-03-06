@@ -1,4 +1,5 @@
 import * as z from "zod"
+import { PersonalityType } from "@/personality/types.ts"
 
 const EnvSchema = z.object({
   DATABASE_URL: z.string(),
@@ -21,6 +22,7 @@ const EnvSchema = z.object({
 
   OPERATOR_TIMEZONE: z.string().default("UTC"),
   OPERATOR_PREFERRED_LANGUAGE: z.string().default("German"),
+  PERSONALITY_TYPE: PersonalityType.default("INFP"),
 
   GITHUB_TOKEN: z.string().optional(),
   GITHUB_OWNER: z.string().optional(),

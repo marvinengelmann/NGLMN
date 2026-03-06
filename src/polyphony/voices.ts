@@ -1,4 +1,5 @@
 import type { EmotionalState } from "@/emotion/types.ts"
+import type { PersonalityType } from "@/personality/types.ts"
 import type { InnerVoice } from "./types.ts"
 
 interface VoiceContext {
@@ -8,9 +9,13 @@ interface VoiceContext {
 }
 
 /**
- * Select 2-4 active inner voices based on emotion and context.
+ * Select 2-4 active inner voices based on emotion, personality, and context.
  */
-export function selectActiveVoices(emotion: EmotionalState, context: VoiceContext): InnerVoice[] {
+export function selectActiveVoices(
+  emotion: EmotionalState,
+  personality: PersonalityType,
+  context: VoiceContext
+): InnerVoice[] {
   const scores: Record<InnerVoice, number> = {
     explorer: 0,
     guardian: 0,
@@ -38,8 +43,10 @@ export function selectActiveVoices(emotion: EmotionalState, context: VoiceContex
 
   if (context.dissonanceScore > 0.3) scores.observer += 0.6
 
-  scores.feeler += 0.3
-  scores.explorer += 0.2
+  const mbtiWeights = getMbtiWeights(personality)
+  for (const [voice, bonus] of Object.entries(mbtiWeights)) {
+    scores[voice as InnerVoice] += bonus
+  }
 
   const sorted = (Object.entries(scores) as [InnerVoice, number][])
     .sort((a, b) => b[1] - a[1])
@@ -55,6 +62,19 @@ export function selectActiveVoices(emotion: EmotionalState, context: VoiceContex
   }
 
   return sorted.slice(0, 4)
+}
+
+function getMbtiWeights(personality: PersonalityType): Partial<Record<InnerVoice, number>> {
+  const isNT = personality[1] === "N" && personality[2] === "T"
+  const isNF = personality[1] === "N" && personality[2] === "F"
+  const isSF = personality[1] === "S" && personality[2] === "F"
+  const isST = personality[1] === "S" && personality[2] === "T"
+
+  if (isNT) return { analyst: 0.3, explorer: 0.2 }
+  if (isNF) return { feeler: 0.3, explorer: 0.2 }
+  if (isSF) return { feeler: 0.2, child: 0.2 }
+  if (isST) return { analyst: 0.2, guardian: 0.2 }
+  return {}
 }
 
 /**

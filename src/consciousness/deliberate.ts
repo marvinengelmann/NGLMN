@@ -1,5 +1,6 @@
 import { detectCognitiveConflict, shouldInstinctOverride } from "@/cognition/override.ts"
 import { ATTENTION } from "@/config/constants.ts"
+import { env } from "@/config/env.ts"
 import { callIntelligence } from "@/core/intelligence.ts"
 import { thinkDream } from "@/dream/thinking.ts"
 import { log } from "@/lib/logger.ts"
@@ -29,7 +30,7 @@ export async function deliberate(senseResult: SenseResult, feelResult: FeelingRe
   const contextString = await buildContext(senseData, feelResult.emotion)
   const systemPrompt = buildSystemPrompt(contextString)
 
-  const activeVoices = selectActiveVoices(feelResult.emotion, {
+  const activeVoices = selectActiveVoices(feelResult.emotion, env().PERSONALITY_TYPE, {
     dissonanceScore: feelResult.dissonance.activeDissonance,
     action: "pending",
     hasMessages: senseResult.pendingMessages.length > 0
