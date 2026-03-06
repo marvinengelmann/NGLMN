@@ -97,8 +97,7 @@ export async function getPhaseTickCount(): Promise<number> {
  * Increment the phase tick counter.
  */
 export async function incrementPhaseTickCount(): Promise<void> {
-  const current = await getPhaseTickCount()
-  await redis.set(KEYS.PHASE_TICK_COUNT, current + 1)
+  await redis.incr(KEYS.PHASE_TICK_COUNT)
 }
 
 /**
