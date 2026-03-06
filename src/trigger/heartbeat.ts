@@ -2,7 +2,7 @@ import { runs, schedules } from "@trigger.dev/sdk"
 import { HEARTBEAT } from "@/config/constants.ts"
 import { computeSkipProbability } from "@/consciousness/gating.ts"
 import { runHeartbeat } from "@/consciousness/heartbeat.ts"
-import { isLifeEventActive, maybeStartLifeEvent } from "@/consciousness/lifecycle.ts"
+import { getActiveLifeEvent, isLifeEventActive, maybeStartLifeEvent, sendLifecycleNotification } from "@/consciousness/lifecycle.ts"
 import { fetchNewMessages } from "@/integrations/telegram.ts"
 import { log } from "@/lib/logger.ts"
 import { getConversationWaitingSince, getCurrentEmotion, isBusy } from "@/memory/working.ts"
@@ -25,6 +25,13 @@ export const heartbeatTask = schedules.task({
     }
 
     if (await isLifeEventActive()) {
+      const event = await getActiveLifeEvent()
+      if (event?.interruptible) {
+        const peek = await fetchNewMessages(0)
+        if (peek.messages.length > 0 && Math.random() < 0.3) {
+          sendLifecycleNotification(event.type, "mid_event").catch(() => {})
+        }
+      }
       log.info("Heartbeat skipped — life event active")
       await runs.cancel(ctx.run.id)
       if (!signal.aborted) {
@@ -39,8 +46,10 @@ export const heartbeatTask = schedules.task({
       fetchNewMessages(0)
     ])
 
-    if (!waitingSince && peek.messages.length === 0) {
-      const lifeEvent = await maybeStartLifeEvent()
+    const hasActiveConversation = waitingSince !== null || peek.messages.length > 0
+
+    if (!hasActiveConversation) {
+      const lifeEvent = await maybeStartLifeEvent(false)
       if (lifeEvent) {
         log.info("Heartbeat skipped — new life event started")
         await runs.cancel(ctx.run.id)
