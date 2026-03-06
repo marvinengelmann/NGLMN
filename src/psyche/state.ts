@@ -1,7 +1,7 @@
 import { desc } from "drizzle-orm"
 import { db } from "@/db/client.ts"
 import { psycheSnapshots } from "@/db/schema.ts"
-import { redis } from "@/integrations/redis.ts"
+import { getValidatedRedis, redis } from "@/integrations/redis.ts"
 import { DEFAULT_SELF_CONCEPT, type PsycheSnapshot, SelfConcept } from "./types.ts"
 
 const KEYS = {
@@ -15,13 +15,8 @@ const KEYS = {
  * Get current self concept: Redis → DB → DEFAULT.
  */
 export async function getSelfConcept(): Promise<SelfConcept> {
-  const raw = await redis.get(KEYS.CURRENT)
-  if (raw != null) {
-    try {
-      const parsed = SelfConcept.safeParse(typeof raw === "string" ? JSON.parse(raw) : raw)
-      if (parsed.success) return parsed.data
-    } catch {}
-  }
+  const fromRedis = await getValidatedRedis(KEYS.CURRENT, SelfConcept)
+  if (fromRedis) return fromRedis
 
   const rows = await db.select().from(psycheSnapshots).orderBy(desc(psycheSnapshots.createdAt)).limit(1)
   if (rows[0]) {

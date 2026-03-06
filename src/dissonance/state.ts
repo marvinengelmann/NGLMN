@@ -1,6 +1,6 @@
 import { db } from "@/db/client.ts"
 import { dissonanceLog } from "@/db/schema.ts"
-import { redis } from "@/integrations/redis.ts"
+import { getValidatedRedisOr, redis } from "@/integrations/redis.ts"
 import { type DissonanceEvent, DissonanceState } from "./types.ts"
 
 const KEYS = {
@@ -12,14 +12,11 @@ const KEYS = {
  * Get current dissonance state from Redis.
  */
 export async function getDissonanceState(): Promise<DissonanceState> {
-  const raw = await redis.get(KEYS.ACTIVE)
-  if (raw != null) {
-    try {
-      const parsed = DissonanceState.safeParse(typeof raw === "string" ? JSON.parse(raw) : raw)
-      if (parsed.success) return parsed.data
-    } catch {}
-  }
-  return { activeDissonance: 0, recentEvents: [], cumulativeUnresolved: 0 }
+  return getValidatedRedisOr(KEYS.ACTIVE, DissonanceState, {
+    activeDissonance: 0,
+    recentEvents: [],
+    cumulativeUnresolved: 0
+  })
 }
 
 /**

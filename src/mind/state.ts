@@ -1,6 +1,6 @@
 import { db } from "@/db/client.ts"
 import { operatorModelLog } from "@/db/schema.ts"
-import { redis } from "@/integrations/redis.ts"
+import { getValidatedRedisOr, redis } from "@/integrations/redis.ts"
 import { DEFAULT_OPERATOR_MODEL, type ModelCorrection, OperatorModel } from "./types.ts"
 
 const KEYS = {
@@ -14,14 +14,7 @@ const MAX_CORRECTIONS = 20
  * Get the current operator model from Redis.
  */
 export async function getOperatorModel(): Promise<OperatorModel> {
-  const raw = await redis.get(KEYS.CURRENT)
-  if (raw == null) return DEFAULT_OPERATOR_MODEL
-  try {
-    const parsed = OperatorModel.safeParse(typeof raw === "string" ? JSON.parse(raw) : raw)
-    return parsed.success ? parsed.data : DEFAULT_OPERATOR_MODEL
-  } catch {
-    return DEFAULT_OPERATOR_MODEL
-  }
+  return getValidatedRedisOr(KEYS.CURRENT, OperatorModel, DEFAULT_OPERATOR_MODEL)
 }
 
 /**

@@ -1,6 +1,6 @@
 import { callIntelligence } from "@/core/intelligence.ts"
 import type { EmotionalState } from "@/emotion/types.ts"
-import { redis } from "@/integrations/redis.ts"
+import { getValidatedRedis, redis } from "@/integrations/redis.ts"
 import { log } from "@/lib/logger.ts"
 import type { SomaticState } from "@/soma/types.ts"
 import { InnerDialog, type InnerVoice } from "./types.ts"
@@ -77,16 +77,5 @@ Let each active voice speak.`
  * Get the last inner dialog from Redis.
  */
 export async function getLastInnerDialog(): Promise<InnerDialog | null> {
-  const raw = await redis.get(POLYPHONY_LAST_DIALOG)
-  if (raw == null) return null
-  try {
-    const parsed = InnerDialog.safeParse(typeof raw === "string" ? JSON.parse(raw) : raw)
-    if (!parsed.success) {
-      log.warn("Inner dialog parse failed", { error: parsed.error.message })
-    }
-    return parsed.success ? parsed.data : null
-  } catch {
-    log.warn("Inner dialog JSON parse failed")
-    return null
-  }
+  return getValidatedRedis(POLYPHONY_LAST_DIALOG, InnerDialog)
 }

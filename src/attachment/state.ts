@@ -1,7 +1,7 @@
 import { desc } from "drizzle-orm"
 import { db } from "@/db/client.ts"
 import { attachmentLog, relationshipPhaseLog } from "@/db/schema.ts"
-import { redis } from "@/integrations/redis.ts"
+import { getValidatedRedis, redis } from "@/integrations/redis.ts"
 import { nowISO } from "@/lib/time.ts"
 import {
   AttachmentDynamics,
@@ -23,13 +23,8 @@ const KEYS = {
  * Get current attachment style: Redis → DB → DEFAULT.
  */
 export async function getAttachmentStyle(): Promise<AttachmentStyle> {
-  const raw = await redis.get(KEYS.CURRENT)
-  if (raw != null) {
-    try {
-      const parsed = AttachmentStyle.safeParse(typeof raw === "string" ? JSON.parse(raw) : raw)
-      if (parsed.success) return parsed.data
-    } catch {}
-  }
+  const fromRedis = await getValidatedRedis(KEYS.CURRENT, AttachmentStyle)
+  if (fromRedis) return fromRedis
 
   const rows = await db.select().from(attachmentLog).orderBy(desc(attachmentLog.createdAt)).limit(1)
   if (rows[0]) {
@@ -47,14 +42,7 @@ export async function getAttachmentStyle(): Promise<AttachmentStyle> {
  * Get current attachment dynamics from Redis.
  */
 export async function getAttachmentDynamics(): Promise<AttachmentDynamics | null> {
-  const raw = await redis.get(KEYS.DYNAMICS)
-  if (raw == null) return null
-  try {
-    const parsed = AttachmentDynamics.safeParse(typeof raw === "string" ? JSON.parse(raw) : raw)
-    return parsed.success ? parsed.data : null
-  } catch {
-    return null
-  }
+  return getValidatedRedis(KEYS.DYNAMICS, AttachmentDynamics)
 }
 
 /**

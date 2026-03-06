@@ -1,7 +1,7 @@
 import { and, desc, gte, lte } from "drizzle-orm"
 import { db } from "@/db/client.ts"
 import { somaticHistory } from "@/db/schema.ts"
-import { redis } from "@/integrations/redis.ts"
+import { getValidatedRedis, redis } from "@/integrations/redis.ts"
 import { DEFAULT_SOMATIC_STATE, SomaticState } from "./types.ts"
 
 const KEYS = {
@@ -13,13 +13,8 @@ const KEYS = {
  * Get current somatic state: Redis → DB → DEFAULT.
  */
 export async function getSomaticState(): Promise<SomaticState> {
-  const raw = await redis.get(KEYS.CURRENT)
-  if (raw != null) {
-    try {
-      const parsed = SomaticState.safeParse(typeof raw === "string" ? JSON.parse(raw) : raw)
-      if (parsed.success) return parsed.data
-    } catch {}
-  }
+  const fromRedis = await getValidatedRedis(KEYS.CURRENT, SomaticState)
+  if (fromRedis) return fromRedis
 
   const rows = await db.select().from(somaticHistory).orderBy(desc(somaticHistory.createdAt)).limit(1)
   if (rows[0]) {

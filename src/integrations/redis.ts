@@ -33,3 +33,12 @@ export async function getValidatedRedis<T>(key: string, schema: ZodType<T>): Pro
   if (raw == null) return null
   return parseRedisJson(schema, raw, key)
 }
+
+/**
+ * Fetch a Redis key and validate it against a Zod schema.
+ * Returns the provided default if the key doesn't exist or if parsing/validation fails.
+ */
+export async function getValidatedRedisOr<T>(key: string, schema: ZodType<T>, defaultValue: T): Promise<T> {
+  const result = await getValidatedRedis(key, schema)
+  return result ?? defaultValue
+}

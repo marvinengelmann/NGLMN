@@ -1,4 +1,4 @@
-import { redis } from "@/integrations/redis.ts"
+import { getValidatedRedis, redis } from "@/integrations/redis.ts"
 import { CommunicationRegister } from "./types.ts"
 
 const KEYS = {
@@ -9,10 +9,7 @@ const KEYS = {
  * Get the current communication register from Redis.
  */
 export async function getCommunicationRegister(): Promise<CommunicationRegister | null> {
-  const raw = await redis.get(KEYS.REGISTER)
-  if (raw == null) return null
-  const parsed = CommunicationRegister.safeParse(typeof raw === "string" ? JSON.parse(raw) : raw)
-  return parsed.success ? parsed.data : null
+  return getValidatedRedis(KEYS.REGISTER, CommunicationRegister)
 }
 
 /**

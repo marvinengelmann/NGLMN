@@ -7,7 +7,7 @@ import { DreamState } from "@/dream/types.ts"
 import { EmotionalState } from "@/emotion/types.ts"
 import { ActiveEvolution, CodeProposal, EvolutionCycleResult } from "@/evolution/types.ts"
 import { HealthCheckResult } from "@/health/types.ts"
-import { getValidatedRedis, redis } from "@/integrations/redis.ts"
+import { getValidatedRedis, getValidatedRedisOr, redis } from "@/integrations/redis.ts"
 import { OperatorLocation, WeatherData } from "@/integrations/types.ts"
 import { nowISO } from "@/lib/time.ts"
 import { PerceptionSummary } from "@/perception/types.ts"
@@ -116,14 +116,7 @@ export async function pingRedis(): Promise<boolean> {
 }
 
 export async function getConversationBuffer(): Promise<ConversationSlot[]> {
-  const raw = await redis.get(KEYS.CONVERSATION_BUFFER)
-  if (raw == null) return []
-  try {
-    const parsed = typeof raw === "string" ? JSON.parse(raw) : raw
-    return z.array(ConversationSlot).parse(parsed)
-  } catch {
-    return []
-  }
+  return getValidatedRedisOr(KEYS.CONVERSATION_BUFFER, z.array(ConversationSlot), [])
 }
 
 export async function setConversationBuffer(slots: ConversationSlot[]): Promise<void> {
@@ -451,42 +444,8 @@ export async function resetConsecutiveIdleTicks(): Promise<void> {
   await redis.set(KEYS.CONSECUTIVE_IDLE_TICKS, 0)
 }
 
-interface LegacyTrustLevelData {
-  totalAttempts: number
-  successfulAttempts: number
-}
-
 export async function getTrustEventLog(actionType: ActionType): Promise<TrustEvent[]> {
-  const raw = await redis.get(KEYS.trustLevel(actionType))
-  if (raw == null) return []
-
-  try {
-    const parsed = typeof raw === "string" ? JSON.parse(raw) : raw
-    const logResult = TrustEventLog.safeParse(parsed)
-    if (logResult.success) return logResult.data
-
-    const legacy = parsed as LegacyTrustLevelData
-    if (typeof legacy.totalAttempts === "number") {
-      const now = new Date().toISOString()
-      const events: TrustEvent[] = [
-        ...Array.from({ length: legacy.successfulAttempts }, () => ({ success: true, timestamp: now }) as TrustEvent),
-        ...Array.from(
-          { length: legacy.totalAttempts - legacy.successfulAttempts },
-          () =>
-            ({
-              success: false,
-              timestamp: now
-            }) as TrustEvent
-        )
-      ]
-      await setTrustEventLog(actionType, events)
-      return events
-    }
-
-    return []
-  } catch {
-    return []
-  }
+  return getValidatedRedisOr(KEYS.trustLevel(actionType), TrustEventLog, [])
 }
 
 export async function setTrustEventLog(actionType: ActionType, events: TrustEvent[]): Promise<void> {

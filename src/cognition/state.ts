@@ -1,4 +1,4 @@
-import { redis } from "@/integrations/redis.ts"
+import { getValidatedRedis, redis } from "@/integrations/redis.ts"
 import { AttentionState, InstinctImpression } from "./types.ts"
 
 const KEYS = {
@@ -10,10 +10,7 @@ const KEYS = {
  * Get the last instinct impression from Redis.
  */
 export async function getLastInstinctImpression(): Promise<InstinctImpression | null> {
-  const raw = await redis.get(KEYS.INSTINCT)
-  if (raw == null) return null
-  const parsed = InstinctImpression.safeParse(typeof raw === "string" ? JSON.parse(raw) : raw)
-  return parsed.success ? parsed.data : null
+  return getValidatedRedis(KEYS.INSTINCT, InstinctImpression)
 }
 
 /**
@@ -27,10 +24,7 @@ export async function saveInstinctImpression(impression: InstinctImpression): Pr
  * Get the current attention state from Redis.
  */
 export async function getAttentionState(): Promise<AttentionState | null> {
-  const raw = await redis.get(KEYS.ATTENTION)
-  if (raw == null) return null
-  const parsed = AttentionState.safeParse(typeof raw === "string" ? JSON.parse(raw) : raw)
-  return parsed.success ? parsed.data : null
+  return getValidatedRedis(KEYS.ATTENTION, AttentionState)
 }
 
 /**
