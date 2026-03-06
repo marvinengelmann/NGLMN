@@ -1,6 +1,6 @@
-import type { AttachmentDynamics, AttachmentStyle, RelationshipPhase } from "@/attachment/types.ts"
+import type { AttachmentDynamics, AttachmentStyle } from "@/attachment/types.ts"
 import { DEFAULT_ATTACHMENT } from "@/attachment/types.ts"
-import type { AttentionState, InstinctImpression } from "@/cognition/types.ts"
+import type { InstinctImpression } from "@/cognition/types.ts"
 import type { ConversationMessage, ConversationSlot } from "@/communication/types.ts"
 import type { DeceptionState, HiddenDriver } from "@/deception/types.ts"
 import { DEFAULT_DECEPTION_STATE } from "@/deception/types.ts"

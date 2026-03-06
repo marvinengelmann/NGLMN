@@ -90,7 +90,10 @@ describe("logAndCaptureError", () => {
   it("logs the error and captures in sentry", () => {
     const err = animaError("REDIS_ERROR", "connection lost")
     logAndCaptureError(err)
-    expect(mockedLog.error).toHaveBeenCalledWith("[REDIS_ERROR] connection lost", expect.objectContaining({ cause: undefined }))
+    expect(mockedLog.error).toHaveBeenCalledWith(
+      "[REDIS_ERROR] connection lost",
+      expect.objectContaining({ cause: undefined })
+    )
     expect(mockedCaptureError).toHaveBeenCalledWith("connection lost", expect.objectContaining({ tag: "REDIS_ERROR" }))
   })
 
@@ -105,6 +108,9 @@ describe("logAndCaptureError", () => {
     const err = animaError("LLM_ERROR", "timeout")
     logAndCaptureError(err, { model: "claude" })
     expect(mockedLog.error).toHaveBeenCalledWith("[LLM_ERROR] timeout", expect.objectContaining({ model: "claude" }))
-    expect(mockedCaptureError).toHaveBeenCalledWith("timeout", expect.objectContaining({ model: "claude", tag: "LLM_ERROR" }))
+    expect(mockedCaptureError).toHaveBeenCalledWith(
+      "timeout",
+      expect.objectContaining({ model: "claude", tag: "LLM_ERROR" })
+    )
   })
 })

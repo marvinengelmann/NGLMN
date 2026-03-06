@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest"
-import { DEFAULT_EMOTIONAL_STATE } from "@/emotion/types.ts"
 import type { EmotionalState } from "@/emotion/types.ts"
+import { DEFAULT_EMOTIONAL_STATE } from "@/emotion/types.ts"
 
 vi.mock("@/memory/working.ts", () => ({
   getRecentResponses: vi.fn().mockResolvedValue([]),
@@ -99,31 +99,23 @@ describe("validateOutput", () => {
 
 describe("validateEvolution", () => {
   it("approves files in allowed paths", () => {
-    const result = validateEvolution([
-      { path: "src/emotion/mood.ts", content: "export const x = 1" }
-    ])
+    const result = validateEvolution([{ path: "src/emotion/mood.ts", content: "export const x = 1" }])
     expect(result.verdict).toBe("approved")
   })
 
   it("blocks files outside allowed paths", () => {
-    const result = validateEvolution([
-      { path: "package.json", content: "{}" }
-    ])
+    const result = validateEvolution([{ path: "package.json", content: "{}" }])
     expect(result.verdict).toBe("blocked")
     expect(result.reasons[0]).toContain("outside allowed evolution paths")
   })
 
   it("blocks path traversal attempts", () => {
-    const result = validateEvolution([
-      { path: "src/emotion/../../../etc/passwd", content: "bad" }
-    ])
+    const result = validateEvolution([{ path: "src/emotion/../../../etc/passwd", content: "bad" }])
     expect(result.verdict).toBe("blocked")
   })
 
   it("blocks files exceeding size limit", () => {
-    const result = validateEvolution([
-      { path: "src/emotion/big.ts", content: "x".repeat(60_000) }
-    ])
+    const result = validateEvolution([{ path: "src/emotion/big.ts", content: "x".repeat(60_000) }])
     expect(result.verdict).toBe("blocked")
     expect(result.reasons[0]).toContain("exceeds size limit")
   })

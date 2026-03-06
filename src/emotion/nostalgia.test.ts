@@ -15,9 +15,7 @@ describe("detectNostalgia", () => {
   })
 
   it("returns null when episodes are too recent", () => {
-    const episodes = [
-      { metadata: { timestamp: "2026-03-05T12:00:00Z", relevanceScore: 0.8 } }
-    ]
+    const episodes = [{ metadata: { timestamp: "2026-03-05T12:00:00Z", relevanceScore: 0.8 } }]
     expect(detectNostalgia(episodes, now)).toBeNull()
   })
 

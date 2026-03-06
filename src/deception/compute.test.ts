@@ -12,53 +12,61 @@ afterEach(() => {
 
 describe("shouldHideDriver", () => {
   it("returns false when vulnerability is open", () => {
-    expect(shouldHideDriver({
-      dissonance: makeDissonanceState({ activeDissonance: 0.8 }),
-      selfConcept: makeSelfConcept({ authenticity: 0.3 }),
-      vulnerabilityOpen: true
-    })).toBe(false)
+    expect(
+      shouldHideDriver({
+        dissonance: makeDissonanceState({ activeDissonance: 0.8 }),
+        selfConcept: makeSelfConcept({ authenticity: 0.3 }),
+        vulnerabilityOpen: true
+      })
+    ).toBe(false)
   })
 
   it("returns false when dissonance is below threshold", () => {
-    expect(shouldHideDriver({
-      dissonance: makeDissonanceState({ activeDissonance: DECEPTION.HIDE_DISSONANCE_THRESHOLD - 0.1 }),
-      selfConcept: makeSelfConcept({ authenticity: 0.3 }),
-      vulnerabilityOpen: false
-    })).toBe(false)
+    expect(
+      shouldHideDriver({
+        dissonance: makeDissonanceState({ activeDissonance: DECEPTION.HIDE_DISSONANCE_THRESHOLD - 0.1 }),
+        selfConcept: makeSelfConcept({ authenticity: 0.3 }),
+        vulnerabilityOpen: false
+      })
+    ).toBe(false)
   })
 
   it("returns false when authenticity is at or above threshold", () => {
-    expect(shouldHideDriver({
-      dissonance: makeDissonanceState({ activeDissonance: 0.8 }),
-      selfConcept: makeSelfConcept({ authenticity: DECEPTION.HIDE_AUTHENTICITY_THRESHOLD }),
-      vulnerabilityOpen: false
-    })).toBe(false)
+    expect(
+      shouldHideDriver({
+        dissonance: makeDissonanceState({ activeDissonance: 0.8 }),
+        selfConcept: makeSelfConcept({ authenticity: DECEPTION.HIDE_AUTHENTICITY_THRESHOLD }),
+        vulnerabilityOpen: false
+      })
+    ).toBe(false)
   })
 
   it("returns true when Math.random is below probability", () => {
     vi.spyOn(Math, "random").mockReturnValue(0)
-    expect(shouldHideDriver({
-      dissonance: makeDissonanceState({ activeDissonance: 0.8 }),
-      selfConcept: makeSelfConcept({ authenticity: 0.3 }),
-      vulnerabilityOpen: false
-    })).toBe(true)
+    expect(
+      shouldHideDriver({
+        dissonance: makeDissonanceState({ activeDissonance: 0.8 }),
+        selfConcept: makeSelfConcept({ authenticity: 0.3 }),
+        vulnerabilityOpen: false
+      })
+    ).toBe(true)
   })
 
   it("returns false when Math.random is above probability", () => {
     vi.spyOn(Math, "random").mockReturnValue(0.99)
-    expect(shouldHideDriver({
-      dissonance: makeDissonanceState({ activeDissonance: 0.5 }),
-      selfConcept: makeSelfConcept({ authenticity: 0.5 }),
-      vulnerabilityOpen: false
-    })).toBe(false)
+    expect(
+      shouldHideDriver({
+        dissonance: makeDissonanceState({ activeDissonance: 0.5 }),
+        selfConcept: makeSelfConcept({ authenticity: 0.5 }),
+        vulnerabilityOpen: false
+      })
+    ).toBe(false)
   })
 })
 
 describe("selectDriverToHide", () => {
   it("returns null when no unresolved events exist", () => {
-    const events = [
-      makeDissonanceEvent({ resolution: "acceptance", dissonanceScore: 0.8 })
-    ]
+    const events = [makeDissonanceEvent({ resolution: "acceptance", dissonanceScore: 0.8 })]
     expect(selectDriverToHide(events)).toBeNull()
   })
 
@@ -74,17 +82,15 @@ describe("selectDriverToHide", () => {
     ]
     const result = selectDriverToHide(events)
     expect(result).not.toBeNull()
-    expect(result!.actualDriver).toBe("high-action")
+    expect(result?.actualDriver).toBe("high-action")
   })
 
   it("treats events without resolution as unresolved", () => {
     vi.spyOn(Math, "random").mockReturnValue(0)
-    const events = [
-      makeDissonanceEvent({ actualAction: "no-resolution", dissonanceScore: 0.7, resolution: undefined })
-    ]
+    const events = [makeDissonanceEvent({ actualAction: "no-resolution", dissonanceScore: 0.7, resolution: undefined })]
     const result = selectDriverToHide(events)
     expect(result).not.toBeNull()
-    expect(result!.actualDriver).toBe("no-resolution")
+    expect(result?.actualDriver).toBe("no-resolution")
   })
 })
 

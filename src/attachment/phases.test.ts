@@ -4,75 +4,87 @@ import { computeRelationshipPhase, shouldTransitionPhase } from "./phases.ts"
 
 describe("computeRelationshipPhase", () => {
   it("returns discovering for low interaction count", () => {
-    expect(computeRelationshipPhase({
-      interactionCount: 10,
-      daysSinceFirst: 3,
-      connectionAvg: 0.5,
-      conflicts: 0,
-      trust: 0.3,
-      attachmentSecurity: 0.4,
-      currentPhase: "discovering"
-    })).toBe("discovering")
+    expect(
+      computeRelationshipPhase({
+        interactionCount: 10,
+        daysSinceFirst: 3,
+        connectionAvg: 0.5,
+        conflicts: 0,
+        trust: 0.3,
+        attachmentSecurity: 0.4,
+        currentPhase: "discovering"
+      })
+    ).toBe("discovering")
   })
 
   it("returns honeymoon for moderate interactions with high connection", () => {
-    expect(computeRelationshipPhase({
-      interactionCount: RELATIONSHIP_PHASES.DISCOVERING_INTERACTIONS,
-      daysSinceFirst: 14,
-      connectionAvg: RELATIONSHIP_PHASES.HONEYMOON_CONNECTION + 0.1,
-      conflicts: 0,
-      trust: 0.5,
-      attachmentSecurity: 0.5,
-      currentPhase: "discovering"
-    })).toBe("honeymoon")
+    expect(
+      computeRelationshipPhase({
+        interactionCount: RELATIONSHIP_PHASES.DISCOVERING_INTERACTIONS,
+        daysSinceFirst: 14,
+        connectionAvg: RELATIONSHIP_PHASES.HONEYMOON_CONNECTION + 0.1,
+        conflicts: 0,
+        trust: 0.5,
+        attachmentSecurity: 0.5,
+        currentPhase: "discovering"
+      })
+    ).toBe("honeymoon")
   })
 
   it("returns first_tensions when conflicts arise with low connection", () => {
-    expect(computeRelationshipPhase({
-      interactionCount: 100,
-      daysSinceFirst: 30,
-      connectionAvg: RELATIONSHIP_PHASES.TENSIONS_CONNECTION - 0.1,
-      conflicts: RELATIONSHIP_PHASES.TENSIONS_MIN_CONFLICTS,
-      trust: 0.4,
-      attachmentSecurity: 0.4,
-      currentPhase: "honeymoon"
-    })).toBe("first_tensions")
+    expect(
+      computeRelationshipPhase({
+        interactionCount: 100,
+        daysSinceFirst: 30,
+        connectionAvg: RELATIONSHIP_PHASES.TENSIONS_CONNECTION - 0.1,
+        conflicts: RELATIONSHIP_PHASES.TENSIONS_MIN_CONFLICTS,
+        trust: 0.4,
+        attachmentSecurity: 0.4,
+        currentPhase: "honeymoon"
+      })
+    ).toBe("first_tensions")
   })
 
   it("returns deepening when conflicts exist with high connection and trust", () => {
-    expect(computeRelationshipPhase({
-      interactionCount: 150,
-      daysSinceFirst: 40,
-      connectionAvg: RELATIONSHIP_PHASES.DEEPENING_CONNECTION + 0.1,
-      conflicts: RELATIONSHIP_PHASES.TENSIONS_MIN_CONFLICTS,
-      trust: RELATIONSHIP_PHASES.DEEPENING_TRUST + 0.1,
-      attachmentSecurity: 0.5,
-      currentPhase: "first_tensions"
-    })).toBe("deepening")
+    expect(
+      computeRelationshipPhase({
+        interactionCount: 150,
+        daysSinceFirst: 40,
+        connectionAvg: RELATIONSHIP_PHASES.DEEPENING_CONNECTION + 0.1,
+        conflicts: RELATIONSHIP_PHASES.TENSIONS_MIN_CONFLICTS,
+        trust: RELATIONSHIP_PHASES.DEEPENING_TRUST + 0.1,
+        attachmentSecurity: 0.5,
+        currentPhase: "first_tensions"
+      })
+    ).toBe("deepening")
   })
 
   it("returns comfortable for long relationship with high security", () => {
-    expect(computeRelationshipPhase({
-      interactionCount: 500,
-      daysSinceFirst: RELATIONSHIP_PHASES.COMFORTABLE_DAYS + 1,
-      connectionAvg: 0.6,
-      conflicts: 5,
-      trust: 0.7,
-      attachmentSecurity: RELATIONSHIP_PHASES.COMFORTABLE_SECURITY + 0.1,
-      currentPhase: "deepening"
-    })).toBe("comfortable")
+    expect(
+      computeRelationshipPhase({
+        interactionCount: 500,
+        daysSinceFirst: RELATIONSHIP_PHASES.COMFORTABLE_DAYS + 1,
+        connectionAvg: 0.6,
+        conflicts: 5,
+        trust: 0.7,
+        attachmentSecurity: RELATIONSHIP_PHASES.COMFORTABLE_SECURITY + 0.1,
+        currentPhase: "deepening"
+      })
+    ).toBe("comfortable")
   })
 
   it("returns renewal when comfortable with connection spike", () => {
-    expect(computeRelationshipPhase({
-      interactionCount: 500,
-      daysSinceFirst: 90,
-      connectionAvg: RELATIONSHIP_PHASES.RENEWAL_CONNECTION_SPIKE + 0.1,
-      conflicts: 5,
-      trust: 0.8,
-      attachmentSecurity: 0.8,
-      currentPhase: "comfortable"
-    })).toBe("renewal")
+    expect(
+      computeRelationshipPhase({
+        interactionCount: 500,
+        daysSinceFirst: 90,
+        connectionAvg: RELATIONSHIP_PHASES.RENEWAL_CONNECTION_SPIKE + 0.1,
+        conflicts: 5,
+        trust: 0.8,
+        attachmentSecurity: 0.8,
+        currentPhase: "comfortable"
+      })
+    ).toBe("renewal")
   })
 })
 
