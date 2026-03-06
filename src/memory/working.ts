@@ -326,8 +326,12 @@ export async function getRecentRollbackCount(windowHours: number = 24): Promise<
   const raw = await redis.lrange(KEYS.ROLLBACK_EVENTS, 0, -1)
   const cutoff = Date.now() - windowHours * 60 * 60 * 1000
   return raw.filter((item) => {
-    const parsed = typeof item === "string" ? JSON.parse(item) : item
-    return new Date(parsed.timestamp).getTime() >= cutoff
+    try {
+      const parsed = typeof item === "string" ? JSON.parse(item) : item
+      return new Date(parsed.timestamp).getTime() >= cutoff
+    } catch {
+      return false
+    }
   }).length
 }
 
