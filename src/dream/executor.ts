@@ -11,20 +11,23 @@ import { setDreamInsights, setDreamLastRun, setDreamNarrative, setDreamState } f
 export async function executeDream(dreamResult: DreamThinkResult): Promise<void> {
   await setDreamState("dreaming")
 
-  if (dreamResult.consolidation) {
-    await applyConsolidationResult(dreamResult.consolidation)
-  }
-  if (dreamResult.creative) {
-    await applyCreativeResult(dreamResult.creative)
-  }
+  try {
+    if (dreamResult.consolidation) {
+      await applyConsolidationResult(dreamResult.consolidation)
+    }
+    if (dreamResult.creative) {
+      await applyCreativeResult(dreamResult.creative)
+    }
 
-  if (dreamResult.insights.length > 0) {
-    await setDreamInsights(dreamResult.insights)
+    if (dreamResult.insights.length > 0) {
+      await setDreamInsights(dreamResult.insights)
+    }
+    if (dreamResult.narrative) {
+      await setDreamNarrative(dreamResult.narrative)
+    }
+    await setDreamLastRun(nowISO())
+    await forgetOldEpisodes()
+  } finally {
+    await setDreamState("waking")
   }
-  if (dreamResult.narrative) {
-    await setDreamNarrative(dreamResult.narrative)
-  }
-  await setDreamLastRun(nowISO())
-  await forgetOldEpisodes()
-  await setDreamState("waking")
 }

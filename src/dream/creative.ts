@@ -26,7 +26,15 @@ const KNOWLEDGE_CATEGORIES: SemanticCategory[] = ["preference", "project", "cont
  * Gather episodic and semantic data for creative connections — pure SENSE helper.
  * Returns formatted input ready for the creative connections LLM prompt.
  */
-export async function gatherCreativeData(): Promise<string> {
+export interface CreativeData {
+  episodes: { id: string | number; score: number; metadata: Record<string, unknown> | undefined }[]
+  knowledge: { category: string; key: string; value: unknown }[]
+}
+
+/**
+ * Gather diverse episodic and semantic data for creative dream connections.
+ */
+export async function gatherCreativeData(): Promise<CreativeData> {
   const episodicResults = await Promise.all(DIVERSE_QUERIES.map((q) => queryRelated(q, 2)))
 
   const episodes = episodicResults
@@ -47,7 +55,7 @@ export async function gatherCreativeData(): Promise<string> {
     knowledgeCount: semanticEntries.length
   })
 
-  const input = {
+  return {
     episodes: episodes.map((e) => ({
       id: e.id,
       score: e.score,
@@ -55,8 +63,6 @@ export async function gatherCreativeData(): Promise<string> {
     })),
     knowledge: semanticEntries.slice(0, 10)
   }
-
-  return JSON.stringify(input)
 }
 
 /**
