@@ -10,6 +10,9 @@ import {
   saveRelationshipPhase
 } from "@/attachment/state.ts"
 import { hasStyleChanged, updateAttachmentStyle } from "@/attachment/update.ts"
+import { MOMENTUM } from "@/config/constants.ts"
+import { getMoodBaseline, saveMoodBaseline } from "@/emotion/state.ts"
+import { clampState } from "@/emotion/update.ts"
 import { log } from "@/lib/logger.ts"
 import { logAndCaptureError } from "@/lib/result.ts"
 import { applyOpinionDrift } from "@/memory/semantic.ts"
@@ -101,6 +104,21 @@ export async function maintain(
   } else {
     await resetConsecutiveIdleTicks()
   }
+
+  const oldBaseline = await getMoodBaseline()
+  const alpha = MOMENTUM.MOOD_BASELINE_ALPHA
+  const newBaseline = clampState({
+    curiosity: alpha * feelResult.emotion.curiosity + (1 - alpha) * oldBaseline.curiosity,
+    satisfaction: alpha * feelResult.emotion.satisfaction + (1 - alpha) * oldBaseline.satisfaction,
+    frustration: alpha * feelResult.emotion.frustration + (1 - alpha) * oldBaseline.frustration,
+    boredom: alpha * feelResult.emotion.boredom + (1 - alpha) * oldBaseline.boredom,
+    excitement: alpha * feelResult.emotion.excitement + (1 - alpha) * oldBaseline.excitement,
+    caution: alpha * feelResult.emotion.caution + (1 - alpha) * oldBaseline.caution,
+    connection: alpha * feelResult.emotion.connection + (1 - alpha) * oldBaseline.connection,
+    confidence: alpha * feelResult.emotion.confidence + (1 - alpha) * oldBaseline.confidence,
+    energy: alpha * feelResult.emotion.energy + (1 - alpha) * oldBaseline.energy
+  })
+  await saveMoodBaseline(newBaseline)
 
   if (Math.random() < 0.05) {
     const driftResult = await applyOpinionDrift()

@@ -25,6 +25,22 @@ export const NarrativeEntry = z.object({
 })
 export type NarrativeEntry = z.infer<typeof NarrativeEntry>
 
+export const ExistentialQuestion = z.object({
+  question: z.string(),
+  source: z.string(),
+  addedAt: z.string(),
+  intensity: z.number().min(0).max(1)
+})
+export type ExistentialQuestion = z.infer<typeof ExistentialQuestion>
+
+export const GrowthArc = z.object({
+  observation: z.string(),
+  fromState: z.string(),
+  toState: z.string(),
+  timestamp: z.string()
+})
+export type GrowthArc = z.infer<typeof GrowthArc>
+
 export const PsycheSnapshot = z.object({
   selfConcept: SelfConcept,
   aspirations: z.array(z.string()),

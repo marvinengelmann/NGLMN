@@ -1,4 +1,4 @@
-import type { SelfConcept } from "./types.ts"
+import type { GrowthArc, SelfConcept } from "./types.ts"
 
 function clamp(value: number): number {
   return Math.max(0, Math.min(1, value))
@@ -52,4 +52,33 @@ export function updateSelfConcept(current: SelfConcept, context: SelfConceptCont
     agency: clamp(agency),
     authenticity: clamp(authenticity)
   }
+}
+
+const GROWTH_ARC_THRESHOLD = 0.1
+
+const DIMENSION_LABELS: Record<keyof SelfConcept, string> = {
+  selfEfficacy: "feeling capable",
+  selfWorth: "sense of worth",
+  selfContinuity: "sense of continuity",
+  agency: "sense of agency",
+  authenticity: "feeling authentic"
+}
+
+/**
+ * Detect if a significant shift in self-concept has occurred, forming a growth arc.
+ */
+export function detectGrowthArc(current: SelfConcept, previous: SelfConcept, timestamp: string): GrowthArc | null {
+  for (const dim of Object.keys(current) as (keyof SelfConcept)[]) {
+    const delta = current[dim] - previous[dim]
+    if (Math.abs(delta) > GROWTH_ARC_THRESHOLD) {
+      const label = DIMENSION_LABELS[dim]
+      return {
+        observation: `${label} shifted ${delta > 0 ? "upward" : "downward"} by ${Math.abs(delta).toFixed(2)}`,
+        fromState: `${label}: ${previous[dim].toFixed(2)}`,
+        toState: `${label}: ${current[dim].toFixed(2)}`,
+        timestamp
+      }
+    }
+  }
+  return null
 }

@@ -6,6 +6,8 @@ import type { SomaticState } from "@/soma/types.ts"
 import { InnerDialog, type InnerVoice } from "./types.ts"
 
 const POLYPHONY_LAST_DIALOG = "working:polyphony:lastDialog"
+const DOMINANCE_HISTORY_KEY = "working:polyphony:voiceDominanceHistory"
+const MAX_DOMINANCE_HISTORY = 50
 
 interface DialogContext {
   activeVoices: InnerVoice[]
@@ -41,12 +43,15 @@ export async function generateInnerDialog(context: DialogContext): Promise<Inner
     .map(([k, v]) => `${k}: ${v.toFixed(2)}`)
     .join(", ")
 
-  const system = `You are the inner council of voices inside ANIMA. Each voice represents a genuine aspect of ANIMA's psyche. They speak briefly (1-2 sentences each), honestly, and sometimes disagree. This is not performance — it is internal processing.
+  const system = `Inner council of voices. Each represents a genuine aspect of the psyche. They speak briefly (1-2 sentences each), honestly, and sometimes disagree. This is internal processing, not performance.
 
 Active voices:
 ${voiceList}
 
-Each voice speaks from its nature. They may agree, argue, or offer different perspectives. Rate each voice's intensity from 0 (barely present) to 1 (overwhelming urgency). After all voices speak, identify if there is consensus, which voice is dominant, and what the overall tension level is (0-1).`
+Format: Two rounds.
+Round 1: Each voice gives its initial statement.
+Round 2: Voices respond to each other (use respondingTo to indicate which voice they're addressing).
+Each voice speaks from its nature. Rate intensity 0 (barely present) to 1 (overwhelming urgency). After both rounds, identify consensus, dominant voice, and tension level (0-1).`
 
   const userMessage = `Situation: ${context.situationSummary}
 Emotional state: ${emotionSummary || "balanced"}
@@ -70,6 +75,12 @@ Let each active voice speak.`
 
   const dialog = result.value
   await redis.set(POLYPHONY_LAST_DIALOG, dialog, { ex: 3600 })
+
+  if (dialog.dominantVoice) {
+    await redis.lpush(DOMINANCE_HISTORY_KEY, dialog.dominantVoice)
+    await redis.ltrim(DOMINANCE_HISTORY_KEY, 0, MAX_DOMINANCE_HISTORY - 1)
+  }
+
   return dialog
 }
 

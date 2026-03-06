@@ -1,6 +1,7 @@
 import type { EmotionalState } from "@/emotion/types.ts"
+import { redis } from "@/integrations/redis.ts"
 import type { PersonalityType } from "@/personality/types.ts"
-import type { InnerVoice } from "./types.ts"
+import { InnerVoice } from "./types.ts"
 
 interface VoiceContext {
   dissonanceScore: number
@@ -62,6 +63,35 @@ export function selectActiveVoices(
   }
 
   return sorted.slice(0, 4)
+}
+
+const DOMINANCE_HISTORY_KEY = "working:polyphony:voiceDominanceHistory"
+const DOMINANCE_FREQUENCY_BOOST = 0.1
+
+/**
+ * Get a frequency-based boost for voices that have recently been dominant.
+ */
+export async function getVoiceDominanceBoost(): Promise<Partial<Record<InnerVoice, number>>> {
+  const raw = await redis.lrange(DOMINANCE_HISTORY_KEY, 0, -1)
+  const history = raw
+    .map((v) => InnerVoice.safeParse(v))
+    .filter((r) => r.success)
+    .map((r) => r.data)
+
+  if (history.length === 0) return {}
+
+  const counts: Partial<Record<InnerVoice, number>> = {}
+  for (const voice of history) {
+    counts[voice] = (counts[voice] ?? 0) + 1
+  }
+
+  const maxCount = Math.max(...Object.values(counts))
+  const boost: Partial<Record<InnerVoice, number>> = {}
+  for (const [voice, count] of Object.entries(counts)) {
+    boost[voice as InnerVoice] = (count / maxCount) * DOMINANCE_FREQUENCY_BOOST
+  }
+
+  return boost
 }
 
 function getMbtiWeights(personality: PersonalityType): Partial<Record<InnerVoice, number>> {

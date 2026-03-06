@@ -6,7 +6,8 @@ export type InnerVoice = z.infer<typeof InnerVoice>
 export const VoiceUtterance = z.object({
   voice: InnerVoice,
   message: z.string(),
-  intensity: z.number().min(0).max(1)
+  intensity: z.number().min(0).max(1),
+  respondingTo: InnerVoice.optional()
 })
 export type VoiceUtterance = z.infer<typeof VoiceUtterance>
 

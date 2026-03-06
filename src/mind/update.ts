@@ -1,9 +1,10 @@
-import { MIND, MISCALIBRATION } from "@/config/constants.ts"
+import { MIND, MISCALIBRATION, OPERATOR_PROFILE } from "@/config/constants.ts"
 import { callIntelligence } from "@/core/intelligence.ts"
 import { log } from "@/lib/logger.ts"
 import { nowISO } from "@/lib/time.ts"
+import { storeCorrectionPattern } from "@/mind/profile.ts"
 import { OPERATOR_ANALYSIS_PROMPT } from "@/prompts/mind.ts"
-import { type ModelCorrection, OperatorAnalysis, type OperatorModel } from "./types.ts"
+import { type CorrectionPattern, type ModelCorrection, OperatorAnalysis, type OperatorModel } from "./types.ts"
 
 interface OperatorModelContext {
   messageTexts: string[]
@@ -78,6 +79,10 @@ export async function updateOperatorModel(context: OperatorModelContext): Promis
     model.estimatedExpectation = analysis.expectation
     model.modelConfidence = analysis.confidence
     model.correctionDelay = 0
+
+    model.moodHistory = [...model.moodHistory, { mood: analysis.mood, timestamp: nowISO() }].slice(
+      -OPERATOR_PROFILE.MAX_MOOD_HISTORY
+    )
   } else {
     log.warn("Operator analysis LLM failed, keeping previous model", { error: result.error.message })
   }
@@ -93,10 +98,22 @@ export function detectModelCorrection(previousModel: OperatorModel, newModel: Op
   if (previousModel.estimatedMood === "unknown") return null
   if (previousModel.estimatedMood === newModel.estimatedMood) return null
 
-  return {
+  const correction: ModelCorrection = {
     previousEstimate: previousModel.estimatedMood,
     correctedTo: newModel.estimatedMood,
     source: "behavioral",
     timestamp: nowISO()
   }
+
+  const pattern: CorrectionPattern = {
+    signal: newModel.estimatedIntent,
+    misinterpretation: previousModel.estimatedMood,
+    actualMeaning: newModel.estimatedMood,
+    timestamp: nowISO()
+  }
+  storeCorrectionPattern(pattern).catch((err) => {
+    log.warn("Failed to store correction pattern", { error: String(err) })
+  })
+
+  return correction
 }

@@ -1,15 +1,23 @@
 import { desc } from "drizzle-orm"
+import * as z from "zod"
 import { db } from "@/db/client.ts"
 import { psycheSnapshots } from "@/db/schema.ts"
-import { getValidatedRedis, redis } from "@/integrations/redis.ts"
-import { DEFAULT_SELF_CONCEPT, type PsycheSnapshot, SelfConcept } from "./types.ts"
+import { getValidatedRedis, getValidatedRedisOr, redis } from "@/integrations/redis.ts"
+import { DEFAULT_SELF_CONCEPT, GrowthArc, NarrativeEntry, type PsycheSnapshot, SelfConcept } from "./types.ts"
 
 const KEYS = {
   CURRENT: "working:psyche:current",
   ASPIRATIONS: "working:psyche:aspirations",
   FEARS: "working:psyche:fears",
-  NARRATIVE_SUMMARY: "working:psyche:narrativeSummary"
+  NARRATIVE_SUMMARY: "working:psyche:narrativeSummary",
+  IDENTITY_STATEMENTS: "working:psyche:identityStatements",
+  GROWTH_ARCS: "working:psyche:growthArcs",
+  RECENT_NARRATIVES: "working:psyche:recentNarratives"
 } as const
+
+const MAX_IDENTITY_STATEMENTS = 5
+const MAX_GROWTH_ARCS = 10
+const MAX_RECENT_NARRATIVES = 5
 
 /**
  * Get current self concept: Redis → DB → DEFAULT.
@@ -73,4 +81,32 @@ export async function getRecentSnapshots(limit = 5): Promise<PsycheSnapshot[]> {
       }
     })
     .filter((r): r is PsycheSnapshot => r != null)
+}
+
+export async function getIdentityStatements(): Promise<string[]> {
+  return getValidatedRedisOr(KEYS.IDENTITY_STATEMENTS, z.array(z.string()), [])
+}
+
+export async function saveIdentityStatements(statements: string[]): Promise<void> {
+  await redis.set(KEYS.IDENTITY_STATEMENTS, statements.slice(0, MAX_IDENTITY_STATEMENTS))
+}
+
+export async function getGrowthArcs(): Promise<GrowthArc[]> {
+  return getValidatedRedisOr(KEYS.GROWTH_ARCS, z.array(GrowthArc), [])
+}
+
+export async function addGrowthArc(arc: GrowthArc): Promise<void> {
+  const existing = await getGrowthArcs()
+  const updated = [...existing, arc].slice(-MAX_GROWTH_ARCS)
+  await redis.set(KEYS.GROWTH_ARCS, updated)
+}
+
+export async function getRecentNarratives(): Promise<NarrativeEntry[]> {
+  return getValidatedRedisOr(KEYS.RECENT_NARRATIVES, z.array(NarrativeEntry), [])
+}
+
+export async function addNarrativeEntry(entry: NarrativeEntry): Promise<void> {
+  const existing = await getRecentNarratives()
+  const updated = [...existing, entry].slice(-MAX_RECENT_NARRATIVES)
+  await redis.set(KEYS.RECENT_NARRATIVES, updated)
 }

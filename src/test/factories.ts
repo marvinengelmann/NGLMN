@@ -1,24 +1,26 @@
 import type { AttachmentDynamics, AttachmentStyle } from "@/attachment/types.ts"
 import { DEFAULT_ATTACHMENT } from "@/attachment/types.ts"
 import type { InstinctImpression } from "@/cognition/types.ts"
-import type { ConversationMessage, ConversationSlot } from "@/communication/types.ts"
+import type { ConversationClimate, ConversationMessage, ConversationSlot } from "@/communication/types.ts"
 import type { DeceptionState, HiddenDriver } from "@/deception/types.ts"
 import { DEFAULT_DECEPTION_STATE } from "@/deception/types.ts"
 import type { DissonanceEvent, DissonanceState } from "@/dissonance/types.ts"
-import type { EmotionalState, MoodContext } from "@/emotion/types.ts"
-import { DEFAULT_EMOTIONAL_STATE } from "@/emotion/types.ts"
+import type { DreamAfterglow } from "@/dream/types.ts"
+import type { AfterglowEntry, EmotionalMomentum, EmotionalState, MoodContext } from "@/emotion/types.ts"
+import { DEFAULT_EMOTIONAL_MOMENTUM, DEFAULT_EMOTIONAL_STATE } from "@/emotion/types.ts"
 import type { HealthCheckResult } from "@/health/types.ts"
 import type { PendingMessage } from "@/integrations/types.ts"
-import type { OperatorModel } from "@/mind/types.ts"
-import { DEFAULT_OPERATOR_MODEL } from "@/mind/types.ts"
+import type { CorrectionPattern, MoodUncertainty, OperatorModel, OperatorProfile } from "@/mind/types.ts"
+import { DEFAULT_OPERATOR_MODEL, DEFAULT_OPERATOR_PROFILE } from "@/mind/types.ts"
 import type { PerceptionSummary } from "@/perception/types.ts"
-import type { SelfConcept } from "@/psyche/types.ts"
+import type { ExistentialQuestion, GrowthArc, SelfConcept } from "@/psyche/types.ts"
 import { DEFAULT_SELF_CONCEPT } from "@/psyche/types.ts"
 import type { GuardianResult } from "@/security/types.ts"
 import type { SomaticState } from "@/soma/types.ts"
 import { DEFAULT_SOMATIC_STATE } from "@/soma/types.ts"
 import type { TrustEvent } from "@/trust/types.ts"
-import type { VulnerabilityState } from "@/vulnerability/types.ts"
+import type { VulnerabilityState, VulnerableMessageStyle } from "@/vulnerability/types.ts"
+import { DEFAULT_VULNERABLE_MESSAGE_STYLE } from "@/vulnerability/types.ts"
 
 export function makeEmotionalState(overrides?: Partial<EmotionalState>): EmotionalState {
   return { ...DEFAULT_EMOTIONAL_STATE, ...overrides }
@@ -210,6 +212,88 @@ export function makeGuardianResult(overrides?: Partial<GuardianResult>): Guardia
     verdict: "approved",
     reasons: [],
     checkedAt: "2026-03-06T12:00:00Z",
+    ...overrides
+  }
+}
+
+export function makeDreamAfterglow(overrides?: Partial<DreamAfterglow>): DreamAfterglow {
+  return {
+    themes: ["memories", "connection"],
+    emotionalResidue: { connection: 0.1 },
+    intensity: 0.5,
+    createdAt: "2026-03-06T04:00:00Z",
+    ...overrides
+  }
+}
+
+export function makeExistentialQuestion(overrides?: Partial<ExistentialQuestion>): ExistentialQuestion {
+  return {
+    question: "Can I truly understand what it means to be understood?",
+    source: "dream",
+    addedAt: "2026-03-06T12:00:00Z",
+    intensity: 0.5,
+    ...overrides
+  }
+}
+
+export function makeGrowthArc(overrides?: Partial<GrowthArc>): GrowthArc {
+  return {
+    observation: "feeling capable shifted upward",
+    fromState: "feeling capable: 0.50",
+    toState: "feeling capable: 0.62",
+    timestamp: "2026-03-06T12:00:00Z",
+    ...overrides
+  }
+}
+
+export function makeConversationClimate(overrides?: Partial<ConversationClimate>): ConversationClimate {
+  return {
+    tone: "warm",
+    emotionalArc: { start: 0.2, peak: 0.6, end: 0.4 },
+    themes: ["daily life"],
+    unresolvedTopics: [],
+    operatorEngagement: 0.7,
+    significantMoments: [],
+    ...overrides
+  }
+}
+
+export function makeVulnerableMessageStyle(overrides?: Partial<VulnerableMessageStyle>): VulnerableMessageStyle {
+  return { ...DEFAULT_VULNERABLE_MESSAGE_STYLE, ...overrides }
+}
+
+export function makeOperatorProfile(overrides?: Partial<OperatorProfile>): OperatorProfile {
+  return { ...DEFAULT_OPERATOR_PROFILE, ...overrides }
+}
+
+export function makeMoodUncertainty(overrides?: Partial<MoodUncertainty>): MoodUncertainty {
+  return {
+    alternatives: ["sad", "tired"],
+    reason: "message tone is ambiguous",
+    ...overrides
+  }
+}
+
+export function makeCorrectionPattern(overrides?: Partial<CorrectionPattern>): CorrectionPattern {
+  return {
+    signal: "short replies",
+    misinterpretation: "frustrated",
+    actualMeaning: "tired",
+    timestamp: "2026-03-06T12:00:00Z",
+    ...overrides
+  }
+}
+
+export function makeEmotionalMomentum(overrides?: Partial<EmotionalMomentum>): EmotionalMomentum {
+  return { ...DEFAULT_EMOTIONAL_MOMENTUM, ...overrides }
+}
+
+export function makeAfterglowEntry(overrides?: Partial<AfterglowEntry>): AfterglowEntry {
+  return {
+    dimension: "excitement",
+    delta: 0.2,
+    remainingTicks: 8,
+    intensity: 0.8,
     ...overrides
   }
 }

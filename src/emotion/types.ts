@@ -65,6 +65,39 @@ export const MoodContext = z.object({
 })
 export type MoodContext = z.infer<typeof MoodContext>
 
+export const EmotionalMomentum = z.object({
+  curiosity: z.number().min(-1).max(1),
+  satisfaction: z.number().min(-1).max(1),
+  frustration: z.number().min(-1).max(1),
+  boredom: z.number().min(-1).max(1),
+  excitement: z.number().min(-1).max(1),
+  caution: z.number().min(-1).max(1),
+  connection: z.number().min(-1).max(1),
+  confidence: z.number().min(-1).max(1),
+  energy: z.number().min(-1).max(1)
+})
+export type EmotionalMomentum = z.infer<typeof EmotionalMomentum>
+
+export const DEFAULT_EMOTIONAL_MOMENTUM: EmotionalMomentum = {
+  curiosity: 0,
+  satisfaction: 0,
+  frustration: 0,
+  boredom: 0,
+  excitement: 0,
+  caution: 0,
+  connection: 0,
+  confidence: 0,
+  energy: 0
+}
+
+export const AfterglowEntry = z.object({
+  dimension: z.string(),
+  delta: z.number(),
+  remainingTicks: z.number(),
+  intensity: z.number().min(0).max(1)
+})
+export type AfterglowEntry = z.infer<typeof AfterglowEntry>
+
 export const MetricsSnapshot = z.object({
   errorRate: z.number(),
   successRate: z.number(),

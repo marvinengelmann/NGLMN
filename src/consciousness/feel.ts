@@ -6,13 +6,30 @@ import { computeInstinctImpression } from "@/cognition/instinct.ts"
 import { saveAttentionState, saveInstinctImpression } from "@/cognition/state.ts"
 import { computeCommunicationRegister } from "@/communication/register.ts"
 import { saveCommunicationRegister } from "@/communication/state.ts"
+import { DREAM_AFTERGLOW } from "@/config/constants.ts"
 import { processDeceptionCycle } from "@/deception/compute.ts"
 import { getDeceptionState, saveDeceptionState } from "@/deception/state.ts"
 import { buildDissonanceState, checkDissonance, resolveDissonance } from "@/dissonance/check.ts"
 import { saveDissonanceState } from "@/dissonance/state.ts"
+import { DreamAfterglow } from "@/dream/types.ts"
 import { detectNostalgia } from "@/emotion/nostalgia.ts"
-import { getEmotionalState, saveEmotionalState } from "@/emotion/state.ts"
-import { applyEvent, computeEmotionalUpdate } from "@/emotion/update.ts"
+import {
+  getAfterglowEntries,
+  getEmotionalMomentum,
+  getEmotionalState,
+  saveAfterglowEntries,
+  saveEmotionalMomentum,
+  saveEmotionalState
+} from "@/emotion/state.ts"
+import {
+  applyAfterglow,
+  applyEvent,
+  applyMomentum,
+  computeEmotionalIntensity,
+  computeEmotionalUpdate,
+  detectAfterglow
+} from "@/emotion/update.ts"
+import { getValidatedRedis, redis } from "@/integrations/redis.ts"
 import { log } from "@/lib/logger.ts"
 import { setEmotionContext } from "@/lib/sentry.ts"
 import { elapsedMinutesSince, nowISO, nowLocal } from "@/lib/time.ts"
@@ -31,7 +48,13 @@ import { querySomaticMemories } from "@/soma/memory.ts"
 import { getSomaticLastTimestamp, getSomaticState, saveSomaticState } from "@/soma/state.ts"
 import { computeSomaticUpdate } from "@/soma/update.ts"
 import { getAggregateTrustExperience } from "@/trust/levels.ts"
-import { computeIntimacyScore, computeVulnerability, saveVulnerability } from "@/vulnerability/compute.ts"
+import {
+  computeIntimacyScore,
+  computeVulnerability,
+  computeVulnerableMessageStyle,
+  saveVulnerability,
+  saveVulnerableMessageStyle
+} from "@/vulnerability/compute.ts"
 import type { FeelingResult, SenseResult } from "./types.ts"
 
 /**
@@ -40,13 +63,54 @@ import type { FeelingResult, SenseResult } from "./types.ts"
  */
 export async function feel(senseResult: SenseResult): Promise<FeelingResult> {
   const currentEmotion = await getEmotionalState()
-  let emotion = computeEmotionalUpdate(
+  const computed = computeEmotionalUpdate(
     currentEmotion,
     senseResult.rawTriggers,
     senseResult.moodContext,
     Math.max(1, senseResult.elapsedMinutes),
     senseResult.triggerTimestamps
   )
+
+  const [previousMomentum, existingAfterglow] = await Promise.all([getEmotionalMomentum(), getAfterglowEntries()])
+
+  const eventIntensity = computeEmotionalIntensity(computed)
+  const { state: momentumState, momentum: newMomentum } = applyMomentum(
+    computed,
+    currentEmotion,
+    previousMomentum,
+    eventIntensity
+  )
+
+  const { state: afterglowState, remainingEntries } = applyAfterglow(momentumState, existingAfterglow)
+  const newAfterglowEntries = detectAfterglow(afterglowState, currentEmotion)
+  const allAfterglowEntries = [...remainingEntries, ...newAfterglowEntries]
+
+  let emotion = afterglowState
+
+  const dreamAfterglow = await getValidatedRedis("working:dream:afterglow", DreamAfterglow)
+  if (dreamAfterglow && dreamAfterglow.intensity >= DREAM_AFTERGLOW.MIN_INTENSITY) {
+    for (const [dim, residue] of Object.entries(dreamAfterglow.emotionalResidue)) {
+      const key = dim as keyof typeof emotion
+      if (key in emotion && typeof residue === "number") {
+        emotion = {
+          ...emotion,
+          [key]: Math.max(
+            0,
+            Math.min(1, emotion[key] + residue * dreamAfterglow.intensity * DREAM_AFTERGLOW.BLEND_WEIGHT)
+          )
+        }
+      }
+    }
+    const decayedAfterglow = { ...dreamAfterglow, intensity: dreamAfterglow.intensity * DREAM_AFTERGLOW.DECAY_PER_TICK }
+    if (decayedAfterglow.intensity >= DREAM_AFTERGLOW.MIN_INTENSITY) {
+      await redis.set("working:dream:afterglow", decayedAfterglow, { ex: DREAM_AFTERGLOW.TTL_SECONDS })
+    } else {
+      await redis.del("working:dream:afterglow")
+    }
+  }
+
+  await Promise.all([saveEmotionalMomentum(newMomentum), saveAfterglowEntries(allAfterglowEntries)])
+
   await setLastEmotionTimestamp(nowISO())
   for (const event of senseResult.rawTriggers) {
     await setTriggerTimestamp(event.trigger, nowISO())
@@ -145,6 +209,9 @@ export async function feel(senseResult: SenseResult): Promise<FeelingResult> {
     energyLevel: emotion.energy
   })
   await saveVulnerability(vulnerability)
+
+  const vulnerableStyle = computeVulnerableMessageStyle(vulnerability)
+  await saveVulnerableMessageStyle(vulnerableStyle)
 
   const updatedDeception = await processDeceptionCycle(deceptionState, {
     dissonance,

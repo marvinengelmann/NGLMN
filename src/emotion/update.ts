@@ -1,6 +1,9 @@
-import { CONTRADICTION, EMOTION, MOOD_BASELINE } from "@/config/constants.ts"
+import { CONTRADICTION, EMOTION, MOMENTUM, MOOD_BASELINE } from "@/config/constants.ts"
 import {
+  type AfterglowEntry,
+  DEFAULT_EMOTIONAL_MOMENTUM,
   DEFAULT_EMOTIONAL_STATE,
+  type EmotionalMomentum,
   type EmotionalState,
   type EmotionTrigger,
   type EmotionUpdateEvent,
@@ -287,4 +290,86 @@ export function computeEmotionalUpdate(
   state = applyContradictionBudget(state)
 
   return clampState(state)
+}
+
+const EMOTION_DIMENSIONS: (keyof EmotionalState)[] = [
+  "curiosity",
+  "satisfaction",
+  "frustration",
+  "boredom",
+  "excitement",
+  "caution",
+  "connection",
+  "confidence",
+  "energy"
+]
+
+/**
+ * Blend computed emotions with previous state via momentum for emotional continuity.
+ */
+export function applyMomentum(
+  computed: EmotionalState,
+  previous: EmotionalState,
+  _momentum: EmotionalMomentum,
+  eventIntensity: number
+): { state: EmotionalState; momentum: EmotionalMomentum } {
+  const alpha = eventIntensity > MOMENTUM.INTENSITY_THRESHOLD ? MOMENTUM.ALPHA_INTENSE : MOMENTUM.ALPHA_BASE
+
+  const state = { ...computed }
+  const newMomentum = { ...DEFAULT_EMOTIONAL_MOMENTUM }
+
+  for (const dim of EMOTION_DIMENSIONS) {
+    const blended = alpha * computed[dim] + (1 - alpha) * previous[dim]
+    state[dim] = clamp01(blended)
+    newMomentum[dim] = Math.max(-1, Math.min(1, state[dim] - previous[dim]))
+  }
+
+  return { state: clampState(state), momentum: newMomentum }
+}
+
+/**
+ * Detect afterglow entries for dimensions with significant emotional shifts.
+ */
+export function detectAfterglow(current: EmotionalState, previous: EmotionalState): AfterglowEntry[] {
+  const entries: AfterglowEntry[] = []
+  for (const dim of EMOTION_DIMENSIONS) {
+    const delta = current[dim] - previous[dim]
+    if (Math.abs(delta) > MOMENTUM.AFTERGLOW_THRESHOLD) {
+      entries.push({
+        dimension: dim,
+        delta,
+        remainingTicks: MOMENTUM.AFTERGLOW_INITIAL_TICKS,
+        intensity: Math.min(1, Math.abs(delta))
+      })
+    }
+  }
+  return entries
+}
+
+/**
+ * Apply lingering afterglow effects to emotional state and decay entries.
+ */
+export function applyAfterglow(
+  state: EmotionalState,
+  entries: AfterglowEntry[]
+): { state: EmotionalState; remainingEntries: AfterglowEntry[] } {
+  const result = { ...state }
+  const remaining: AfterglowEntry[] = []
+
+  for (const entry of entries) {
+    const dim = entry.dimension as keyof EmotionalState
+    if (dim in result) {
+      result[dim] = clamp01(result[dim] + entry.delta * entry.intensity * 0.1)
+    }
+    const decayed: AfterglowEntry = {
+      ...entry,
+      intensity: entry.intensity * MOMENTUM.AFTERGLOW_DECAY_RATE,
+      remainingTicks: entry.remainingTicks - 1
+    }
+    if (decayed.remainingTicks > 0) {
+      remaining.push(decayed)
+    }
+  }
+
+  return { state: clampState(result), remainingEntries: remaining }
 }

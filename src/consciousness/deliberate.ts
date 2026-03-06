@@ -6,11 +6,14 @@ import { thinkDream } from "@/dream/thinking.ts"
 import { log } from "@/lib/logger.ts"
 import { captureError } from "@/lib/sentry.ts"
 import { queryRelated } from "@/memory/episodic.ts"
+import { getGoalsByPriority } from "@/memory/goals.ts"
 import { getConsecutiveIdleTicks } from "@/memory/working.ts"
+import { getOperatorProfile } from "@/mind/profile.ts"
 import { generateInnerDialog } from "@/polyphony/dialog.ts"
 import { selectActiveVoices, shouldRunDialog } from "@/polyphony/voices.ts"
+import { getStructuredExistentialQuestions } from "@/psyche/questions.ts"
 import { thinkMorning, thinkReflect } from "@/routine/thinking.ts"
-import { generateBoredomImpulse } from "./boredom.ts"
+import { generateContextualImpulse } from "./boredom.ts"
 import { buildContext, buildSystemPrompt } from "./context.ts"
 import { AnimaDecision, type DeliberateResult, type FeelingResult, type SenseData, type SenseResult } from "./types.ts"
 
@@ -109,9 +112,23 @@ export async function deliberate(senseResult: SenseResult, feelResult: FeelingRe
   }
 
   const consecutiveIdle = await getConsecutiveIdleTicks()
-  const boredomImpulse = generateBoredomImpulse(feelResult.emotion, consecutiveIdle)
-  if (boredomImpulse) {
-    userPrompt = `${userPrompt}\n\n[A spontaneous thought bubbles up: "${boredomImpulse}"]`
+  const [operatorProfile, activeGoals, existentialQuestions, recentEpisodes] = await Promise.all([
+    getOperatorProfile(),
+    getGoalsByPriority().then((goals) => goals.map((g) => g.description).filter((d): d is string => d != null)),
+    getStructuredExistentialQuestions(),
+    queryRelated("meaningful recent interaction", 3).then((eps) => eps.map((e) => e.data).filter(Boolean) as string[])
+  ])
+
+  const contextualImpulse = await generateContextualImpulse({
+    emotion: feelResult.emotion,
+    consecutiveIdleTicks: consecutiveIdle,
+    recentEpisodes,
+    operatorProfile,
+    activeGoals,
+    existentialQuestions
+  })
+  if (contextualImpulse) {
+    userPrompt = `${userPrompt}\n\n[A spontaneous thought bubbles up: "${contextualImpulse}"]`
   }
 
   if (innerDialog?.utterances.length) {

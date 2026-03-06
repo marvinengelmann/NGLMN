@@ -1,5 +1,5 @@
 import { differenceInMinutes, parseISO } from "date-fns"
-import type { ConversationMessage, ConversationSlot } from "@/communication/types.ts"
+import { ConversationClimate, type ConversationMessage, type ConversationSlot } from "@/communication/types.ts"
 import { CONVERSATION, EMOTIONAL_THRESHOLDS } from "@/config/constants.ts"
 import { callIntelligence } from "@/core/intelligence.ts"
 import { TextOutput } from "@/core/types.ts"
@@ -32,10 +32,10 @@ export async function archiveConversation(
 
   const summaryResult = await callIntelligence({
     system:
-      "Summarize this conversation in 1-2 sentences. Focus on the key topics discussed and any outcomes. Be concise.",
+      "Summarize this conversation in 2-3 sentences. Focus on the key topics discussed, emotional dynamics, and any outcomes. Be concise but capture the emotional texture.",
     userMessage: conversationText,
     schema: TextOutput,
-    maxTokens: 150,
+    maxTokens: CONVERSATION.ARCHIVE_SUMMARY_MAX_TOKENS,
     reasoning: false
   })
 
@@ -58,6 +58,41 @@ export async function archiveConversation(
 /**
  * Search episodic memory for context related to a reply that references an archived message.
  */
+const CLIMATE_PROMPT = `Analyze this conversation and determine its emotional climate.
+Return a JSON object with:
+- tone: one of "warm", "tense", "playful", "serious", "intimate", "distant"
+- emotionalArc: { start: -1 to 1, peak: -1 to 1, end: -1 to 1 } (negative=negative emotion, positive=positive)
+- themes: array of up to 5 key themes discussed
+- unresolvedTopics: array of topics that were raised but not fully addressed
+- operatorEngagement: 0 to 1, how engaged the operator seemed
+- significantMoments: array of brief descriptions of emotionally significant moments`
+
+/**
+ * Compute the emotional climate of a conversation via LLM analysis.
+ */
+export async function computeConversationClimate(messages: ConversationMessage[]): Promise<ConversationClimate | null> {
+  if (messages.length < 2) return null
+
+  const conversationText = messages
+    .map((m) => `[${m.role === "operator" ? "Operator" : "ANIMA"}]: ${m.text}`)
+    .join("\n")
+
+  const result = await callIntelligence({
+    system: CLIMATE_PROMPT,
+    userMessage: conversationText,
+    schema: ConversationClimate,
+    maxTokens: 512,
+    reasoning: false
+  })
+
+  if (result.isErr()) {
+    log.warn("Failed to compute conversation climate", { error: result.error.message })
+    return null
+  }
+
+  return result.value
+}
+
 export async function recallArchivedContext(
   replyToText: string,
   activeSlots: ConversationSlot[]

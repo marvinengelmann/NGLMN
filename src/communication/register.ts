@@ -1,4 +1,4 @@
-import { SOCIAL_BATTERY } from "@/config/constants.ts"
+import { REGISTER, SOCIAL_BATTERY } from "@/config/constants.ts"
 import type { EmotionalState } from "@/emotion/types.ts"
 import type { SomaticState } from "@/soma/types.ts"
 import type { VulnerabilityState } from "@/vulnerability/types.ts"
@@ -28,4 +28,62 @@ export function computeCommunicationRegister(
   if (emotion.energy < 0.3 || soma.gravity > 0.7) return "terse"
   if (emotion.curiosity > 0.6 && emotion.energy > 0.5) return "elaborate"
   return "casual"
+}
+
+const REGISTER_SCORES: Record<CommunicationRegister, number> = {
+  raw: 1.0,
+  playful: 0.75,
+  elaborate: 0.5,
+  casual: 0.25,
+  terse: 0.0
+}
+
+function computeRegisterScore(
+  emotion: EmotionalState,
+  soma: SomaticState,
+  vulnerability: VulnerabilityState | null
+): number {
+  let score = 0.25
+
+  if (vulnerability?.windowOpen && emotion.connection > 0.6) score += 0.4
+  if (emotion.excitement > 0.65 && emotion.connection > 0.5) score += 0.25
+  if (emotion.curiosity > 0.6 && emotion.energy > 0.5) score += 0.15
+
+  if (emotion.energy < 0.3 || soma.gravity > 0.7) score -= 0.3
+  if (soma.socialBattery < SOCIAL_BATTERY.TERSE_THRESHOLD) score -= 0.5
+
+  return Math.max(0, Math.min(1, score))
+}
+
+/**
+ * Compute communication register with hysteresis to prevent rapid switching.
+ */
+export function computeCommunicationRegisterWithHysteresis(
+  emotion: EmotionalState,
+  soma: SomaticState,
+  vulnerability: VulnerabilityState | null,
+  previousRegister: CommunicationRegister
+): CommunicationRegister {
+  const newScore = computeRegisterScore(emotion, soma, vulnerability)
+  const previousScore = REGISTER_SCORES[previousRegister]
+
+  if (Math.abs(newScore - previousScore) < REGISTER.SWITCH_THRESHOLD) {
+    return previousRegister
+  }
+
+  const registers: [CommunicationRegister, number][] = Object.entries(REGISTER_SCORES) as [
+    CommunicationRegister,
+    number
+  ][]
+  let closest: CommunicationRegister = "casual"
+  let closestDist = Infinity
+  for (const [reg, regScore] of registers) {
+    const dist = Math.abs(newScore - regScore)
+    if (dist < closestDist) {
+      closestDist = dist
+      closest = reg
+    }
+  }
+
+  return closest
 }

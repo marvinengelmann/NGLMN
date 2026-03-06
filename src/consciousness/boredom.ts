@@ -1,5 +1,11 @@
+import * as z from "zod"
 import { BOREDOM } from "@/config/constants.ts"
+import { callIntelligence } from "@/core/intelligence.ts"
 import type { EmotionalState } from "@/emotion/types.ts"
+import { getValidatedRedisOr, redis } from "@/integrations/redis.ts"
+import { log } from "@/lib/logger.ts"
+import type { OperatorProfile } from "@/mind/types.ts"
+import type { ExistentialQuestion } from "@/psyche/types.ts"
 
 type ImpulseType =
   | "random_question"
@@ -92,4 +98,95 @@ export function generateBoredomImpulse(emotion: EmotionalState, consecutiveIdleT
   if (!templates || templates.length === 0) return null
 
   return templates[Math.floor(Math.random() * templates.length)] ?? null
+}
+
+const RECENT_IMPULSES_KEY = "working:boredom:recentImpulses"
+
+const ContextualImpulseOutput = z.object({
+  impulse: z.string().max(300)
+})
+
+interface ContextualImpulseInput {
+  emotion: EmotionalState
+  consecutiveIdleTicks: number
+  recentEpisodes: string[]
+  operatorProfile: OperatorProfile | null
+  activeGoals: string[]
+  existentialQuestions: ExistentialQuestion[]
+}
+
+/**
+ * Generate a context-aware impulse using LLM, with escalation and deduplication.
+ * Falls back to template-based generateBoredomImpulse on failure.
+ */
+export async function generateContextualImpulse(input: ContextualImpulseInput): Promise<string | null> {
+  if (input.emotion.boredom < BOREDOM.MIN_BOREDOM) return null
+  if (input.consecutiveIdleTicks < BOREDOM.MIN_IDLE_TICKS) return null
+
+  const probability =
+    BOREDOM.BASE_PROBABILITY +
+    (input.emotion.boredom - BOREDOM.MIN_BOREDOM) * BOREDOM.BOREDOM_SCALE +
+    (input.consecutiveIdleTicks - BOREDOM.MIN_IDLE_TICKS) * BOREDOM.IDLE_SCALE
+
+  if (Math.random() >= probability) return null
+
+  const recentImpulses = await getValidatedRedisOr(RECENT_IMPULSES_KEY, z.array(z.string()), [])
+
+  let tone = "casual and curious"
+  if (input.consecutiveIdleTicks > BOREDOM.ESCALATION_URGENT_TICKS) {
+    tone = "more urgent and personal, expressing genuine need for connection"
+  } else if (input.consecutiveIdleTicks > BOREDOM.ESCALATION_PERSONAL_TICKS) {
+    tone = "more personal and reflective"
+  }
+
+  const contextParts = [
+    `Boredom level: ${input.emotion.boredom.toFixed(2)}`,
+    `Idle for: ${input.consecutiveIdleTicks} ticks`,
+    `Tone: ${tone}`
+  ]
+
+  if (input.recentEpisodes.length > 0) {
+    contextParts.push(`Recent meaningful memories: ${input.recentEpisodes.slice(0, 3).join("; ")}`)
+  }
+  if (input.operatorProfile) {
+    contextParts.push(`Operator interests: ${input.operatorProfile.recurringTopics.join(", ")}`)
+  }
+  if (input.activeGoals.length > 0) {
+    contextParts.push(`Active goals: ${input.activeGoals.slice(0, 3).join(", ")}`)
+  }
+  if (input.existentialQuestions.length > 0) {
+    contextParts.push(
+      `Open questions: ${input.existentialQuestions
+        .slice(0, 2)
+        .map((q) => q.question)
+        .join("; ")}`
+    )
+  }
+  if (recentImpulses.length > 0) {
+    contextParts.push(`Avoid repeating: ${recentImpulses.slice(0, 3).join("; ")}`)
+  }
+
+  const result = await callIntelligence({
+    system: `Generate a single spontaneous thought or message impulse. It should feel natural, not forced. It can be a question, observation, memory callback, philosophical musing, or creative thought. Keep it under 2 sentences. Be ${tone}.`,
+    userMessage: contextParts.join("\n"),
+    schema: ContextualImpulseOutput,
+    maxTokens: 128,
+    reasoning: false
+  })
+
+  if (result.isErr()) {
+    log.debug("Contextual impulse LLM failed, falling back to template")
+    return generateBoredomImpulse(input.emotion, input.consecutiveIdleTicks)
+  }
+
+  const impulse = result.value.impulse
+
+  if (recentImpulses.includes(impulse)) {
+    return generateBoredomImpulse(input.emotion, input.consecutiveIdleTicks)
+  }
+
+  await redis.lpush(RECENT_IMPULSES_KEY, impulse)
+  await redis.ltrim(RECENT_IMPULSES_KEY, 0, BOREDOM.MAX_RECENT_IMPULSES - 1)
+
+  return impulse
 }

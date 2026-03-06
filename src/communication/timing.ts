@@ -5,12 +5,35 @@ import { sleep } from "@/lib/time.ts"
  * Compute a realistic typing duration for a given text message.
  * Simulates ~180 WPM with thinking time and random jitter, clamped to 1.5s-15s.
  */
-export function computeTypingDuration(text: string): number {
+interface TypingContext {
+  confidence?: number
+  energy?: number
+  hesitationLevel?: number
+}
+
+/**
+ * Compute a realistic typing duration for a given text message.
+ * Simulates ~180 WPM with thinking time and random jitter, clamped to 1.5s-15s.
+ * Optionally modified by emotional/vulnerability context.
+ */
+export function computeTypingDuration(text: string, context?: TypingContext): number {
   const wordCount = text.split(/\s+/).filter(Boolean).length
   const typingMs = (wordCount / TYPING.WORDS_PER_MINUTE) * 60 * 1000
   const totalMs = typingMs + TYPING.BASE_THINKING_MS
   const jitter = 1 + (Math.random() * 2 - 1) * TYPING.JITTER_FACTOR
-  const jitteredMs = totalMs * jitter
+  let jitteredMs = totalMs * jitter
+
+  if (context) {
+    if (context.confidence !== undefined && context.confidence < 0.4) {
+      jitteredMs *= 1.3
+    }
+    if (context.energy !== undefined && context.energy < 0.3) {
+      jitteredMs *= 1.4
+    }
+    if (context.hesitationLevel !== undefined && context.hesitationLevel > 0.3) {
+      jitteredMs *= 1 + context.hesitationLevel * 0.5
+    }
+  }
 
   return Math.max(TYPING.MIN_MS, Math.min(TYPING.MAX_MS, Math.round(jitteredMs)))
 }

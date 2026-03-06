@@ -1,4 +1,6 @@
 import { TYPOS } from "@/config/constants.ts"
+import type { EmotionalState } from "@/emotion/types.ts"
+import type { SomaticState } from "@/soma/types.ts"
 import type { CommunicationRegister } from "./types.ts"
 
 const TYPO_PROBABILITY: Record<CommunicationRegister, number> = {
@@ -21,13 +23,36 @@ const CORRECTION_STYLES = [
  * Maybe introduce a typo into a message based on communication register.
  * Returns the modified text and an optional correction message.
  */
+/**
+ * Compute dynamic typo probability based on emotional/somatic context.
+ */
+export function computeTypoProbability(
+  register: CommunicationRegister,
+  emotion: EmotionalState,
+  soma: SomaticState,
+  vulnerabilityOpen: boolean
+): number {
+  let probability = TYPO_PROBABILITY[register] ?? TYPOS.CASUAL_PROBABILITY
+
+  if (emotion.excitement > 0.75) probability *= TYPOS.EXCITEMENT_BOOST
+  if (emotion.energy < 0.2) probability *= TYPOS.LOW_ENERGY_BOOST
+  if (soma.tension > 0.7) probability *= TYPOS.TENSION_FOCUS
+  if (vulnerabilityOpen) probability *= TYPOS.VULNERABILITY_OPEN_BOOST
+
+  return Math.min(1, probability)
+}
+
 export function maybeIntroduceTypo(
   text: string,
-  register: CommunicationRegister
+  register: CommunicationRegister,
+  vulnerabilityOpen?: boolean
 ): { text: string; correction: string | null } {
   if (text.length < TYPOS.MIN_TEXT_LENGTH) return { text, correction: null }
 
-  const probability = TYPO_PROBABILITY[register] ?? TYPOS.CASUAL_PROBABILITY
+  let probability = TYPO_PROBABILITY[register] ?? TYPOS.CASUAL_PROBABILITY
+  if (vulnerabilityOpen) {
+    probability *= 1 + TYPOS.VULNERABILITY_BOOST
+  }
   if (Math.random() >= probability) return { text, correction: null }
 
   const words = text.split(" ")

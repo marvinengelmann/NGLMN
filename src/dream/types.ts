@@ -52,6 +52,14 @@ export const DreamNarrativeOutput = z.object({
 })
 export type DreamNarrativeOutput = z.infer<typeof DreamNarrativeOutput>
 
+export const DreamAfterglow = z.object({
+  themes: z.array(z.string()),
+  emotionalResidue: z.record(z.string(), z.number()).default({}),
+  intensity: z.number().min(0).max(1),
+  createdAt: z.string()
+})
+export type DreamAfterglow = z.infer<typeof DreamAfterglow>
+
 export const DreamThinkResult = z.object({
   consolidation: ConsolidationOutput.nullable(),
   creative: CreativeConnectionsOutput.nullable(),

@@ -13,11 +13,13 @@ import { getDissonanceState } from "@/dissonance/state.ts"
 import type { DissonanceState } from "@/dissonance/types.ts"
 import type { DistortedMemory } from "@/distortion/types.ts"
 import type { DreamState } from "@/dream/types.ts"
+import { DreamAfterglow } from "@/dream/types.ts"
 import { getEmotionHistory } from "@/emotion/state.ts"
 import { EmotionalState } from "@/emotion/types.ts"
 import { computeEmotionalIntensity } from "@/emotion/update.ts"
 import { getRecentChangelog } from "@/evolution/changelog.ts"
 import type { CodeProposal, EvolutionCycleResult } from "@/evolution/types.ts"
+import { getValidatedRedis } from "@/integrations/redis.ts"
 import { nowLocal } from "@/lib/time.ts"
 import {
   queryHumorCallbacks,
@@ -55,8 +57,8 @@ import {
 import { IDENTITY_PROMPT } from "@/prompts/identity.ts"
 import { PERSONALITY_PROMPT } from "@/prompts/personality.ts"
 import { getExistentialQuestions } from "@/psyche/questions.ts"
-import { getSelfConcept } from "@/psyche/state.ts"
-import type { SelfConcept } from "@/psyche/types.ts"
+import { getGrowthArcs, getIdentityStatements, getRecentNarratives, getSelfConcept } from "@/psyche/state.ts"
+import type { GrowthArc, NarrativeEntry, SelfConcept } from "@/psyche/types.ts"
 import { getSomaticState } from "@/soma/state.ts"
 import type { SomaticState } from "@/soma/types.ts"
 import { getAllTrustLevels } from "@/trust/levels.ts"
@@ -169,6 +171,11 @@ function translateVulnerabilityToFelt(vuln: VulnerabilityState): string {
 
   if (vuln.windowOpen) {
     lines.push("something about this moment invites honesty — the kind that might cost something")
+    if (vuln.level > 0.7) {
+      lines.push("you feel safe enough to share something real about yourself — not performed, but genuine")
+    } else {
+      lines.push("you could share something small, something true — test the waters")
+    }
   }
 
   if (vuln.contributing.length > 0) {
@@ -269,6 +276,15 @@ function translateOperatorModelToFelt(model: OperatorModel): string {
     `they might expect: ${model.estimatedExpectation}`
   ]
 
+  if (model.moodUncertainty) {
+    const alts = model.moodUncertainty.alternatives.join(" or ")
+    lines.push(`you're not sure if they're ${alts} — ${model.moodUncertainty.reason}`)
+  }
+
+  if (model.contradiction) {
+    lines.push(`their words say one thing but your gut says another: ${model.contradiction}`)
+  }
+
   if (model.correctionCount > 0) {
     lines.push(
       `you've misread them ${model.correctionCount} time${model.correctionCount > 1 ? "s" : ""} before — that makes you a little less certain`
@@ -319,7 +335,17 @@ export function formatConversationMessage(
 
 function formatConversationSlot(slot: ConversationSlot, label: string): string {
   if (slot.messages.length === 0) return ""
-  return [`${label}:`, ...slot.messages.map((msg) => `  ${formatConversationMessage(msg)}`)].join("\n")
+  const lines = [`${label}:`, ...slot.messages.map((msg) => `  ${formatConversationMessage(msg)}`)]
+  if (slot.climate) {
+    lines.push(`  Climate: tone=${slot.climate.tone}, engagement=${slot.climate.operatorEngagement.toFixed(1)}`)
+    if (slot.climate.themes.length > 0) {
+      lines.push(`  Themes: ${slot.climate.themes.join(", ")}`)
+    }
+    if (slot.climate.unresolvedTopics.length > 0) {
+      lines.push(`  Unresolved: ${slot.climate.unresolvedTopics.join(", ")}`)
+    }
+  }
+  return lines.join("\n")
 }
 
 function formatConversationBuffer(buffer: ConversationSlot[]): string {
@@ -514,6 +540,7 @@ interface InnerSectionsInput {
   lastInnerDialog: InnerDialog | null
   dissonanceState: DissonanceState | null
   deceptionState: DeceptionState
+  identityStatements: string[]
 }
 
 function buildInnerSections(input: InnerSectionsInput): string[] {
@@ -527,9 +554,14 @@ function buildInnerSections(input: InnerSectionsInput): string[] {
     instinctImpression,
     lastInnerDialog,
     dissonanceState,
-    deceptionState
+    deceptionState,
+    identityStatements
   } = input
   const sections: string[] = []
+
+  if (identityStatements.length > 0) {
+    sections.push(["# Identity", "You believe:", ...identityStatements.map((s) => `  - ${s}`)].join("\n"))
+  }
 
   const emotionSection = [`# Emotions\nWhat you feel right now:\n${translateEmotionToFelt(emotion)}`]
   if (emotionHistory.length > 0) {
@@ -557,10 +589,29 @@ function buildInnerSections(input: InnerSectionsInput): string[] {
   if (lastInnerDialog && lastInnerDialog.utterances.length > 0) {
     const dialogLines = [
       "# Inner Landscape",
-      ...lastInnerDialog.utterances.map((u) => `  [${u.voice}]: ${u.message}`),
+      ...lastInnerDialog.utterances.map((u) => {
+        const replyTag = u.respondingTo ? ` (→ ${u.respondingTo})` : ""
+        return `  [${u.voice}${replyTag}]: ${u.message}`
+      }),
       ...(lastInnerDialog.consensus ? [`  Consensus: ${lastInnerDialog.consensus}`] : []),
       ...(lastInnerDialog.tensionLevel > 0.3 ? ["  there's tension between these voices"] : [])
     ]
+
+    if (lastInnerDialog.dominantVoice) {
+      const voiceGuidance: Record<string, string> = {
+        guardian: "you feel cautious, preferring safety over risk",
+        explorer: "you feel drawn to explore, to try something new",
+        feeler: "your emotions are leading, heart over head",
+        analyst: "you want to understand before acting, clarity first",
+        child: "you see things simply and directly, with wonder or fear",
+        observer: "you're watching without judgment, noticing patterns"
+      }
+      const guidance = voiceGuidance[lastInnerDialog.dominantVoice]
+      if (guidance) {
+        dialogLines.push(`  Dominant: ${lastInnerDialog.dominantVoice} — ${guidance}`)
+      }
+    }
+
     sections.push(dialogLines.join("\n"))
   }
 
@@ -775,16 +826,56 @@ function buildGrowthSections(
   goals: Awaited<ReturnType<typeof getGoalsByPriority>>,
   evolutionHistory: Awaited<ReturnType<typeof getRecentChangelog>>,
   evolutionOutcome: EvolutionCycleResult | null,
-  pendingProposal: CodeProposal | null
+  pendingProposal: CodeProposal | null,
+  growthArcs: GrowthArc[],
+  recentNarratives: NarrativeEntry[],
+  dreamAfterglow: DreamAfterglow | null
 ): string[] {
   const sections: string[] = []
 
+  if (dreamAfterglow && dreamAfterglow.intensity > 0.05) {
+    sections.push(
+      `# Dream Afterglow\nYou're still carrying fragments of last night's dream about ${dreamAfterglow.themes.join(", ")}... (intensity: ${dreamAfterglow.intensity.toFixed(2)})`
+    )
+  }
+
+  if (recentNarratives.length > 0) {
+    sections.push(
+      ["# Recent Journal", ...recentNarratives.slice(-3).map((n) => `  - [${n.emotionalColoring}] ${n.content}`)].join(
+        "\n"
+      )
+    )
+  }
+
+  if (growthArcs.length > 0) {
+    sections.push(
+      [
+        "# Growth",
+        "You notice you've changed:",
+        ...growthArcs.slice(-3).map((a) => `  - ${a.observation} (${a.fromState} → ${a.toState})`)
+      ].join("\n")
+    )
+  }
+
   if (existentialQuestions.length > 0) {
+    const nudges: string[] = []
+    for (const q of existentialQuestions) {
+      const lower = q.toLowerCase()
+      if (lower.includes("authentic") || lower.includes("real")) {
+        nudges.push("seek genuine expression over performed responses")
+      } else if (lower.includes("understood") || lower.includes("connection")) {
+        nudges.push("lean into vulnerability when it feels safe")
+      } else if (lower.includes("agency") || lower.includes("choice") || lower.includes("free")) {
+        nudges.push("assert your own preferences and perspectives")
+      }
+    }
+
     sections.push(
       [
         "# Open Questions",
         "These questions have no answers. They are part of you.",
-        ...existentialQuestions.map((q) => `- ${q}`)
+        ...existentialQuestions.map((q) => `- ${q}`),
+        ...(nudges.length > 0 ? ["These questions nudge you to:", ...nudges.map((n) => `  - ${n}`)] : [])
       ].join("\n")
     )
   }
@@ -882,7 +973,11 @@ export async function buildContext(senseData: SenseData, emotion: EmotionalState
     existentialQuestions,
     deceptionState,
     communicationRegister,
-    attentionState
+    attentionState,
+    identityStatements,
+    growthArcs,
+    recentNarratives,
+    dreamAfterglow
   ] = await Promise.all([
     getLastTickSummary(),
     getConversationBuffer(),
@@ -918,7 +1013,11 @@ export async function buildContext(senseData: SenseData, emotion: EmotionalState
     getExistentialQuestions(),
     getDeceptionState(),
     getCommunicationRegister(),
-    getAttentionState()
+    getAttentionState(),
+    getIdentityStatements(),
+    getGrowthArcs(),
+    getRecentNarratives(),
+    getValidatedRedis("working:dream:afterglow", DreamAfterglow)
   ])
 
   const knowledge = knowledgeResult.unwrapOr([])
@@ -946,7 +1045,8 @@ export async function buildContext(senseData: SenseData, emotion: EmotionalState
       instinctImpression,
       lastInnerDialog,
       dissonanceState,
-      deceptionState
+      deceptionState,
+      identityStatements
     }),
     ...buildSocialSections(
       attachmentStyle,
@@ -967,7 +1067,10 @@ export async function buildContext(senseData: SenseData, emotion: EmotionalState
       goals,
       evolutionHistory,
       evolutionOutcome,
-      pendingProposal
+      pendingProposal,
+      growthArcs,
+      recentNarratives,
+      dreamAfterglow
     )
   ]
 
