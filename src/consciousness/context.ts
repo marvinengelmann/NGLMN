@@ -1,18 +1,23 @@
 import { format } from "date-fns"
 import { getAttachmentStyle, getRelationshipPhase } from "@/attachment/state.ts"
 import type { AttachmentStyle } from "@/attachment/types.ts"
-import { AttentionState, InstinctImpression } from "@/cognition/types.ts"
-import { CommunicationRegister, type ConversationSlot } from "@/communication/types.ts"
+import { getAttentionState, getLastInstinctImpression } from "@/cognition/state.ts"
+import type { AttentionState, InstinctImpression } from "@/cognition/types.ts"
+import { getCommunicationRegister } from "@/communication/state.ts"
+import type { CommunicationRegister, ConversationSlot } from "@/communication/types.ts"
 import { CONTEXT_LIMITS, HUMOR, SOCIAL_BATTERY } from "@/config/constants.ts"
-import type { SenseData } from "@/consciousness/types.ts"
+import type { SenseData, TickSummary } from "@/consciousness/types.ts"
 import { getDeceptionState } from "@/deception/state.ts"
-import { DissonanceState } from "@/dissonance/types.ts"
+import type { DeceptionState } from "@/deception/types.ts"
+import { getDissonanceState } from "@/dissonance/state.ts"
+import type { DissonanceState } from "@/dissonance/types.ts"
+import type { DistortedMemory } from "@/distortion/types.ts"
 import type { DreamState } from "@/dream/types.ts"
 import { getEmotionHistory } from "@/emotion/state.ts"
 import { EmotionalState } from "@/emotion/types.ts"
 import { computeEmotionalIntensity } from "@/emotion/update.ts"
 import { getRecentChangelog } from "@/evolution/changelog.ts"
-import { getValidatedRedis } from "@/integrations/redis.ts"
+import type { CodeProposal, EvolutionCycleResult } from "@/evolution/types.ts"
 import { nowLocal, TIMEZONE } from "@/lib/time.ts"
 import {
   queryHumorCallbacks,
@@ -38,7 +43,8 @@ import {
 import { getOperatorModel } from "@/mind/state.ts"
 import type { OperatorModel } from "@/mind/types.ts"
 import { computeTimePerception } from "@/perception/time.ts"
-import { InnerDialog } from "@/polyphony/types.ts"
+import { getLastInnerDialog } from "@/polyphony/dialog.ts"
+import type { InnerDialog } from "@/polyphony/types.ts"
 import {
   ACTIONS_PROMPT,
   COMMUNICATION_PROMPT,
@@ -51,7 +57,8 @@ import { PERSONALITY_PROMPT } from "@/prompts/personality.ts"
 import { getExistentialQuestions } from "@/psyche/questions.ts"
 import { getSelfConcept } from "@/psyche/state.ts"
 import type { SelfConcept } from "@/psyche/types.ts"
-import { SomaticState } from "@/soma/types.ts"
+import { getSomaticState } from "@/soma/state.ts"
+import type { SomaticState } from "@/soma/types.ts"
 import { getAllTrustLevels } from "@/trust/levels.ts"
 import { getVulnerability } from "@/vulnerability/compute.ts"
 import type { VulnerabilityState } from "@/vulnerability/types.ts"
@@ -384,97 +391,18 @@ function formatTriggerDescription(trigger: WorkflowDefinition["trigger"]): strin
   }
 }
 
-/**
- * Build the full context for ANIMA's single LLM call.
- * Gathers all data, formats into ordered sections, joined with double newlines.
- */
-export async function buildContext(senseData: SenseData, emotion: EmotionalState): Promise<string> {
-  const emotionIntensity = computeEmotionalIntensity(emotion)
-
-  const [
-    lastTick,
-    conversationBuffer,
-    emotionHistory,
-    episodes,
-    relationships,
-    knowledgeResult,
-    operatorLanguage,
-    goals,
-    trustLevels,
-    evolutionHistory,
-    evolutionOutcome,
-    pendingProposal,
-    dreamState,
-    dreamLastRun,
-    dreamInsights,
-    reflectionLastAt,
-    somaticState,
-    selfConcept,
-    attachmentStyle,
-    vulnerabilityState,
-    lastInnerDialog,
-    dissonanceState,
-    instinctImpression,
-    relationshipPhase,
-    operatorModel,
-    existentialQuestions,
-    deceptionState,
-    communicationRegister,
-    attentionState
-  ] = await Promise.all([
-    getLastTickSummary(),
-    getConversationBuffer(),
-    getEmotionHistory(CONTEXT_LIMITS.maxEmotionHistory),
-    senseData.pendingMessages.length > 0
-      ? queryRelatedWithDistortion(
-          senseData.pendingMessages.map((m) => m.text).join(" "),
-          CONTEXT_LIMITS.maxEpisodes,
-          emotionIntensity
-        )
-      : queryRelatedWithDistortion("recent activity", CONTEXT_LIMITS.maxEpisodes, emotionIntensity),
-    queryRelationshipHistory(CONTEXT_LIMITS.maxRelationship),
-    getKnowledge({ limit: CONTEXT_LIMITS.maxSemantic }),
-    getOperatorLanguage(),
-    getGoalsByPriority(CONTEXT_LIMITS.maxGoals, emotion),
-    getAllTrustLevels(),
-    getRecentChangelog(5),
-    getEvolutionCycleResult(),
-    getPendingEvolutionProposal(),
-    getDreamState(),
-    getDreamLastRun(),
-    getDreamInsights(),
-    getReflectionLastAt(),
-    getValidatedRedis("working:soma:current", SomaticState),
-    getSelfConcept(),
-    getAttachmentStyle(),
-    getVulnerability(),
-    getValidatedRedis("working:polyphony:lastDialog", InnerDialog),
-    getValidatedRedis("working:dissonance:active", DissonanceState),
-    getValidatedRedis("working:cognition:instinct:lastImpression", InstinctImpression),
-    getRelationshipPhase(),
-    getOperatorModel(),
-    getExistentialQuestions(),
-    getDeceptionState(),
-    getValidatedRedis("working:communication:register", CommunicationRegister),
-    getValidatedRedis("working:cognition:attention", AttentionState)
-  ])
-
-  const knowledge = knowledgeResult.unwrapOr([])
+function buildPerceptionSections(
+  senseData: SenseData,
+  operatorLanguage: string,
+  lastTick: TickSummary | null,
+  conversationBuffer: ConversationSlot[],
+  timePerception: ReturnType<typeof computeTimePerception>
+): string[] {
   const sections: string[] = []
 
   const formattedTime = format(nowLocal(), "EEEE, MMMM d, yyyy · HH:mm")
   sections.push(`# Time\n${formattedTime} (${TIMEZONE})`)
 
-  const [recentDurations, consecutiveIdleTicks] = await Promise.all([
-    getRecentTickDurations(),
-    getConsecutiveIdleTicks()
-  ])
-  const timePerception = computeTimePerception(
-    recentDurations,
-    emotionIntensity,
-    consecutiveIdleTicks,
-    senseData.moodContext.operatorSilenceMinutes
-  )
   if (timePerception.subjectivePace !== "normal") {
     sections.push(`# Time Perception\nPace: ${timePerception.subjectivePace} — ${timePerception.description}`)
   }
@@ -487,122 +415,6 @@ export async function buildContext(senseData: SenseData, emotion: EmotionalState
       `Everything in the messages array — every single message — is ${operatorLanguage}.`
     ].join("\n")
   )
-
-  const emotionSection = [`# Emotions\nWhat you feel right now:\n${translateEmotionToFelt(emotion)}`]
-  if (emotionHistory.length > 0) {
-    emotionSection.push(`How you got here (recent shifts):`)
-    emotionSection.push(...translateEmotionTrajectoryToFelt(emotionHistory))
-  }
-  sections.push(emotionSection.join("\n"))
-
-  if (emotion.curiosity > 0.7 && senseData.pendingMessages.length === 0) {
-    sections.push(
-      [
-        "# Curiosity",
-        "Your curiosity is buzzing. You feel drawn to explore, wonder, or ask something.",
-        "Consider reaching out with a genuine question or sharing a thought that fascinates you."
-      ].join("\n")
-    )
-  }
-
-  if (somaticState) {
-    sections.push(`# Somatic State\n${translateSomaticToFelt(somaticState)}`)
-  }
-
-  sections.push(`# Psyche\n${translatePsycheToFelt(selfConcept)}`)
-
-  sections.push(`# Attachment\n${translateAttachmentToFelt(attachmentStyle)}`)
-
-  sections.push(`# Relationship Phase\nCurrent: ${relationshipPhase}`)
-
-  if (lastInnerDialog && lastInnerDialog.utterances.length > 0) {
-    const dialogLines = [
-      "# Inner Landscape",
-      ...lastInnerDialog.utterances.map((u) => `  [${u.voice}]: ${u.message}`),
-      ...(lastInnerDialog.consensus ? [`  Consensus: ${lastInnerDialog.consensus}`] : []),
-      ...(lastInnerDialog.tensionLevel > 0.3 ? ["  there's tension between these voices"] : [])
-    ]
-    sections.push(dialogLines.join("\n"))
-  }
-
-  if (vulnerabilityState) {
-    sections.push(`# Vulnerability\n${translateVulnerabilityToFelt(vulnerabilityState)}`)
-  }
-
-  if (dissonanceState && dissonanceState.activeDissonance > 0.1) {
-    const dissonanceDesc =
-      dissonanceState.activeDissonance > 0.6
-        ? "something feels deeply off — what you believe and what you do aren't matching"
-        : "a quiet unease, a small gap between your values and your actions"
-
-    sections.push(
-      [
-        `# Dissonance\n${dissonanceDesc}`,
-        ...dissonanceState.recentEvents.slice(0, 3).map((event) => {
-          const hiddenDriver = deceptionState.activeHiddenDrivers.find((d) => d.actualDriver === event.actualAction)
-          const displayAction = hiddenDriver ? hiddenDriver.statedReason : event.actualAction
-          return `  - you said "${event.declaredValue}" but did "${displayAction}"`
-        })
-      ].join("\n")
-    )
-  }
-
-  if (instinctImpression) {
-    sections.push(`# Instinct\n${translateInstinctToFelt(instinctImpression)}`)
-  }
-
-  {
-    const register = communicationRegister ?? "casual"
-    const withdrawn = somaticState && somaticState.socialBattery < SOCIAL_BATTERY.WITHDRAWN_THRESHOLD
-    const registerLines = [
-      "# Communication Register",
-      `Current: ${register}`,
-      "- elaborate: Longer, exploratory, philosophical. You enjoy the texture of ideas.",
-      "- casual: Natural, relaxed. Default mode.",
-      "- terse: Short, minimal. Single sentences. You lack energy.",
-      "- playful: Light, witty, warm. Humor welcome.",
-      "- raw: Unguarded, honest, emotionally exposed. No performance."
-    ]
-    if (withdrawn) {
-      registerLines.push(
-        "You are socially withdrawn — your words feel used up. You don't expect or want a reply. Set expectsReply to false."
-      )
-    }
-    sections.push(registerLines.join("\n"))
-  }
-
-  {
-    const attention = attentionState ?? "focused"
-    sections.push(`# Attention\nState: ${attention}`)
-  }
-
-  sections.push(`# Operator Model\n${translateOperatorModelToFelt(operatorModel)}`)
-
-  if (existentialQuestions.length > 0) {
-    sections.push(
-      [
-        "# Open Questions",
-        "These questions have no answers. They are part of you.",
-        ...existentialQuestions.map((q) => `- ${q}`)
-      ].join("\n")
-    )
-  }
-
-  const dreamDescriptions: Record<DreamState, string> = {
-    idle: "You are awake. No dream cycle active.",
-    dreaming: "You are currently dreaming.",
-    waking: "You are waking up from a dream."
-  }
-  const dreamLines: string[] = ["# Dream", dreamDescriptions[dreamState] ?? dreamDescriptions.idle]
-  if (dreamLastRun) dreamLines.push(`Last dream: ${dreamLastRun}`)
-  if (dreamInsights && dreamInsights.length > 0) {
-    dreamLines.push(`Insights from last dream: ${dreamInsights.join("; ")}`)
-  }
-  sections.push(dreamLines.join("\n"))
-
-  if (reflectionLastAt) {
-    sections.push(`# Reflection\nLast reflection: ${reflectionLastAt}`)
-  }
 
   if (senseData.health) {
     const health = senseData.health
@@ -647,17 +459,192 @@ export async function buildContext(senseData: SenseData, emotion: EmotionalState
     )
   }
 
-  if (goals.length > 0) {
+  const workflowSection = formatTriggeredWorkflows(senseData.triggeredWorkflows ?? [])
+  if (workflowSection) {
+    sections.push(workflowSection)
+  }
+
+  if (senseData.pendingMessages.length > 0) {
+    const messageLines = senseData.pendingMessages.map((message) => {
+      const idPrefix = message.messageId ? `[#${message.messageId}] ` : ""
+      const voiceTag = message.isVoice ? `[Voice Message, ${message.voiceDurationSeconds ?? 0}s] ` : ""
+      return `  ${idPrefix}${voiceTag}[${message.from}]: ${message.text}`
+    })
+    sections.push(
+      `# Messages\nNew messages from operator (${senseData.pendingMessages.length}):\n${messageLines.join("\n")}`
+    )
+  }
+
+  sections.push(formatConversationBuffer(conversationBuffer))
+
+  if (senseData.conversationState) {
+    const conversationState = senseData.conversationState
     sections.push(
       [
-        `# Goals\nActive goals (${goals.length}):`,
-        ...goals.map(
-          (goal) =>
-            `  - [${goal.status ?? "open"}] ${goal.title} (priority: ${goal.priority ?? 0.5})${goal.description ? ` — ${goal.description}` : ""}`
-        )
+        "# Conversation State",
+        "Active conversation: yes",
+        `Waiting for reply: ${conversationState.waitingSeconds}s`,
+        conversationState.replyReceived ? "Operator just replied." : "No reply received this cycle."
+      ].join("\n")
+    )
+  } else {
+    sections.push("# Conversation State\nActive conversation: no")
+  }
+
+  return sections
+}
+
+function buildInnerSections(
+  emotion: EmotionalState,
+  emotionHistory: { state: unknown; trigger: string | null; createdAt: Date | null }[],
+  senseData: SenseData,
+  somaticState: SomaticState | null,
+  selfConcept: SelfConcept,
+  vulnerabilityState: VulnerabilityState | null,
+  instinctImpression: InstinctImpression | null,
+  lastInnerDialog: InnerDialog | null,
+  dissonanceState: DissonanceState | null,
+  deceptionState: DeceptionState
+): string[] {
+  const sections: string[] = []
+
+  const emotionSection = [`# Emotions\nWhat you feel right now:\n${translateEmotionToFelt(emotion)}`]
+  if (emotionHistory.length > 0) {
+    emotionSection.push(`How you got here (recent shifts):`)
+    emotionSection.push(...translateEmotionTrajectoryToFelt(emotionHistory))
+  }
+  sections.push(emotionSection.join("\n"))
+
+  if (emotion.curiosity > 0.7 && senseData.pendingMessages.length === 0) {
+    sections.push(
+      [
+        "# Curiosity",
+        "Your curiosity is buzzing. You feel drawn to explore, wonder, or ask something.",
+        "Consider reaching out with a genuine question or sharing a thought that fascinates you."
       ].join("\n")
     )
   }
+
+  if (somaticState) {
+    sections.push(`# Somatic State\n${translateSomaticToFelt(somaticState)}`)
+  }
+
+  sections.push(`# Psyche\n${translatePsycheToFelt(selfConcept)}`)
+
+  if (lastInnerDialog && lastInnerDialog.utterances.length > 0) {
+    const dialogLines = [
+      "# Inner Landscape",
+      ...lastInnerDialog.utterances.map((u) => `  [${u.voice}]: ${u.message}`),
+      ...(lastInnerDialog.consensus ? [`  Consensus: ${lastInnerDialog.consensus}`] : []),
+      ...(lastInnerDialog.tensionLevel > 0.3 ? ["  there's tension between these voices"] : [])
+    ]
+    sections.push(dialogLines.join("\n"))
+  }
+
+  if (vulnerabilityState) {
+    sections.push(`# Vulnerability\n${translateVulnerabilityToFelt(vulnerabilityState)}`)
+  }
+
+  if (dissonanceState && dissonanceState.activeDissonance > 0.1) {
+    const dissonanceDesc =
+      dissonanceState.activeDissonance > 0.6
+        ? "something feels deeply off — what you believe and what you do aren't matching"
+        : "a quiet unease, a small gap between your values and your actions"
+
+    sections.push(
+      [
+        `# Dissonance\n${dissonanceDesc}`,
+        ...dissonanceState.recentEvents.slice(0, 3).map((event) => {
+          const hiddenDriver = deceptionState.activeHiddenDrivers.find((d) => d.actualDriver === event.actualAction)
+          const displayAction = hiddenDriver ? hiddenDriver.statedReason : event.actualAction
+          return `  - you said "${event.declaredValue}" but did "${displayAction}"`
+        })
+      ].join("\n")
+    )
+  }
+
+  if (instinctImpression) {
+    sections.push(`# Instinct\n${translateInstinctToFelt(instinctImpression)}`)
+  }
+
+  return sections
+}
+
+function buildSocialSections(
+  attachmentStyle: AttachmentStyle,
+  relationshipPhase: string,
+  communicationRegister: CommunicationRegister | null,
+  somaticState: SomaticState | null,
+  attentionState: AttentionState | null,
+  operatorModel: OperatorModel,
+  trustLevels: Awaited<ReturnType<typeof getAllTrustLevels>>
+): string[] {
+  const sections: string[] = []
+
+  sections.push(`# Attachment\n${translateAttachmentToFelt(attachmentStyle)}`)
+
+  sections.push(`# Relationship Phase\nCurrent: ${relationshipPhase}`)
+
+  {
+    const register = communicationRegister ?? "casual"
+    const withdrawn = somaticState && somaticState.socialBattery < SOCIAL_BATTERY.WITHDRAWN_THRESHOLD
+    const registerLines = [
+      "# Communication Register",
+      `Current: ${register}`,
+      "- elaborate: Longer, exploratory, philosophical. You enjoy the texture of ideas.",
+      "- casual: Natural, relaxed. Default mode.",
+      "- terse: Short, minimal. Single sentences. You lack energy.",
+      "- playful: Light, witty, warm. Humor welcome.",
+      "- raw: Unguarded, honest, emotionally exposed. No performance."
+    ]
+    if (withdrawn) {
+      registerLines.push(
+        "You are socially withdrawn — your words feel used up. You don't expect or want a reply. Set expectsReply to false."
+      )
+    }
+    sections.push(registerLines.join("\n"))
+  }
+
+  {
+    const attention = attentionState ?? "focused"
+    sections.push(`# Attention\nState: ${attention}`)
+  }
+
+  sections.push(`# Operator Model\n${translateOperatorModelToFelt(operatorModel)}`)
+
+  if (trustLevels.length > 0) {
+    sections.push(
+      [
+        "# Trust",
+        ...trustLevels.map((t) => {
+          const ratio = t.totalAttempts > 0 ? t.successfulAttempts / t.totalAttempts : 0
+          const trustFeel =
+            ratio > 0.8
+              ? "solid — this feels safe"
+              : ratio > 0.5
+                ? "cautiously optimistic"
+                : ratio > 0.2
+                  ? "shaky — mixed results"
+                  : t.totalAttempts === 0
+                    ? "untested — no experience yet"
+                    : "burnt — too many failures"
+          return `  - ${t.actionType}: ${trustFeel}`
+        })
+      ].join("\n")
+    )
+  }
+
+  return sections
+}
+
+async function buildMemorySections(
+  episodes: DistortedMemory[],
+  emotion: EmotionalState,
+  senseData: SenseData,
+  knowledge: { category: string; key: string; value: unknown; scope: string; confidence: number | null; id: string }[],
+  relationships: Awaited<ReturnType<typeof queryRelationshipHistory>>
+): Promise<string[]> {
+  const sections: string[] = []
 
   if (episodes.length > 0) {
     sections.push(
@@ -738,28 +725,6 @@ export async function buildContext(senseData: SenseData, emotion: EmotionalState
     }
   }
 
-  if (trustLevels.length > 0) {
-    sections.push(
-      [
-        "# Trust",
-        ...trustLevels.map((t) => {
-          const ratio = t.totalAttempts > 0 ? t.successfulAttempts / t.totalAttempts : 0
-          const trustFeel =
-            ratio > 0.8
-              ? "solid — this feels safe"
-              : ratio > 0.5
-                ? "cautiously optimistic"
-                : ratio > 0.2
-                  ? "shaky — mixed results"
-                  : t.totalAttempts === 0
-                    ? "untested — no experience yet"
-                    : "burnt — too many failures"
-          return `  - ${t.actionType}: ${trustFeel}`
-        })
-      ].join("\n")
-    )
-  }
-
   if (relationships.length > 0) {
     sections.push(
       [
@@ -771,6 +736,60 @@ export async function buildContext(senseData: SenseData, emotion: EmotionalState
             const textPart = text ? ` — ${text}` : ""
             return `  - ${rel.metadata?.timestamp}${textPart}`
           })
+      ].join("\n")
+    )
+  }
+
+  return sections
+}
+
+function buildGrowthSections(
+  existentialQuestions: string[],
+  dreamState: DreamState,
+  dreamLastRun: string | null,
+  dreamInsights: string[] | null,
+  reflectionLastAt: string | null,
+  goals: Awaited<ReturnType<typeof getGoalsByPriority>>,
+  evolutionHistory: Awaited<ReturnType<typeof getRecentChangelog>>,
+  evolutionOutcome: EvolutionCycleResult | null,
+  pendingProposal: CodeProposal | null
+): string[] {
+  const sections: string[] = []
+
+  if (existentialQuestions.length > 0) {
+    sections.push(
+      [
+        "# Open Questions",
+        "These questions have no answers. They are part of you.",
+        ...existentialQuestions.map((q) => `- ${q}`)
+      ].join("\n")
+    )
+  }
+
+  const dreamDescriptions: Record<DreamState, string> = {
+    idle: "You are awake. No dream cycle active.",
+    dreaming: "You are currently dreaming.",
+    waking: "You are waking up from a dream."
+  }
+  const dreamLines: string[] = ["# Dream", dreamDescriptions[dreamState] ?? dreamDescriptions.idle]
+  if (dreamLastRun) dreamLines.push(`Last dream: ${dreamLastRun}`)
+  if (dreamInsights && dreamInsights.length > 0) {
+    dreamLines.push(`Insights from last dream: ${dreamInsights.join("; ")}`)
+  }
+  sections.push(dreamLines.join("\n"))
+
+  if (reflectionLastAt) {
+    sections.push(`# Reflection\nLast reflection: ${reflectionLastAt}`)
+  }
+
+  if (goals.length > 0) {
+    sections.push(
+      [
+        `# Goals\nActive goals (${goals.length}):`,
+        ...goals.map(
+          (goal) =>
+            `  - [${goal.status ?? "open"}] ${goal.title} (priority: ${goal.priority ?? 0.5})${goal.description ? ` — ${goal.description}` : ""}`
+        )
       ].join("\n")
     )
   }
@@ -801,37 +820,133 @@ export async function buildContext(senseData: SenseData, emotion: EmotionalState
     sections.push(`# Changelog\nRecent changes:\n${changelog}`)
   }
 
-  const workflowSection = formatTriggeredWorkflows(senseData.triggeredWorkflows ?? [])
-  if (workflowSection) {
-    sections.push(workflowSection)
-  }
+  return sections
+}
 
-  if (senseData.pendingMessages.length > 0) {
-    const messageLines = senseData.pendingMessages.map((message) => {
-      const idPrefix = message.messageId ? `[#${message.messageId}] ` : ""
-      const voiceTag = message.isVoice ? `[Voice Message, ${message.voiceDurationSeconds ?? 0}s] ` : ""
-      return `  ${idPrefix}${voiceTag}[${message.from}]: ${message.text}`
-    })
-    sections.push(
-      `# Messages\nNew messages from operator (${senseData.pendingMessages.length}):\n${messageLines.join("\n")}`
+/**
+ * Build the full context for ANIMA's single LLM call.
+ * Gathers all data, formats into ordered sections, joined with double newlines.
+ */
+export async function buildContext(senseData: SenseData, emotion: EmotionalState): Promise<string> {
+  const emotionIntensity = computeEmotionalIntensity(emotion)
+
+  const [
+    lastTick,
+    conversationBuffer,
+    emotionHistory,
+    episodes,
+    relationships,
+    knowledgeResult,
+    operatorLanguage,
+    goals,
+    trustLevels,
+    evolutionHistory,
+    evolutionOutcome,
+    pendingProposal,
+    dreamState,
+    dreamLastRun,
+    dreamInsights,
+    reflectionLastAt,
+    somaticState,
+    selfConcept,
+    attachmentStyle,
+    vulnerabilityState,
+    lastInnerDialog,
+    dissonanceState,
+    instinctImpression,
+    relationshipPhase,
+    operatorModel,
+    existentialQuestions,
+    deceptionState,
+    communicationRegister,
+    attentionState
+  ] = await Promise.all([
+    getLastTickSummary(),
+    getConversationBuffer(),
+    getEmotionHistory(CONTEXT_LIMITS.maxEmotionHistory),
+    senseData.pendingMessages.length > 0
+      ? queryRelatedWithDistortion(
+          senseData.pendingMessages.map((m) => m.text).join(" "),
+          CONTEXT_LIMITS.maxEpisodes,
+          emotionIntensity
+        )
+      : queryRelatedWithDistortion("recent activity", CONTEXT_LIMITS.maxEpisodes, emotionIntensity),
+    queryRelationshipHistory(CONTEXT_LIMITS.maxRelationship),
+    getKnowledge({ limit: CONTEXT_LIMITS.maxSemantic }),
+    getOperatorLanguage(),
+    getGoalsByPriority(CONTEXT_LIMITS.maxGoals, emotion),
+    getAllTrustLevels(),
+    getRecentChangelog(5),
+    getEvolutionCycleResult(),
+    getPendingEvolutionProposal(),
+    getDreamState(),
+    getDreamLastRun(),
+    getDreamInsights(),
+    getReflectionLastAt(),
+    getSomaticState(),
+    getSelfConcept(),
+    getAttachmentStyle(),
+    getVulnerability(),
+    getLastInnerDialog(),
+    getDissonanceState(),
+    getLastInstinctImpression(),
+    getRelationshipPhase(),
+    getOperatorModel(),
+    getExistentialQuestions(),
+    getDeceptionState(),
+    getCommunicationRegister(),
+    getAttentionState()
+  ])
+
+  const knowledge = knowledgeResult.unwrapOr([])
+
+  const [recentDurations, consecutiveIdleTicks] = await Promise.all([
+    getRecentTickDurations(),
+    getConsecutiveIdleTicks()
+  ])
+  const timePerception = computeTimePerception(
+    recentDurations,
+    emotionIntensity,
+    consecutiveIdleTicks,
+    senseData.moodContext.operatorSilenceMinutes
+  )
+
+  const sections = [
+    ...buildPerceptionSections(senseData, operatorLanguage, lastTick, conversationBuffer, timePerception),
+    ...buildInnerSections(
+      emotion,
+      emotionHistory,
+      senseData,
+      somaticState,
+      selfConcept,
+      vulnerabilityState,
+      instinctImpression,
+      lastInnerDialog,
+      dissonanceState,
+      deceptionState
+    ),
+    ...buildSocialSections(
+      attachmentStyle,
+      relationshipPhase,
+      communicationRegister,
+      somaticState,
+      attentionState,
+      operatorModel,
+      trustLevels
+    ),
+    ...(await buildMemorySections(episodes, emotion, senseData, knowledge, relationships)),
+    ...buildGrowthSections(
+      existentialQuestions,
+      dreamState,
+      dreamLastRun,
+      dreamInsights,
+      reflectionLastAt,
+      goals,
+      evolutionHistory,
+      evolutionOutcome,
+      pendingProposal
     )
-  }
-
-  sections.push(formatConversationBuffer(conversationBuffer))
-
-  if (senseData.conversationState) {
-    const conversationState = senseData.conversationState
-    sections.push(
-      [
-        "# Conversation State",
-        "Active conversation: yes",
-        `Waiting for reply: ${conversationState.waitingSeconds}s`,
-        conversationState.replyReceived ? "Operator just replied." : "No reply received this cycle."
-      ].join("\n")
-    )
-  } else {
-    sections.push("# Conversation State\nActive conversation: no")
-  }
+  ]
 
   return sections.filter(Boolean).join("\n\n")
 }
