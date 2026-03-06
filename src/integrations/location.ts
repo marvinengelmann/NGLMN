@@ -1,3 +1,4 @@
+import * as z from "zod"
 import type { OperatorLocation } from "@/integrations/types.ts"
 import { logAndCaptureError } from "@/lib/result.ts"
 import { nowISO } from "@/lib/time.ts"
@@ -43,16 +44,17 @@ export async function resolveOperatorLocation(): Promise<OperatorLocation | null
   if (knowledgeResult.isOk()) {
     const rows = knowledgeResult.value
     if (rows.length > 0) {
-      const value = rows[0]?.value as {
-        latitude: number
-        longitude: number
-        cityName?: string
-      }
-      if (value.latitude != null && value.longitude != null) {
+      const StoredLocation = z.object({
+        latitude: z.number(),
+        longitude: z.number(),
+        cityName: z.string().optional()
+      })
+      const parsed = StoredLocation.safeParse(rows[0]?.value)
+      if (parsed.success) {
         return {
-          latitude: value.latitude,
-          longitude: value.longitude,
-          cityName: value.cityName,
+          latitude: parsed.data.latitude,
+          longitude: parsed.data.longitude,
+          cityName: parsed.data.cityName,
           source: "semantic_memory",
           updatedAt: rows[0]?.updatedAt?.toISOString() ?? nowISO()
         }
