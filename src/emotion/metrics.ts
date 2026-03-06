@@ -78,7 +78,9 @@ export async function collectMetrics(): Promise<MetricsSnapshot> {
 
   const idleTicks = recentTicks.filter((t) => t.action === "idle").length
   const interactionTicks = recentTicks.filter((t) => t.responseSent).length
-  const errorTicks = recentTicks.filter((t) => t.messagesProcessed > 0 && !t.responseSent).length
+  const errorTicks = recentTicks.filter(
+    (t) => t.messagesProcessed > 0 && !t.responseSent && t.action !== "idle" && t.action !== "dream"
+  ).length
 
   return {
     errorRate: errorTicks / tickCount,

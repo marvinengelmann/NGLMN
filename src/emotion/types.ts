@@ -43,7 +43,8 @@ export const EmotionTrigger = z.enum([
   "git_activity",
   "dream_correction",
   "morning_calibration",
-  "nostalgia_wave"
+  "nostalgia_wave",
+  "ambient"
 ])
 export type EmotionTrigger = z.infer<typeof EmotionTrigger>
 

@@ -80,8 +80,8 @@ export async function setLastTickSummary(summary: TickSummary): Promise<void> {
 }
 
 export async function isBusy(): Promise<boolean> {
-  const val = await redis.get(KEYS.BUSY)
-  return val != null
+  const value = await redis.get(KEYS.BUSY)
+  return value != null
 }
 
 export async function tryAcquireBusy(tickId: string): Promise<boolean> {
@@ -93,13 +93,15 @@ export async function setBusy(tickId: string): Promise<void> {
   await redis.set(KEYS.BUSY, tickId, { ex: HEARTBEAT.BUSY_TTL })
 }
 
-export async function clearBusy(): Promise<void> {
-  await redis.del(KEYS.BUSY)
+export async function clearBusy(tickId: string): Promise<void> {
+  const current = await redis.get(KEYS.BUSY)
+  if (current === tickId) {
+    await redis.del(KEYS.BUSY)
+  }
 }
 
 export async function getLastUpdateId(): Promise<number | null> {
-  const val = await redis.get<number>(KEYS.TELEGRAM_LAST_UPDATE_ID)
-  return val
+  return redis.get<number>(KEYS.TELEGRAM_LAST_UPDATE_ID)
 }
 
 export async function setLastUpdateId(updateId: number): Promise<void> {
@@ -126,8 +128,12 @@ export async function pingRedis(): Promise<boolean> {
 export async function getConversationBuffer(): Promise<ConversationSlot[]> {
   const raw = await redis.get(KEYS.CONVERSATION_BUFFER)
   if (raw == null) return []
-  const parsed = typeof raw === "string" ? JSON.parse(raw) : raw
-  return z.array(ConversationSlot).parse(parsed)
+  try {
+    const parsed = typeof raw === "string" ? JSON.parse(raw) : raw
+    return z.array(ConversationSlot).parse(parsed)
+  } catch {
+    return []
+  }
 }
 
 export async function setConversationBuffer(slots: ConversationSlot[]): Promise<void> {
@@ -239,8 +245,8 @@ export async function setPerceptionSummary(summary: PerceptionSummary): Promise<
 }
 
 export async function getDreamState(): Promise<DreamState> {
-  const val = await redis.get<string>(KEYS.DREAM_STATE)
-  const parsed = DreamState.safeParse(val)
+  const value = await redis.get<string>(KEYS.DREAM_STATE)
+  const parsed = DreamState.safeParse(value)
   return parsed.success ? parsed.data : "idle"
 }
 
@@ -305,8 +311,8 @@ export async function clearEvolutionCycleResult(): Promise<void> {
 }
 
 export async function isTaskActive(): Promise<boolean> {
-  const val = await redis.get(KEYS.TASK_ACTIVE)
-  return val === "true"
+  const value = await redis.get(KEYS.TASK_ACTIVE)
+  return value === "true"
 }
 
 export async function setTaskActive(active: boolean): Promise<void> {
@@ -414,8 +420,8 @@ export async function setTriggerTimestamp(trigger: string, isoTimestamp: string)
 }
 
 export async function getOperatorSilentFlag(): Promise<boolean> {
-  const val = await redis.get(KEYS.EMOTION_OPERATOR_SILENT_FIRED)
-  return val === "true"
+  const value = await redis.get(KEYS.EMOTION_OPERATOR_SILENT_FIRED)
+  return value === "true"
 }
 
 export async function setOperatorSilentFlag(): Promise<void> {
@@ -464,25 +470,33 @@ export async function getTrustEventLog(actionType: ActionType): Promise<TrustEve
   const raw = await redis.get(KEYS.trustLevel(actionType))
   if (raw == null) return []
 
-  const parsed = typeof raw === "string" ? JSON.parse(raw) : raw
-  const logResult = TrustEventLog.safeParse(parsed)
-  if (logResult.success) return logResult.data
+  try {
+    const parsed = typeof raw === "string" ? JSON.parse(raw) : raw
+    const logResult = TrustEventLog.safeParse(parsed)
+    if (logResult.success) return logResult.data
 
-  const legacy = parsed as LegacyTrustLevelData
-  if (typeof legacy.totalAttempts === "number") {
-    const events: TrustEvent[] = []
-    const now = new Date().toISOString()
-    for (let i = 0; i < legacy.successfulAttempts; i++) {
-      events.push({ success: true, timestamp: now })
+    const legacy = parsed as LegacyTrustLevelData
+    if (typeof legacy.totalAttempts === "number") {
+      const now = new Date().toISOString()
+      const events: TrustEvent[] = [
+        ...Array.from({ length: legacy.successfulAttempts }, () => ({ success: true, timestamp: now }) as TrustEvent),
+        ...Array.from(
+          { length: legacy.totalAttempts - legacy.successfulAttempts },
+          () =>
+            ({
+              success: false,
+              timestamp: now
+            }) as TrustEvent
+        )
+      ]
+      await setTrustEventLog(actionType, events)
+      return events
     }
-    for (let i = 0; i < legacy.totalAttempts - legacy.successfulAttempts; i++) {
-      events.push({ success: false, timestamp: now })
-    }
-    await setTrustEventLog(actionType, events)
-    return events
+
+    return []
+  } catch {
+    return []
   }
-
-  return []
 }
 
 export async function setTrustEventLog(actionType: ActionType, events: TrustEvent[]): Promise<void> {

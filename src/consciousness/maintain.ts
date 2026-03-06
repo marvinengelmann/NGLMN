@@ -85,11 +85,14 @@ export async function maintain(
     await incrementPhaseTickCount()
   }
 
-  if (input.decision.action === "idle" && !input.actResult.responseSent) {
+  const isRestingAction =
+    (input.decision.action === "idle" || input.decision.action === "dream") && !input.actResult.responseSent
+
+  if (isRestingAction) {
     await incrementConsecutiveIdleTicks()
 
     const currentSoma = await getSomaticState()
-    const isDreaming = input.decision.action === "idle" && input.senseResult.moodContext.isDreaming
+    const isDreaming = input.senseResult.moodContext.isDreaming || input.decision.action === "dream"
     const rechargedSoma = rechargeSocialBattery(currentSoma, isDreaming)
     if (rechargedSoma.socialBattery !== currentSoma.socialBattery) {
       await saveSomaticState(rechargedSoma, "social_battery_recharge")

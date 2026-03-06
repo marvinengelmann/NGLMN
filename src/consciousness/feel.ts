@@ -1,3 +1,4 @@
+import { getHours } from "date-fns"
 import { getAttachmentStyle } from "@/attachment/state.ts"
 import { evaluateAttachmentDynamics, isOperatorReturning } from "@/attachment/update.ts"
 import { computeAttentionState } from "@/cognition/flow.ts"
@@ -12,7 +13,7 @@ import { getEmotionalState, saveEmotionalState } from "@/emotion/state.ts"
 import { applyEvent, computeEmotionalUpdate } from "@/emotion/update.ts"
 import { log } from "@/lib/logger.ts"
 import { setEmotionContext } from "@/lib/sentry.ts"
-import { elapsedMinutesSince, nowISO } from "@/lib/time.ts"
+import { elapsedMinutesSince, nowISO, nowLocal } from "@/lib/time.ts"
 import { queryRelated } from "@/memory/episodic.ts"
 import { getKnowledge } from "@/memory/semantic.ts"
 import {
@@ -81,10 +82,7 @@ export async function feel(senseResult: SenseResult): Promise<FeelingResult> {
     emotion = applyEvent(emotion, nostalgia)
   }
 
-  await saveEmotionalState(
-    emotion,
-    nostalgia ? "nostalgia_wave" : (senseResult.rawTriggers[0]?.trigger ?? "message_received")
-  )
+  await saveEmotionalState(emotion, nostalgia ? "nostalgia_wave" : (senseResult.rawTriggers[0]?.trigger ?? "ambient"))
   setEmotionContext(emotion)
 
   const instinct = await computeInstinctImpression(senseResult.pendingMessages, emotion, soma)
@@ -132,7 +130,7 @@ export async function feel(senseResult: SenseResult): Promise<FeelingResult> {
   }
   await saveOperatorModel(operatorModel, correction ? "correction" : "update")
 
-  const hourOfDay = new Date().getHours()
+  const hourOfDay = getHours(nowLocal())
   const vulnerability = await computeVulnerability({
     trustExperience,
     attachmentSecurity: attachmentStyle.secure,

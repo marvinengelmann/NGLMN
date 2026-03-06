@@ -47,22 +47,22 @@ export function shouldTriggerReflection(ctx: ReflectionContext): { trigger: bool
     return { trigger: true, reason: `Strong ${dimension} (${direction}, ${value.toFixed(2)}) driving introspection` }
   }
 
-  const d = REFLECTION.DISSONANCE_THRESHOLD
-  const e = ctx.emotion
+  const dissonanceThreshold = REFLECTION.DISSONANCE_THRESHOLD
+  const emotion = ctx.emotion
 
-  if (e.excitement > d && e.caution > d) {
+  if (emotion.excitement > dissonanceThreshold && emotion.caution > dissonanceThreshold) {
     return { trigger: true, reason: "Emotional dissonance: excitement and caution pulling in opposite directions" }
   }
-  if (e.connection > d && e.frustration > d) {
+  if (emotion.connection > dissonanceThreshold && emotion.frustration > dissonanceThreshold) {
     return { trigger: true, reason: "Emotional dissonance: feeling connected yet frustrated" }
   }
-  if (e.curiosity > d && e.boredom > d) {
+  if (emotion.curiosity > dissonanceThreshold && emotion.boredom > dissonanceThreshold) {
     return { trigger: true, reason: "Emotional dissonance: curious yet bored — seeking meaning" }
   }
-  if (e.confidence > d && e.caution > d) {
+  if (emotion.confidence > dissonanceThreshold && emotion.caution > dissonanceThreshold) {
     return { trigger: true, reason: "Emotional dissonance: confident yet cautious — conflicting impulses" }
   }
-  if (e.energy < 0.3 && e.excitement > 0.7) {
+  if (emotion.energy < 0.3 && emotion.excitement > 0.7) {
     return { trigger: true, reason: "Emotional dissonance: exhausted yet excited — needs resolution" }
   }
 
@@ -92,16 +92,12 @@ export async function buildReflectionInput(): Promise<ReflectionInput> {
     .orderBy(desc(evolutionLog.createdAt))
     .limit(10)
 
-  const operatorTicks = await db
-    .select()
-    .from(tickLog)
-    .where(eq(tickLog.responseSent, true))
-    .orderBy(desc(tickLog.createdAt))
-    .limit(50)
+  const recentTicks = await db.select().from(tickLog).orderBy(desc(tickLog.createdAt)).limit(50)
 
+  const ticksWithMessages = recentTicks.filter((t) => t.messagesProcessed > 0)
   const operatorSentiment =
-    operatorTicks.length > 0
-      ? operatorTicks.filter((t) => t.messagesProcessed > 0).length / operatorTicks.length
+    ticksWithMessages.length > 0
+      ? ticksWithMessages.filter((t) => t.responseSent).length / ticksWithMessages.length
       : undefined
 
   return {
@@ -109,7 +105,7 @@ export async function buildReflectionInput(): Promise<ReflectionInput> {
     errorRate: metrics.errorRate,
     costToday: budget.consumedToday,
     tickCount: metrics.tickCount,
-    operatorInteractions: operatorTicks.length,
+    operatorInteractions: recentTicks.filter((t) => t.responseSent).length,
     operatorSentiment,
     emotionalHistory: emotionRows.map((r) => ({
       state: r.state as ReflectionInput["emotionalHistory"][0]["state"],

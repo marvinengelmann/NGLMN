@@ -80,6 +80,6 @@ export async function runHeartbeat() {
     }
   } finally {
     await clearConversationWaitingSince()
-    await clearBusy()
+    await clearBusy(tickId)
   }
 }

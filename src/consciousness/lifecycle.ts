@@ -35,7 +35,9 @@ export async function maybeStartLifeEvent(): Promise<boolean> {
   const durationHours = event.minHours + Math.random() * (event.maxHours - event.minHours)
   const ttlSeconds = Math.round(durationHours * 3600)
 
-  await redis.set(LIFECYCLE_EVENT_KEY, event.type, { ex: ttlSeconds })
+  const result = await redis.set(LIFECYCLE_EVENT_KEY, event.type, { nx: true, ex: ttlSeconds })
+  if (result !== "OK") return true
+
   log.info("Life event started", { type: event.type, durationHours: durationHours.toFixed(1) })
 
   return true

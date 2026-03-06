@@ -28,7 +28,8 @@ const TRIGGER_EFFECTS: Record<EmotionTrigger, EmotionDeltas> = {
   git_activity: { curiosity: 0.05, excitement: 0.03 },
   dream_correction: {},
   morning_calibration: { energy: 0.5 },
-  nostalgia_wave: { connection: 0.08, satisfaction: 0.04, excitement: -0.03, boredom: -0.05, energy: -0.02 }
+  nostalgia_wave: { connection: 0.08, satisfaction: 0.04, excitement: -0.03, boredom: -0.05, energy: -0.02 },
+  ambient: {}
 }
 
 /**
@@ -85,10 +86,10 @@ export function computeMoodBaseline(context: MoodContext): EmotionalState {
  */
 export function applyDrift(state: EmotionalState, baseline: EmotionalState, elapsedMinutes: number): EmotionalState {
   const result = { ...state }
-  for (const dim of Object.keys(EMOTION.HALF_LIVES) as (keyof typeof EMOTION.HALF_LIVES)[]) {
-    const halfLife = EMOTION.HALF_LIVES[dim]
+  for (const dimension of Object.keys(EMOTION.HALF_LIVES) as (keyof typeof EMOTION.HALF_LIVES)[]) {
+    const halfLife = EMOTION.HALF_LIVES[dimension]
     const decay = 2 ** (-elapsedMinutes / halfLife)
-    result[dim] = baseline[dim] + (state[dim] - baseline[dim]) * decay
+    result[dimension] = baseline[dimension] + (state[dimension] - baseline[dimension]) * decay
   }
   return result
 }
@@ -189,9 +190,9 @@ export function applyContradictionBudget(state: EmotionalState): EmotionalState 
   const intensity = computeEmotionalIntensity(result)
 
   const positives: (keyof EmotionalState)[] = ["satisfaction", "connection", "excitement"]
-  for (const dim of positives) {
-    if (result[dim] < CONTRADICTION.HIGH_EMOTION_THRESHOLD) continue
-    const rules = SHADOW_PAIRINGS[dim]
+  for (const dimension of positives) {
+    if (result[dimension] < CONTRADICTION.HIGH_EMOTION_THRESHOLD) continue
+    const rules = SHADOW_PAIRINGS[dimension]
     if (!rules || rules.length === 0) continue
 
     const chosen = rules[Math.floor(Math.random() * rules.length)]
@@ -211,8 +212,8 @@ export function applyContradictionBudget(state: EmotionalState): EmotionalState 
     if (activeNegatives.length < 2) {
       const inactive = negatives.filter((d) => result[d] <= CONTRADICTION.MIN_SHADOW_EMOTION)
       const toActivate = inactive.slice(0, 2 - activeNegatives.length)
-      for (const dim of toActivate) {
-        result[dim] =
+      for (const dimension of toActivate) {
+        result[dimension] =
           CONTRADICTION.MIN_SHADOW_EMOTION +
           Math.random() * (CONTRADICTION.MAX_SHADOW_EMOTION - CONTRADICTION.MIN_SHADOW_EMOTION)
       }
@@ -253,9 +254,9 @@ export function summarizeEmotions(emotion: EmotionalState, threshold = 0.1): str
  */
 export function computeEmotionDeltas(current: EmotionalState, previous: EmotionalState, threshold = 0.03): string {
   const changes = (Object.keys(current) as (keyof EmotionalState)[])
-    .map((dim) => ({ dim, diff: current[dim] - previous[dim] }))
+    .map((dimension) => ({ dimension, diff: current[dimension] - previous[dimension] }))
     .filter(({ diff }) => Math.abs(diff) > threshold)
-    .map(({ dim, diff }) => `${dim} ${diff > 0 ? "+" : ""}${diff.toFixed(2)}`)
+    .map(({ dimension, diff }) => `${dimension} ${diff > 0 ? "+" : ""}${diff.toFixed(2)}`)
 
   return changes.length > 0 ? changes.join(", ") : "stable"
 }
