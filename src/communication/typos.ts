@@ -44,11 +44,11 @@ export function maybeIntroduceTypo(
   if (typoType < 0.4) {
     const i = Math.floor(Math.random() * (word.length - 1))
     const chars = [...word]
-    const temp = chars[i]
+    const current = chars[i]
     const next = chars[i + 1]
-    if (temp !== undefined && next !== undefined) {
+    if (current !== undefined && next !== undefined) {
       chars[i] = next
-      chars[i + 1] = temp
+      chars[i + 1] = current
     }
     typoWord = chars.join("")
   } else if (typoType < 0.7) {

@@ -31,15 +31,15 @@ function headers(token: string): Record<string, string> {
 export async function getRef(ref: string): Promise<{ sha: string; ref: string }> {
   const { token, owner, repo } = getConfig()
 
-  const res = await fetch(`${GITHUB_API_BASE}/repos/${owner}/${repo}/git/ref/${ref}`, {
+  const response = await fetch(`${GITHUB_API_BASE}/repos/${owner}/${repo}/git/ref/${ref}`, {
     headers: headers(token)
   })
 
-  if (!res.ok) {
-    throw new Error(`GitHub getRef failed: ${res.status} ${await res.text()}`)
+  if (!response.ok) {
+    throw new Error(`GitHub getRef failed: ${response.status} ${await response.text()}`)
   }
 
-  const data = (await res.json()) as { object: { sha: string }; ref: string }
+  const data = (await response.json()) as { object: { sha: string }; ref: string }
   return { sha: data.object.sha, ref: data.ref }
 }
 
@@ -49,14 +49,14 @@ export async function getRef(ref: string): Promise<{ sha: string; ref: string }>
 export async function updateRef(ref: string, sha: string, force: boolean = true): Promise<void> {
   const { token, owner, repo } = getConfig()
 
-  const res = await fetch(`${GITHUB_API_BASE}/repos/${owner}/${repo}/git/refs/${ref}`, {
+  const response = await fetch(`${GITHUB_API_BASE}/repos/${owner}/${repo}/git/refs/${ref}`, {
     method: "PATCH",
     headers: headers(token),
     body: JSON.stringify({ sha, force })
   })
 
-  if (!res.ok) {
-    throw new Error(`GitHub updateRef failed: ${res.status} ${await res.text()}`)
+  if (!response.ok) {
+    throw new Error(`GitHub updateRef failed: ${response.status} ${await response.text()}`)
   }
 }
 
@@ -69,15 +69,15 @@ export async function listCommits(
 ): Promise<Array<{ sha: string; message: string; date: string }>> {
   const { token, owner, repo } = getConfig()
 
-  const res = await fetch(`${GITHUB_API_BASE}/repos/${owner}/${repo}/commits?sha=${branch}&per_page=${limit}`, {
+  const response = await fetch(`${GITHUB_API_BASE}/repos/${owner}/${repo}/commits?sha=${branch}&per_page=${limit}`, {
     headers: headers(token)
   })
 
-  if (!res.ok) {
-    throw new Error(`GitHub listCommits failed: ${res.status} ${await res.text()}`)
+  if (!response.ok) {
+    throw new Error(`GitHub listCommits failed: ${response.status} ${await response.text()}`)
   }
 
-  const data = await res.json()
+  const data = await response.json()
   return (data as Array<Record<string, unknown>>).map((c) => ({
     sha: c.sha as string,
     message: (c.commit as Record<string, unknown>).message as string,
@@ -91,14 +91,14 @@ export async function listCommits(
 export async function createRef(ref: string, sha: string): Promise<void> {
   const { token, owner, repo } = getConfig()
 
-  const res = await fetch(`${GITHUB_API_BASE}/repos/${owner}/${repo}/git/refs`, {
+  const response = await fetch(`${GITHUB_API_BASE}/repos/${owner}/${repo}/git/refs`, {
     method: "POST",
     headers: headers(token),
     body: JSON.stringify({ ref: `refs/${ref}`, sha })
   })
 
-  if (!res.ok) {
-    throw new Error(`GitHub createRef failed: ${res.status} ${await res.text()}`)
+  if (!response.ok) {
+    throw new Error(`GitHub createRef failed: ${response.status} ${await response.text()}`)
   }
 }
 
@@ -108,13 +108,13 @@ export async function createRef(ref: string, sha: string): Promise<void> {
 export async function deleteRef(ref: string): Promise<void> {
   const { token, owner, repo } = getConfig()
 
-  const res = await fetch(`${GITHUB_API_BASE}/repos/${owner}/${repo}/git/refs/${ref}`, {
+  const response = await fetch(`${GITHUB_API_BASE}/repos/${owner}/${repo}/git/refs/${ref}`, {
     method: "DELETE",
     headers: headers(token)
   })
 
-  if (!res.ok) {
-    throw new Error(`GitHub deleteRef failed: ${res.status} ${await res.text()}`)
+  if (!response.ok) {
+    throw new Error(`GitHub deleteRef failed: ${response.status} ${await response.text()}`)
   }
 }
 
@@ -127,15 +127,15 @@ export async function getFileContent(
 ): Promise<{ content: string; sha: string }> {
   const { token, owner, repo } = getConfig()
 
-  const res = await fetch(`${GITHUB_API_BASE}/repos/${owner}/${repo}/contents/${path}?ref=${branch}`, {
+  const response = await fetch(`${GITHUB_API_BASE}/repos/${owner}/${repo}/contents/${path}?ref=${branch}`, {
     headers: headers(token)
   })
 
-  if (!res.ok) {
-    throw new Error(`GitHub getFileContent failed: ${res.status} ${await res.text()}`)
+  if (!response.ok) {
+    throw new Error(`GitHub getFileContent failed: ${response.status} ${await response.text()}`)
   }
 
-  const data = (await res.json()) as { content: string; sha: string }
+  const data = (await response.json()) as { content: string; sha: string }
   const content = Buffer.from(data.content, "base64").toString("utf-8")
   return { content, sha: data.sha }
 }
@@ -195,14 +195,14 @@ export async function createOrUpdateFile(
   }
   if (sha) body.sha = sha
 
-  const res = await fetch(`${GITHUB_API_BASE}/repos/${owner}/${repo}/contents/${path}`, {
+  const response = await fetch(`${GITHUB_API_BASE}/repos/${owner}/${repo}/contents/${path}`, {
     method: "PUT",
     headers: headers(token),
     body: JSON.stringify(body)
   })
 
-  if (!res.ok) {
-    throw new Error(`GitHub createOrUpdateFile failed: ${res.status} ${await res.text()}`)
+  if (!response.ok) {
+    throw new Error(`GitHub createOrUpdateFile failed: ${response.status} ${await response.text()}`)
   }
 }
 
@@ -227,7 +227,7 @@ export async function deleteBranch(branchName: string): Promise<void> {
 export async function mergeBranch(branchName: string): Promise<void> {
   const { token, owner, repo } = getConfig()
 
-  const res = await fetch(`${GITHUB_API_BASE}/repos/${owner}/${repo}/merges`, {
+  const response = await fetch(`${GITHUB_API_BASE}/repos/${owner}/${repo}/merges`, {
     method: "POST",
     headers: headers(token),
     body: JSON.stringify({
@@ -237,8 +237,8 @@ export async function mergeBranch(branchName: string): Promise<void> {
     })
   })
 
-  if (!res.ok) {
-    throw new Error(`GitHub mergeBranch failed: ${res.status} ${await res.text()}`)
+  if (!response.ok) {
+    throw new Error(`GitHub mergeBranch failed: ${response.status} ${await response.text()}`)
   }
 
   try {

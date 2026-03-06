@@ -150,8 +150,8 @@ async function evaluateEmotionTrigger(
     return history.every((entry) => {
       const parsed = EmotionalState.safeParse(entry.state)
       if (!parsed.success) return false
-      const val = parsed.data[trigger.dimension]
-      return trigger.operator === "gt" ? val > trigger.threshold : val < trigger.threshold
+      const value = parsed.data[trigger.dimension]
+      return trigger.operator === "gt" ? value > trigger.threshold : value < trigger.threshold
     })
   }
 

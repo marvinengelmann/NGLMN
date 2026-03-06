@@ -53,8 +53,8 @@ export async function act(
     }
 
     if (responseSent && decision.corrections.length > 0) {
-      await decision.corrections.reduce(async (prev, correction) => {
-        await prev
+      await decision.corrections.reduce(async (previous, correction) => {
+        await previous
         const delay = MESSAGE_DELAY.MIN_BETWEEN_MESSAGES_MS + Math.random() * MESSAGE_DELAY.MAX_JITTER_MS
         await new Promise((resolve) => setTimeout(resolve, delay))
         await trySafe("TELEGRAM_ERROR", () => sendMessageWithReply(correction.text, correction.replyTo))

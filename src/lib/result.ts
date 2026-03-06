@@ -62,8 +62,8 @@ export type AnimaResultAsync<T> = ResultAsync<T, AnimaError>
 /**
  * Wrap an async operation in a Result, catching any thrown errors.
  */
-export function trySafe<T>(tag: AnimaErrorTag, fn: () => Promise<T>): AnimaResultAsync<T> {
-  return fromPromise(fn(), (e) => fromCatch(tag, e))
+export function trySafe<T>(tag: AnimaErrorTag, operation: () => Promise<T>): AnimaResultAsync<T> {
+  return fromPromise(operation(), (e) => fromCatch(tag, e))
 }
 
 /**

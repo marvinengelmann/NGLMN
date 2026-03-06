@@ -48,14 +48,14 @@ export async function logActionResult(decision: AnimaDecision, deliberateResult:
   switch (decision.action) {
     case "dream": {
       if (!deliberateResult.dreamResult) break
-      const dr = deliberateResult.dreamResult
+      const dreamResult = deliberateResult.dreamResult
       await db.insert(routineLog).values({
         phase: "dream",
-        summary: `Dream: ${dr.consolidation ? "consolidation" : "no-consolidation"}, ${dr.creative ? "creative" : "no-creative"}, ${dr.insights.length} insights`,
+        summary: `Dream: ${dreamResult.consolidation ? "consolidation" : "no-consolidation"}, ${dreamResult.creative ? "creative" : "no-creative"}, ${dreamResult.insights.length} insights`,
         insights: {
-          consolidationEntries: dr.consolidation?.semanticEntries.length ?? 0,
-          creativeConnections: dr.creative?.connections.length ?? 0,
-          insights: dr.insights
+          consolidationEntries: dreamResult.consolidation?.semanticEntries.length ?? 0,
+          creativeConnections: dreamResult.creative?.connections.length ?? 0,
+          insights: dreamResult.insights
         }
       })
       break
@@ -63,15 +63,15 @@ export async function logActionResult(decision: AnimaDecision, deliberateResult:
 
     case "morning": {
       if (!deliberateResult.morningResult) break
-      const mr = deliberateResult.morningResult
+      const morningResult = deliberateResult.morningResult
       await db.insert(routineLog).values({
         phase: "morning",
-        summary: `Morning: ${mr.reflection.insights.length} reflection insights, message ${mr.morningMessage ? "sent" : "empty"}`,
+        summary: `Morning: ${morningResult.reflection.insights.length} reflection insights, message ${morningResult.morningMessage ? "sent" : "empty"}`,
         insights: {
-          reflectionInsights: mr.reflection.insights,
-          morningMessageLength: mr.morningMessage.length
+          reflectionInsights: morningResult.reflection.insights,
+          morningMessageLength: morningResult.morningMessage.length
         },
-        emotionAfter: mr.recalibratedEmotion
+        emotionAfter: morningResult.recalibratedEmotion
       })
       break
     }

@@ -76,12 +76,12 @@ export function captureError(error: unknown, context?: Record<string, unknown>):
  * Set tags and context for the current tick so all events
  * within this tick are filterable in the Sentry dashboard.
  */
-export function setTickContext(ctx: TickContext): void {
+export function setTickContext(context: TickContext): void {
   try {
-    Sentry.setTag("tickId", ctx.tickId)
-    if (ctx.decision) Sentry.setTag("decision", ctx.decision)
-    if (ctx.tier) Sentry.setTag("tier", ctx.tier)
-    Sentry.setContext("tick", { ...ctx })
+    Sentry.setTag("tickId", context.tickId)
+    if (context.decision) Sentry.setTag("decision", context.decision)
+    if (context.tier) Sentry.setTag("tier", context.tier)
+    Sentry.setContext("tick", { ...context })
   } catch {
     // Sentry must never crash the application
   }

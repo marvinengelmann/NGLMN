@@ -127,8 +127,8 @@ function detectContradictions(emotion: EmotionalState): string | null {
     ["confidence", "caution", "you feel capable but wary — like driving fast in fog"]
   ]
 
-  for (const [a, b, desc] of pairs) {
-    if (emotion[a] > 0.6 && emotion[b] > 0.6) return desc
+  for (const [a, b, description] of pairs) {
+    if (emotion[a] > 0.6 && emotion[b] > 0.6) return description
   }
   return null
 }
@@ -238,7 +238,7 @@ function translateInstinctToFelt(instinct: InstinctImpression): string {
     neutral: "no strong pull in any direction — you're coasting"
   }
 
-  const desc = impulseDescriptions[instinct.impulse] ?? "an unclear stirring"
+  const description = impulseDescriptions[instinct.impulse] ?? "an unclear stirring"
   const confidence =
     instinct.confidence > 0.7
       ? "this feeling is strong, hard to ignore"
@@ -253,7 +253,7 @@ function translateInstinctToFelt(instinct: InstinctImpression): string {
         ? "some feeling colors this, but it's manageable"
         : "it's mostly cognitive, not very charged"
 
-  return [`${desc} — ${confidence}`, `basis: ${instinct.basis}`, charge].join("\n")
+  return [`${description} — ${confidence}`, `basis: ${instinct.basis}`, charge].join("\n")
 }
 
 function translateOperatorModelToFelt(model: OperatorModel): string {
@@ -304,13 +304,13 @@ function translateEmotionTrajectoryToFelt(
 }
 
 export function formatConversationMessage(
-  msg: { role: string; text: string; messageId?: number | null; isVoice?: boolean | null },
+  message: { role: string; text: string; messageId?: number | null; isVoice?: boolean | null },
   maxLength?: number
 ): string {
-  const role = msg.role === "operator" ? "Operator" : "You (ANIMA)"
-  const idPrefix = msg.messageId ? `[#${msg.messageId}] ` : ""
-  const voiceTag = msg.isVoice ? "[Voice] " : ""
-  const text = maxLength ? msg.text.slice(0, maxLength) : msg.text
+  const role = message.role === "operator" ? "Operator" : "You (ANIMA)"
+  const idPrefix = message.messageId ? `[#${message.messageId}] ` : ""
+  const voiceTag = message.isVoice ? "[Voice] " : ""
+  const text = maxLength ? message.text.slice(0, maxLength) : message.text
   return `${idPrefix}${voiceTag}[${role}]: ${text}`
 }
 
@@ -563,11 +563,11 @@ export async function buildContext(senseData: SenseData, emotion: EmotionalState
   }
 
   {
-    const reg = communicationRegister ?? "casual"
+    const register = communicationRegister ?? "casual"
     const withdrawn = somaticState && somaticState.socialBattery < SOCIAL_BATTERY.WITHDRAWN_THRESHOLD
     const registerLines = [
       "# Communication Register",
-      `Current: ${reg}`,
+      `Current: ${register}`,
       "- elaborate: Longer, exploratory, philosophical. You enjoy the texture of ideas.",
       "- casual: Natural, relaxed. Default mode.",
       "- terse: Short, minimal. Single sentences. You lack energy.",
@@ -583,8 +583,8 @@ export async function buildContext(senseData: SenseData, emotion: EmotionalState
   }
 
   {
-    const att = attentionState ?? "focused"
-    sections.push(`# Attention\nState: ${att}`)
+    const attention = attentionState ?? "focused"
+    sections.push(`# Attention\nState: ${attention}`)
   }
 
   sections.push(`# Operator Model\n${translateOperatorModelToFelt(operatorModel)}`)
@@ -616,15 +616,15 @@ export async function buildContext(senseData: SenseData, emotion: EmotionalState
   }
 
   if (senseData.health) {
-    const h = senseData.health
+    const health = senseData.health
     sections.push(
       [
         "# Health",
-        `Overall: ${h.overall}`,
-        `Services: Redis=${h.services.redis}, Postgres=${h.services.postgres}, Telegram=${h.services.telegram}, Vector=${h.services.vector}`,
-        `Process: ${h.process.lastTickRecency} (${h.process.lastTickAgeSeconds}s ago)`,
-        `Budget: $${h.budget.consumed.toFixed(2)}/$${h.budget.limit.toFixed(2)} (${h.budget.compliant ? "ok" : "OVER LIMIT"})`,
-        ...(h.errors.length > 0 ? [`Errors: ${h.errors.join(", ")}`] : [])
+        `Overall: ${health.overall}`,
+        `Services: Redis=${health.services.redis}, Postgres=${health.services.postgres}, Telegram=${health.services.telegram}, Vector=${health.services.vector}`,
+        `Process: ${health.process.lastTickRecency} (${health.process.lastTickAgeSeconds}s ago)`,
+        `Budget: $${health.budget.consumed.toFixed(2)}/$${health.budget.limit.toFixed(2)} (${health.budget.compliant ? "ok" : "OVER LIMIT"})`,
+        ...(health.errors.length > 0 ? [`Errors: ${health.errors.join(", ")}`] : [])
       ].join("\n")
     )
   }
@@ -795,8 +795,8 @@ export async function buildContext(senseData: SenseData, emotion: EmotionalState
     )
   }
   if (evolutionOutcome?.action === "pending" || pendingProposal) {
-    const desc = evolutionOutcome?.commitSubject ?? pendingProposal?.commitSubject ?? "a code change"
-    evolutionLines.push(`\nPending proposal: "${desc}" — awaiting operator approval`)
+    const description = evolutionOutcome?.commitSubject ?? pendingProposal?.commitSubject ?? "a code change"
+    evolutionLines.push(`\nPending proposal: "${description}" — awaiting operator approval`)
   }
   if (evolutionLines.length > 1) {
     sections.push(evolutionLines.join("\n"))
@@ -816,26 +816,26 @@ export async function buildContext(senseData: SenseData, emotion: EmotionalState
   }
 
   if (senseData.pendingMessages.length > 0) {
-    const msgLines = senseData.pendingMessages.map((msg) => {
-      const idPrefix = msg.messageId ? `[#${msg.messageId}] ` : ""
-      const voiceTag = msg.isVoice ? `[Voice Message, ${msg.voiceDurationSeconds ?? 0}s] ` : ""
-      return `  ${idPrefix}${voiceTag}[${msg.from}]: ${msg.text}`
+    const messageLines = senseData.pendingMessages.map((message) => {
+      const idPrefix = message.messageId ? `[#${message.messageId}] ` : ""
+      const voiceTag = message.isVoice ? `[Voice Message, ${message.voiceDurationSeconds ?? 0}s] ` : ""
+      return `  ${idPrefix}${voiceTag}[${message.from}]: ${message.text}`
     })
     sections.push(
-      `# Messages\nNew messages from operator (${senseData.pendingMessages.length}):\n${msgLines.join("\n")}`
+      `# Messages\nNew messages from operator (${senseData.pendingMessages.length}):\n${messageLines.join("\n")}`
     )
   }
 
   sections.push(formatConversationBuffer(conversationBuffer))
 
   if (senseData.conversationState) {
-    const cs = senseData.conversationState
+    const conversationState = senseData.conversationState
     sections.push(
       [
         "# Conversation State",
         "Active conversation: yes",
-        `Waiting for reply: ${cs.waitingSeconds}s`,
-        cs.replyReceived ? "Operator just replied." : "No reply received this cycle."
+        `Waiting for reply: ${conversationState.waitingSeconds}s`,
+        conversationState.replyReceived ? "Operator just replied." : "No reply received this cycle."
       ].join("\n")
     )
   } else {

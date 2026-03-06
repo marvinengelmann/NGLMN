@@ -43,13 +43,13 @@ export function applySomaticHysteresis(
   target: SomaticState,
   elapsedMinutes: number
 ): SomaticState {
-  const dims = Object.keys(SOMA.HALF_LIVES) as (keyof typeof SOMA.HALF_LIVES)[]
+  const dimensions = Object.keys(SOMA.HALF_LIVES) as (keyof typeof SOMA.HALF_LIVES)[]
   const result = { ...current }
 
-  for (const dim of dims) {
-    const halfLife = SOMA.HALF_LIVES[dim]
+  for (const dimension of dimensions) {
+    const halfLife = SOMA.HALF_LIVES[dimension]
     const decay = 2 ** (-elapsedMinutes / halfLife)
-    result[dim] = target[dim] + (current[dim] - target[dim]) * decay
+    result[dimension] = target[dimension] + (current[dimension] - target[dimension]) * decay
   }
 
   const batteryDecay = 2 ** (-elapsedMinutes / SOCIAL_BATTERY.HALF_LIFE)
@@ -64,20 +64,20 @@ export function applySomaticHysteresis(
 export function applySomaticMemory(current: SomaticState, somaticMemories: SomaticState[]): SomaticState {
   if (somaticMemories.length === 0) return current
 
-  const blendDims: (keyof SomaticState)[] = ["tension", "warmth", "heartRate", "breathing", "gravity", "openness"]
+  const blendDimensions: (keyof SomaticState)[] = ["tension", "warmth", "heartRate", "breathing", "gravity", "openness"]
   const avg: Record<string, number> = {}
-  for (const dim of blendDims) avg[dim] = 0
+  for (const dimension of blendDimensions) avg[dimension] = 0
 
-  for (const mem of somaticMemories) {
-    for (const dim of blendDims) {
-      avg[dim] = (avg[dim] ?? 0) + mem[dim] / somaticMemories.length
+  for (const memory of somaticMemories) {
+    for (const dimension of blendDimensions) {
+      avg[dimension] = (avg[dimension] ?? 0) + memory[dimension] / somaticMemories.length
     }
   }
 
   const weight = SOMA.MEMORY_BLEND_WEIGHT
   const result = { ...current }
-  for (const dim of blendDims) {
-    result[dim] = current[dim] * (1 - weight) + (avg[dim] ?? current[dim]) * weight
+  for (const dimension of blendDimensions) {
+    result[dimension] = current[dimension] * (1 - weight) + (avg[dimension] ?? current[dimension]) * weight
   }
 
   return clampState(result)

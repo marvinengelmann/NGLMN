@@ -194,7 +194,7 @@ function failedProposal(reasoning: string): CodeProposalOrFileRequest {
 }
 
 async function resolveFileRequests(
-  ctx: ProposalContext,
+  context: ProposalContext,
   files: SourceFileContext[],
   round: number,
   failedPaths: Set<string> = new Set()
@@ -204,19 +204,19 @@ async function resolveFileRequests(
   const forceProposal = budgetExhausted || round >= MAX_REQUEST_ROUNDS
 
   const userPayload: Record<string, unknown> = {
-    insight: ctx.insight,
-    capabilityGap: ctx.capabilityGap,
+    insight: context.insight,
+    capabilityGap: context.capabilityGap,
     sourceContext: formatSourceContext(files),
-    availableFiles: ctx.tree.join("\n"),
+    availableFiles: context.tree.join("\n"),
     remainingTokenBudget: Math.max(0, SOURCE_CONTEXT_TOKEN_BUDGET - tokensUsed)
   }
 
   if (failedPaths.size > 0) userPayload.unavailablePaths = [...failedPaths]
-  if (ctx.libraryDocs) userPayload.libraryDocumentation = ctx.libraryDocs
-  if (ctx.previousAttempt) {
+  if (context.libraryDocs) userPayload.libraryDocumentation = context.libraryDocs
+  if (context.previousAttempt) {
     userPayload.previousAttemptFailed = {
-      error: ctx.previousAttempt.error,
-      stderr: ctx.previousAttempt.sandboxStderr.slice(0, 3000)
+      error: context.previousAttempt.error,
+      stderr: context.previousAttempt.sandboxStderr.slice(0, 3000)
     }
   }
 
@@ -246,12 +246,12 @@ async function resolveFileRequests(
   if (response.type !== "request_files") return response
 
   const requestedPaths = response.paths ?? []
-  const validPaths = requestedPaths.filter((p) => ctx.tree.includes(p))
-  const expandedPaths = expandWithTestFiles(validPaths, ctx.tree)
+  const validPaths = requestedPaths.filter((p) => context.tree.includes(p))
+  const expandedPaths = expandWithTestFiles(validPaths, context.tree)
 
   const newFailedPaths = new Set(failedPaths)
   for (const p of requestedPaths) {
-    if (!ctx.tree.includes(p)) newFailedPaths.add(p)
+    if (!context.tree.includes(p)) newFailedPaths.add(p)
   }
 
   log.info("Evolution LLM requested additional files", {
@@ -265,10 +265,10 @@ async function resolveFileRequests(
 
   if (expandedFiles.length === files.length) {
     log.warn("File request round yielded no new files, forcing proposal", { round })
-    return resolveFileRequests(ctx, files, MAX_REQUEST_ROUNDS, newFailedPaths)
+    return resolveFileRequests(context, files, MAX_REQUEST_ROUNDS, newFailedPaths)
   }
 
-  return resolveFileRequests(ctx, expandedFiles, round + 1, newFailedPaths)
+  return resolveFileRequests(context, expandedFiles, round + 1, newFailedPaths)
 }
 
 export async function proposeCodeChange(
@@ -292,8 +292,8 @@ export async function proposeCodeChange(
   const allSourceCode = sourceFiles.map((f) => f.content).join("\n")
   const libraryDocs = await fetchLibraryDocs(allSourceCode, capabilityGap).catch(() => "")
 
-  const ctx: ProposalContext = { insight, capabilityGap, tree, libraryDocs, previousAttempt }
-  const response = await resolveFileRequests(ctx, sourceFiles, 0)
+  const proposalContext: ProposalContext = { insight, capabilityGap, tree, libraryDocs, previousAttempt }
+  const response = await resolveFileRequests(proposalContext, sourceFiles, 0)
 
   if (response.type === "request_files")
     return { ...emptyProposal("Exhausted file request rounds without producing a proposal"), failed: true }
