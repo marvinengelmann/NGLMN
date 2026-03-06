@@ -1,7 +1,14 @@
 import { collectMetrics } from "@/emotion/metrics.ts"
 import { executeCodeEvolution, proposeCodeChange } from "@/evolution/code.ts"
 import { applyPromptChange, loadPrompt, proposePromptChange } from "@/evolution/prompt.ts"
-import type { CodeProposal, EvolutionCycleResult, EvolutionType, PreviousAttempt } from "@/evolution/types.ts"
+import type {
+  CodeProposal,
+  EvolutionCycleResult,
+  EvolutionType,
+  PreviousAttempt,
+  PromptProposalOutput,
+  WorkflowProposalOutput
+} from "@/evolution/types.ts"
 import { applyWorkflow, proposeWorkflow } from "@/evolution/workflow.ts"
 import { log } from "@/lib/logger.ts"
 import { logAndCaptureError } from "@/lib/result.ts"
@@ -29,6 +36,18 @@ interface EvolutionPayload {
   pendingProposal?: CodeProposal
 }
 
+interface EvolutionOutput {
+  action: string
+  result?: { success: boolean; error?: string }
+  proposal?: CodeProposal | PromptProposalOutput | WorkflowProposalOutput
+  commitSubject?: string
+  reasoning?: string
+  reason?: string
+  promptId?: string
+  version?: number
+  workflowId?: string
+}
+
 /**
  * Runs a code evolution cycle directly. Manages pending proposals
  * in working memory and stores the outcome for context.
@@ -40,21 +59,13 @@ export async function runEvolutionCycle(params: {
   try {
     const pendingProposal = await getPendingEvolutionProposal()
 
-    const output = await runEvolution({
+    const result = await runEvolution({
       type: "code",
       insight: params.insight,
       capabilityGap: params.capabilityGap,
       actionRequested: !!pendingProposal,
       pendingProposal: pendingProposal ?? undefined
     })
-
-    const result = output as {
-      action: string
-      result?: { success: boolean; error?: string }
-      proposal?: CodeProposal
-      commitSubject?: string
-      reasoning?: string
-    }
 
     if (result.action === "applied") {
       await clearPendingEvolutionProposal()
@@ -69,9 +80,9 @@ export async function runEvolutionCycle(params: {
       return outcome
     }
 
-    if (result.action === "pending" && result.proposal) {
-      await setPendingEvolutionProposal(result.proposal)
-      const commitSubject = result.commitSubject ?? result.proposal.commitSubject
+    if (result.action === "pending" && result.proposal && "shouldEvolve" in result.proposal) {
+      await setPendingEvolutionProposal(result.proposal as CodeProposal)
+      const commitSubject = result.commitSubject ?? (result.proposal as CodeProposal).commitSubject
       const outcome: EvolutionCycleResult = {
         action: "pending",
         commitSubject,
@@ -122,7 +133,7 @@ export async function runEvolutionCycle(params: {
  * Runs the full evolution lifecycle: sets task active flag, executes the
  * appropriate evolution type, and clears the flag on completion.
  */
-export async function runEvolution(payload: EvolutionPayload) {
+export async function runEvolution(payload: EvolutionPayload): Promise<EvolutionOutput> {
   await setTaskActive(true)
   try {
     return await executeEvolutionType(payload)
@@ -131,7 +142,7 @@ export async function runEvolution(payload: EvolutionPayload) {
   }
 }
 
-async function executeEvolutionType(payload: EvolutionPayload) {
+async function executeEvolutionType(payload: EvolutionPayload): Promise<EvolutionOutput> {
   log.info("Starting evolution", {
     type: payload.type,
     promptId: payload.promptId,
@@ -207,7 +218,7 @@ async function executeEvolutionType(payload: EvolutionPayload) {
   return { action: "invalid", reason: "Missing required fields" }
 }
 
-async function executeCodeEvolutionWithRetry(payload: EvolutionPayload) {
+async function executeCodeEvolutionWithRetry(payload: EvolutionPayload): Promise<EvolutionOutput> {
   if (payload.pendingProposal) {
     log.info("Executing previously approved code proposal", { commitSubject: payload.pendingProposal.commitSubject })
     return attemptCodeEvolution(payload, payload.pendingProposal, MAX_EVOLUTION_RETRIES)
@@ -241,7 +252,7 @@ async function attemptCodeEvolution(
   payload: EvolutionPayload,
   proposal: CodeProposal,
   remainingRetries: number
-): Promise<Record<string, unknown>> {
+): Promise<EvolutionOutput> {
   const result = await executeCodeEvolution(proposal)
 
   if (result.success) {

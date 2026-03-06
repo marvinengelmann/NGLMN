@@ -343,7 +343,7 @@ export async function executeCodeEvolution(proposal: CodeProposal): Promise<{
           const existing = await getFileContent(file.path)
           existingShas.set(file.path, existing.sha)
         } catch {
-          void 0
+          log.debug("No existing file found, will create new", { path: file.path })
         }
       })
     )
