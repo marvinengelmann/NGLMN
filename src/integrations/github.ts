@@ -1,5 +1,8 @@
+import * as z from "zod"
+import { env } from "@/config/env.ts"
 import { fetchWithTimeout } from "@/lib/fetch.ts"
 import { log } from "@/lib/logger.ts"
+import { extractErrorMessage } from "@/lib/result.ts"
 
 const GITHUB_API_BASE = "https://api.github.com"
 const GITHUB_TIMEOUT_MS = 15_000
@@ -9,10 +12,34 @@ const ANIMA_IDENTITY = {
   email: "github@anima.engelmann.technology"
 }
 
+const GitRefSchema = z.object({
+  object: z.object({ sha: z.string() }),
+  ref: z.string()
+})
+
+const GitCommitSchema = z.array(
+  z.object({
+    sha: z.string(),
+    commit: z.object({
+      message: z.string(),
+      committer: z.object({ date: z.string() })
+    })
+  })
+)
+
+const GitFileContentSchema = z.object({
+  content: z.string(),
+  sha: z.string()
+})
+
+const GitTreeSchema = z.object({
+  tree: z.array(z.object({ path: z.string(), type: z.string() }))
+})
+
 function getConfig() {
-  const token = process.env.GITHUB_TOKEN
-  const owner = process.env.GITHUB_OWNER
-  const repo = process.env.GITHUB_REPO
+  const token = env().GITHUB_TOKEN
+  const owner = env().GITHUB_OWNER
+  const repo = env().GITHUB_REPO
   if (!token || !owner || !repo) {
     throw new Error("GITHUB_TOKEN, GITHUB_OWNER, and GITHUB_REPO must be set")
   }
@@ -43,7 +70,7 @@ export async function getRef(ref: string): Promise<{ sha: string; ref: string }>
     throw new Error(`GitHub getRef failed: ${response.status} ${await response.text()}`)
   }
 
-  const data = (await response.json()) as { object: { sha: string }; ref: string }
+  const data = GitRefSchema.parse(await response.json())
   return { sha: data.object.sha, ref: data.ref }
 }
 
@@ -81,11 +108,11 @@ export async function listCommits(
     throw new Error(`GitHub listCommits failed: ${response.status} ${await response.text()}`)
   }
 
-  const data = await response.json()
-  return (data as Array<Record<string, unknown>>).map((c) => ({
-    sha: c.sha as string,
-    message: (c.commit as Record<string, unknown>).message as string,
-    date: ((c.commit as Record<string, unknown>).committer as Record<string, unknown>).date as string
+  const data = GitCommitSchema.parse(await response.json())
+  return data.map((c) => ({
+    sha: c.sha,
+    message: c.commit.message,
+    date: c.commit.committer.date
   }))
 }
 
@@ -135,7 +162,7 @@ export async function getFileContent(
     throw new Error(`GitHub getFileContent failed: ${response.status} ${await response.text()}`)
   }
 
-  const data = (await response.json()) as { content: string; sha: string }
+  const data = GitFileContentSchema.parse(await response.json())
   const content = Buffer.from(data.content, "base64").toString("utf-8")
   return { content, sha: data.sha }
 }
@@ -152,7 +179,7 @@ export async function getRepoTree(branch: string = "master"): Promise<string[]> 
     throw new Error(`GitHub getRepoTree ref failed: ${refRes.status} ${await refRes.text()}`)
   }
 
-  const refData = (await refRes.json()) as { object: { sha: string } }
+  const refData = GitRefSchema.parse(await refRes.json())
   const treeSha = refData.object.sha
 
   const treeRes = await githubFetch(`${GITHUB_API_BASE}/repos/${owner}/${repo}/git/trees/${treeSha}?recursive=1`, token)
@@ -161,9 +188,7 @@ export async function getRepoTree(branch: string = "master"): Promise<string[]> 
     throw new Error(`GitHub getRepoTree tree failed: ${treeRes.status} ${await treeRes.text()}`)
   }
 
-  const treeData = (await treeRes.json()) as {
-    tree: Array<{ path: string; type: string }>
-  }
+  const treeData = GitTreeSchema.parse(await treeRes.json())
 
   return treeData.tree
     .filter((entry) => entry.type === "blob" && entry.path.startsWith("src/") && entry.path.endsWith(".ts"))
@@ -240,7 +265,7 @@ export async function mergeBranch(branchName: string): Promise<void> {
   } catch (e) {
     log.warn("Failed to delete branch after merge", {
       branch: branchName,
-      error: e instanceof Error ? e.message : String(e)
+      error: extractErrorMessage(e)
     })
   }
 }

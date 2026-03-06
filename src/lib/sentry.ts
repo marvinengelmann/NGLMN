@@ -1,6 +1,8 @@
 import * as Sentry from "@sentry/node"
 import { tasks } from "@trigger.dev/sdk"
 import { env } from "@/config/env.ts"
+import { log } from "@/lib/logger.ts"
+import { extractErrorMessage } from "@/lib/result.ts"
 
 /**
  * Initialize Sentry SDK and register Trigger.dev failure handler.
@@ -33,7 +35,7 @@ interface TickContext {
 let _isSendingAlert = false
 
 function formatAlertMessage(error: unknown, context?: Record<string, unknown>): string {
-  const message = error instanceof Error ? error.message : String(error)
+  const message = extractErrorMessage(error)
   const errorType = error instanceof Error ? error.constructor.name : "Error"
   const location = context?.phase ?? context?.service ?? context?.module
   const lines = [`🚨 *[CRITICAL]* Sentry Error`]
@@ -61,10 +63,7 @@ export function captureError(error: unknown, context?: Record<string, unknown>):
     import("@/integrations/telegram")
       .then(({ sendAlert }) => sendAlert("critical", formatAlertMessage(error, context)))
       .catch((alertError) => {
-        console.error(
-          "Failed to send Telegram alert",
-          alertError instanceof Error ? alertError.message : String(alertError)
-        )
+        log.error("Failed to send Telegram alert", { error: extractErrorMessage(alertError) })
       })
       .finally(() => {
         _isSendingAlert = false

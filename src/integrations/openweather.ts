@@ -1,3 +1,4 @@
+import { env } from "@/config/env.ts"
 import { fetchWithTimeout } from "@/lib/fetch.ts"
 import { nowISO } from "@/lib/time.ts"
 import { getWeatherData, setWeatherData } from "@/memory/working.ts"
@@ -21,7 +22,7 @@ const OPENWEATHER_BASE_URL = "https://api.openweathermap.org/data/2.5/weather"
  * @returns Parsed WeatherData or null if the request fails.
  */
 export async function fetchCurrentWeather(lat: number, lon: number): Promise<WeatherData | null> {
-  const apiKey = process.env.OPENWEATHER_API_KEY
+  const apiKey = env().OPENWEATHER_API_KEY
   if (!apiKey) return null
 
   const url = `${OPENWEATHER_BASE_URL}?lat=${lat}&lon=${lon}&appid=${apiKey}&units=metric&lang=en`
@@ -78,7 +79,7 @@ export async function getCachedOrFetchWeather(lat: number, lon: number): Promise
  * Check if the OpenWeather API is reachable.
  */
 export async function pingOpenWeather(): Promise<boolean> {
-  const apiKey = process.env.OPENWEATHER_API_KEY
+  const apiKey = env().OPENWEATHER_API_KEY
   if (!apiKey) return false
 
   try {

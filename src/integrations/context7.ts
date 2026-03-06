@@ -1,4 +1,5 @@
 import { estimateTokenCount, sliceByTokens } from "tokenx"
+import { env } from "@/config/env.ts"
 import { fetchWithTimeout } from "@/lib/fetch.ts"
 import { log } from "@/lib/logger.ts"
 
@@ -99,7 +100,7 @@ export async function fetchLibraryDocs(sourceCode: string, topic: string): Promi
 
 function context7Fetch(url: string): Promise<Response> {
   const headers: Record<string, string> = {}
-  const apiKey = process.env.CONTEXT7_API_KEY
+  const apiKey = env().CONTEXT7_API_KEY
   if (apiKey) {
     headers.Authorization = `Bearer ${apiKey}`
   }

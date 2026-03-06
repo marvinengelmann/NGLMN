@@ -1,7 +1,9 @@
 import type { Sandbox } from "@daytonaio/sdk"
 import { Daytona, Image } from "@daytonaio/sdk"
+import { env } from "@/config/env.ts"
 import type { SandboxResult } from "@/integrations/types.ts"
 import { log } from "@/lib/logger.ts"
+import { extractErrorMessage } from "@/lib/result.ts"
 
 const SANDBOX_IMAGE = Image.base("ubuntu:22.04")
   .runCommands("apt-get update && apt-get install -y git curl unzip")
@@ -45,7 +47,7 @@ function sanitizeBranchName(branch: string): string {
 
 export async function validateInSandbox(branch: string): Promise<SandboxResult> {
   const safeBranch = sanitizeBranchName(branch)
-  const repoUrl = `https://github.com/${process.env.GITHUB_OWNER}/${process.env.GITHUB_REPO}.git`
+  const repoUrl = `https://github.com/${env().GITHUB_OWNER}/${env().GITHUB_REPO}.git`
   const appDir = "/app/anima"
   const start = Date.now()
   let sandbox: Sandbox | null = null
@@ -137,7 +139,7 @@ export async function validateInSandbox(branch: string): Promise<SandboxResult> 
   } catch (error) {
     log.error("Sandbox validation crashed", {
       branch,
-      error: error instanceof Error ? error.message : String(error),
+      error: extractErrorMessage(error),
       durationMs: Date.now() - start
     })
     return {
@@ -148,7 +150,7 @@ export async function validateInSandbox(branch: string): Promise<SandboxResult> 
       testsFailed: 0,
       healthCheckPassed: false,
       stdout: "",
-      stderr: error instanceof Error ? error.message : String(error),
+      stderr: extractErrorMessage(error),
       durationMs: Date.now() - start
     }
   } finally {
@@ -156,7 +158,7 @@ export async function validateInSandbox(branch: string): Promise<SandboxResult> 
       await destroySandbox(sandbox)
         .then(() => log.debug("Sandbox destroyed", { branch }))
         .catch((e) => {
-          log.error("Failed to destroy sandbox", { branch, error: e instanceof Error ? e.message : String(e) })
+          log.error("Failed to destroy sandbox", { branch, error: extractErrorMessage(e) })
         })
     }
   }

@@ -1,4 +1,5 @@
 import * as z from "zod"
+import { env } from "@/config/env.ts"
 import type { OperatorLocation } from "@/integrations/types.ts"
 import { fetchWithTimeout } from "@/lib/fetch.ts"
 import { logAndCaptureError } from "@/lib/result.ts"
@@ -14,7 +15,7 @@ const ENV_DEFAULT_CACHE_TTL_SECONDS = 86400
  * Geocode a city name to coordinates using the OpenWeather Geocoding API.
  */
 export async function geocodeCityName(cityName: string): Promise<{ latitude: number; longitude: number } | null> {
-  const apiKey = process.env.OPENWEATHER_API_KEY
+  const apiKey = env().OPENWEATHER_API_KEY
   if (!apiKey) return null
 
   try {
@@ -63,7 +64,7 @@ export async function resolveOperatorLocation(): Promise<OperatorLocation | null
     }
   }
 
-  const defaultLocation = process.env.OPENWEATHER_DEFAULT_LOCATION
+  const defaultLocation = env().OPENWEATHER_DEFAULT_LOCATION
   if (defaultLocation) {
     const coords = await geocodeCityName(defaultLocation)
     if (coords) {
