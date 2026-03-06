@@ -1,4 +1,5 @@
 import { getRef, listCommits, updateRef } from "@/integrations/github.ts"
+import { extractErrorMessage } from "@/lib/result.ts"
 import { nowISO } from "@/lib/time.ts"
 import { pushRollbackEvent } from "@/memory/working.ts"
 import type { RollbackResult, RollbackTier } from "./types.ts"
@@ -22,7 +23,7 @@ export async function performRollback(tier: RollbackTier): Promise<RollbackResul
       await executeHardRollback(actions, errors)
     }
   } catch (e) {
-    errors.push(`Rollback ${tier} failed: ${e instanceof Error ? e.message : String(e)}`)
+    errors.push(`Rollback ${tier} failed: ${extractErrorMessage(e)}`)
   }
 
   await pushRollbackEvent(tier)
@@ -52,7 +53,7 @@ async function executeSoftRollback(actions: string[], errors: string[]): Promise
     await updateRef("heads/master", previousCommit.sha, true)
     actions.push(`GitHub HEAD → ${previousCommit.sha.slice(0, 8)} (${previousCommit.message.split("\n")[0]})`)
   } catch (e) {
-    errors.push(`Soft rollback GitHub: ${e instanceof Error ? e.message : String(e)}`)
+    errors.push(`Soft rollback GitHub: ${extractErrorMessage(e)}`)
   }
 }
 
@@ -62,6 +63,6 @@ async function executeHardRollback(actions: string[], errors: string[]): Promise
     await updateRef("heads/master", lastStableRef.sha, true)
     actions.push(`GitHub HEAD → last-stable tag (${lastStableRef.sha.slice(0, 8)})`)
   } catch (e) {
-    errors.push(`Hard rollback GitHub: ${e instanceof Error ? e.message : String(e)}`)
+    errors.push(`Hard rollback GitHub: ${extractErrorMessage(e)}`)
   }
 }

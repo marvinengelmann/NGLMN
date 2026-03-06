@@ -1,7 +1,7 @@
 import { parseISO } from "date-fns"
 import * as z from "zod"
 import { type ConversationMessage, ConversationSlot } from "@/communication/types.ts"
-import { CONVERSATION, HEARTBEAT } from "@/config/constants.ts"
+import { CONVERSATION, HEARTBEAT, PERCEPTION } from "@/config/constants.ts"
 import { TickSummary } from "@/consciousness/types.ts"
 import { DreamState } from "@/dream/types.ts"
 import { EmotionalState } from "@/emotion/types.ts"
@@ -339,15 +339,13 @@ export async function clearWeatherData(): Promise<void> {
   await redis.del(KEYS.WEATHER_LATEST)
 }
 
-const OPERATOR_LOCATION_TTL_SECONDS = 3600
-
 export async function getOperatorLocation(): Promise<OperatorLocation | null> {
   return getValidatedRedis(KEYS.OPERATOR_LOCATION, OperatorLocation)
 }
 
 export async function setOperatorLocation(
   location: OperatorLocation,
-  ttlSeconds: number = OPERATOR_LOCATION_TTL_SECONDS
+  ttlSeconds: number = PERCEPTION.OPERATOR_LOCATION_TTL_SECONDS
 ): Promise<void> {
   await redis.set(KEYS.OPERATOR_LOCATION, location, { ex: ttlSeconds })
 }

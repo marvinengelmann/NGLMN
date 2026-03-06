@@ -5,6 +5,7 @@ import { applyDistortions } from "@/distortion/compute.ts"
 import type { DistortedMemory } from "@/distortion/types.ts"
 import { vectorIndex } from "@/integrations/vector.ts"
 import { log } from "@/lib/logger.ts"
+import { extractErrorMessage } from "@/lib/result.ts"
 import { nowISO } from "@/lib/time.ts"
 import type { EpisodeMetadata, EpisodicCategory } from "@/memory/types.ts"
 
@@ -331,7 +332,7 @@ export async function forgetOldEpisodes(
         log.warn("Failed to parse episode timestamp during forgetting", {
           id: r.id,
           timestamp: meta.timestamp,
-          error: e instanceof Error ? e.message : String(e)
+          error: extractErrorMessage(e)
         })
       }
     }

@@ -11,7 +11,7 @@ import type {
 } from "@/evolution/types.ts"
 import { applyWorkflow, proposeWorkflow } from "@/evolution/workflow.ts"
 import { log } from "@/lib/logger.ts"
-import { logAndCaptureError } from "@/lib/result.ts"
+import { extractErrorMessage, logAndCaptureError } from "@/lib/result.ts"
 import { captureError } from "@/lib/sentry.ts"
 import { nowISO } from "@/lib/time.ts"
 import {
@@ -24,7 +24,6 @@ import {
 } from "@/memory/working.ts"
 import { getRecentTickSummaries } from "@/workflow/engine.ts"
 
-const PROMPT_FALLBACKS: Record<string, string> = {}
 const MAX_EVOLUTION_RETRIES = 3
 
 interface EvolutionPayload {
@@ -124,8 +123,8 @@ export async function runEvolutionCycle(params: {
     log.info("Code evolution denied", { action: result.action, reasoning: result.reasoning })
     return outcome
   } catch (error) {
-    log.warn("Evolution cycle failed", { error: error instanceof Error ? error.message : String(error) })
-    return { action: "error", error: error instanceof Error ? error.message : String(error) }
+    log.warn("Evolution cycle failed", { error: extractErrorMessage(error) })
+    return { action: "error", error: extractErrorMessage(error) }
   }
 }
 
@@ -153,11 +152,9 @@ async function executeEvolutionType(payload: EvolutionPayload): Promise<Evolutio
   })
 
   if (payload.type === "prompt" && payload.promptId) {
-    const fallback = PROMPT_FALLBACKS[payload.promptId] ?? ""
-    const currentContent = await loadPrompt(payload.promptId, fallback)
+    const currentContent = await loadPrompt(payload.promptId, "")
     log.debug("Prompt loaded for evolution", {
       promptId: payload.promptId,
-      usedFallback: currentContent === fallback,
       contentLength: currentContent.length
     })
     const metrics = await collectMetrics()

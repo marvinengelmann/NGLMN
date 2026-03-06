@@ -175,7 +175,7 @@ export async function applyReflectionResult(output: ReflectionOutput): Promise<v
       await storeEpisode(`Reflection insight: ${insight}`, "dream", { relevanceScore: 0.85 })
       const storeResult = await storeKnowledge(
         SemanticCategory.enum.insight,
-        `reflection-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+        `reflection-${crypto.randomUUID()}`,
         insight,
         SemanticSource.enum.reflection,
         0.8,
@@ -190,7 +190,7 @@ export async function applyReflectionResult(output: ReflectionOutput): Promise<v
       output.selfInsights.map(async (selfInsight) => {
         const storeResult = await storeKnowledge(
           SemanticCategory.enum.insight,
-          `self-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+          `self-${crypto.randomUUID()}`,
           selfInsight,
           SemanticSource.enum.reflection,
           0.85,

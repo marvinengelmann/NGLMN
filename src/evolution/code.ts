@@ -19,7 +19,7 @@ import {
 } from "@/integrations/github.ts"
 import { validateInSandbox } from "@/integrations/sandbox.ts"
 import { log } from "@/lib/logger.ts"
-import { logAndCaptureError } from "@/lib/result.ts"
+import { extractErrorMessage, logAndCaptureError } from "@/lib/result.ts"
 import { nowFilename } from "@/lib/time.ts"
 import { storeEpisode } from "@/memory/episodic.ts"
 import { getNextEvolutionNumber } from "@/memory/working.ts"
@@ -404,7 +404,7 @@ export async function executeCodeEvolution(proposal: CodeProposal): Promise<{
     log.error("Code evolution failed unexpectedly", {
       branchName,
       commitSubject: proposal.commitSubject,
-      error: error instanceof Error ? error.message : String(error)
+      error: extractErrorMessage(error)
     })
     try {
       await deleteBranch(branchName)
@@ -413,7 +413,7 @@ export async function executeCodeEvolution(proposal: CodeProposal): Promise<{
     }
 
     await recordFailure("code_modification")
-    const errorMsg = error instanceof Error ? error.message : String(error)
+    const errorMsg = extractErrorMessage(error)
     return { success: false, error: errorMsg }
   }
 }

@@ -1,4 +1,4 @@
-import { TRIGGER_INTENSITY } from "@/config/constants.ts"
+import { PERCEPTION, TRIGGER_INTENSITY } from "@/config/constants.ts"
 import { processEmotionTrigger } from "@/emotion/state.ts"
 import type { EmotionalState } from "@/emotion/types.ts"
 import { redis } from "@/integrations/redis.ts"
@@ -7,7 +7,6 @@ import { createGoal, goalExistsByTitle } from "@/memory/goals.ts"
 import type { PerceptionSummary } from "@/perception/types.ts"
 
 const FREQUENCY_KEY = "working:perception:lastGoalCheck"
-const FREQUENCY_TTL_SECONDS = 3600
 
 interface PatternGoal {
   title: string
@@ -24,7 +23,7 @@ export async function detectPerceptionGoals(perception: PerceptionSummary, _emot
   const lastCheck = await redis.get(FREQUENCY_KEY)
   if (lastCheck) return 0
 
-  await redis.set(FREQUENCY_KEY, "1", { ex: FREQUENCY_TTL_SECONDS })
+  await redis.set(FREQUENCY_KEY, "1", { ex: PERCEPTION.GOAL_CHECK_TTL_SECONDS })
 
   const patterns = detectPatterns(perception)
   let goalsCreated = 0

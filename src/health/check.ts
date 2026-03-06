@@ -1,7 +1,7 @@
 import * as Sentry from "@sentry/node"
 import { differenceInSeconds, parseISO } from "date-fns"
 import { count, sql } from "drizzle-orm"
-import { BUDGET } from "@/config/constants.ts"
+import { BUDGET, HEALTH_CHECK } from "@/config/constants.ts"
 import { getBudgetState } from "@/core/budget.ts"
 import { db } from "@/db/client.ts"
 import { semanticMemory } from "@/db/schema.ts"
@@ -10,6 +10,7 @@ import { getRef } from "@/integrations/github.ts"
 import { pingTelegram } from "@/integrations/telegram.ts"
 import { vectorIndex } from "@/integrations/vector.ts"
 import { log } from "@/lib/logger.ts"
+import { extractErrorMessage } from "@/lib/result.ts"
 import { captureError } from "@/lib/sentry.ts"
 import { nowISO } from "@/lib/time.ts"
 import {
@@ -67,9 +68,9 @@ export async function collectHealthStatus(): Promise<HealthCheckResult> {
   try {
     redisStatus = (await pingRedis()) ? "ok" : "error"
   } catch (e) {
-    log.error("Health check: Redis failed", { error: e instanceof Error ? e.message : String(e) })
+    log.error("Health check: Redis failed", { error: extractErrorMessage(e) })
     captureError(e, { service: "redis" })
-    errors.push(`Redis: ${e instanceof Error ? e.message : String(e)}`)
+    errors.push(`Redis: ${extractErrorMessage(e)}`)
   }
 
   let postgresStatus: ServiceStatus = "error"
@@ -77,18 +78,18 @@ export async function collectHealthStatus(): Promise<HealthCheckResult> {
     await db.execute(sql`SELECT 1`)
     postgresStatus = "ok"
   } catch (e) {
-    log.error("Health check: Postgres failed", { error: e instanceof Error ? e.message : String(e) })
+    log.error("Health check: Postgres failed", { error: extractErrorMessage(e) })
     captureError(e, { service: "postgres" })
-    errors.push(`Postgres: ${e instanceof Error ? e.message : String(e)}`)
+    errors.push(`Postgres: ${extractErrorMessage(e)}`)
   }
 
   let telegramStatus: ServiceStatus = "error"
   try {
     telegramStatus = (await pingTelegram()) ? "ok" : "error"
   } catch (e) {
-    log.error("Health check: Telegram failed", { error: e instanceof Error ? e.message : String(e) })
+    log.error("Health check: Telegram failed", { error: extractErrorMessage(e) })
     captureError(e, { service: "telegram" })
-    errors.push(`Telegram: ${e instanceof Error ? e.message : String(e)}`)
+    errors.push(`Telegram: ${extractErrorMessage(e)}`)
   }
 
   let vectorStatus: ServiceStatus = "error"
@@ -96,9 +97,9 @@ export async function collectHealthStatus(): Promise<HealthCheckResult> {
     await vectorIndex.info()
     vectorStatus = "ok"
   } catch (e) {
-    log.error("Health check: Vector failed", { error: e instanceof Error ? e.message : String(e) })
+    log.error("Health check: Vector failed", { error: extractErrorMessage(e) })
     captureError(e, { service: "vector" })
-    errors.push(`Vector: ${e instanceof Error ? e.message : String(e)}`)
+    errors.push(`Vector: ${extractErrorMessage(e)}`)
   }
 
   let lastTickRecency: ProcessStatus = "dead"
@@ -107,17 +108,16 @@ export async function collectHealthStatus(): Promise<HealthCheckResult> {
     const lastTick = await getLastTickSummary()
     if (lastTick) {
       lastTickAgeSeconds = differenceInSeconds(new Date(), parseISO(lastTick.timestamp))
-      const intervalSeconds = 300
-      const okThreshold = intervalSeconds * 2
-      const staleThreshold = intervalSeconds * 4
+      const okThreshold = HEALTH_CHECK.EXPECTED_INTERVAL_SECONDS * HEALTH_CHECK.OK_MULTIPLIER
+      const staleThreshold = HEALTH_CHECK.EXPECTED_INTERVAL_SECONDS * HEALTH_CHECK.STALE_MULTIPLIER
       if (lastTickAgeSeconds < okThreshold) lastTickRecency = "ok"
       else if (lastTickAgeSeconds < staleThreshold) lastTickRecency = "stale"
       else lastTickRecency = "dead"
     }
   } catch (e) {
-    log.error("Health check: Process failed", { error: e instanceof Error ? e.message : String(e) })
+    log.error("Health check: Process failed", { error: extractErrorMessage(e) })
     captureError(e, { service: "process" })
-    errors.push(`Process: ${e instanceof Error ? e.message : String(e)}`)
+    errors.push(`Process: ${extractErrorMessage(e)}`)
   }
 
   let budgetConsumed = 0
@@ -129,9 +129,9 @@ export async function collectHealthStatus(): Promise<HealthCheckResult> {
     budgetLimit = budget.dailyLimit
     budgetCompliant = budget.consumedToday <= budget.dailyLimit
   } catch (e) {
-    log.error("Health check: Budget failed", { error: e instanceof Error ? e.message : String(e) })
+    log.error("Health check: Budget failed", { error: extractErrorMessage(e) })
     captureError(e, { service: "budget" })
-    errors.push(`Budget: ${e instanceof Error ? e.message : String(e)}`)
+    errors.push(`Budget: ${extractErrorMessage(e)}`)
   }
 
   let semanticStatus: ServiceStatus = "error"
@@ -141,9 +141,9 @@ export async function collectHealthStatus(): Promise<HealthCheckResult> {
     semanticCount = result[0]?.value ?? 0
     semanticStatus = "ok"
   } catch (e) {
-    log.error("Health check: Semantic failed", { error: e instanceof Error ? e.message : String(e) })
+    log.error("Health check: Semantic failed", { error: extractErrorMessage(e) })
     captureError(e, { service: "semantic" })
-    errors.push(`Semantic: ${e instanceof Error ? e.message : String(e)}`)
+    errors.push(`Semantic: ${extractErrorMessage(e)}`)
   }
 
   let emotionBlocked = false
@@ -157,9 +157,9 @@ export async function collectHealthStatus(): Promise<HealthCheckResult> {
       }
     }
   } catch (e) {
-    log.error("Health check: EmotionalState failed", { error: e instanceof Error ? e.message : String(e) })
+    log.error("Health check: EmotionalState failed", { error: extractErrorMessage(e) })
     captureError(e, { service: "emotional_state" })
-    errors.push(`Emotional state: ${e instanceof Error ? e.message : String(e)}`)
+    errors.push(`Emotional state: ${extractErrorMessage(e)}`)
   }
 
   const criticalDown = redisStatus === "error" || postgresStatus === "error"

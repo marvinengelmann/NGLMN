@@ -5,7 +5,7 @@ import { getAttentionState, getLastInstinctImpression } from "@/cognition/state.
 import type { AttentionState, InstinctImpression } from "@/cognition/types.ts"
 import { getCommunicationRegister } from "@/communication/state.ts"
 import type { CommunicationRegister, ConversationSlot } from "@/communication/types.ts"
-import { CONTEXT_LIMITS, HUMOR, SOCIAL_BATTERY } from "@/config/constants.ts"
+import { CONTEXT_LIMITS, HUMOR, PERCEPTION, SOCIAL_BATTERY } from "@/config/constants.ts"
 import type { SenseData, TickSummary } from "@/consciousness/types.ts"
 import { getDeceptionState } from "@/deception/state.ts"
 import type { DeceptionState } from "@/deception/types.ts"
@@ -66,7 +66,7 @@ import type { WorkflowDefinition } from "@/workflow/types.ts"
 
 function translateEmotionToFelt(emotion: EmotionalState): string {
   const lines: string[] = []
-  const threshold = 0.2
+  const threshold = PERCEPTION.EMOTION_DISPLAY_THRESHOLD
 
   const felt: Record<string, [string, string]> = {
     curiosity: [
@@ -503,18 +503,32 @@ function buildPerceptionSections(
   return sections
 }
 
-function buildInnerSections(
-  emotion: EmotionalState,
-  emotionHistory: { state: unknown; trigger: string | null; createdAt: Date | null }[],
-  senseData: SenseData,
-  somaticState: SomaticState | null,
-  selfConcept: SelfConcept,
-  vulnerabilityState: VulnerabilityState | null,
-  instinctImpression: InstinctImpression | null,
-  lastInnerDialog: InnerDialog | null,
-  dissonanceState: DissonanceState | null,
+interface InnerSectionsInput {
+  emotion: EmotionalState
+  emotionHistory: { state: unknown; trigger: string | null; createdAt: Date | null }[]
+  senseData: SenseData
+  somaticState: SomaticState | null
+  selfConcept: SelfConcept
+  vulnerabilityState: VulnerabilityState | null
+  instinctImpression: InstinctImpression | null
+  lastInnerDialog: InnerDialog | null
+  dissonanceState: DissonanceState | null
   deceptionState: DeceptionState
-): string[] {
+}
+
+function buildInnerSections(input: InnerSectionsInput): string[] {
+  const {
+    emotion,
+    emotionHistory,
+    senseData,
+    somaticState,
+    selfConcept,
+    vulnerabilityState,
+    instinctImpression,
+    lastInnerDialog,
+    dissonanceState,
+    deceptionState
+  } = input
   const sections: string[] = []
 
   const emotionSection = [`# Emotions\nWhat you feel right now:\n${translateEmotionToFelt(emotion)}`]
@@ -922,7 +936,7 @@ export async function buildContext(senseData: SenseData, emotion: EmotionalState
 
   const sections = [
     ...buildPerceptionSections(senseData, operatorLanguage, lastTick, conversationBuffer, timePerception),
-    ...buildInnerSections(
+    ...buildInnerSections({
       emotion,
       emotionHistory,
       senseData,
@@ -933,7 +947,7 @@ export async function buildContext(senseData: SenseData, emotion: EmotionalState
       lastInnerDialog,
       dissonanceState,
       deceptionState
-    ),
+    }),
     ...buildSocialSections(
       attachmentStyle,
       relationshipPhase,

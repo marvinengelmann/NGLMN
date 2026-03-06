@@ -1,4 +1,5 @@
 import { differenceInHours, differenceInSeconds, parseISO } from "date-fns"
+import { PERCEPTION } from "@/config/constants.ts"
 import { getBudgetState } from "@/core/budget.ts"
 import type { EmotionUpdateEvent } from "@/emotion/types.ts"
 import type { OverallStatus } from "@/health/types.ts"
@@ -72,16 +73,16 @@ export async function readTelegramActivity(): Promise<{
   const lastActivity = await getOperatorLastActivity()
 
   const lastMessageAge = lastActivity ? differenceInSeconds(new Date(), parseISO(lastActivity)) : -1
-  const operatorActive = lastMessageAge >= 0 && lastMessageAge < 600
+  const operatorActive = lastMessageAge >= 0 && lastMessageAge < PERCEPTION.OPERATOR_ACTIVE_SECONDS
 
   const triggers: EmotionUpdateEvent[] = []
 
-  if (!operatorActive && lastMessageAge > 3600) {
+  if (!operatorActive && lastMessageAge > PERCEPTION.SILENCE_THRESHOLD_SECONDS) {
     const alreadyFired = await getOperatorSilentFlag()
     if (!alreadyFired) {
       triggers.push({
         trigger: "operator_went_silent",
-        intensity: Math.min(1, lastMessageAge / 7200),
+        intensity: Math.min(1, lastMessageAge / PERCEPTION.SILENCE_INTENSITY_SCALE),
         detail: `No operator activity for ${Math.floor(lastMessageAge / 60)} minutes`
       })
       await setOperatorSilentFlag()

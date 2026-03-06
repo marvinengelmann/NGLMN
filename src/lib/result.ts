@@ -56,6 +56,22 @@ export function fromCatch(tag: AnimaErrorTag, e: unknown): AnimaError {
   return { tag, message: String(e), cause: e }
 }
 
+/**
+ * Extract a human-readable message from an unknown caught value.
+ */
+export function extractErrorMessage(e: unknown): string {
+  if (e instanceof Error) return e.message
+  if (
+    typeof e === "object" &&
+    e !== null &&
+    "message" in e &&
+    typeof (e as { message: unknown }).message === "string"
+  ) {
+    return (e as { message: string }).message
+  }
+  return String(e)
+}
+
 export type AnimaResult<T> = Result<T, AnimaError>
 export type AnimaResultAsync<T> = ResultAsync<T, AnimaError>
 
