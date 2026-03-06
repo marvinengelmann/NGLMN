@@ -18,7 +18,7 @@ import { EmotionalState } from "@/emotion/types.ts"
 import { computeEmotionalIntensity } from "@/emotion/update.ts"
 import { getRecentChangelog } from "@/evolution/changelog.ts"
 import type { CodeProposal, EvolutionCycleResult } from "@/evolution/types.ts"
-import { nowLocal, TIMEZONE } from "@/lib/time.ts"
+import { nowLocal } from "@/lib/time.ts"
 import {
   queryHumorCallbacks,
   queryHumorMemories,
@@ -408,7 +408,7 @@ function buildPerceptionSections(
   const sections: string[] = []
 
   const formattedTime = format(nowLocal(), "EEEE, MMMM d, yyyy · HH:mm")
-  sections.push(`# Time\n${formattedTime} (${TIMEZONE})`)
+  sections.push(`# Time\n${formattedTime}`)
 
   if (timePerception.subjectivePace !== "normal") {
     sections.push(`# Time Perception\nPace: ${timePerception.subjectivePace} — ${timePerception.description}`)
