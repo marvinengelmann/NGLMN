@@ -71,7 +71,5 @@ export function trySafe<T>(tag: AnimaErrorTag, fn: () => Promise<T>): AnimaResul
  */
 export function logAndCaptureError(error: AnimaError, extra?: Record<string, unknown>): void {
   log.error(`[${error.tag}] ${error.message}`, { ...extra, cause: error.cause })
-  if (error.cause instanceof Error) {
-    captureError(error.cause, { tag: error.tag, ...extra })
-  }
+  captureError(error.cause ?? error.message, { tag: error.tag, ...extra })
 }
