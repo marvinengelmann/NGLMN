@@ -1,5 +1,5 @@
 import { differenceInHours, formatISO, getDay, getHours, getMinutes } from "date-fns"
-import { desc, eq } from "drizzle-orm"
+import { desc, eq, sql } from "drizzle-orm"
 import { WORKFLOW } from "@/config/constants.ts"
 import { AnimaAction, type TickSummary } from "@/consciousness/types.ts"
 import { callIntelligence } from "@/core/intelligence.ts"
@@ -120,8 +120,10 @@ function evaluateScheduleTrigger(trigger: Extract<WorkflowDefinition["trigger"],
 
   if (currentHour !== trigger.hour) return false
 
-  if (trigger.minute !== undefined && Math.abs(currentMinute - trigger.minute) > 10) {
-    return false
+  if (trigger.minute !== undefined) {
+    const diff = Math.abs(currentMinute - trigger.minute)
+    const wrappedDiff = Math.min(diff, 60 - diff)
+    if (wrappedDiff > 10) return false
   }
 
   if (trigger.daysOfWeek && trigger.daysOfWeek.length > 0) {
@@ -146,8 +148,9 @@ async function evaluateEmotionTrigger(
     if (history.length < trigger.sustainedTicks) return false
 
     return history.every((entry) => {
-      const state = EmotionalState.parse(entry.state)
-      const val = state[trigger.dimension]
+      const parsed = EmotionalState.safeParse(entry.state)
+      if (!parsed.success) return false
+      const val = parsed.data[trigger.dimension]
       return trigger.operator === "gt" ? val > trigger.threshold : val < trigger.threshold
     })
   }
@@ -190,7 +193,7 @@ async function finalizeWorkflow(workflow: WorkflowDefinition, output: string): P
   await db
     .update(workflows)
     .set({
-      executionCount: (workflow.executionCount ?? 0) + 1,
+      executionCount: sql`${workflows.executionCount} + 1`,
       lastExecutedAt: new Date(),
       updatedAt: new Date()
     })
