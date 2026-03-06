@@ -13,3 +13,7 @@ coverage
 
 # Finder (MacOS) folder config
 .DS_Store
+
+# image references
+src/image/reference/*
+!src/image/reference/.gitkeep

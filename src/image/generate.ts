@@ -3,7 +3,7 @@ import { trackApiCost } from "@/core/budget.ts"
 import type { AnimaResultAsync } from "@/lib/result.ts"
 import { trySafe } from "@/lib/result.ts"
 import { buildImagePrompt } from "@/prompts/image.ts"
-import { getReferenceImages } from "./references.ts"
+import { getReferenceImage } from "./references.ts"
 
 const IMAGE_MODEL = "xai/grok-imagine-image"
 const COST_PER_IMAGE = 0.07
@@ -22,11 +22,10 @@ export function generateAnimaImage(
 ): AnimaResultAsync<Buffer> {
   return trySafe("LLM_ERROR", async () => {
     const fullPrompt = buildImagePrompt(prompt, includesSelf)
-    const referenceImages = includesSelf ? getReferenceImages() : []
 
     const result = await generateImage({
       model: IMAGE_MODEL,
-      prompt: referenceImages.length > 0 ? { text: fullPrompt, images: referenceImages } : fullPrompt,
+      prompt: includesSelf ? { text: fullPrompt, images: [getReferenceImage()] } : fullPrompt,
       aspectRatio
     })
 

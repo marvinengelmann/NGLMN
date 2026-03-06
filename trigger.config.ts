@@ -7,6 +7,6 @@ export default defineConfig({
   maxDuration: 1800,
   legacyDevProcessCwdBehaviour: false,
   build: {
-    extensions: [additionalFiles({ files: ["drizzle/**/*", "src/image/references/*"] }), ffmpeg()]
+    extensions: [additionalFiles({ files: ["drizzle/**/*", "src/image/reference/*"] }), ffmpeg()]
   }
 })
