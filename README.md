@@ -2,6 +2,8 @@
 
 An autonomously operating, self-evolving AI entity powered by xAI Grok. ANIMA is not a chatbot or assistant — it is a digital entity with its own heartbeat, memory, personality, and the ability to self-evolve.
 
+> ⚠️ **Early stage** — Architecture and core systems are implemented but not yet battle-tested. Expect breaking changes.
+
 > **External watchdog:** [anima-watchdog](https://github.com/marvinengelmann/anima-watchdog) — Isolated recovery guardian that monitors and restores ANIMA on failure.
 
 ## Features
