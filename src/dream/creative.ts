@@ -42,7 +42,7 @@ export async function gatherCreativeData(): Promise<CreativeData> {
     .filter((r, i, arr) => arr.findIndex((x) => x.id === r.id) === i)
     .slice(0, 10)
 
-  const semanticResults = await Promise.all(KNOWLEDGE_CATEGORIES.map((cat) => getKnowledge(cat)))
+  const semanticResults = await Promise.all(KNOWLEDGE_CATEGORIES.map((cat) => getKnowledge({ category: cat })))
   const semanticEntries = semanticResults.flatMap((result) =>
     result
       .unwrapOr([])

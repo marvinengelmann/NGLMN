@@ -1,9 +1,9 @@
+import { fetchWithTimeout } from "@/lib/fetch.ts"
 import { log } from "@/lib/logger.ts"
 import { estimateTokens } from "@/lib/math.ts"
 
 const CONTEXT7_BASE_URL = "https://context7.com"
 const DOCS_TOKEN_BUDGET = 5000
-const FETCH_TIMEOUT_MS = 10_000
 
 const LIBRARY_IDS: Record<string, string> = {
   "drizzle-orm": "/drizzle-team/drizzle-orm-docs",
@@ -26,7 +26,7 @@ export async function queryLibraryDocs(libraryId: string, topic: string): Promis
     const url = new URL(path, CONTEXT7_BASE_URL)
     url.searchParams.set("topic", topic)
 
-    const response = await fetchWithTimeout(url.toString())
+    const response = await context7Fetch(url.toString())
     if (!response.ok) return ""
 
     const text = await response.text()
@@ -97,19 +97,11 @@ export async function fetchLibraryDocs(sourceCode: string, topic: string): Promi
   return combined
 }
 
-async function fetchWithTimeout(url: string): Promise<Response> {
-  const controller = new AbortController()
-  const timeout = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS)
-
+function context7Fetch(url: string): Promise<Response> {
   const headers: Record<string, string> = {}
   const apiKey = process.env.CONTEXT7_API_KEY
   if (apiKey) {
     headers.Authorization = `Bearer ${apiKey}`
   }
-
-  try {
-    return await fetch(url, { signal: controller.signal, headers })
-  } finally {
-    clearTimeout(timeout)
-  }
+  return fetchWithTimeout(url, { headers })
 }

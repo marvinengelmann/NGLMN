@@ -1,5 +1,6 @@
 import * as z from "zod"
 import type { OperatorLocation } from "@/integrations/types.ts"
+import { fetchWithTimeout } from "@/lib/fetch.ts"
 import { logAndCaptureError } from "@/lib/result.ts"
 import { nowISO } from "@/lib/time.ts"
 import { getKnowledge, storeKnowledge } from "@/memory/semantic.ts"
@@ -18,7 +19,7 @@ export async function geocodeCityName(cityName: string): Promise<{ latitude: num
 
   try {
     const url = `${OPENWEATHER_GEO_URL}?q=${encodeURIComponent(cityName)}&limit=1&appid=${apiKey}`
-    const response = await fetch(url)
+    const response = await fetchWithTimeout(url)
     if (!response.ok) return null
 
     const data = (await response.json()) as Array<{ lat: number; lon: number }>
@@ -40,7 +41,7 @@ export async function resolveOperatorLocation(): Promise<OperatorLocation | null
   const cached = await getOperatorLocation()
   if (cached) return cached
 
-  const knowledgeResult = await getKnowledge("knowledge", "operator_location")
+  const knowledgeResult = await getKnowledge({ category: "knowledge", key: "operator_location" })
   if (knowledgeResult.isOk()) {
     const rows = knowledgeResult.value
     if (rows.length > 0) {

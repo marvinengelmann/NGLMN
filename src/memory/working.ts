@@ -93,11 +93,16 @@ export async function setBusy(tickId: string): Promise<void> {
   await redis.set(KEYS.BUSY, tickId, { ex: HEARTBEAT.BUSY_TTL })
 }
 
+const CLEAR_BUSY_SCRIPT = `
+  if redis.call("GET", KEYS[1]) == ARGV[1] then
+    return redis.call("DEL", KEYS[1])
+  else
+    return 0
+  end
+`
+
 export async function clearBusy(tickId: string): Promise<void> {
-  const current = await redis.get(KEYS.BUSY)
-  if (current === tickId) {
-    await redis.del(KEYS.BUSY)
-  }
+  await redis.eval<[string], number>(CLEAR_BUSY_SCRIPT, [KEYS.BUSY], [tickId])
 }
 
 export async function getLastUpdateId(): Promise<number | null> {

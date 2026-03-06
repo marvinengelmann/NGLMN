@@ -1,3 +1,4 @@
+import { fetchWithTimeout } from "@/lib/fetch.ts"
 import { nowISO } from "@/lib/time.ts"
 import { getWeatherData, setWeatherData } from "@/memory/working.ts"
 import type { WeatherData } from "./types.ts"
@@ -26,7 +27,7 @@ export async function fetchCurrentWeather(lat: number, lon: number): Promise<Wea
   const url = `${OPENWEATHER_BASE_URL}?lat=${lat}&lon=${lon}&appid=${apiKey}&units=metric&lang=en`
 
   try {
-    const response = await fetch(url)
+    const response = await fetchWithTimeout(url)
     if (!response.ok) return null
 
     const data = (await response.json()) as OpenWeatherResponse
@@ -82,7 +83,7 @@ export async function pingOpenWeather(): Promise<boolean> {
 
   try {
     const url = `${OPENWEATHER_BASE_URL}?lat=0&lon=0&appid=${apiKey}&units=metric&lang=en`
-    const response = await fetch(url)
+    const response = await fetchWithTimeout(url)
     return response.ok
   } catch {
     return false

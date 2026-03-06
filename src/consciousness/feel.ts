@@ -88,7 +88,7 @@ export async function feel(senseResult: SenseResult): Promise<FeelingResult> {
   const instinct = await computeInstinctImpression(senseResult.pendingMessages, emotion, soma)
 
   const [knowledgeResult, recentActions] = await Promise.all([
-    getKnowledge("insight", undefined, "self"),
+    getKnowledge({ category: "insight", scope: "self" }),
     getRecentActions()
   ])
 

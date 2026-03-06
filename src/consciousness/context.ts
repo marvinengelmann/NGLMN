@@ -444,7 +444,7 @@ export async function buildContext(senseData: SenseData, emotion: EmotionalState
         )
       : queryRelatedWithDistortion("recent activity", CONTEXT_LIMITS.maxEpisodes, emotionIntensity),
     queryRelationshipHistory(CONTEXT_LIMITS.maxRelationship),
-    getKnowledge(),
+    getKnowledge({ limit: CONTEXT_LIMITS.maxSemantic }),
     getOperatorLanguage(),
     getGoalsByPriority(CONTEXT_LIMITS.maxGoals, emotion),
     getAllTrustLevels(),

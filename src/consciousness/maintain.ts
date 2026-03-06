@@ -11,6 +11,7 @@ import {
 } from "@/attachment/state.ts"
 import { hasStyleChanged, updateAttachmentStyle } from "@/attachment/update.ts"
 import { log } from "@/lib/logger.ts"
+import { logAndCaptureError } from "@/lib/result.ts"
 import { applyOpinionDrift } from "@/memory/semantic.ts"
 import {
   getConflictCount,
@@ -102,7 +103,8 @@ export async function maintain(
   }
 
   if (Math.random() < 0.05) {
-    await applyOpinionDrift()
+    const driftResult = await applyOpinionDrift()
+    if (driftResult.isErr()) logAndCaptureError(driftResult.error)
   }
 
   const durationMs = Date.now() - input.startTime

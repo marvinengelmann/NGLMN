@@ -1,6 +1,8 @@
+import { fetchWithTimeout } from "@/lib/fetch.ts"
 import { log } from "@/lib/logger.ts"
 
 const GITHUB_API_BASE = "https://api.github.com"
+const GITHUB_TIMEOUT_MS = 15_000
 
 const ANIMA_IDENTITY = {
   name: "ANIMA",
@@ -25,15 +27,17 @@ function headers(token: string): Record<string, string> {
   }
 }
 
+async function githubFetch(url: string, token: string, init?: RequestInit): Promise<Response> {
+  return fetchWithTimeout(url, { ...init, headers: { ...headers(token), ...init?.headers } }, GITHUB_TIMEOUT_MS)
+}
+
 /**
  * Get a Git reference (e.g. "heads/main").
  */
 export async function getRef(ref: string): Promise<{ sha: string; ref: string }> {
   const { token, owner, repo } = getConfig()
 
-  const response = await fetch(`${GITHUB_API_BASE}/repos/${owner}/${repo}/git/ref/${ref}`, {
-    headers: headers(token)
-  })
+  const response = await githubFetch(`${GITHUB_API_BASE}/repos/${owner}/${repo}/git/ref/${ref}`, token)
 
   if (!response.ok) {
     throw new Error(`GitHub getRef failed: ${response.status} ${await response.text()}`)
@@ -49,9 +53,8 @@ export async function getRef(ref: string): Promise<{ sha: string; ref: string }>
 export async function updateRef(ref: string, sha: string, force: boolean = true): Promise<void> {
   const { token, owner, repo } = getConfig()
 
-  const response = await fetch(`${GITHUB_API_BASE}/repos/${owner}/${repo}/git/refs/${ref}`, {
+  const response = await githubFetch(`${GITHUB_API_BASE}/repos/${owner}/${repo}/git/refs/${ref}`, token, {
     method: "PATCH",
-    headers: headers(token),
     body: JSON.stringify({ sha, force })
   })
 
@@ -69,9 +72,10 @@ export async function listCommits(
 ): Promise<Array<{ sha: string; message: string; date: string }>> {
   const { token, owner, repo } = getConfig()
 
-  const response = await fetch(`${GITHUB_API_BASE}/repos/${owner}/${repo}/commits?sha=${branch}&per_page=${limit}`, {
-    headers: headers(token)
-  })
+  const response = await githubFetch(
+    `${GITHUB_API_BASE}/repos/${owner}/${repo}/commits?sha=${branch}&per_page=${limit}`,
+    token
+  )
 
   if (!response.ok) {
     throw new Error(`GitHub listCommits failed: ${response.status} ${await response.text()}`)
@@ -91,9 +95,8 @@ export async function listCommits(
 export async function createRef(ref: string, sha: string): Promise<void> {
   const { token, owner, repo } = getConfig()
 
-  const response = await fetch(`${GITHUB_API_BASE}/repos/${owner}/${repo}/git/refs`, {
+  const response = await githubFetch(`${GITHUB_API_BASE}/repos/${owner}/${repo}/git/refs`, token, {
     method: "POST",
-    headers: headers(token),
     body: JSON.stringify({ ref: `refs/${ref}`, sha })
   })
 
@@ -108,9 +111,8 @@ export async function createRef(ref: string, sha: string): Promise<void> {
 export async function deleteRef(ref: string): Promise<void> {
   const { token, owner, repo } = getConfig()
 
-  const response = await fetch(`${GITHUB_API_BASE}/repos/${owner}/${repo}/git/refs/${ref}`, {
-    method: "DELETE",
-    headers: headers(token)
+  const response = await githubFetch(`${GITHUB_API_BASE}/repos/${owner}/${repo}/git/refs/${ref}`, token, {
+    method: "DELETE"
   })
 
   if (!response.ok) {
@@ -127,9 +129,7 @@ export async function getFileContent(
 ): Promise<{ content: string; sha: string }> {
   const { token, owner, repo } = getConfig()
 
-  const response = await fetch(`${GITHUB_API_BASE}/repos/${owner}/${repo}/contents/${path}?ref=${branch}`, {
-    headers: headers(token)
-  })
+  const response = await githubFetch(`${GITHUB_API_BASE}/repos/${owner}/${repo}/contents/${path}?ref=${branch}`, token)
 
   if (!response.ok) {
     throw new Error(`GitHub getFileContent failed: ${response.status} ${await response.text()}`)
@@ -146,9 +146,7 @@ export async function getFileContent(
 export async function getRepoTree(branch: string = "master"): Promise<string[]> {
   const { token, owner, repo } = getConfig()
 
-  const refRes = await fetch(`${GITHUB_API_BASE}/repos/${owner}/${repo}/git/ref/heads/${branch}`, {
-    headers: headers(token)
-  })
+  const refRes = await githubFetch(`${GITHUB_API_BASE}/repos/${owner}/${repo}/git/ref/heads/${branch}`, token)
 
   if (!refRes.ok) {
     throw new Error(`GitHub getRepoTree ref failed: ${refRes.status} ${await refRes.text()}`)
@@ -157,9 +155,7 @@ export async function getRepoTree(branch: string = "master"): Promise<string[]> 
   const refData = (await refRes.json()) as { object: { sha: string } }
   const treeSha = refData.object.sha
 
-  const treeRes = await fetch(`${GITHUB_API_BASE}/repos/${owner}/${repo}/git/trees/${treeSha}?recursive=1`, {
-    headers: headers(token)
-  })
+  const treeRes = await githubFetch(`${GITHUB_API_BASE}/repos/${owner}/${repo}/git/trees/${treeSha}?recursive=1`, token)
 
   if (!treeRes.ok) {
     throw new Error(`GitHub getRepoTree tree failed: ${treeRes.status} ${await treeRes.text()}`)
@@ -195,9 +191,8 @@ export async function createOrUpdateFile(
   }
   if (sha) body.sha = sha
 
-  const response = await fetch(`${GITHUB_API_BASE}/repos/${owner}/${repo}/contents/${path}`, {
+  const response = await githubFetch(`${GITHUB_API_BASE}/repos/${owner}/${repo}/contents/${path}`, token, {
     method: "PUT",
-    headers: headers(token),
     body: JSON.stringify(body)
   })
 
@@ -227,9 +222,8 @@ export async function deleteBranch(branchName: string): Promise<void> {
 export async function mergeBranch(branchName: string): Promise<void> {
   const { token, owner, repo } = getConfig()
 
-  const response = await fetch(`${GITHUB_API_BASE}/repos/${owner}/${repo}/merges`, {
+  const response = await githubFetch(`${GITHUB_API_BASE}/repos/${owner}/${repo}/merges`, token, {
     method: "POST",
-    headers: headers(token),
     body: JSON.stringify({
       base: "master",
       head: branchName,

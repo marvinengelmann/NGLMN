@@ -47,22 +47,32 @@ export function storeKnowledge(
  * Retrieve knowledge by category, key, and/or scope.
  * Also updates `lastAccessedAt` on returned rows.
  */
-export function getKnowledge(
-  category?: SemanticCategory,
-  key?: string,
+interface GetKnowledgeOptions {
+  category?: SemanticCategory
+  key?: string
   scope?: SemanticScope
-): AnimaResultAsync<SemanticMemorySelect[]> {
+  limit?: number
+}
+
+export function getKnowledge(options: GetKnowledgeOptions = {}): AnimaResultAsync<SemanticMemorySelect[]> {
   return trySafe("DB_ERROR", async () => {
     const conditions: SQL[] = []
-    if (category) conditions.push(eq(semanticMemory.category, category))
-    if (key) conditions.push(eq(semanticMemory.key, key))
-    if (scope) conditions.push(eq(semanticMemory.scope, scope))
+    if (options.category) conditions.push(eq(semanticMemory.category, options.category))
+    if (options.key) conditions.push(eq(semanticMemory.key, options.key))
+    if (options.scope) conditions.push(eq(semanticMemory.scope, options.scope))
 
-    const rows = await db
+    let query = db
       .select()
       .from(semanticMemory)
       .where(conditions.length > 0 ? and(...conditions) : undefined)
       .orderBy(desc(semanticMemory.updatedAt))
+      .$dynamic()
+
+    if (options.limit) {
+      query = query.limit(options.limit)
+    }
+
+    const rows = await query
 
     if (rows.length > 0) {
       const ids = rows.map((r) => r.id)
@@ -158,26 +168,28 @@ export function getRelatedEntities(
  * Subtly drift preference opinions over time — called during MAINTAIN with 5% probability.
  * Selects 1-2 random preference entries and slightly lowers their confidence.
  */
-export async function applyOpinionDrift(): Promise<void> {
-  const preferences = await db
-    .select()
-    .from(semanticMemory)
-    .where(and(eq(semanticMemory.category, "preference"), lt(semanticMemory.confidence, 1)))
-    .orderBy(desc(semanticMemory.updatedAt))
-    .limit(10)
+export function applyOpinionDrift(): AnimaResultAsync<void> {
+  return trySafe("DB_ERROR", async () => {
+    const preferences = await db
+      .select()
+      .from(semanticMemory)
+      .where(and(eq(semanticMemory.category, "preference"), lt(semanticMemory.confidence, 1)))
+      .orderBy(desc(semanticMemory.updatedAt))
+      .limit(10)
 
-  if (preferences.length === 0) return
+    if (preferences.length === 0) return
 
-  const count = Math.min(preferences.length, 1 + Math.floor(Math.random() * 2))
-  const shuffled = shuffle(preferences).slice(0, count)
+    const count = Math.min(preferences.length, 1 + Math.floor(Math.random() * 2))
+    const shuffled = shuffle(preferences).slice(0, count)
 
-  for (const pref of shuffled) {
-    const drift = 0.05 + Math.random() * 0.05
-    const newConfidence = Math.max(0.1, (pref.confidence ?? 0.5) - drift)
-    await db
-      .update(semanticMemory)
-      .set({ confidence: newConfidence, updatedAt: new Date() })
-      .where(eq(semanticMemory.id, pref.id))
-    log.debug("Opinion drift applied", { key: pref.key, oldConfidence: pref.confidence, newConfidence })
-  }
+    for (const pref of shuffled) {
+      const drift = 0.05 + Math.random() * 0.05
+      const newConfidence = Math.max(0.1, (pref.confidence ?? 0.5) - drift)
+      await db
+        .update(semanticMemory)
+        .set({ confidence: newConfidence, updatedAt: new Date() })
+        .where(eq(semanticMemory.id, pref.id))
+      log.debug("Opinion drift applied", { key: pref.key, oldConfidence: pref.confidence, newConfidence })
+    }
+  })
 }
