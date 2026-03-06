@@ -5,7 +5,7 @@ import { db } from "@/db/client.ts"
 import { narrativeEntries } from "@/db/schema.ts"
 import { isDissonanceSignificant } from "@/dissonance/check.ts"
 import { executeDream } from "@/dream/executor.ts"
-import { saveEmotionalState } from "@/emotion/state.ts"
+import { getEmotionalState, saveEmotionalState } from "@/emotion/state.ts"
 import {
   computeEmotionalIntensity,
   computeEmotionalUpdate,
@@ -80,7 +80,8 @@ export async function act(
   }
 
   if (responseSent) {
-    const outcomeEmotion = computeEmotionalUpdate(feelResult.emotion, [
+    const currentEmotion = await getEmotionalState()
+    const outcomeEmotion = computeEmotionalUpdate(currentEmotion, [
       { trigger: "message_sent", intensity: TRIGGER_INTENSITY.MESSAGE_SENT }
     ])
     await saveEmotionalState(outcomeEmotion, "message_sent")
