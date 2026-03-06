@@ -21,6 +21,28 @@ vi.mock("@/memory/working.ts", () => ({
   getDreamLastRun: vi.fn().mockResolvedValue(new Date().toISOString())
 }))
 
+vi.mock("@/db/client.ts", () => ({
+  db: {}
+}))
+
+vi.mock("@/integrations/telegram.ts", () => ({
+  sendToOperator: vi.fn().mockResolvedValue(1)
+}))
+
+vi.mock("@/emotion/state.ts", () => ({
+  getEmotionalState: vi.fn().mockResolvedValue({
+    curiosity: 0.5,
+    satisfaction: 0.5,
+    frustration: 0.5,
+    boredom: 0.5,
+    excitement: 0.5,
+    caution: 0.5,
+    connection: 0.5,
+    confidence: 0.5,
+    energy: 0.5
+  })
+}))
+
 import { TZDate } from "@date-fns/tz"
 import { redis } from "@/integrations/redis.ts"
 import { nowLocal } from "@/lib/time.ts"

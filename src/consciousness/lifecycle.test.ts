@@ -41,8 +41,12 @@ vi.mock("@/prompts/personality.ts", () => ({
   PERSONALITY_PROMPT: "Test personality prompt"
 }))
 
-import { redis } from "@/integrations/redis.ts"
+vi.mock("@/lib/time.ts", () => ({
+  nowLocal: vi.fn().mockReturnValue(new Date(2026, 2, 6, 12, 0, 0))
+}))
+
 import { callIntelligence } from "@/core/intelligence.ts"
+import { redis } from "@/integrations/redis.ts"
 import { sendToOperator } from "@/integrations/telegram.ts"
 import { pushToActiveConversation } from "@/memory/working.ts"
 import { getActiveLifeEvent, isLifeEventActive, maybeStartLifeEvent, sendLifecycleNotification } from "./lifecycle.ts"
