@@ -92,6 +92,8 @@ cp .env.example .env.local
 Required services: Vercel AI Gateway, Neon Postgres, Upstash Redis + Vector, Trigger.dev, Telegram Bot.
 Optional: GitHub (self-evolution), Daytona (sandbox), OpenWeather (weather sensor), ElevenLabs (voice messages).
 
+Place a reference image of ANIMA's appearance at `src/image/reference/anima.png`. This image is used as a visual anchor when generating self-portraits and is excluded from version control.
+
 Database migrations are applied automatically on every worker start.
 
 ## Development
