@@ -15,8 +15,10 @@ const KEYS = {
 export async function getSomaticState(): Promise<SomaticState> {
   const raw = await redis.get(KEYS.CURRENT)
   if (raw != null) {
-    const parsed = SomaticState.safeParse(typeof raw === "string" ? JSON.parse(raw) : raw)
-    if (parsed.success) return parsed.data
+    try {
+      const parsed = SomaticState.safeParse(typeof raw === "string" ? JSON.parse(raw) : raw)
+      if (parsed.success) return parsed.data
+    } catch {}
   }
 
   const rows = await db.select().from(somaticHistory).orderBy(desc(somaticHistory.createdAt)).limit(1)

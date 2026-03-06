@@ -1,3 +1,4 @@
+import { parseISO } from "date-fns"
 import * as z from "zod"
 import { type ConversationMessage, ConversationSlot } from "@/communication/types.ts"
 import { CONVERSATION, HEARTBEAT } from "@/config/constants.ts"
@@ -400,7 +401,7 @@ export async function getTriggerTimestamps(): Promise<Record<string, number>> {
   return Object.fromEntries(
     Object.entries(raw).map(([trigger, isoTimestamp]) => [
       trigger,
-      (Date.now() - new Date(isoTimestamp).getTime()) / 60000
+      (Date.now() - parseISO(isoTimestamp).getTime()) / 60000
     ])
   )
 }

@@ -60,8 +60,12 @@ import type { WorkflowDefinition } from "@/workflow/types.ts"
 async function getValidatedRedis<T>(key: string, schema: import("zod").ZodType<T>): Promise<T | null> {
   const raw = await redis.get(key)
   if (raw == null) return null
-  const parsed = schema.safeParse(typeof raw === "string" ? JSON.parse(raw) : raw)
-  return parsed.success ? parsed.data : null
+  try {
+    const parsed = schema.safeParse(typeof raw === "string" ? JSON.parse(raw) : raw)
+    return parsed.success ? parsed.data : null
+  } catch {
+    return null
+  }
 }
 
 function translateEmotionToFelt(emotion: EmotionalState): string {

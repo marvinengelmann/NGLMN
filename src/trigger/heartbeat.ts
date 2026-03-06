@@ -18,7 +18,7 @@ export const heartbeatTask = schedules.task({
     if (await isBusy()) {
       await runs.cancel(ctx.run.id)
       if (!signal.aborted) {
-        await new Promise<void>((resolve) => signal.addEventListener("abort", () => resolve()))
+        await new Promise<void>((resolve) => signal.addEventListener("abort", () => resolve(), { once: true }))
       }
       return
     }
@@ -27,7 +27,7 @@ export const heartbeatTask = schedules.task({
       log.info("Heartbeat skipped — life event active")
       await runs.cancel(ctx.run.id)
       if (!signal.aborted) {
-        await new Promise<void>((resolve) => signal.addEventListener("abort", () => resolve()))
+        await new Promise<void>((resolve) => signal.addEventListener("abort", () => resolve(), { once: true }))
       }
       return
     }
@@ -44,7 +44,7 @@ export const heartbeatTask = schedules.task({
         log.info("Heartbeat skipped — new life event started")
         await runs.cancel(ctx.run.id)
         if (!signal.aborted) {
-          await new Promise<void>((resolve) => signal.addEventListener("abort", () => resolve()))
+          await new Promise<void>((resolve) => signal.addEventListener("abort", () => resolve(), { once: true }))
         }
         return
       }
@@ -56,7 +56,7 @@ export const heartbeatTask = schedules.task({
         log.info("Heartbeat gated", { skipProbability: skip.toFixed(2) })
         await runs.cancel(ctx.run.id)
         if (!signal.aborted) {
-          await new Promise<void>((resolve) => signal.addEventListener("abort", () => resolve()))
+          await new Promise<void>((resolve) => signal.addEventListener("abort", () => resolve(), { once: true }))
         }
         return
       }

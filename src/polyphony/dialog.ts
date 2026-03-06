@@ -79,9 +79,14 @@ Let each active voice speak.`
 export async function getLastInnerDialog(): Promise<InnerDialog | null> {
   const raw = await redis.get(POLYPHONY_LAST_DIALOG)
   if (raw == null) return null
-  const parsed = InnerDialog.safeParse(typeof raw === "string" ? JSON.parse(raw) : raw)
-  if (!parsed.success) {
-    log.warn("Inner dialog parse failed", { error: parsed.error.message })
+  try {
+    const parsed = InnerDialog.safeParse(typeof raw === "string" ? JSON.parse(raw) : raw)
+    if (!parsed.success) {
+      log.warn("Inner dialog parse failed", { error: parsed.error.message })
+    }
+    return parsed.success ? parsed.data : null
+  } catch {
+    log.warn("Inner dialog JSON parse failed")
+    return null
   }
-  return parsed.success ? parsed.data : null
 }

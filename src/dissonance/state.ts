@@ -14,8 +14,10 @@ const KEYS = {
 export async function getDissonanceState(): Promise<DissonanceState> {
   const raw = await redis.get(KEYS.ACTIVE)
   if (raw != null) {
-    const parsed = DissonanceState.safeParse(typeof raw === "string" ? JSON.parse(raw) : raw)
-    if (parsed.success) return parsed.data
+    try {
+      const parsed = DissonanceState.safeParse(typeof raw === "string" ? JSON.parse(raw) : raw)
+      if (parsed.success) return parsed.data
+    } catch {}
   }
   return { activeDissonance: 0, recentEvents: [], cumulativeUnresolved: 0 }
 }

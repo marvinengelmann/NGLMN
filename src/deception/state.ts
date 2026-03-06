@@ -11,8 +11,12 @@ const KEY = "working:deception:current"
 export async function getDeceptionState(): Promise<DeceptionState> {
   const raw = await redis.get(KEY)
   if (raw == null) return DEFAULT_DECEPTION_STATE
-  const parsed = DeceptionState.safeParse(typeof raw === "string" ? JSON.parse(raw) : raw)
-  return parsed.success ? parsed.data : DEFAULT_DECEPTION_STATE
+  try {
+    const parsed = DeceptionState.safeParse(typeof raw === "string" ? JSON.parse(raw) : raw)
+    return parsed.success ? parsed.data : DEFAULT_DECEPTION_STATE
+  } catch {
+    return DEFAULT_DECEPTION_STATE
+  }
 }
 
 /**

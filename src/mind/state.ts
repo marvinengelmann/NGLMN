@@ -16,8 +16,12 @@ const MAX_CORRECTIONS = 20
 export async function getOperatorModel(): Promise<OperatorModel> {
   const raw = await redis.get(KEYS.CURRENT)
   if (raw == null) return DEFAULT_OPERATOR_MODEL
-  const parsed = OperatorModel.safeParse(typeof raw === "string" ? JSON.parse(raw) : raw)
-  return parsed.success ? parsed.data : DEFAULT_OPERATOR_MODEL
+  try {
+    const parsed = OperatorModel.safeParse(typeof raw === "string" ? JSON.parse(raw) : raw)
+    return parsed.success ? parsed.data : DEFAULT_OPERATOR_MODEL
+  } catch {
+    return DEFAULT_OPERATOR_MODEL
+  }
 }
 
 /**

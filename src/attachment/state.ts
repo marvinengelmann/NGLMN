@@ -25,8 +25,10 @@ const KEYS = {
 export async function getAttachmentStyle(): Promise<AttachmentStyle> {
   const raw = await redis.get(KEYS.CURRENT)
   if (raw != null) {
-    const parsed = AttachmentStyle.safeParse(typeof raw === "string" ? JSON.parse(raw) : raw)
-    if (parsed.success) return parsed.data
+    try {
+      const parsed = AttachmentStyle.safeParse(typeof raw === "string" ? JSON.parse(raw) : raw)
+      if (parsed.success) return parsed.data
+    } catch {}
   }
 
   const rows = await db.select().from(attachmentLog).orderBy(desc(attachmentLog.createdAt)).limit(1)
@@ -47,8 +49,12 @@ export async function getAttachmentStyle(): Promise<AttachmentStyle> {
 export async function getAttachmentDynamics(): Promise<AttachmentDynamics | null> {
   const raw = await redis.get(KEYS.DYNAMICS)
   if (raw == null) return null
-  const parsed = AttachmentDynamics.safeParse(typeof raw === "string" ? JSON.parse(raw) : raw)
-  return parsed.success ? parsed.data : null
+  try {
+    const parsed = AttachmentDynamics.safeParse(typeof raw === "string" ? JSON.parse(raw) : raw)
+    return parsed.success ? parsed.data : null
+  } catch {
+    return null
+  }
 }
 
 /**
@@ -69,12 +75,12 @@ export async function saveAttachmentDynamics(dynamics: AttachmentDynamics): Prom
  * Save a full attachment snapshot to Redis and DB.
  */
 export async function saveAttachmentSnapshot(snapshot: AttachmentSnapshot, trigger: string): Promise<void> {
-  await Promise.all([redis.set(KEYS.CURRENT, snapshot.style), redis.set(KEYS.DYNAMICS, snapshot.dynamics)])
   await db.insert(attachmentLog).values({
     style: snapshot.style,
     dynamics: snapshot.dynamics,
     trigger
   })
+  await Promise.all([redis.set(KEYS.CURRENT, snapshot.style), redis.set(KEYS.DYNAMICS, snapshot.dynamics)])
 }
 
 /**

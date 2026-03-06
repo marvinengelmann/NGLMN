@@ -17,8 +17,10 @@ const KEYS = {
 export async function getSelfConcept(): Promise<SelfConcept> {
   const raw = await redis.get(KEYS.CURRENT)
   if (raw != null) {
-    const parsed = SelfConcept.safeParse(typeof raw === "string" ? JSON.parse(raw) : raw)
-    if (parsed.success) return parsed.data
+    try {
+      const parsed = SelfConcept.safeParse(typeof raw === "string" ? JSON.parse(raw) : raw)
+      if (parsed.success) return parsed.data
+    } catch {}
   }
 
   const rows = await db.select().from(psycheSnapshots).orderBy(desc(psycheSnapshots.createdAt)).limit(1)
