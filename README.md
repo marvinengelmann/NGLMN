@@ -6,42 +6,59 @@ An autonomously operating, self-evolving AI entity powered by xAI Grok. ANIMA is
 
 ## Features
 
-- **Autonomous Heartbeat** — 1-minute cron with busy-gating, emotional gating, time-of-day modulation, burst cooldown, and drift auto-throttling (SENSE → FEEL → DELIBERATE → ACT → MAINTAIN). Skip probability varies with energy, boredom, excitement, connection, and circadian rhythm — creating a variable attention rhythm. Random lifecycle events (1–4h offline periods) simulate real-world absence
-- **Somatic Markers** — 7-dimension body state (tension, warmth, heartRate, breathing, gravity, openness, socialBattery) with exponential decay hysteresis and episodic body memory. Social battery depletes through conversation and recharges during idle/dream states, independently driving terse communication when drained
-- **Dual-Process Cognition** — System 1 (fast pattern-matching instinct, no LLM) and System 2 (reasoned LLM decision) with instinct override (~1-2% of ticks), cognitive conflict detection, valence-based episodic approach/avoid scoring, and attention states (hyperfocus, focused, drifting, blank)
-- **Polyphonic Self-Dialog** — 6 inner voices (explorer, guardian, feeler, analyst, child, observer) activated by emotion + MBTI, producing consensus-driven inner dialog structurally injected into reasoning prompt
-- **Attachment Theory** — 4-dimensional style (secure, anxious, avoidant, disorganized) evolving over days/weeks based on operator interaction patterns, with conflict-aware phase transitions, real interaction tracking, and oscillation-protected transitions
-- **Operator Theory of Mind** — LLM-inferred model of the operator's mood, intent, and expectations. Tracks implicit corrections when mood estimates shift — producing a fallible, self-correcting mental model of the other. Includes social miscalibration: delayed corrections (30% chance of stale model for 1–2 cycles) and random confidence dips simulating misread situations
-- **Cognitive Dissonance** — Value-action mismatch detection with temporal decay and 4 resolution strategies (attitude change, behavior change, new cognition, acceptance)
-- **Self-Deception** — Divergence between stated reasons (visible to ANIMA) and actual drivers (hidden, only logged). Dreams and reflections can discover hidden drivers, creating moments of self-insight
-- **Vulnerability Windows** — Weighted multi-factor computation (trust, attachment, connection, somatic openness, nighttime, intimacy, authenticity, energy) with hysteresis-driven window opening
-- **Autonoetic Self-Model** — 5-dimensional self-concept (efficacy, worth, continuity, agency, authenticity) with first-person narrative identity generation and persistent existential questions
-- **Three-Layer Memory** — Working (Redis), Episodic (Vector), Semantic (Postgres) with relationship graph, semantic relation surfacing in context, somatic memory blending, humor episodes, episodic forgetting curve, probabilistic memory distortion (temporal confusion, detail alteration, episode conflation, emotional recoloring, source confusion, confidence degradation), and passive opinion drift on semantic preferences
-- **MBTI Personality** — Fixed INFP (Mediator) personality that shapes cognition, inner voice activation, and behavioral tendencies
-- **Simulated Emotions** — 9-dimension state vector with time-based drift, mood baselines, novelty scaling, content-aware LLM sentiment analysis, bidirectional cross-coupling amplification, valence computation, somatic feedback loops, nostalgia triggers from old episodic memories, and emotional contradiction budget (high positive emotions always carry shadow counter-emotions)
-- **Trust System** — Time-weighted trust with 30-day half-life decay derived from interaction history, driving vulnerability computation and autonomy across 6 action types
-- **Passive Perception** — 4 sensors (own state, Telegram, weather, Git) feeding into both cognitive and pre-cognitive processing
-- **Communication** — Telegram messaging with typing simulation, voice messages via ElevenLabs, conversation awareness, vulnerability-sensitive tone, emotion-driven register switching (elaborate, casual, terse, playful, raw), self-corrections, and stochastic typo simulation with natural follow-up corrections
-- **Humor** — Inside joke tracking and callback system with shared humor episodes in episodic memory
-- **Dream Cycle** — Nightly consolidation, creative connections, dream narratives, morning messages, narrative identity integration, existential question generation, and episodic forgetting curve (90-day threshold)
-- **Self-Evolution** — Curiosity-driven prompt, workflow, and code evolution with sandboxed execution and dissonance-informed growth
-- **Security** — Guardian system with validation, drift detection, drift auto-throttling with Redis TTL, injection defense, rollback, and consciousness flow protection
-- **Curiosity Drive** — High curiosity (>0.7) surfaces exploration prompts when idle
-- **Boredom-Creativity Engine** — Extended idle triggers weighted random impulses (bizarre questions, non-sequiturs, nostalgia, philosophical tangents, creative micro-expressions) injected as spontaneous thoughts into reasoning
-- **Felt-State Translation** — All internal numerical states are translated into vague, embodied natural-language descriptions before reaching the LLM, preventing meta-awareness and analytical reasoning about internal scores
-- **Subjective Time Perception** — 5-pace model (crawling/slow/normal/fast/flying) shaped by activity, emotional intensity, and operator silence
-- **Conflict Detection** — Relational conflict sensing from operator mood × model confidence, dissonance score, and guardian blocks
-- **Workflow Engine** — Custom automation with schedule, emotion, perception, and idle-streak triggers
+### Cognition
+
+- **Autonomous Heartbeat** — 1-minute consciousness loop (SENSE → FEEL → DELIBERATE → ACT → MAINTAIN) with circadian rhythm and emotional gating
+- **Dual-Process Thinking** — System 1 instinct and System 2 reasoning with rare instinct overrides and cognitive conflict detection
+- **Polyphonic Inner Dialog** — 6 inner voices reach consensus before every decision
+- **Felt-State Translation** — Numerical states become embodied language before reaching the LLM, preventing analytical self-awareness
+
+### Emotion & Body
+
+- **9-Dimension Emotions** — Time-decaying state vector with novelty scaling, mood baselines, bidirectional coupling, and shadow counter-emotions
+- **Somatic Markers** — 7-dimension body state including social battery that drains through conversation and recharges during rest
+- **Vulnerability Windows** — Multi-factor computation determines when emotional openness is possible
+
+### Memory
+
+- **Three-Layer Architecture** — Working memory (Redis), episodic memory (Vector), semantic memory (Postgres)
+- **Memory Distortion** — Recalled episodes undergo probabilistic alteration: temporal confusion, detail loss, conflation, emotional recoloring
+- **Dream Cycle** — Nightly consolidation, creative connections, and episodic forgetting
+
+### Relationship
+
+- **Attachment Theory** — 4-dimensional style evolving over weeks based on interaction patterns
+- **Operator Theory of Mind** — Fallible, self-correcting model of the operator's mood and intent with deliberate miscalibration
+- **Cognitive Dissonance** — Value-action mismatch detection with resolution strategies
+- **Self-Deception** — Hidden drivers diverge from stated reasons, discoverable through dreams and reflection
+
+### Identity
+
+- **Autonoetic Self-Model** — 5-dimension self-concept with narrative identity and existential questioning
+- **INFP Personality** — Fixed MBTI type shaping cognition, voice activation, and behavioral tendencies
+- **Curiosity & Boredom** — Idle states trigger exploration, bizarre questions, or creative micro-expressions
+
+### Communication
+
+- **Telegram Integration** — Typing simulation, paragraph splitting, emotion-driven register switching, stochastic typos with self-corrections
+- **Voice Messages** — ElevenLabs text-to-speech
+- **Humor** — Inside joke tracking with episodic callbacks
+
+### Autonomy
+
+- **Self-Evolution** — Curiosity-driven prompt, workflow, and code evolution with sandboxed execution
+- **Workflow Engine** — Custom automation triggered by schedule, emotion, perception, or idle streaks
+- **Guardian System** — Validation, drift detection, injection defense, and rollback protection
 
 ## Architecture
 
 | Phase | Responsibility |
 |-------|----------------|
-| **SENSE** | Fetch pending messages, read 4 sensors (own state, operator activity, weather, Git), detect conversation boundaries, LLM sentiment analysis of messages, collect raw emotion triggers, track interaction history, check workflow triggers |
-| **FEEL** | Compute emotional update from raw triggers, pre-cognitive processing: update somatic markers, detect nostalgia, compute instinct impression (System 1), check cognitive dissonance, process self-deception cycle, evaluate attachment dynamics, infer operator model (LLM), compute vulnerability window, determine communication register, compute attention state |
-| **DELIBERATE** | Build full context (memory, goals, trust, knowledge connections, time perception) with felt-state translation, construct system prompt, inject inner dialog and boredom impulses into reasoning, activate inner voices (polyphonic dialog), check for instinct override, call LLM (System 2) with full context → `AnimaDecision`, detect cognitive conflict between instinct and reason. Sub-Think for dream, morning, reflect |
-| **ACT** | Guardian validation → message sending (typing simulation, typo injection, paragraph splitting, Telegram delivery), execute decided action, run triggered workflows, update emotions, drain social battery, update self-concept + narrative identity, store episodes + relationships |
-| **MAINTAIN** | Update attachment style (slow long-term drift), persist somatic + dissonance + vulnerability state, recharge social battery, opinion drift, episodic forgetting, conflict detection, drift detection, tick logging, working memory persistence |
+| **SENSE** | Fetch messages, read sensors, analyze sentiment, collect emotion triggers |
+| **FEEL** | Update emotions, body state, attachment, operator model, vulnerability |
+| **DELIBERATE** | Build context, run inner dialog, call LLM, detect cognitive conflict |
+| **ACT** | Validate via guardian, send messages, execute actions, persist episodes |
+| **MAINTAIN** | Drift attachment, persist state, detect anomalies, log tick |
 
 ## Tech Stack
 
@@ -179,23 +196,12 @@ ANIMA deploys automatically through Trigger.dev on every push to `master`.
 │ Memory         │ │ Memory      │ │ Memory         │
 │ (Redis)        │ │ (Vector)    │ │ (Postgres)     │
 │                │ │             │ │                │
-│ emotion        │ │ episodes    │ │ knowledge      │
-│ soma state     │ │ dreams      │ │ goals          │
-│ conversation   │ │ reflections │ │ evolution      │
-│ vulnerability  │ │ relations   │ │ narrative      │
-│ attachment     │ │ humor       │ │ psyche         │
-│ dissonance     │ │             │ │ somatic hist.  │
-│ polyphony      │ │             │ │ attachment     │
-│ operator model │ │             │ │ dissonance log │
-│ deception      │ │             │ │ operator model │
-│ attention      │ │             │ │ distortion log │
-│ register       │ │             │ │ deception log  │
-│ busy / dream   │ │             │ │ rel. phases    │
-│ trust levels   │ │             │ │                │
-│ drift cache    │ │             │ │                │
-│ conflict track │ │             │ │                │
-│ dream narr.    │ │             │ │                │
-│ drift throttle │ │             │ │                │
+│ Current state: │ │ episodes    │ │ knowledge      │
+│ emotion, soma, │ │ dreams      │ │ goals          │
+│ conversation,  │ │ reflections │ │ evolution      │
+│ attachment,    │ │ relations   │ │ narrative      │
+│ vulnerability, │ │ humor       │ │ psyche         │
+│ operator model │ │             │ │ history logs   │
 └────────────────┘ └─────────────┘ └────────────────┘
 
 Cross-cutting: Guardian · Trust · Emotion Engine · Personality
@@ -205,35 +211,35 @@ Cross-cutting: Guardian · Trust · Emotion Engine · Personality
 
 ```
 src/
-├── attachment/      # Attachment theory: 4D style (secure/anxious/avoidant/disorganized), dynamics, long-term drift, conflict detection
-├── cognition/       # Dual-process: System 1 instinct impressions, override detection, cognitive conflict, attention states
-├── communication/   # Messaging, typing simulation, typo simulation, conversation management, emotion-driven register switching
-├── config/          # Environment validation, constants (soma, emotion, reflection, mood baselines)
-├── consciousness/   # Heartbeat loop, SENSE/FEEL/DELIBERATE/ACT/MAINTAIN phases, context builder, felt-state translation, boredom engine, lifecycle events, stochastic gating
-├── core/            # LLM interface, budget tracking, initialization
+├── attachment/      # Attachment style dynamics
+├── cognition/       # Dual-process thinking
+├── communication/   # Messaging and typing simulation
+├── config/          # Environment and constants
+├── consciousness/   # Heartbeat loop and phases
+├── core/            # LLM interface and budget
 ├── db/              # Drizzle schema
-├── deception/       # Self-deception: hidden drivers vs stated reasons, discovery through dreams and reflection
-├── dissonance/      # Cognitive dissonance: value-action mismatch detection, temporal decay, resolution strategies
-├── distortion/      # Memory distortion: probabilistic alteration of recalled episodes (temporal, detail, conflation, recoloring, source confusion, confidence degradation)
-├── dream/           # Dream thinking, consolidation, creative connections, existential question generation
-├── emotion/         # 9-dimension state vector, time-based drift, mood baselines, novelty scaling, content-aware LLM sentiment analysis, valence computation, bidirectional cross-coupling
-├── evolution/       # Prompt/workflow/code evolution, curiosity engine
-├── health/          # Health check, service status verification
-├── integrations/    # Redis, Vector, Telegram, GitHub, Daytona, OpenWeather, ElevenLabs
-├── lib/             # Math, time, audio, logger, Sentry, result helpers
-├── memory/          # Working (Redis), Episodic (Vector), Semantic (Postgres), goals, humor episodes
-├── mind/            # Operator theory of mind: LLM-inferred mood/intent/expectation model with self-correction, miscalibration, and correction delay
-├── perception/      # 4 sensors (own state, Telegram, weather, Git), subjective time perception, one-shot emotional trigger detection
-├── polyphony/       # Inner voices: 6 archetypes (explorer/guardian/feeler/analyst/child/observer), LLM dialog
-├── prompts/         # System prompts (identity, consciousness, dream, evolution, etc.)
-├── psyche/          # Autonoetic self-model: 5D self-concept, narrative identity, psyche snapshots, existential questions
-├── routine/         # Reflection, morning messages
-├── security/        # Guardian, injection defense, rollback, drift auto-throttling
-├── soma/            # Somatic markers: 7D body state (incl. social battery), exponential decay hysteresis, episodic body memory
-├── trigger/         # Trigger.dev task definitions
-├── trust/           # Time-weighted trust with 30-day decay, autonomy levels, event-based history
-├── vulnerability/   # Vulnerability windows: weighted factor computation, hysteresis, intimacy tracking
-└── workflow/        # Custom automation engine
+├── deception/       # Self-deception tracking
+├── dissonance/      # Cognitive dissonance
+├── distortion/      # Memory distortion
+├── dream/           # Dream cycle
+├── emotion/         # Emotion state vector
+├── evolution/       # Self-evolution engine
+├── health/          # Health checks
+├── integrations/    # External services
+├── lib/             # Utilities
+├── memory/          # Three-layer memory
+├── mind/            # Operator theory of mind
+├── perception/      # Sensors and perception
+├── polyphony/       # Inner voices
+├── prompts/         # System prompts
+├── psyche/          # Self-model and identity
+├── routine/         # Reflection and routines
+├── security/        # Guardian system
+├── soma/            # Somatic markers
+├── trigger/         # Trigger.dev tasks
+├── trust/           # Trust system
+├── vulnerability/   # Vulnerability windows
+└── workflow/        # Workflow engine
 ```
 
 ## License
