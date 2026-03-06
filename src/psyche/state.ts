@@ -37,18 +37,18 @@ export async function getSelfConcept(): Promise<SelfConcept> {
  * Save a full psyche snapshot to Redis and DB.
  */
 export async function savePsycheSnapshot(snapshot: PsycheSnapshot): Promise<void> {
-  await Promise.all([
-    redis.set(KEYS.CURRENT, snapshot.selfConcept),
-    redis.set(KEYS.ASPIRATIONS, snapshot.aspirations),
-    redis.set(KEYS.FEARS, snapshot.fears),
-    redis.set(KEYS.NARRATIVE_SUMMARY, snapshot.narrativeSummary)
-  ])
   await db.insert(psycheSnapshots).values({
     selfConcept: snapshot.selfConcept,
     aspirations: snapshot.aspirations,
     fears: snapshot.fears,
     narrativeSummary: snapshot.narrativeSummary
   })
+  await Promise.all([
+    redis.set(KEYS.CURRENT, snapshot.selfConcept),
+    redis.set(KEYS.ASPIRATIONS, snapshot.aspirations),
+    redis.set(KEYS.FEARS, snapshot.fears),
+    redis.set(KEYS.NARRATIVE_SUMMARY, snapshot.narrativeSummary)
+  ])
 }
 
 /**
