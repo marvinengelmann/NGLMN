@@ -28,6 +28,7 @@ import { saveSomaticState } from "@/soma/state.ts"
 import { computeSomaticUpdate, drainSocialBattery } from "@/soma/update.ts"
 import { executeWorkflow } from "@/workflow/engine.ts"
 import { recordActiveTick } from "./gating.ts"
+import { startSleepEvent } from "./lifecycle.ts"
 import type { ActResult, DeliberateResult, FeelingResult, SenseResult } from "./types.ts"
 
 /**
@@ -203,7 +204,10 @@ async function executeAction(deliberateResult: DeliberateResult): Promise<void> 
       if (dreamResult) {
         const result = await trySafe("DREAM_ERROR", () => executeDream(dreamResult))
         if (result.isErr()) logAndCaptureError(result.error, { phase: "act_dream" })
-        else log.info("Dream cycle completed")
+        else {
+          log.info("Dream cycle completed")
+          await startSleepEvent()
+        }
       }
       break
     }

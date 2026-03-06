@@ -17,7 +17,8 @@ vi.mock("@/lib/time.ts", () => {
 })
 
 vi.mock("@/memory/working.ts", () => ({
-  getDriftThrottle: vi.fn().mockResolvedValue("none")
+  getDriftThrottle: vi.fn().mockResolvedValue("none"),
+  getDreamLastRun: vi.fn().mockResolvedValue(new Date().toISOString())
 }))
 
 import { TZDate } from "@date-fns/tz"

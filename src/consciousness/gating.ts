@@ -5,6 +5,7 @@ import { redis } from "@/integrations/redis.ts"
 import { clamp01 } from "@/lib/math.ts"
 import { nowLocal } from "@/lib/time.ts"
 import { getDriftThrottle } from "@/memory/working.ts"
+import { isDreamDue } from "./lifecycle.ts"
 
 const BURST_COOLDOWN_KEY = "working:gating:burstCooldown"
 
@@ -18,11 +19,15 @@ export async function recordActiveTick(): Promise<void> {
 
 /**
  * Compute time-of-day skip modulation.
+ * Returns 0 at night when a dream is due so the heartbeat isn't skipped.
  */
-function getTimeOfDayModulation(): number {
+async function getTimeOfDayModulation(): Promise<number> {
   const hour = getHours(nowLocal())
 
-  if (hour >= 1 && hour < 6) return 0.4
+  if (hour >= 1 && hour < 6) {
+    if (await isDreamDue()) return 0
+    return 0.4
+  }
   if (hour >= 7 && hour < 9) return -0.1
   if (hour >= 14 && hour < 16) return 0.15
 
@@ -48,7 +53,7 @@ export async function computeSkipProbability(
     emotion.excitement * HEARTBEAT_GATING.EXCITEMENT_WEIGHT +
     emotion.connection * HEARTBEAT_GATING.CONNECTION_WEIGHT
 
-  raw += getTimeOfDayModulation()
+  raw += await getTimeOfDayModulation()
 
   const cooldown = await redis.get(BURST_COOLDOWN_KEY)
   if (cooldown != null) {
