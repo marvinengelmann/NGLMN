@@ -44,7 +44,7 @@ describe("generateBoredomImpulse", () => {
     const results: string[] = []
     vi.spyOn(Math, "random").mockReturnValue(0)
 
-    for (let i = 0; i < 20; i++) {
+    for (const _ of Array.from({ length: 20 })) {
       const result = generateBoredomImpulse({ ...baseEmotion, boredom: 0.9 }, 10)
       if (result) results.push(result)
     }

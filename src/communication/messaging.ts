@@ -38,37 +38,36 @@ export async function sendMessages(decision: AnimaDecision): Promise<MessagingRe
   const allTexts: string[] = []
   const register = await getCurrentRegister()
 
-  for (const msg of decision.messages) {
-    const guardianResult = await validateOutput(msg.text)
+  for (const message of decision.messages) {
+    const guardianResult = await validateOutput(message.text)
     await setGuardianResult(guardianResult)
 
     const { blocked } = await handleGuardianVerdict(guardianResult, "anima-message")
     if (blocked) {
-      log.warn("Guardian blocked message", { text: msg.text.slice(0, 50) })
+      log.warn("Guardian blocked message", { text: message.text.slice(0, 50) })
       continue
     }
 
-    if (msg.asVoice && msg.voiceText) {
+    if (message.asVoice && message.voiceText) {
       try {
         await sendRecordVoiceAction()
-        const mp3Buffer = await textToSpeech(msg.voiceText)
+        const mp3Buffer = await textToSpeech(message.voiceText)
         const oggBuffer = await convertMp3ToOggOpus(mp3Buffer)
-        const sentId = await sendVoiceToOperator(oggBuffer, msg.replyTo)
+        const sentId = await sendVoiceToOperator(oggBuffer, message.replyTo)
 
         await pushToActiveConversation([
-          { role: "anima", text: msg.text, timestamp: nowISO(), messageId: sentId, isVoice: true }
+          { role: "anima", text: message.text, timestamp: nowISO(), messageId: sentId, isVoice: true }
         ])
       } catch (error) {
         log.warn("Voice send failed, falling back to text", { error: String(error) })
-        const sentId = await sendMessageWithReply(msg.text, msg.replyTo)
-        await pushToActiveConversation([{ role: "anima", text: msg.text, timestamp: nowISO(), messageId: sentId }])
+        const sentId = await sendMessageWithReply(message.text, message.replyTo)
+        await pushToActiveConversation([{ role: "anima", text: message.text, timestamp: nowISO(), messageId: sentId }])
       }
     } else {
-      const { text: possiblyTypoed, correction } = maybeIntroduceTypo(msg.text, register)
+      const { text: possiblyTypoed, correction } = maybeIntroduceTypo(message.text, register)
 
       const paragraphs = splitIntoParagraphs(possiblyTypoed)
-      for (let i = 0; i < paragraphs.length; i++) {
-        const paragraph = paragraphs[i]
+      for (const [i, paragraph] of paragraphs.entries()) {
         if (!paragraph) continue
 
         if (i > 0) {
@@ -79,7 +78,7 @@ export async function sendMessages(decision: AnimaDecision): Promise<MessagingRe
         }
 
         await simulateTyping(computeTypingDuration(paragraph), sendTypingAction)
-        const sentId = await sendMessageWithReply(paragraph, i === 0 ? msg.replyTo : undefined)
+        const sentId = await sendMessageWithReply(paragraph, i === 0 ? message.replyTo : undefined)
 
         await pushToActiveConversation([{ role: "anima", text: paragraph, timestamp: nowISO(), messageId: sentId }])
       }
@@ -97,10 +96,10 @@ export async function sendMessages(decision: AnimaDecision): Promise<MessagingRe
       }
     }
 
-    allTexts.push(msg.text)
-    await pushRecentResponse(msg.text)
+    allTexts.push(message.text)
+    await pushRecentResponse(message.text)
 
-    if (msg !== decision.messages[decision.messages.length - 1]) {
+    if (message !== decision.messages[decision.messages.length - 1]) {
       const delay = MESSAGE_DELAY.MIN_BETWEEN_MESSAGES_MS + Math.random() * MESSAGE_DELAY.MAX_JITTER_MS
       await new Promise((resolve) => setTimeout(resolve, delay))
     }
