@@ -1,3 +1,5 @@
+import { log } from "@/lib/logger.ts"
+
 const GITHUB_API_BASE = "https://api.github.com"
 
 const ANIMA_IDENTITY = {
@@ -219,11 +221,32 @@ export async function deleteBranch(branchName: string): Promise<void> {
 }
 
 /**
- * Fast-forward merge a branch into master by updating the master ref.
- * Only succeeds if master hasn't moved since the branch was created (force: false).
+ * Merge a branch into master using the GitHub Merge API (atomic operation).
+ * Cleans up the branch after successful merge.
  */
 export async function mergeBranch(branchName: string): Promise<void> {
-  const { sha } = await getRef(`heads/${branchName}`)
-  await updateRef("heads/master", sha, false)
-  await deleteBranch(branchName)
+  const { token, owner, repo } = getConfig()
+
+  const res = await fetch(`${GITHUB_API_BASE}/repos/${owner}/${repo}/merges`, {
+    method: "POST",
+    headers: headers(token),
+    body: JSON.stringify({
+      base: "master",
+      head: branchName,
+      commit_message: `Merge branch '${branchName}' into master`
+    })
+  })
+
+  if (!res.ok) {
+    throw new Error(`GitHub mergeBranch failed: ${res.status} ${await res.text()}`)
+  }
+
+  try {
+    await deleteBranch(branchName)
+  } catch (e) {
+    log.warn("Failed to delete branch after merge", {
+      branch: branchName,
+      error: e instanceof Error ? e.message : String(e)
+    })
+  }
 }

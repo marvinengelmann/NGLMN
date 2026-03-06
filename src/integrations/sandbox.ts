@@ -36,7 +36,15 @@ export async function destroySandbox(sandbox: Sandbox): Promise<void> {
   await sandbox.delete()
 }
 
+function sanitizeBranchName(branch: string): string {
+  if (!/^[a-zA-Z0-9._\-/]+$/.test(branch)) {
+    throw new Error(`Invalid branch name: ${branch}`)
+  }
+  return branch
+}
+
 export async function validateInSandbox(branch: string): Promise<SandboxResult> {
+  const safeBranch = sanitizeBranchName(branch)
   const repoUrl = `https://github.com/${process.env.GITHUB_OWNER}/${process.env.GITHUB_REPO}.git`
   const appDir = "/app/anima"
   const start = Date.now()
@@ -44,11 +52,11 @@ export async function validateInSandbox(branch: string): Promise<SandboxResult> 
 
   try {
     sandbox = await createSandbox()
-    log.info("Sandbox created", { branch })
+    log.info("Sandbox created", { branch: safeBranch })
 
     await runInSandbox(
       sandbox,
-      `mkdir -p /app && git clone --branch ${branch} --single-branch ${repoUrl} ${appDir}`,
+      `mkdir -p /app && git clone --branch '${safeBranch}' --single-branch '${repoUrl}' '${appDir}'`,
       undefined,
       60
     )
