@@ -53,7 +53,8 @@ export async function updateOperatorModel(context: OperatorModelContext): Promis
     system: OPERATOR_ANALYSIS_PROMPT,
     userMessage,
     schema: OperatorAnalysis,
-    maxTokens: 256
+    maxTokens: 256,
+    reasoning: false
   })
 
   if (result.isOk()) {

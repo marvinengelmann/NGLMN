@@ -42,7 +42,8 @@ export function analyzeMessageSentiment(messages: PendingMessage[]): AnimaResult
       system: SENTIMENT_SYSTEM_PROMPT,
       userMessage: messageTexts,
       schema: MessageSentimentOutput,
-      maxTokens: 512
+      maxTokens: 512,
+      reasoning: false
     })
 
     if (result.isErr()) {

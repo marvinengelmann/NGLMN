@@ -27,7 +27,8 @@ export function writeChangelogEntry(
       system: CHANGELOG_NARRATIVE_SYSTEM_PROMPT,
       userMessage: `Type: ${type}\nDescription: ${description}\nOutcome: ${outcome}${diff ? `\nDiff: ${diff}` : ""}`,
       schema: TextOutput,
-      maxTokens: 256
+      maxTokens: 256,
+      reasoning: false
     })
 
     if (narrativeResult.isErr()) {

@@ -170,7 +170,8 @@ async function evaluatePerceptionTrigger(
     system: "Evaluate whether the perception data matches the given condition.",
     userMessage,
     schema: BooleanOutput,
-    maxTokens: 10
+    maxTokens: 10,
+    reasoning: false
   })
 
   if (callResult.isErr()) return false

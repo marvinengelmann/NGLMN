@@ -35,7 +35,8 @@ export async function archiveConversation(
       "Summarize this conversation in 1-2 sentences. Focus on the key topics discussed and any outcomes. Be concise.",
     userMessage: conversationText,
     schema: TextOutput,
-    maxTokens: 150
+    maxTokens: 150,
+    reasoning: false
   })
 
   if (summaryResult.isErr()) {

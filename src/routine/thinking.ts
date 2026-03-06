@@ -44,7 +44,8 @@ export async function thinkMorning(
     system: systemPrompt,
     userMessage: `${systemInstruction}\n\n${context}`,
     schema: TextOutput,
-    maxTokens: 1024
+    maxTokens: 1024,
+    reasoning: false
   })
 
   const morningMessage = messageResult.isOk() ? messageResult.value.text : ""

@@ -188,7 +188,8 @@ export async function summarizeOldEpisodes(
           "Summarize these related episodes into 1-2 concise sentences capturing the key information. Be factual and brief.",
         userMessage: episodeTexts,
         schema: TextOutput,
-        maxTokens: 200
+        maxTokens: 200,
+        reasoning: false
       })
 
       if (summaryResult.isErr()) {

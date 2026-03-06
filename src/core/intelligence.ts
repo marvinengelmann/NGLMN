@@ -5,13 +5,15 @@ import type { AnimaResultAsync } from "@/lib/result.ts"
 import { trySafe } from "@/lib/result.ts"
 import { estimateCallCost, trackApiCost } from "./budget.ts"
 
-export const MODEL = "xai/grok-4-1-fast-reasoning"
+export const FAST = "xai/grok-4-1-fast-non-reasoning"
+export const REASONING = "xai/grok-4-1-fast-reasoning"
 
 interface CallIntelligenceOptions<T extends z.ZodType> {
   system: string
   userMessage: string
   schema: T
   maxTokens?: number
+  reasoning?: boolean
 }
 
 /**
@@ -23,7 +25,7 @@ export function callIntelligence<T extends z.ZodType>(
 ): AnimaResultAsync<z.infer<T>> {
   return trySafe("LLM_ERROR", async () => {
     const result = await generateText({
-      model: MODEL,
+      model: options.reasoning === false ? FAST : REASONING,
       system: options.system,
       prompt: options.userMessage,
       output: Output.object({ schema: options.schema }),
