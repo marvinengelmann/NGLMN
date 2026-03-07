@@ -38,7 +38,11 @@ export const tickLog = pgTable(
     durationMs: integer("duration_ms").notNull(),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow()
   },
-  (table) => [index("idx_tick_log_timestamp").on(table.timestamp), index("idx_tick_log_tick_id").on(table.tickId)]
+  (table) => [
+    index("idx_tick_log_timestamp").on(table.timestamp),
+    index("idx_tick_log_tick_id").on(table.tickId),
+    index("idx_tick_log_created_at").on(table.createdAt)
+  ]
 )
 
 export type TickLogInsert = typeof tickLog.$inferInsert
@@ -61,7 +65,8 @@ export const semanticMemory = pgTable(
   (table) => [
     unique("uq_semantic_memory_category_key_scope").on(table.category, table.key, table.scope),
     index("idx_semantic_memory_category_key").on(table.category, table.key),
-    index("idx_semantic_memory_scope").on(table.scope)
+    index("idx_semantic_memory_scope").on(table.scope),
+    index("idx_semantic_memory_updated_at").on(table.updatedAt)
   ]
 )
 
@@ -87,7 +92,8 @@ export const goals = pgTable(
   (table) => [
     index("idx_goals_status").on(table.status),
     index("idx_goals_parent").on(table.parentGoalId),
-    index("idx_goals_status_created").on(table.status, table.createdAt)
+    index("idx_goals_status_created").on(table.status, table.createdAt),
+    index("idx_goals_title").on(table.title)
   ]
 )
 
@@ -113,16 +119,24 @@ export const emotionHistory = pgTable(
 export type EmotionHistoryInsert = typeof emotionHistory.$inferInsert
 export type EmotionHistorySelect = typeof emotionHistory.$inferSelect
 
-export const evolutionLog = pgTable("evolution_log", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  type: text("type").notNull(),
-  description: text("description").notNull(),
-  narrative: text("narrative"),
-  outcome: text("outcome"),
-  diff: text("diff"),
-  snapshotRef: text("snapshot_ref"),
-  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow()
-})
+export const evolutionLog = pgTable(
+  "evolution_log",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    type: text("type").notNull(),
+    description: text("description").notNull(),
+    narrative: text("narrative"),
+    outcome: text("outcome"),
+    diff: text("diff"),
+    snapshotRef: text("snapshot_ref"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow()
+  },
+  (table) => [
+    index("idx_evolution_log_created_at").on(table.createdAt),
+    index("idx_evolution_log_type_created").on(table.type, table.createdAt),
+    index("idx_evolution_log_outcome_created").on(table.outcome, table.createdAt)
+  ]
+)
 
 export type EvolutionLogInsert = typeof evolutionLog.$inferInsert
 export type EvolutionLogSelect = typeof evolutionLog.$inferSelect
