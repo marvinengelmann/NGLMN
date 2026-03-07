@@ -82,6 +82,7 @@ export async function applyConsolidationResult(output: ConsolidationOutput): Pro
   }
 
   const validRelationTypes = RelationTypeSchema.options
+  const createdRelations = new Set<string>()
   for (const [i, conn] of output.connections.entries()) {
     if (createdEntryIds.length < 2) continue
     const relType = validRelationTypes.includes(conn.connectionType as RelationType)
@@ -89,12 +90,15 @@ export async function applyConsolidationResult(output: ConsolidationOutput): Pro
       : "related_to"
     const sourceIdx = i % createdEntryIds.length
     const targetIdx = (i + 1) % createdEntryIds.length
+    if (sourceIdx === targetIdx) continue
     const sourceEntryId = createdEntryIds[sourceIdx]
     const targetEntryId = createdEntryIds[targetIdx]
-    if (sourceEntryId && targetEntryId && sourceIdx !== targetIdx) {
-      const relationResult = await storeRelation(sourceEntryId, targetEntryId, relType, conn.description)
-      if (relationResult.isErr()) logAndCaptureError(relationResult.error)
-    }
+    if (!sourceEntryId || !targetEntryId) continue
+    const pairKey = [sourceEntryId, targetEntryId].sort().join(":")
+    if (createdRelations.has(pairKey)) continue
+    createdRelations.add(pairKey)
+    const relationResult = await storeRelation(sourceEntryId, targetEntryId, relType, conn.description)
+    if (relationResult.isErr()) logAndCaptureError(relationResult.error)
   }
 
   if (output.downgradeIds.length > 0) {
