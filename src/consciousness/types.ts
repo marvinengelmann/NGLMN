@@ -16,7 +16,26 @@ import { SomaticState } from "@/soma/types.ts"
 import { VulnerabilityState } from "@/vulnerability/types.ts"
 import { WorkflowDefinition } from "@/workflow/types.ts"
 
-export const AnimaAction = z.enum(["idle", "reflect", "update_goal", "evolve", "dream", "morning"])
+export const LifeEventType = z.enum([
+  "shower",
+  "walk",
+  "nap",
+  "deep_focus",
+  "cooking",
+  "gaming",
+  "movie",
+  "exercise",
+  "errands",
+  "reading",
+  "cleaning",
+  "drawing",
+  "music",
+  "bath",
+  "socializing"
+])
+export type LifeEventType = z.infer<typeof LifeEventType>
+
+export const AnimaAction = z.enum(["idle", "reflect", "update_goal", "evolve", "dream", "morning", "life_event"])
 export type AnimaAction = z.infer<typeof AnimaAction>
 
 export const AnimaDecision = z.object({
@@ -42,7 +61,9 @@ export const AnimaDecision = z.object({
       status: z.string().optional(),
       evolutionType: z.enum(["code", "prompt", "workflow"]).optional(),
       evolutionInsight: z.string().optional(),
-      capabilityGap: z.string().optional()
+      capabilityGap: z.string().optional(),
+      lifeEventType: LifeEventType.optional(),
+      lifeEventDetail: z.string().optional()
     })
     .optional(),
   workflowId: z.string().uuid().nullable().default(null),

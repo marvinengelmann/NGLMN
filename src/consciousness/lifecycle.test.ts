@@ -63,7 +63,7 @@ import { pushToActiveConversation } from "@/memory/working.ts"
 import {
   getActiveLifeEvent,
   isLifeEventActive,
-  maybeStartLifeEvent,
+  startChosenLifeEvent,
   maybeStoreLifecycleEpisode,
   sendLifecycleNotification
 } from "./lifecycle.ts"
@@ -110,16 +110,9 @@ describe("getActiveLifeEvent", () => {
     })
   })
 
-  it("returns lost_phone meta", async () => {
+  it("returns null for unknown event type", async () => {
     vi.mocked(redis.get).mockResolvedValue("lost_phone")
-    const event = await getActiveLifeEvent()
-    expect(event).toEqual({
-      type: "lost_phone",
-      minHours: 8,
-      maxHours: 24,
-      notifyProbability: 0,
-      interruptible: false
-    })
+    expect(await getActiveLifeEvent()).toBeNull()
   })
 
   it("returns null for sleep event", async () => {
@@ -164,101 +157,76 @@ describe("sendLifecycleNotification", () => {
   })
 })
 
-describe("maybeStartLifeEvent", () => {
-  it("returns true without starting new event when one is already active", async () => {
+describe("startChosenLifeEvent", () => {
+  it("does nothing when a life event is already active", async () => {
     vi.mocked(redis.get).mockResolvedValue("walk")
-    const result = await maybeStartLifeEvent()
-    expect(result).toBe(true)
+    vi.mocked(redis.set).mockClear()
+
+    await startChosenLifeEvent("gaming")
+
     expect(redis.set).not.toHaveBeenCalled()
   })
 
-  it("starts a life event when random is below probability", async () => {
+  it("sets Redis key with TTL for a known event type", async () => {
     vi.mocked(redis.get).mockResolvedValue(null)
-    vi.spyOn(Math, "random").mockReturnValueOnce(0.99).mockReturnValueOnce(0).mockReturnValueOnce(0.5)
+    vi.mocked(redis.set).mockResolvedValue("OK")
+    vi.spyOn(Math, "random").mockReturnValue(0.5)
 
-    const result = await maybeStartLifeEvent()
-    expect(result).toBe(false)
-
-    vi.restoreAllMocks()
-  })
-
-  it("sets Redis key with TTL when event starts", async () => {
-    vi.mocked(redis.get).mockResolvedValue(null)
-    vi.spyOn(Math, "random")
-      .mockReturnValueOnce(0)
-      .mockReturnValueOnce(0.5)
-      .mockReturnValueOnce(0)
-      .mockReturnValueOnce(0.5)
-
-    await maybeStartLifeEvent()
+    await startChosenLifeEvent("gaming")
 
     expect(redis.set).toHaveBeenCalledWith(
       "working:lifecycle:event",
-      expect.any(String),
-      expect.objectContaining({ ex: expect.any(Number) })
+      "gaming",
+      expect.objectContaining({ nx: true, ex: expect.any(Number) })
     )
 
     vi.restoreAllMocks()
   })
 
-  it("stores event meta in Redis when event starts", async () => {
+  it("stores event meta with provided detail", async () => {
     vi.mocked(redis.get).mockResolvedValue(null)
     vi.mocked(redis.set).mockResolvedValue("OK")
-    vi.spyOn(Math, "random")
-      .mockReturnValueOnce(0)
-      .mockReturnValueOnce(0.5)
-      .mockReturnValueOnce(0)
-      .mockReturnValueOnce(0.5)
+    vi.spyOn(Math, "random").mockReturnValue(0.5)
 
-    await maybeStartLifeEvent()
+    await startChosenLifeEvent("gaming", "Stardew Valley")
 
     const metaCall = vi.mocked(redis.set).mock.calls.find(
       (call) => call[0] === "working:lifecycle:event:meta"
     )
     expect(metaCall).toBeDefined()
     const meta = metaCall![1] as Record<string, unknown>
-    expect(meta).toHaveProperty("type")
-    expect(meta).toHaveProperty("detail", "Celeste")
+    expect(meta).toHaveProperty("type", "gaming")
+    expect(meta).toHaveProperty("detail", "Stardew Valley")
     expect(meta).toHaveProperty("startedAt")
     expect(meta).toHaveProperty("durationHours")
 
     vi.restoreAllMocks()
   })
 
-  it("uses lost_phone event when lost_phone probability hits", async () => {
+  it("falls back to pickEventDetail when no detail is provided", async () => {
     vi.mocked(redis.get).mockResolvedValue(null)
     vi.mocked(redis.set).mockResolvedValue("OK")
-    vi.spyOn(Math, "random")
-      .mockReturnValueOnce(0)
-      .mockReturnValueOnce(0)
-      .mockReturnValueOnce(0.5)
+    vi.spyOn(Math, "random").mockReturnValue(0.5)
 
-    await maybeStartLifeEvent()
+    await startChosenLifeEvent("gaming")
 
-    expect(redis.set).toHaveBeenCalledWith(
-      "working:lifecycle:event",
-      "lost_phone",
-      expect.objectContaining({ ex: expect.any(Number) })
+    const metaCall = vi.mocked(redis.set).mock.calls.find(
+      (call) => call[0] === "working:lifecycle:event:meta"
     )
+    expect(metaCall).toBeDefined()
+    const meta = metaCall![1] as Record<string, unknown>
+    expect(meta).toHaveProperty("detail", "Celeste")
 
     vi.restoreAllMocks()
   })
 
-  it("does not send start notification on event start", async () => {
+  it("does nothing for unknown event types", async () => {
     vi.mocked(redis.get).mockResolvedValue(null)
-    vi.mocked(callIntelligence).mockClear()
-    vi.mocked(redis.set).mockResolvedValue("OK")
-    vi.spyOn(Math, "random")
-      .mockReturnValueOnce(0)
-      .mockReturnValueOnce(0.5)
-      .mockReturnValueOnce(0)
-      .mockReturnValueOnce(0.5)
+    vi.mocked(redis.set).mockClear()
 
-    await maybeStartLifeEvent()
+    await startChosenLifeEvent("lost_phone")
 
-    expect(callIntelligence).not.toHaveBeenCalled()
-
-    vi.restoreAllMocks()
+    expect(redis.set).not.toHaveBeenCalled()
   })
 })
 

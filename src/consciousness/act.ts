@@ -28,7 +28,7 @@ import { saveSomaticState } from "@/soma/state.ts"
 import { computeSomaticUpdate, drainSocialBattery } from "@/soma/update.ts"
 import { executeWorkflow } from "@/workflow/engine.ts"
 import { recordActiveTick } from "./gating.ts"
-import { startSleepEvent } from "./lifecycle.ts"
+import { startChosenLifeEvent, startSleepEvent } from "./lifecycle.ts"
 import type { ActResult, DeliberateResult, FeelingResult, SenseResult } from "./types.ts"
 
 /**
@@ -222,6 +222,14 @@ async function executeAction(deliberateResult: DeliberateResult): Promise<void> 
         } else {
           log.info("Morning routine completed")
         }
+      }
+      break
+    }
+
+    case "life_event": {
+      const { lifeEventType, lifeEventDetail } = decision.actionPayload ?? {}
+      if (lifeEventType) {
+        await startChosenLifeEvent(lifeEventType, lifeEventDetail)
       }
       break
     }

@@ -45,14 +45,6 @@ const EVENT_TYPES: EventType[] = [
   { type: "socializing", minHours: 1, maxHours: 4, notifyProbability: 0.2, interruptible: false }
 ]
 
-const LOST_PHONE_EVENT: EventType = {
-  type: "lost_phone",
-  minHours: 8,
-  maxHours: 24,
-  notifyProbability: 0,
-  interruptible: false
-}
-
 export type LifeEventMeta = EventType
 
 const EventMetaData = z.object({
@@ -79,8 +71,6 @@ export async function getActiveLifeEvent(): Promise<LifeEventMeta | null> {
   if (!eventType) return null
 
   if (eventType === "sleep" || eventType === "dream") return null
-
-  if (eventType === "lost_phone") return LOST_PHONE_EVENT
 
   const meta = EVENT_TYPES.find((e) => e.type === eventType)
   return meta ?? null
@@ -226,32 +216,25 @@ async function storeEventMeta(event: EventType, detail: string, durationHours: n
 }
 
 /**
- * Maybe start a life event — 2% chance per tick.
- * lost_phone has its own separate probability gate (0.1%).
- * During a life event, the tick is skipped entirely.
- * Suppresses random events when a dream is due.
+ * Start a life event chosen by the LLM during the DELIBERATE step.
  */
-export async function maybeStartLifeEvent(): Promise<boolean> {
-  if (await isLifeEventActive()) return true
+export async function startChosenLifeEvent(type: string, detail?: string): Promise<void> {
+  if (await isLifeEventActive()) return
 
-  if (await isDreamDue()) return false
-
-  if (Math.random() >= LIFECYCLE.EVENT_PROBABILITY) return false
-
-  const isLostPhone = Math.random() < LIFECYCLE.LOST_PHONE_PROBABILITY
-  const event = isLostPhone ? LOST_PHONE_EVENT : EVENT_TYPES[Math.floor(Math.random() * EVENT_TYPES.length)]
-  if (!event) return false
+  const event = EVENT_TYPES.find((e) => e.type === type)
+  if (!event) {
+    log.warn("Unknown life event type", { type })
+    return
+  }
 
   const durationHours = event.minHours + Math.random() * (event.maxHours - event.minHours)
   const ttlSeconds = Math.round(durationHours * 3600)
 
   const result = await redis.set(LIFECYCLE_EVENT_KEY, event.type, { nx: true, ex: ttlSeconds })
-  if (result !== "OK") return true
+  if (result !== "OK") return
 
-  const detail = pickEventDetail(event.type)
-  await storeEventMeta(event, detail, durationHours)
+  const resolvedDetail = detail ?? pickEventDetail(event.type)
+  await storeEventMeta(event, resolvedDetail, durationHours)
 
-  log.info("Life event started", { type: event.type, detail, durationHours: durationHours.toFixed(1) })
-
-  return true
+  log.info("Life event started", { type: event.type, detail: resolvedDetail, durationHours: durationHours.toFixed(1) })
 }

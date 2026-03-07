@@ -5,7 +5,6 @@ import { runHeartbeat } from "@/consciousness/heartbeat.ts"
 import {
   getActiveLifeEvent,
   isLifeEventActive,
-  maybeStartLifeEvent,
   maybeStoreLifecycleEpisode,
   sendLifecycleNotification
 } from "@/consciousness/lifecycle.ts"
@@ -51,20 +50,6 @@ export const heartbeatTask = schedules.task({
       getConversationWaitingSince(),
       fetchNewMessages(0)
     ])
-
-    const hasActiveConversation = waitingSince !== null || peek.messages.length > 0
-
-    if (!hasActiveConversation) {
-      const lifeEvent = await maybeStartLifeEvent()
-      if (lifeEvent) {
-        log.info("Heartbeat skipped — new life event started")
-        await runs.cancel(ctx.run.id)
-        if (!signal.aborted) {
-          await new Promise<void>((resolve) => signal.addEventListener("abort", () => resolve(), { once: true }))
-        }
-        return
-      }
-    }
 
     if (emotion) {
       const skip = await computeSkipProbability(emotion, waitingSince !== null, peek.messages.length > 0)

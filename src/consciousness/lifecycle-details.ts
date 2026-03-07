@@ -42,8 +42,7 @@ const EVENT_DETAIL_POOLS: Record<string, string[]> = {
   errands: ["Post abholen", "Einkaufen", "Arzttermin", "Besorgungen in der Stadt"],
   cleaning: ["Zimmer aufräumen", "Küche putzen", "Wäsche waschen", "Großputz"],
   bath: ["Schaumbad", "heißes Bad mit Kerzen", "entspannendes Bad"],
-  socializing: ["Freunde treffen", "Videocall mit Freunden", "Café-Date", "gemeinsam kochen"],
-  lost_phone: ["Handy verlegt", "Handy irgendwo vergessen", "Handy unter dem Sofa"]
+  socializing: ["Freunde treffen", "Videocall mit Freunden", "Café-Date", "gemeinsam kochen"]
 }
 
 /**
