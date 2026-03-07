@@ -1,6 +1,6 @@
 import { runs, schedules } from "@trigger.dev/sdk"
 import { HEARTBEAT } from "@/config/constants.ts"
-import { computeSkipProbability } from "@/consciousness/gating.ts"
+import { computeSkipProbability, consumeBurstCooldownTick } from "@/consciousness/gating.ts"
 import { runHeartbeat } from "@/consciousness/heartbeat.ts"
 import {
   getActiveLifeEvent,
@@ -55,7 +55,7 @@ export const heartbeatTask = schedules.task({
     const hasActiveConversation = waitingSince !== null || peek.messages.length > 0
 
     if (!hasActiveConversation) {
-      const lifeEvent = await maybeStartLifeEvent(false)
+      const lifeEvent = await maybeStartLifeEvent()
       if (lifeEvent) {
         log.info("Heartbeat skipped — new life event started")
         await runs.cancel(ctx.run.id)
@@ -69,6 +69,7 @@ export const heartbeatTask = schedules.task({
     if (emotion) {
       const skip = await computeSkipProbability(emotion, waitingSince !== null, peek.messages.length > 0)
       if (Math.random() < skip) {
+        await consumeBurstCooldownTick()
         log.info("Heartbeat gated", { skipProbability: skip.toFixed(2) })
         await runs.cancel(ctx.run.id)
         if (!signal.aborted) {
