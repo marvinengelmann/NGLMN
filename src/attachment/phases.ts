@@ -23,10 +23,10 @@ export function computeRelationshipPhase(context: PhaseContext): RelationshipPha
   }
 
   if (
-    daysSinceFirst > RELATIONSHIP_PHASES.COMFORTABLE_DAYS &&
-    attachmentSecurity > RELATIONSHIP_PHASES.COMFORTABLE_SECURITY
+    conflicts >= RELATIONSHIP_PHASES.TENSIONS_MIN_CONFLICTS &&
+    connectionAvg < RELATIONSHIP_PHASES.TENSIONS_CONNECTION
   ) {
-    return "comfortable"
+    return "first_tensions"
   }
 
   if (
@@ -38,10 +38,10 @@ export function computeRelationshipPhase(context: PhaseContext): RelationshipPha
   }
 
   if (
-    conflicts >= RELATIONSHIP_PHASES.TENSIONS_MIN_CONFLICTS &&
-    connectionAvg < RELATIONSHIP_PHASES.TENSIONS_CONNECTION
+    daysSinceFirst > RELATIONSHIP_PHASES.COMFORTABLE_DAYS &&
+    attachmentSecurity > RELATIONSHIP_PHASES.COMFORTABLE_SECURITY
   ) {
-    return "first_tensions"
+    return "comfortable"
   }
 
   if (

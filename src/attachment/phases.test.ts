@@ -59,7 +59,21 @@ describe("computeRelationshipPhase", () => {
     ).toBe("deepening")
   })
 
-  it("returns comfortable for long relationship with high security", () => {
+  it("returns comfortable for long relationship with high security and few conflicts", () => {
+    expect(
+      computeRelationshipPhase({
+        interactionCount: 500,
+        daysSinceFirst: RELATIONSHIP_PHASES.COMFORTABLE_DAYS + 1,
+        connectionAvg: 0.6,
+        conflicts: 2,
+        trust: 0.7,
+        attachmentSecurity: RELATIONSHIP_PHASES.COMFORTABLE_SECURITY + 0.1,
+        currentPhase: "deepening"
+      })
+    ).toBe("comfortable")
+  })
+
+  it("returns deepening over comfortable when conflicts are present", () => {
     expect(
       computeRelationshipPhase({
         interactionCount: 500,
@@ -68,9 +82,23 @@ describe("computeRelationshipPhase", () => {
         conflicts: 5,
         trust: 0.7,
         attachmentSecurity: RELATIONSHIP_PHASES.COMFORTABLE_SECURITY + 0.1,
-        currentPhase: "deepening"
+        currentPhase: "comfortable"
       })
-    ).toBe("comfortable")
+    ).toBe("deepening")
+  })
+
+  it("returns first_tensions over comfortable when connection drops", () => {
+    expect(
+      computeRelationshipPhase({
+        interactionCount: 500,
+        daysSinceFirst: RELATIONSHIP_PHASES.COMFORTABLE_DAYS + 1,
+        connectionAvg: 0.3,
+        conflicts: 5,
+        trust: 0.3,
+        attachmentSecurity: RELATIONSHIP_PHASES.COMFORTABLE_SECURITY + 0.1,
+        currentPhase: "comfortable"
+      })
+    ).toBe("first_tensions")
   })
 
   it("returns renewal when comfortable with connection spike", () => {

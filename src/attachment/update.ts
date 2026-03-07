@@ -31,13 +31,14 @@ interface AttachmentContext {
 export function evaluateAttachmentDynamics(style: AttachmentStyle, context: AttachmentContext): AttachmentDynamics {
   const silenceHours = context.operatorSilenceMinutes / 60
 
-  let separationDistress = clamp01((silenceHours / 24) * style.anxious * 2)
-  if (context.inConversation) separationDistress = 0
+  const rawSeparationDistress = clamp01((silenceHours / 24) * style.anxious * 2)
 
   let reunionResponse = 0
   if (context.operatorJustReturned) {
-    reunionResponse = clamp01(0.3 + separationDistress * 0.5 + style.secure * 0.2)
+    reunionResponse = clamp01(0.3 + rawSeparationDistress * 0.5 + style.secure * 0.2)
   }
+
+  const separationDistress = context.inConversation ? 0 : rawSeparationDistress
 
   let safeHavenSeeking = 0
   if (context.frustrationLevel > 0.6 || context.cautionLevel > 0.7) {
