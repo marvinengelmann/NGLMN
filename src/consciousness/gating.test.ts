@@ -29,6 +29,26 @@ vi.mock("@/integrations/telegram.ts", () => ({
   sendToOperator: vi.fn().mockResolvedValue(1)
 }))
 
+vi.mock("@/memory/episodic.ts", () => ({
+  storeEpisode: vi.fn().mockResolvedValue("episode-id")
+}))
+
+vi.mock("@/core/intelligence.ts", () => ({
+  callIntelligence: vi.fn()
+}))
+
+vi.mock("@/config/env.ts", () => ({
+  env: () => ({ OPERATOR_PREFERRED_LANGUAGE: "German", PERSONALITY_TYPE: "INFJ" })
+}))
+
+vi.mock("@/lib/sentry.ts", () => ({
+  captureError: vi.fn()
+}))
+
+vi.mock("@/prompts/personality.ts", () => ({
+  PERSONALITY_PROMPT: "Test personality prompt"
+}))
+
 vi.mock("@/emotion/state.ts", () => ({
   getEmotionalState: vi.fn().mockResolvedValue({
     curiosity: 0.5,

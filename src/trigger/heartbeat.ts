@@ -6,6 +6,7 @@ import {
   getActiveLifeEvent,
   isLifeEventActive,
   maybeStartLifeEvent,
+  maybeStoreLifecycleEpisode,
   sendLifecycleNotification
 } from "@/consciousness/lifecycle.ts"
 import { fetchNewMessages } from "@/integrations/telegram.ts"
@@ -76,6 +77,8 @@ export const heartbeatTask = schedules.task({
         return
       }
     }
+
+    await maybeStoreLifecycleEpisode()
 
     return runHeartbeat()
   }

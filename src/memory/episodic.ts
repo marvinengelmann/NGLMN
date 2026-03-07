@@ -153,7 +153,7 @@ export async function downgradeEpisodes(ids: string[], factor: number = 0.5): Pr
 export async function summarizeOldEpisodes(
   daysThreshold: number = 7
 ): Promise<{ summarized: number; created: number }> {
-  const categories: EpisodicCategory[] = ["interaction", "task", "observation", "dream", "evolution"]
+  const categories: EpisodicCategory[] = ["interaction", "task", "observation", "dream", "evolution", "activity"]
 
   const cutoffDate = subDays(new Date(), daysThreshold)
 
@@ -309,7 +309,7 @@ export async function forgetOldEpisodes(
   ageThresholdDays: number = 90,
   relevanceThreshold: number = 0.2
 ): Promise<number> {
-  const categories: EpisodicCategory[] = ["interaction", "task", "observation", "dream", "evolution"]
+  const categories: EpisodicCategory[] = ["interaction", "task", "observation", "dream", "evolution", "activity"]
   const idsToDelete: string[] = []
 
   for (const category of categories) {

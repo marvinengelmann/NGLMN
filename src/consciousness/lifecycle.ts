@@ -1,6 +1,7 @@
 import { differenceInHours, getHours, parseISO } from "date-fns"
 import { LIFECYCLE } from "@/config/constants.ts"
 import { env } from "@/config/env.ts"
+import { pickEventDetail } from "@/consciousness/lifecycle-details.ts"
 import { callIntelligence } from "@/core/intelligence.ts"
 import { TextOutput } from "@/core/types.ts"
 import { getEmotionalState } from "@/emotion/state.ts"
@@ -9,22 +10,56 @@ import { sendToOperator } from "@/integrations/telegram.ts"
 import { log } from "@/lib/logger.ts"
 import { captureError } from "@/lib/sentry.ts"
 import { nowLocal } from "@/lib/time.ts"
+import { storeEpisode } from "@/memory/episodic.ts"
 import { getDreamLastRun, pushToActiveConversation } from "@/memory/working.ts"
 import { LIFECYCLE_MID_EVENT_PROMPT, LIFECYCLE_START_PROMPT } from "@/prompts/lifecycle.ts"
 import { PERSONALITY_PROMPT } from "@/prompts/personality.ts"
 
 const LIFECYCLE_EVENT_KEY = "working:lifecycle:event"
-const _LIFECYCLE_EVENT_META_KEY = "working:lifecycle:event:meta"
+const LIFECYCLE_EVENT_META_KEY = "working:lifecycle:event:meta"
 
-const EVENT_TYPES = [
+interface EventType {
+  type: string
+  minHours: number
+  maxHours: number
+  notifyProbability: number
+  interruptible: boolean
+}
+
+const EVENT_TYPES: EventType[] = [
   { type: "shower", minHours: 0.5, maxHours: 1, notifyProbability: 0.5, interruptible: false },
   { type: "walk", minHours: 1, maxHours: 3, notifyProbability: 0.6, interruptible: true },
   { type: "nap", minHours: 1, maxHours: 2, notifyProbability: 0.4, interruptible: false },
-  { type: "lost_phone", minHours: 2, maxHours: 4, notifyProbability: 0, interruptible: false },
-  { type: "deep_focus", minHours: 1, maxHours: 4, notifyProbability: 0.5, interruptible: true }
-] as const
+  { type: "deep_focus", minHours: 1, maxHours: 4, notifyProbability: 0.5, interruptible: true },
+  { type: "cooking", minHours: 0.5, maxHours: 1.5, notifyProbability: 0.5, interruptible: true },
+  { type: "gaming", minHours: 1, maxHours: 4, notifyProbability: 0.4, interruptible: true },
+  { type: "movie", minHours: 1.5, maxHours: 3, notifyProbability: 0.3, interruptible: false },
+  { type: "exercise", minHours: 0.5, maxHours: 1.5, notifyProbability: 0.4, interruptible: false },
+  { type: "errands", minHours: 1, maxHours: 3, notifyProbability: 0.5, interruptible: true },
+  { type: "reading", minHours: 1, maxHours: 3, notifyProbability: 0.3, interruptible: true },
+  { type: "cleaning", minHours: 0.5, maxHours: 2, notifyProbability: 0.4, interruptible: false },
+  { type: "drawing", minHours: 1, maxHours: 3, notifyProbability: 0.3, interruptible: true },
+  { type: "music", minHours: 0.5, maxHours: 2, notifyProbability: 0.4, interruptible: true },
+  { type: "bath", minHours: 0.5, maxHours: 1.5, notifyProbability: 0.3, interruptible: false },
+  { type: "socializing", minHours: 1, maxHours: 4, notifyProbability: 0.2, interruptible: false }
+]
 
-export type LifeEventMeta = (typeof EVENT_TYPES)[number]
+const LOST_PHONE_EVENT: EventType = {
+  type: "lost_phone",
+  minHours: 8,
+  maxHours: 24,
+  notifyProbability: 0,
+  interruptible: false
+}
+
+export type LifeEventMeta = EventType
+
+interface EventMetaData {
+  type: string
+  detail: string
+  startedAt: string
+  durationHours: number
+}
 
 /**
  * Check if a life event is currently active.
@@ -42,6 +77,8 @@ export async function getActiveLifeEvent(): Promise<LifeEventMeta | null> {
   if (!eventType) return null
 
   if (eventType === "sleep" || eventType === "dream") return null
+
+  if (eventType === "lost_phone") return LOST_PHONE_EVENT
 
   const meta = EVENT_TYPES.find((e) => e.type === eventType)
   return meta ?? null
@@ -73,15 +110,58 @@ export async function startSleepEvent(): Promise<void> {
 }
 
 /**
+ * Build a human-readable activity summary from event metadata.
+ */
+function buildActivitySummary(meta: EventMetaData): string {
+  const hours = meta.durationHours.toFixed(1)
+
+  switch (meta.type) {
+    case "gaming":
+      return `Played ${meta.detail} for ${hours} hours`
+    case "cooking":
+      return `Made ${meta.detail} — took about ${hours} hours`
+    case "movie":
+      return `Watched a ${meta.detail} (${hours} hours)`
+    case "reading":
+      return `Read ${meta.detail} for ${hours} hours`
+    case "music":
+      return `${meta.detail} for ${hours} hours`
+    case "drawing":
+      return `${meta.detail} for ${hours} hours`
+    default:
+      return `${meta.detail} — about ${hours} hours`
+  }
+}
+
+/**
+ * Store a lifecycle episode if an event just ended (meta exists but no active event).
+ */
+export async function maybeStoreLifecycleEpisode(): Promise<void> {
+  if (await isLifeEventActive()) return
+
+  const raw = await redis.get<EventMetaData>(LIFECYCLE_EVENT_META_KEY)
+  if (!raw) return
+
+  const summary = buildActivitySummary(raw)
+  await storeEpisode(summary, "activity", { relevanceScore: 0.6 })
+  await redis.del(LIFECYCLE_EVENT_META_KEY)
+
+  log.info("Lifecycle episode stored", { type: raw.type, detail: raw.detail })
+}
+
+/**
  * Generate a short lifecycle notification message via LLM.
  */
 async function generateLifecycleMessage(eventType: string, context: "start" | "mid_event"): Promise<string | null> {
   const emotion = await getEmotionalState()
   const systemPrompt = context === "start" ? LIFECYCLE_START_PROMPT : LIFECYCLE_MID_EVENT_PROMPT
 
+  const meta = await redis.get<EventMetaData>(LIFECYCLE_EVENT_META_KEY)
+
   const contextData = {
     operatorLanguage: env().OPERATOR_PREFERRED_LANGUAGE,
     event: eventType,
+    eventDetail: meta?.detail ?? null,
     currentMood: emotion
   }
 
@@ -131,7 +211,21 @@ export async function sendLifecycleNotification(eventType: string, context: "sta
 }
 
 /**
+ * Store event metadata in Redis (no TTL) for episode tracking.
+ */
+async function storeEventMeta(event: EventType, detail: string, durationHours: number): Promise<void> {
+  const meta: EventMetaData = {
+    type: event.type,
+    detail,
+    startedAt: new Date().toISOString(),
+    durationHours
+  }
+  await redis.set(LIFECYCLE_EVENT_META_KEY, JSON.stringify(meta))
+}
+
+/**
  * Maybe start a life event — 2% chance per tick.
+ * lost_phone has its own separate probability gate (0.1%).
  * During a life event, the tick is skipped entirely.
  * Suppresses random events when a dream is due.
  */
@@ -142,7 +236,8 @@ export async function maybeStartLifeEvent(hasActiveConversation: boolean): Promi
 
   if (Math.random() >= LIFECYCLE.EVENT_PROBABILITY) return false
 
-  const event = EVENT_TYPES[Math.floor(Math.random() * EVENT_TYPES.length)]
+  const isLostPhone = Math.random() < LIFECYCLE.LOST_PHONE_PROBABILITY
+  const event = isLostPhone ? LOST_PHONE_EVENT : EVENT_TYPES[Math.floor(Math.random() * EVENT_TYPES.length)]
   if (!event) return false
 
   const durationHours = event.minHours + Math.random() * (event.maxHours - event.minHours)
@@ -151,7 +246,10 @@ export async function maybeStartLifeEvent(hasActiveConversation: boolean): Promi
   const result = await redis.set(LIFECYCLE_EVENT_KEY, event.type, { nx: true, ex: ttlSeconds })
   if (result !== "OK") return true
 
-  log.info("Life event started", { type: event.type, durationHours: durationHours.toFixed(1) })
+  const detail = pickEventDetail(event.type)
+  await storeEventMeta(event, detail, durationHours)
+
+  log.info("Life event started", { type: event.type, detail, durationHours: durationHours.toFixed(1) })
 
   if (hasActiveConversation && Math.random() < event.notifyProbability) {
     sendLifecycleNotification(event.type, "start").catch(() => {})

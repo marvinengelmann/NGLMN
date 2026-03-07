@@ -33,7 +33,8 @@ export const EpisodicCategory = z.enum([
   "dream",
   "evolution",
   "relationship",
-  "humor"
+  "humor",
+  "activity"
 ])
 export type EpisodicCategory = z.infer<typeof EpisodicCategory>
 
