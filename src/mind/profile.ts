@@ -96,7 +96,17 @@ export async function getCorrectionPatterns(): Promise<CorrectionPattern[]> {
   const raw = await redis.lrange(KEYS.CORRECTION_PATTERNS, 0, -1)
   return raw
     .map((item) => {
-      const parsed = CorrectionPattern.safeParse(typeof item === "string" ? JSON.parse(item) : item)
+      let value: unknown
+      if (typeof item === "string") {
+        try {
+          value = JSON.parse(item)
+        } catch {
+          return null
+        }
+      } else {
+        value = item
+      }
+      const parsed = CorrectionPattern.safeParse(value)
       return parsed.success ? parsed.data : null
     })
     .filter((p): p is CorrectionPattern => p !== null)
