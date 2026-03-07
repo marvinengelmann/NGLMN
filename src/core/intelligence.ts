@@ -58,6 +58,9 @@ export function callIntelligence<T extends z.ZodType>(
       await trackApiCost(cost)
     }
 
+    if (result.output == null) {
+      throw new Error("LLM returned no structured output — schema mismatch or empty response")
+    }
     return result.output as z.infer<T>
   })
 }
