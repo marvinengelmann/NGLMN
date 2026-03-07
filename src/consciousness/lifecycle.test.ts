@@ -6,7 +6,8 @@ vi.mock("@/integrations/redis.ts", () => ({
     get: vi.fn().mockResolvedValue(null),
     set: vi.fn().mockResolvedValue("OK"),
     del: vi.fn().mockResolvedValue(1)
-  }
+  },
+  getValidatedRedis: vi.fn().mockResolvedValue(null)
 }))
 
 vi.mock("@/lib/logger.ts", () => ({
@@ -55,7 +56,7 @@ vi.mock("@/consciousness/lifecycle-details.ts", () => ({
 }))
 
 import { callIntelligence } from "@/core/intelligence.ts"
-import { redis } from "@/integrations/redis.ts"
+import { getValidatedRedis, redis } from "@/integrations/redis.ts"
 import { storeEpisode } from "@/memory/episodic.ts"
 import { sendToOperator } from "@/integrations/telegram.ts"
 import { pushToActiveConversation } from "@/memory/working.ts"
@@ -134,7 +135,7 @@ describe("getActiveLifeEvent", () => {
 
 describe("sendLifecycleNotification", () => {
   it("generates and sends a message to the operator", async () => {
-    vi.mocked(redis.get).mockResolvedValue(null)
+    vi.mocked(getValidatedRedis).mockResolvedValue(null)
     await sendLifecycleNotification("shower", "start")
 
     expect(callIntelligence).toHaveBeenCalledWith(
@@ -166,7 +167,7 @@ describe("sendLifecycleNotification", () => {
 describe("maybeStartLifeEvent", () => {
   it("returns true without starting new event when one is already active", async () => {
     vi.mocked(redis.get).mockResolvedValue("walk")
-    const result = await maybeStartLifeEvent(false)
+    const result = await maybeStartLifeEvent()
     expect(result).toBe(true)
     expect(redis.set).not.toHaveBeenCalled()
   })
@@ -175,7 +176,7 @@ describe("maybeStartLifeEvent", () => {
     vi.mocked(redis.get).mockResolvedValue(null)
     vi.spyOn(Math, "random").mockReturnValueOnce(0.99).mockReturnValueOnce(0).mockReturnValueOnce(0.5)
 
-    const result = await maybeStartLifeEvent(false)
+    const result = await maybeStartLifeEvent()
     expect(result).toBe(false)
 
     vi.restoreAllMocks()
@@ -189,7 +190,7 @@ describe("maybeStartLifeEvent", () => {
       .mockReturnValueOnce(0)
       .mockReturnValueOnce(0.5)
 
-    await maybeStartLifeEvent(false)
+    await maybeStartLifeEvent()
 
     expect(redis.set).toHaveBeenCalledWith(
       "working:lifecycle:event",
@@ -209,14 +210,13 @@ describe("maybeStartLifeEvent", () => {
       .mockReturnValueOnce(0)
       .mockReturnValueOnce(0.5)
 
-    await maybeStartLifeEvent(false)
+    await maybeStartLifeEvent()
 
     const metaCall = vi.mocked(redis.set).mock.calls.find(
       (call) => call[0] === "working:lifecycle:event:meta"
     )
     expect(metaCall).toBeDefined()
-    const metaStr = metaCall![1] as string
-    const meta = JSON.parse(metaStr)
+    const meta = metaCall![1] as Record<string, unknown>
     expect(meta).toHaveProperty("type")
     expect(meta).toHaveProperty("detail", "Celeste")
     expect(meta).toHaveProperty("startedAt")
@@ -233,7 +233,7 @@ describe("maybeStartLifeEvent", () => {
       .mockReturnValueOnce(0)
       .mockReturnValueOnce(0.5)
 
-    await maybeStartLifeEvent(false)
+    await maybeStartLifeEvent()
 
     expect(redis.set).toHaveBeenCalledWith(
       "working:lifecycle:event",
@@ -244,33 +244,17 @@ describe("maybeStartLifeEvent", () => {
     vi.restoreAllMocks()
   })
 
-  it("sends start notification when hasActiveConversation and probability hits", async () => {
-    vi.mocked(redis.get).mockResolvedValue(null)
-    vi.spyOn(Math, "random")
-      .mockReturnValueOnce(0)
-      .mockReturnValueOnce(0.5)
-      .mockReturnValueOnce(0)
-      .mockReturnValueOnce(0.5)
-      .mockReturnValueOnce(0)
-
-    await maybeStartLifeEvent(true)
-    await new Promise((r) => setTimeout(r, 10))
-
-    expect(callIntelligence).toHaveBeenCalled()
-
-    vi.restoreAllMocks()
-  })
-
-  it("does not send start notification when hasActiveConversation is false", async () => {
+  it("does not send start notification on event start", async () => {
     vi.mocked(redis.get).mockResolvedValue(null)
     vi.mocked(callIntelligence).mockClear()
+    vi.mocked(redis.set).mockResolvedValue("OK")
     vi.spyOn(Math, "random")
       .mockReturnValueOnce(0)
       .mockReturnValueOnce(0.5)
       .mockReturnValueOnce(0)
       .mockReturnValueOnce(0.5)
 
-    await maybeStartLifeEvent(false)
+    await maybeStartLifeEvent()
 
     expect(callIntelligence).not.toHaveBeenCalled()
 
@@ -280,14 +264,13 @@ describe("maybeStartLifeEvent", () => {
 
 describe("maybeStoreLifecycleEpisode", () => {
   it("stores episode and deletes meta when event just ended", async () => {
-    vi.mocked(redis.get)
-      .mockResolvedValueOnce(null)
-      .mockResolvedValueOnce({
-        type: "gaming",
-        detail: "Celeste",
-        startedAt: "2026-03-06T14:30:00Z",
-        durationHours: 2.3
-      })
+    vi.mocked(redis.get).mockResolvedValueOnce(null)
+    vi.mocked(getValidatedRedis).mockResolvedValueOnce({
+      type: "gaming",
+      detail: "Celeste",
+      startedAt: "2026-03-06T14:30:00Z",
+      durationHours: 2.3
+    })
 
     await maybeStoreLifecycleEpisode()
 
@@ -297,6 +280,7 @@ describe("maybeStoreLifecycleEpisode", () => {
 
   it("does nothing when no meta exists", async () => {
     vi.mocked(redis.get).mockResolvedValue(null)
+    vi.mocked(getValidatedRedis).mockResolvedValue(null)
     vi.mocked(storeEpisode).mockClear()
     vi.mocked(redis.del).mockClear()
 
@@ -316,14 +300,13 @@ describe("maybeStoreLifecycleEpisode", () => {
   })
 
   it("builds correct summary for cooking events", async () => {
-    vi.mocked(redis.get)
-      .mockResolvedValueOnce(null)
-      .mockResolvedValueOnce({
-        type: "cooking",
-        detail: "Pasta from scratch",
-        startedAt: "2026-03-06T14:30:00Z",
-        durationHours: 0.8
-      })
+    vi.mocked(redis.get).mockResolvedValueOnce(null)
+    vi.mocked(getValidatedRedis).mockResolvedValueOnce({
+      type: "cooking",
+      detail: "Pasta from scratch",
+      startedAt: "2026-03-06T14:30:00Z",
+      durationHours: 0.8
+    })
 
     await maybeStoreLifecycleEpisode()
 
@@ -335,14 +318,13 @@ describe("maybeStoreLifecycleEpisode", () => {
   })
 
   it("builds correct summary for movie events", async () => {
-    vi.mocked(redis.get)
-      .mockResolvedValueOnce(null)
-      .mockResolvedValueOnce({
-        type: "movie",
-        detail: "Studio Ghibli Film",
-        startedAt: "2026-03-06T14:30:00Z",
-        durationHours: 2.1
-      })
+    vi.mocked(redis.get).mockResolvedValueOnce(null)
+    vi.mocked(getValidatedRedis).mockResolvedValueOnce({
+      type: "movie",
+      detail: "Studio Ghibli Film",
+      startedAt: "2026-03-06T14:30:00Z",
+      durationHours: 2.1
+    })
 
     await maybeStoreLifecycleEpisode()
 

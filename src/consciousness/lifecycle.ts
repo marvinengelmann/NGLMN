@@ -1,11 +1,12 @@
 import { differenceInHours, getHours, parseISO } from "date-fns"
+import { z } from "zod"
 import { LIFECYCLE } from "@/config/constants.ts"
 import { env } from "@/config/env.ts"
 import { pickEventDetail } from "@/consciousness/lifecycle-details.ts"
 import { callIntelligence } from "@/core/intelligence.ts"
 import { TextOutput } from "@/core/types.ts"
 import { getEmotionalState } from "@/emotion/state.ts"
-import { redis } from "@/integrations/redis.ts"
+import { getValidatedRedis, redis } from "@/integrations/redis.ts"
 import { sendToOperator } from "@/integrations/telegram.ts"
 import { log } from "@/lib/logger.ts"
 import { captureError } from "@/lib/sentry.ts"
@@ -54,12 +55,13 @@ const LOST_PHONE_EVENT: EventType = {
 
 export type LifeEventMeta = EventType
 
-interface EventMetaData {
-  type: string
-  detail: string
-  startedAt: string
-  durationHours: number
-}
+const EventMetaData = z.object({
+  type: z.string(),
+  detail: z.string(),
+  startedAt: z.string(),
+  durationHours: z.number()
+})
+type EventMetaData = z.infer<typeof EventMetaData>
 
 /**
  * Check if a life event is currently active.
@@ -139,14 +141,14 @@ function buildActivitySummary(meta: EventMetaData): string {
 export async function maybeStoreLifecycleEpisode(): Promise<void> {
   if (await isLifeEventActive()) return
 
-  const raw = await redis.get<EventMetaData>(LIFECYCLE_EVENT_META_KEY)
-  if (!raw) return
+  const meta = await getValidatedRedis(LIFECYCLE_EVENT_META_KEY, EventMetaData)
+  if (!meta) return
 
-  const summary = buildActivitySummary(raw)
+  const summary = buildActivitySummary(meta)
   await storeEpisode(summary, "activity", { relevanceScore: 0.6 })
   await redis.del(LIFECYCLE_EVENT_META_KEY)
 
-  log.info("Lifecycle episode stored", { type: raw.type, detail: raw.detail })
+  log.info("Lifecycle episode stored", { type: meta.type, detail: meta.detail })
 }
 
 /**
@@ -156,7 +158,7 @@ async function generateLifecycleMessage(eventType: string, context: "start" | "m
   const emotion = await getEmotionalState()
   const systemPrompt = context === "start" ? LIFECYCLE_START_PROMPT : LIFECYCLE_MID_EVENT_PROMPT
 
-  const meta = await redis.get<EventMetaData>(LIFECYCLE_EVENT_META_KEY)
+  const meta = await getValidatedRedis(LIFECYCLE_EVENT_META_KEY, EventMetaData)
 
   const contextData = {
     operatorLanguage: env().OPERATOR_PREFERRED_LANGUAGE,
@@ -220,7 +222,7 @@ async function storeEventMeta(event: EventType, detail: string, durationHours: n
     startedAt: new Date().toISOString(),
     durationHours
   }
-  await redis.set(LIFECYCLE_EVENT_META_KEY, JSON.stringify(meta))
+  await redis.set(LIFECYCLE_EVENT_META_KEY, meta)
 }
 
 /**
@@ -229,7 +231,7 @@ async function storeEventMeta(event: EventType, detail: string, durationHours: n
  * During a life event, the tick is skipped entirely.
  * Suppresses random events when a dream is due.
  */
-export async function maybeStartLifeEvent(hasActiveConversation: boolean): Promise<boolean> {
+export async function maybeStartLifeEvent(): Promise<boolean> {
   if (await isLifeEventActive()) return true
 
   if (await isDreamDue()) return false
@@ -250,10 +252,6 @@ export async function maybeStartLifeEvent(hasActiveConversation: boolean): Promi
   await storeEventMeta(event, detail, durationHours)
 
   log.info("Life event started", { type: event.type, detail, durationHours: durationHours.toFixed(1) })
-
-  if (hasActiveConversation && Math.random() < event.notifyProbability) {
-    sendLifecycleNotification(event.type, "start").catch(() => {})
-  }
 
   return true
 }
