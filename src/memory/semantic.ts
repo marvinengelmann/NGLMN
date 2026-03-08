@@ -173,7 +173,7 @@ export function applyOpinionDrift(): AnimaResultAsync<void> {
     const preferences = await db
       .select()
       .from(semanticMemory)
-      .where(and(eq(semanticMemory.category, "preference"), lt(semanticMemory.confidence, 1)))
+      .where(and(eq(semanticMemory.category, "preference"), lt(semanticMemory.confidence, 0.7)))
       .orderBy(desc(semanticMemory.updatedAt))
       .limit(10)
 
