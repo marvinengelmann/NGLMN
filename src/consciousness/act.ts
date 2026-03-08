@@ -20,6 +20,7 @@ import { logAndCaptureError, trySafe } from "@/lib/result.ts"
 import { nowISO, sleep } from "@/lib/time.ts"
 import { storeEpisode, storeHumorEpisode, storeRelationshipEpisode } from "@/memory/episodic.ts"
 import { executeGoalUpdate } from "@/memory/goals.ts"
+import { storeKnowledge } from "@/memory/semantic.ts"
 import {
   getLastTickSummary,
   setDreamState,
@@ -237,6 +238,23 @@ async function executeAction(deliberateResult: DeliberateResult): Promise<void> 
       const { lifeEventType, lifeEventDetail } = decision.actionPayload ?? {}
       if (lifeEventType) {
         await startChosenLifeEvent(lifeEventType, lifeEventDetail)
+      }
+      break
+    }
+
+    case "store_knowledge": {
+      const { knowledgeCategory, knowledgeKey, knowledgeValue, knowledgeScope } = decision.actionPayload ?? {}
+      if (knowledgeCategory && knowledgeKey && knowledgeValue) {
+        const result = await storeKnowledge(
+          knowledgeCategory,
+          knowledgeKey,
+          knowledgeValue,
+          "observation",
+          0.8,
+          knowledgeScope ?? "self"
+        )
+        if (result.isErr()) logAndCaptureError(result.error, { phase: "act_store_knowledge" })
+        else log.info("Knowledge stored via action", { category: knowledgeCategory, key: knowledgeKey })
       }
       break
     }

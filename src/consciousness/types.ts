@@ -7,6 +7,7 @@ import { DreamThinkResult } from "@/dream/types.ts"
 import { EmotionalState, EmotionUpdateEvent, MoodContext } from "@/emotion/types.ts"
 import { HealthCheckResult } from "@/health/types.ts"
 import { PendingMessage, WeatherData, XPost } from "@/integrations/types.ts"
+import { SemanticCategory, SemanticScope } from "@/memory/types.ts"
 import { OperatorModel } from "@/mind/types.ts"
 import { PerceptionSummary } from "@/perception/types.ts"
 import { InnerDialog } from "@/polyphony/types.ts"
@@ -43,7 +44,8 @@ export const AnimaAction = z.enum([
   "dream",
   "morning",
   "life_event",
-  "social_media"
+  "social_media",
+  "store_knowledge"
 ])
 export type AnimaAction = z.infer<typeof AnimaAction>
 
@@ -74,7 +76,11 @@ export const AnimaDecision = z.object({
       lifeEventType: LifeEventType.optional(),
       lifeEventDetail: z.string().optional(),
       socialMediaMode: z.enum(["browse", "post"]).optional(),
-      xPostText: z.string().max(280).optional()
+      xPostText: z.string().max(280).optional(),
+      knowledgeCategory: SemanticCategory.optional(),
+      knowledgeKey: z.string().optional(),
+      knowledgeValue: z.string().optional(),
+      knowledgeScope: SemanticScope.optional()
     })
     .optional(),
   workflowId: z.string().uuid().nullable().default(null),

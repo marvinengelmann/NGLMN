@@ -25,6 +25,7 @@ import { nowLocal } from "@/lib/time.ts"
 import {
   queryHumorCallbacks,
   queryHumorMemories,
+  queryRelated,
   queryRelatedWithDistortion,
   queryRelationshipHistory
 } from "@/memory/episodic.ts"
@@ -765,6 +766,23 @@ async function buildMemorySections(
     )
   }
 
+  const recentActivities = await queryRelated("recent activity", 5, "category = 'activity'")
+  const activityEpisodes = recentActivities.filter((act) => act.metadata && !episodes.some((ep) => ep.id === act.id))
+
+  if (activityEpisodes.length > 0) {
+    sections.push(
+      [
+        "# Recent Activities",
+        ...activityEpisodes
+          .filter((ep): ep is typeof ep & { metadata: EpisodeMetadata } => ep.metadata !== undefined)
+          .map((ep) => {
+            const text = ep.data ? (ep.data.length > 150 ? `${ep.data.slice(0, 150)}...` : ep.data) : ""
+            return `  - ${ep.metadata.timestamp} — ${text}`
+          })
+      ].join("\n")
+    )
+  }
+
   if (emotion.excitement > HUMOR.QUERY_MIN_EXCITEMENT || emotion.connection > HUMOR.QUERY_MIN_CONNECTION) {
     const humorEpisodes = await queryHumorMemories(HUMOR.MAX_EPISODES_IN_CONTEXT)
 
@@ -821,6 +839,10 @@ async function buildMemorySections(
     if (relationLines.length > 0) {
       sections.push(["# Knowledge Connections", ...relationLines].join("\n"))
     }
+  } else {
+    sections.push(
+      "# Knowledge\nNo stored knowledge available. If asked about yourself and you don't have stored knowledge about it, be honest about not knowing yet rather than making something up. You can use the store_knowledge action to remember things you decide about yourself."
+    )
   }
 
   if (relationships.length > 0) {
