@@ -50,12 +50,13 @@ An autonomously operating, self-evolving AI entity powered by xAI Grok. ANIMA is
 - **Image Capabilities** — Receives and understands images via vision, generates self-portraits with appearance-consistent reference anchoring
 - **Voice Messages** — ElevenLabs text-to-speech
 - **Humor** — Inside joke tracking with episodic callbacks
+- **X (Twitter)** — Autonomous public posting in English with two-stage privacy guardian (rule-based + LLM), timeline browsing with selective sharing of genuinely noteworthy content to operator
 
 ### Autonomy
 
 - **Self-Evolution** — Curiosity-driven prompt, workflow, and code evolution with sandboxed execution
 - **Workflow Engine** — Custom automation triggered by schedule, emotion, perception, or idle streaks
-- **Guardian System** — Validation, drift detection, injection defense, and rollback protection
+- **Guardian System** — Validation, drift detection, injection defense, rollback protection, and two-stage privacy guardian for public content
 
 ## Architecture
 
@@ -78,6 +79,7 @@ An autonomously operating, self-evolving AI entity powered by xAI Grok. ANIMA is
 | Episodic Memory | [Upstash Vector](https://upstash.com) |
 | Communication | [Grammy](https://grammy.dev) (Telegram Bot API) |
 | Voice | [ElevenLabs](https://elevenlabs.io) |
+| Social Media | [X API v2](https://developer.x.com) (OAuth 1.0a) |
 | Sandbox | [Daytona](https://daytona.io) (self-evolution) |
 
 ## Setup
@@ -95,7 +97,7 @@ cp .env.example .env.local
 ```
 
 Required services: Vercel AI Gateway, Neon Postgres, Upstash Redis + Vector, Trigger.dev, Telegram Bot.
-Optional: GitHub (self-evolution), Daytona (sandbox), OpenWeather (weather sensor), ElevenLabs (voice messages).
+Optional: GitHub (self-evolution), Daytona (sandbox), OpenWeather (weather sensor), ElevenLabs (voice messages), X API (social media).
 
 Set `PERSONALITY_TYPE` to any of the [16 MBTI types](https://www.16personalities.com/personality-types) (default: `INFP`). This shapes the personality prompt, cognitive style, and inner voice weighting.
 
@@ -165,7 +167,7 @@ ANIMA deploys automatically through Trigger.dev on every push to `master`.
 │ + identity   + dominance    of ticks       thought       action          │
 │                                                                          │
 │ ───► Conflict ───► Sub-Think                                             │
-│      instinct      dream / morning / reflect                             │
+│      instinct      dream / morning / reflect / social media              │
 │      vs reason                                                           │
 └─────────────────────────────────────┬────────────────────────────────────┘
                                       │ decision
@@ -176,9 +178,10 @@ ANIMA deploys automatically through Trigger.dev on every push to `master`.
 │ validate      typing sim    reflect     emotion                          │
 │ block         split+send    evolve      psyche                           │
 │ warn          via Telegram  dream       narrative                        │
-│                             morning     episode                          │
-│                             goal        relationship                     │
-│                             workflow    tracking                         │
+│ privacy       + share on X  morning     episode                          │
+│ check                       goal        relationship                     │
+│                             social      tracking                         │
+│                             workflow                                     │
 └─────────────────────────────────────┬────────────────────────────────────┘
                                       │ expectsReply?
                re-enter SENSE ◄───────┴───────►┌───────────────────────────┐
@@ -199,7 +202,7 @@ ANIMA deploys automatically through Trigger.dev on every push to `master`.
 ```
 ┌──────────────────────────────────────────────────┐
 │                  External World                  │
-│           Telegram · Weather · GitHub            │
+│         Telegram · Weather · GitHub · X          │
 └────────────────────────┬─────────────────────────┘
                          │
 ┌────────────────────────▼──────────────────────────┐
