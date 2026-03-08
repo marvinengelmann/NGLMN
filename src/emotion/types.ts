@@ -44,6 +44,7 @@ export const EmotionTrigger = z.enum([
   "dream_correction",
   "morning_calibration",
   "nostalgia_wave",
+  "relational_pattern_match",
   "ambient"
 ])
 export type EmotionTrigger = z.infer<typeof EmotionTrigger>
@@ -61,7 +62,12 @@ export const MoodContext = z.object({
   systemHealthy: z.boolean(),
   budgetOk: z.boolean(),
   hasActiveGoals: z.boolean(),
-  isDreaming: z.boolean()
+  isDreaming: z.boolean(),
+  operatorMood: z
+    .enum(["happy", "neutral", "stressed", "sad", "excited", "frustrated", "tired", "unknown"])
+    .default("unknown"),
+  connectionLevel: z.number().min(0).max(1).default(0.5),
+  attachmentAvoidance: z.number().min(0).max(1).default(0.15)
 })
 export type MoodContext = z.infer<typeof MoodContext>
 

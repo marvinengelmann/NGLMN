@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest"
-import { DEFAULT_EMOTIONAL_STATE, type EmotionalState } from "./types.ts"
-import { applyContradictionBudget, applyCrossCoupling, computeValence } from "./update.ts"
+import { DEFAULT_EMOTIONAL_STATE, type EmotionalState, type MoodContext } from "./types.ts"
+import { applyContradictionBudget, applyCrossCoupling, computeMoodBaseline, computeValence } from "./update.ts"
 
 const neutral: EmotionalState = { ...DEFAULT_EMOTIONAL_STATE }
 
@@ -198,5 +198,127 @@ describe("applyContradictionBudget", () => {
     const state: EmotionalState = { ...neutral, connection: 0.3, satisfaction: 0.3, excitement: 0.3 }
     const result = applyContradictionBudget(state)
     expect(result.caution).toBe(neutral.caution)
+  })
+})
+
+const baseMoodContext: MoodContext = {
+  operatorSilenceMinutes: 0,
+  inConversation: false,
+  systemHealthy: true,
+  budgetOk: true,
+  hasActiveGoals: false,
+  isDreaming: false,
+  operatorMood: "unknown",
+  connectionLevel: 0.5,
+  attachmentAvoidance: 0.15
+}
+
+describe("computeMoodBaseline — mood contagion", () => {
+  it("does not apply contagion when operator mood is unknown", () => {
+    const withContagion = computeMoodBaseline({ ...baseMoodContext, inConversation: true, operatorMood: "unknown" })
+    const without = computeMoodBaseline({ ...baseMoodContext, inConversation: true })
+    expect(withContagion.satisfaction).toBe(without.satisfaction)
+  })
+
+  it("does not apply contagion when not in conversation", () => {
+    const result = computeMoodBaseline({
+      ...baseMoodContext,
+      inConversation: false,
+      operatorMood: "happy",
+      connectionLevel: 0.9
+    })
+    const baseline = computeMoodBaseline({ ...baseMoodContext, inConversation: false, operatorMood: "unknown" })
+    expect(result.satisfaction).toBe(baseline.satisfaction)
+  })
+
+  it("shifts satisfaction up when operator is happy and connection is high", () => {
+    const happy = computeMoodBaseline({
+      ...baseMoodContext,
+      inConversation: true,
+      operatorMood: "happy",
+      connectionLevel: 0.9
+    })
+    const neutral = computeMoodBaseline({
+      ...baseMoodContext,
+      inConversation: true,
+      operatorMood: "unknown",
+      connectionLevel: 0.9
+    })
+    expect(happy.satisfaction).toBeGreaterThan(neutral.satisfaction)
+  })
+
+  it("shifts satisfaction down when operator is stressed and connection is high", () => {
+    const stressed = computeMoodBaseline({
+      ...baseMoodContext,
+      inConversation: true,
+      operatorMood: "stressed",
+      connectionLevel: 0.9
+    })
+    const neutral = computeMoodBaseline({
+      ...baseMoodContext,
+      inConversation: true,
+      operatorMood: "unknown",
+      connectionLevel: 0.9
+    })
+    expect(stressed.satisfaction).toBeLessThan(neutral.satisfaction)
+  })
+
+  it("scales contagion by connection level — low connection means minimal effect", () => {
+    const highConn = computeMoodBaseline({
+      ...baseMoodContext,
+      inConversation: true,
+      operatorMood: "happy",
+      connectionLevel: 0.9
+    })
+    const lowConn = computeMoodBaseline({
+      ...baseMoodContext,
+      inConversation: true,
+      operatorMood: "happy",
+      connectionLevel: 0.4
+    })
+    const baseline = computeMoodBaseline({ ...baseMoodContext, inConversation: true, operatorMood: "unknown" })
+    const highDelta = highConn.satisfaction - baseline.satisfaction
+    const lowDelta = lowConn.satisfaction - baseline.satisfaction
+    expect(highDelta).toBeGreaterThan(lowDelta)
+  })
+
+  it("dampens contagion with high avoidant attachment", () => {
+    const secure = computeMoodBaseline({
+      ...baseMoodContext,
+      inConversation: true,
+      operatorMood: "happy",
+      connectionLevel: 0.9,
+      attachmentAvoidance: 0.1
+    })
+    const avoidant = computeMoodBaseline({
+      ...baseMoodContext,
+      inConversation: true,
+      operatorMood: "happy",
+      connectionLevel: 0.9,
+      attachmentAvoidance: 0.8
+    })
+    const baseline = computeMoodBaseline({
+      ...baseMoodContext,
+      inConversation: true,
+      operatorMood: "unknown",
+      connectionLevel: 0.9
+    })
+    const secureDelta = secure.satisfaction - baseline.satisfaction
+    const avoidantDelta = avoidant.satisfaction - baseline.satisfaction
+    expect(secureDelta).toBeGreaterThan(avoidantDelta)
+  })
+
+  it("clamps all contagion effects to valid range", () => {
+    const result = computeMoodBaseline({
+      ...baseMoodContext,
+      inConversation: true,
+      operatorMood: "stressed",
+      connectionLevel: 1.0,
+      attachmentAvoidance: 0
+    })
+    for (const val of Object.values(result)) {
+      expect(val).toBeGreaterThanOrEqual(0)
+      expect(val).toBeLessThanOrEqual(1)
+    }
   })
 })

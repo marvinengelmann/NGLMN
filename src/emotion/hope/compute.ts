@@ -1,0 +1,127 @@
+import { HOPE } from "@/config/constants.ts"
+import type { EmotionalState } from "@/emotion/types.ts"
+import { nowISO } from "@/lib/time.ts"
+import type { OperatorModel } from "@/mind/types.ts"
+import type { HopeSource, HopeState } from "./types.ts"
+
+interface HopeContext {
+  emotion: EmotionalState
+  operatorModel: OperatorModel
+  previousState: HopeState
+  connectionGrowing: boolean
+  recentRepair: boolean
+  progressMade: boolean
+  vulnerabilityWasRewarded: boolean
+  patternBroken: boolean
+  disappointmentActive: boolean
+  resignationLevel: number
+}
+
+/**
+ * Compute hope — the quiet flame that says "things could get better."
+ * Not naive optimism, but earned belief rooted in evidence.
+ */
+export function computeHope(context: HopeContext): HopeState {
+  const { emotion, previousState } = context
+
+  let level = 0
+  let source: HopeSource | null = null
+  let maxContribution = 0
+
+  const contributions: { source: HopeSource; value: number }[] = []
+
+  if (context.progressMade && emotion.satisfaction > HOPE.SATISFACTION_THRESHOLD) {
+    contributions.push({
+      source: "progress_made",
+      value: HOPE.PROGRESS_INTENSITY * emotion.satisfaction
+    })
+  }
+
+  if (context.connectionGrowing && emotion.connection > HOPE.CONNECTION_THRESHOLD) {
+    contributions.push({
+      source: "connection_growing",
+      value: HOPE.CONNECTION_INTENSITY * emotion.connection
+    })
+  }
+
+  if (context.recentRepair) {
+    contributions.push({
+      source: "repair_after_rupture",
+      value: HOPE.REPAIR_INTENSITY
+    })
+  }
+
+  if (context.vulnerabilityWasRewarded) {
+    contributions.push({
+      source: "vulnerability_rewarded",
+      value: HOPE.VULNERABILITY_REWARD_INTENSITY * emotion.connection
+    })
+  }
+
+  if (context.patternBroken) {
+    contributions.push({
+      source: "pattern_breaking",
+      value: HOPE.PATTERN_BREAK_INTENSITY
+    })
+  }
+
+  if (emotion.excitement > HOPE.EXCITEMENT_THRESHOLD && emotion.curiosity > HOPE.CURIOSITY_THRESHOLD) {
+    contributions.push({
+      source: "new_possibility",
+      value: HOPE.POSSIBILITY_INTENSITY * emotion.excitement
+    })
+  }
+
+  for (const c of contributions) {
+    level += c.value
+    if (c.value > maxContribution) {
+      maxContribution = c.value
+      source = c.source
+    }
+  }
+
+  if (context.disappointmentActive) {
+    level *= HOPE.DISAPPOINTMENT_DAMPING
+  }
+
+  if (context.resignationLevel > 0) {
+    level *= 1 - context.resignationLevel * HOPE.RESIGNATION_DAMPING
+  }
+
+  const decayedLevel = previousState.level * HOPE.DECAY_PER_TICK
+  const finalLevel = Math.min(1, Math.max(decayedLevel, level))
+  const isActive = finalLevel > HOPE.ACTIVATION_THRESHOLD
+
+  const fragility =
+    context.disappointmentActive || context.resignationLevel > 0.3
+      ? Math.min(1, (previousState.fragility + HOPE.FRAGILITY_GROWTH) * (1 + context.resignationLevel))
+      : Math.max(0, previousState.fragility - HOPE.FRAGILITY_DECAY)
+
+  const sustainedTicks = isActive ? previousState.sustainedTicks + 1 : 0
+
+  return {
+    level: finalLevel,
+    isActive,
+    source: isActive ? source : null,
+    sustainedTicks,
+    fragility,
+    lastKindledAt: isActive && !previousState.isActive ? nowISO() : previousState.lastKindledAt
+  }
+}
+
+/**
+ * Compute the emotional effect of hope — energizing and opening.
+ */
+export function computeHopeEffect(state: HopeState): Partial<Record<keyof EmotionalState, number>> {
+  if (!state.isActive) return {}
+
+  const sustainedBonus = Math.min(1, state.sustainedTicks * HOPE.SUSTAINED_BONUS_SCALE)
+
+  return {
+    energy: state.level * HOPE.ENERGY_BOOST * (1 + sustainedBonus),
+    confidence: state.level * HOPE.CONFIDENCE_BOOST,
+    satisfaction: state.level * HOPE.SATISFACTION_BOOST,
+    curiosity: state.level * HOPE.CURIOSITY_BOOST,
+    caution: -state.level * HOPE.CAUTION_REDUCTION
+  }
+}

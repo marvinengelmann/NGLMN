@@ -1,4 +1,4 @@
-import { CONTRADICTION, EMOTION, MOMENTUM, MOOD_BASELINE } from "@/config/constants.ts"
+import { CONTRADICTION, EMOTION, MOMENTUM, MOOD_BASELINE, MOOD_CONTAGION } from "@/config/constants.ts"
 import {
   type AfterglowEntry,
   DEFAULT_EMOTIONAL_MOMENTUM,
@@ -32,6 +32,7 @@ const TRIGGER_EFFECTS: Record<EmotionTrigger, EmotionDeltas> = {
   dream_correction: {},
   morning_calibration: { energy: 0.5 },
   nostalgia_wave: { connection: 0.08, satisfaction: 0.04, excitement: -0.03, boredom: -0.05, energy: -0.02 },
+  relational_pattern_match: { connection: 0.03, caution: 0.02 },
   ambient: {}
 }
 
@@ -79,6 +80,20 @@ export function computeMoodBaseline(context: MoodContext): EmotionalState {
   }
 
   base.energy = context.isDreaming ? MOOD_BASELINE.DREAMING_ENERGY_TARGET : MOOD_BASELINE.WAKING_ENERGY_TARGET
+
+  if (context.operatorMood !== "unknown" && context.inConversation) {
+    const effects = MOOD_CONTAGION.EFFECTS[context.operatorMood]
+    const connectionScale = Math.max(0, (context.connectionLevel - MOOD_CONTAGION.CONNECTION_SCALE) * 2)
+    const avoidanceDamping = 1 - context.attachmentAvoidance * MOOD_CONTAGION.AVOIDANCE_DAMPING
+    const strength = connectionScale * avoidanceDamping
+
+    for (const [dim, delta] of Object.entries(effects)) {
+      const key = dim as keyof EmotionalState
+      if (key in base) {
+        base[key] += Math.max(-MOOD_CONTAGION.MAX_EFFECT, Math.min(MOOD_CONTAGION.MAX_EFFECT, delta * strength))
+      }
+    }
+  }
 
   return clampState(base)
 }
@@ -281,7 +296,10 @@ export function computeEmotionalUpdate(
     systemHealthy: true,
     budgetOk: true,
     hasActiveGoals: false,
-    isDreaming: false
+    isDreaming: false,
+    operatorMood: "unknown" as const,
+    connectionLevel: 0.5,
+    attachmentAvoidance: 0.15
   }
   const elapsed = elapsedMinutes ?? 1
 

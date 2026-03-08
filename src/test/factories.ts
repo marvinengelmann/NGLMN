@@ -105,6 +105,9 @@ export function makeMoodContext(overrides?: Partial<MoodContext>): MoodContext {
     budgetOk: true,
     hasActiveGoals: false,
     isDreaming: false,
+    operatorMood: "unknown",
+    connectionLevel: 0.5,
+    attachmentAvoidance: 0.15,
     ...overrides
   }
 }
