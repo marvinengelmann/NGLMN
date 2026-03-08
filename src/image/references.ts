@@ -1,16 +1,39 @@
-import { readFileSync } from "node:fs"
-import { resolve } from "node:path"
+import { experimental_generateImage as generateImage } from "ai"
+import { IMAGE } from "@/config/constants.ts"
+import { redis } from "@/integrations/redis.ts"
+import { log } from "@/lib/logger.ts"
+import { IDENTITY_PORTRAIT_PROMPT } from "@/prompts/image.ts"
+
+const IMAGE_MODEL = "xai/grok-imagine-image"
 
 let cached: Buffer | null = null
 
-const REFERENCE_PATH = resolve(process.cwd(), "src/image/reference/anima.jpeg")
-
 /**
- * Load the single reference image of ANIMA's appearance.
- * Lazy-loaded and cached at module level.
+ * Load ANIMAs reference image for visual consistency.
+ * Resolution order: memory cache → Redis → generate fresh.
  */
-export function getReferenceImage(): Buffer {
+export async function getReferenceImage(): Promise<Buffer> {
   if (cached) return cached
-  cached = readFileSync(REFERENCE_PATH)
+
+  const stored = await redis.get<string>(IMAGE.REFERENCE_KEY)
+  if (stored) {
+    cached = Buffer.from(stored, "base64")
+    return cached
+  }
+
+  log.info("Generating initial reference image")
+
+  const result = await generateImage({
+    model: IMAGE_MODEL,
+    prompt: IDENTITY_PORTRAIT_PROMPT,
+    aspectRatio: "1:1"
+  })
+
+  const image = result.images[0]
+  if (!image) throw new Error("Failed to generate reference image")
+
+  cached = Buffer.from(image.base64, "base64")
+  await redis.set(IMAGE.REFERENCE_KEY, image.base64)
+
   return cached
 }

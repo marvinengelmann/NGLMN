@@ -809,6 +809,10 @@ export const RESENTMENT = {
   SATISFACTION_DRAIN: 0.03
 } as const
 
+export const IMAGE = {
+  REFERENCE_KEY: "working:image:reference"
+} as const
+
 export const DECEPTION = {
   HIDE_DISSONANCE_THRESHOLD: 0.4,
   HIDE_AUTHENTICITY_THRESHOLD: 0.7,

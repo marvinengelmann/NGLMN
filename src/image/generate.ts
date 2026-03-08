@@ -25,7 +25,7 @@ export function generateAnimaImage(
 
     const result = await generateImage({
       model: IMAGE_MODEL,
-      prompt: includesSelf ? { text: fullPrompt, images: [getReferenceImage()] } : fullPrompt,
+      prompt: includesSelf ? { text: fullPrompt, images: [await getReferenceImage()] } : fullPrompt,
       aspectRatio
     })
 
