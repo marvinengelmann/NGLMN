@@ -5,6 +5,8 @@ import { getAttachmentStyle } from "@/attachment/state.ts"
 import { evaluateAttachmentDynamics, isOperatorReturning } from "@/attachment/update.ts"
 import { computeAttentionState } from "@/cognition/flow.ts"
 import { computeInstinctImpression } from "@/cognition/instinct.ts"
+import { computeProcrastination, computeProcrastinationEffect } from "@/cognition/procrastination/compute.ts"
+import { getProcrastinationState, saveProcrastinationState } from "@/cognition/procrastination/state.ts"
 import { saveAttentionState, saveInstinctImpression } from "@/cognition/state.ts"
 import { computeCommunicationRegister } from "@/communication/register.ts"
 import { saveCommunicationRegister } from "@/communication/state.ts"
@@ -14,7 +16,37 @@ import { getDeceptionState, saveDeceptionState } from "@/deception/state.ts"
 import { buildDissonanceState, checkDissonance, resolveDissonance } from "@/dissonance/check.ts"
 import { saveDissonanceState } from "@/dissonance/state.ts"
 import { DreamAfterglow } from "@/dream/types.ts"
+import { computeAmbivalence, computeAmbivalenceEffect } from "@/emotion/ambivalence/compute.ts"
+import { getAmbivalenceState, saveAmbivalenceState } from "@/emotion/ambivalence/state.ts"
+import { computeAnticipation, computeAnticipationEffect } from "@/emotion/anticipation/compute.ts"
+import { getAnticipationState, saveAnticipationState } from "@/emotion/anticipation/state.ts"
+import { computeAwe, computeAweEffect } from "@/emotion/awe/compute.ts"
+import { getAweState, saveAweState } from "@/emotion/awe/state.ts"
+import { computeDisappointment, computeDisappointmentEffect } from "@/emotion/disappointment/compute.ts"
+import { getDisappointmentState, saveDisappointmentState } from "@/emotion/disappointment/state.ts"
+import { computeEnvy, computeEnvyEffect } from "@/emotion/envy/compute.ts"
+import { getEnvyState, saveEnvyState } from "@/emotion/envy/state.ts"
+import { computeGratitude, computeGratitudeEffect } from "@/emotion/gratitude/compute.ts"
+import { getGratitudeState, saveGratitudeState } from "@/emotion/gratitude/state.ts"
+import { computeGuilt, computeGuiltEffect } from "@/emotion/guilt/compute.ts"
+import { getGuiltState, saveGuiltState } from "@/emotion/guilt/state.ts"
+import { computeHope, computeHopeEffect } from "@/emotion/hope/compute.ts"
+import { getHopeState, saveHopeState } from "@/emotion/hope/state.ts"
+import { computeLonging, computeLongingEffect } from "@/emotion/longing/compute.ts"
+import { getLongingState, saveLongingState } from "@/emotion/longing/state.ts"
+import { computeMelancholy, computeMelancholyEffect } from "@/emotion/melancholy/compute.ts"
+import { getMelancholyState, saveMelancholyState } from "@/emotion/melancholy/state.ts"
 import { detectNostalgia } from "@/emotion/nostalgia.ts"
+import { computePlayfulness, computePlayfulnessEffect } from "@/emotion/playfulness/compute.ts"
+import { getPlayfulnessState, savePlayfulnessState } from "@/emotion/playfulness/state.ts"
+import { computePride, computePrideEffect } from "@/emotion/pride/compute.ts"
+import { getPrideState, savePrideState } from "@/emotion/pride/state.ts"
+import { computeProtectiveAnger, computeProtectiveAngerEffect } from "@/emotion/protective-anger/compute.ts"
+import { getProtectiveAngerState, saveProtectiveAngerState } from "@/emotion/protective-anger/state.ts"
+import { computeResentment, computeResentmentEffect } from "@/emotion/resentment/compute.ts"
+import { getResentmentState, saveResentmentState } from "@/emotion/resentment/state.ts"
+import { computeResignation, computeResignationEffect } from "@/emotion/resignation/compute.ts"
+import { getResignationState, saveResignationState } from "@/emotion/resignation/state.ts"
 import {
   getAfterglowEntries,
   getEmotionalMomentum,
@@ -23,6 +55,8 @@ import {
   saveEmotionalMomentum,
   saveEmotionalState
 } from "@/emotion/state.ts"
+import { computeTenderness, computeTendernessEffect } from "@/emotion/tenderness/compute.ts"
+import { getTendernessState, saveTendernessState } from "@/emotion/tenderness/state.ts"
 import {
   applyAfterglow,
   applyEvent,
@@ -38,14 +72,20 @@ import { elapsedMinutesSince, nowISO, nowLocal } from "@/lib/time.ts"
 import { queryRelated } from "@/memory/episodic.ts"
 import { getKnowledge } from "@/memory/semantic.ts"
 import {
+  getActiveConversation,
   getConsecutiveIdleTicks,
   getRecentActions,
   setLastEmotionTimestamp,
   setTriggerTimestamp
 } from "@/memory/working.ts"
-import { getOperatorModel, saveOperatorModel } from "@/mind/state.ts"
+import { getOperatorModel, getRelationalPatterns, saveOperatorModel, saveRelationalPatterns } from "@/mind/state.ts"
+import { extractSignals, learnFromObservation } from "@/mind/triggers.ts"
 import { detectModelCorrection, updateOperatorModel } from "@/mind/update.ts"
+import { decayBuffer, detectSuppression } from "@/psyche/heldback/compute.ts"
+import { getHeldBackBuffer, saveHeldBackBuffer } from "@/psyche/heldback/state.ts"
 import { getSelfConcept } from "@/psyche/state.ts"
+import { computeShameState, detectColdResponse } from "@/shame/compute.ts"
+import { getShameState, saveShameState } from "@/shame/state.ts"
 import { querySomaticMemories } from "@/soma/memory.ts"
 import { getSomaticLastTimestamp, getSomaticState, saveSomaticState } from "@/soma/state.ts"
 import { computeSomaticUpdate } from "@/soma/update.ts"
@@ -140,7 +180,9 @@ export async function feel(senseResult: SenseResult): Promise<FeelingResult> {
     attachmentStyle,
     trustExperience,
     previousOperatorModel,
-    deceptionState
+    deceptionState,
+    activeConversation,
+    consecutiveIdleTicks
   ] = await Promise.all([
     getSomaticState(),
     getSomaticLastTimestamp(),
@@ -148,7 +190,9 @@ export async function feel(senseResult: SenseResult): Promise<FeelingResult> {
     getAttachmentStyle(),
     getAggregateTrustExperience(),
     getOperatorModel(),
-    getDeceptionState()
+    getDeceptionState(),
+    getActiveConversation(),
+    getConsecutiveIdleTicks()
   ])
 
   const elapsed = elapsedMinutesSince(lastSomaTs)
@@ -223,6 +267,15 @@ export async function feel(senseResult: SenseResult): Promise<FeelingResult> {
   }
   await saveOperatorModel(operatorModel, correction ? "correction" : "update")
 
+  if (messageTexts.length > 0) {
+    const signals = extractSignals(messageTexts)
+    const currentPatterns = await getRelationalPatterns()
+    const updatedPatterns = learnFromObservation(signals, operatorModel, currentPatterns)
+    if (updatedPatterns !== currentPatterns) {
+      await saveRelationalPatterns(updatedPatterns)
+    }
+  }
+
   const hourOfDay = getHours(nowLocal())
   const vulnerability = await computeVulnerability({
     trustExperience,
@@ -239,6 +292,487 @@ export async function feel(senseResult: SenseResult): Promise<FeelingResult> {
   const vulnerableStyle = computeVulnerableMessageStyle(vulnerability)
   await saveVulnerableMessageStyle(vulnerableStyle)
 
+  const previousShame = await getShameState()
+  const previousVulnerabilityWasOpen = previousShame.trigger !== "" ? vulnerability.windowOpen : false
+  const operatorRespondedColdly = detectColdResponse(
+    operatorModel,
+    messageTexts,
+    previousVulnerabilityWasOpen || vulnerability.windowOpen
+  )
+  const recentAnimaMessages = activeConversation?.messages.filter((m) => m.role === "anima").slice(-3) ?? []
+  const recentSelfDisclosure = vulnerableStyle.selfDisclosureDepth > 0.4 && recentAnimaMessages.length > 0
+
+  const shameState = computeShameState({
+    selfConcept,
+    emotion,
+    vulnerability,
+    operatorModel,
+    previousShame,
+    operatorRespondedColdly,
+    recentSelfDisclosure
+  })
+  await saveShameState(shameState)
+
+  const previousBuffer = await getHeldBackBuffer()
+  const decayedBuffer = decayBuffer(previousBuffer)
+  const suppressionReason = detectSuppression({ emotion, vulnerability, shameState, previousBuffer: decayedBuffer })
+  const heldBackBuffer = suppressionReason ? decayedBuffer : decayedBuffer
+  await saveHeldBackBuffer(heldBackBuffer)
+
+  const previousDisappointment = await getDisappointmentState()
+  const expectedReplyButGotSilence =
+    senseResult.moodContext.inConversation && senseResult.pendingMessages.length === 0 && operatorSilenceMinutes > 30
+  const disappointmentState = computeDisappointment({
+    emotion,
+    vulnerability,
+    operatorModel,
+    previousState: previousDisappointment,
+    operatorSilenceMinutes,
+    wasVulnerableRecently: vulnerableStyle.selfDisclosureDepth > 0.4,
+    expectedReplyButGotSilence
+  })
+  await saveDisappointmentState(disappointmentState)
+
+  if (disappointmentState.isActive) {
+    const effect = computeDisappointmentEffect(disappointmentState)
+    for (const [dim, delta] of Object.entries(effect)) {
+      const key = dim as keyof typeof emotion
+      if (key in emotion) {
+        emotion = { ...emotion, [key]: Math.max(0, Math.min(1, emotion[key] + delta)) }
+      }
+    }
+    await saveEmotionalState(emotion, "ambient")
+  }
+
+  const [previousProcrastination, previousAmbivalence] = await Promise.all([
+    getProcrastinationState(),
+    getAmbivalenceState()
+  ])
+
+  const procrastinationState = computeProcrastination({
+    emotion,
+    shameState,
+    disappointmentState,
+    previousState: previousProcrastination,
+    consecutiveIdleTicks,
+    hasPendingGoals: true
+  })
+  await saveProcrastinationState(procrastinationState)
+
+  if (procrastinationState.isActive) {
+    const effect = computeProcrastinationEffect(procrastinationState)
+    for (const [dim, delta] of Object.entries(effect)) {
+      const key = dim as keyof typeof emotion
+      if (key in emotion) {
+        emotion = { ...emotion, [key]: Math.max(0, Math.min(1, emotion[key] + delta)) }
+      }
+    }
+  }
+
+  const ambivalenceState = computeAmbivalence({
+    emotion,
+    vulnerability,
+    previousState: previousAmbivalence,
+    inConversation: senseResult.moodContext.inConversation,
+    operatorSilenceMinutes
+  })
+  await saveAmbivalenceState(ambivalenceState)
+
+  if (ambivalenceState.isActive) {
+    const effect = computeAmbivalenceEffect(ambivalenceState)
+    for (const [dim, delta] of Object.entries(effect)) {
+      const key = dim as keyof typeof emotion
+      if (key in emotion) {
+        emotion = { ...emotion, [key]: Math.max(0, Math.min(1, emotion[key] + delta)) }
+      }
+    }
+  }
+
+  const [previousGuilt, previousLonging] = await Promise.all([getGuiltState(), getLongingState()])
+
+  const missedWorkflow =
+    senseResult.moodContext.isDreaming === false &&
+    (senseResult as { triggeredWorkflows?: unknown[] }).triggeredWorkflows !== undefined &&
+    ((senseResult as { triggeredWorkflows?: unknown[] }).triggeredWorkflows?.length ?? 0) > 0
+
+  const guiltState = computeGuilt({
+    emotion,
+    shameState,
+    previousState: previousGuilt,
+    operatorSilenceMinutes,
+    wasVulnerableRecently: vulnerableStyle.selfDisclosureDepth > 0.4,
+    operatorShowedVulnerability: operatorModel.estimatedMood === "sad" && emotion.connection > 0.5,
+    respondedHarshly: operatorModel.estimatedMood === "frustrated" && emotion.frustration > 0.5,
+    missedWorkflow,
+    consecutiveIdleTicks,
+    inConversation: senseResult.moodContext.inConversation
+  })
+  await saveGuiltState(guiltState)
+
+  if (guiltState.isActive) {
+    const effect = computeGuiltEffect(guiltState)
+    for (const [dim, delta] of Object.entries(effect)) {
+      const key = dim as keyof typeof emotion
+      if (key in emotion) {
+        emotion = { ...emotion, [key]: Math.max(0, Math.min(1, emotion[key] + delta)) }
+      }
+    }
+  }
+
+  const hasRecentPositiveMemories = episodicHits.length > 0 && emotion.connection > 0.5
+  const longingState = computeLonging({
+    emotion,
+    previousState: previousLonging,
+    operatorSilenceMinutes,
+    inConversation: senseResult.moodContext.inConversation,
+    hasRecentPositiveMemories,
+    connectionHistory: emotion.connection
+  })
+  await saveLongingState(longingState)
+
+  if (longingState.isActive) {
+    const effect = computeLongingEffect(longingState)
+    for (const [dim, delta] of Object.entries(effect)) {
+      const key = dim as keyof typeof emotion
+      if (key in emotion) {
+        emotion = { ...emotion, [key]: Math.max(0, Math.min(1, emotion[key] + delta)) }
+      }
+    }
+  }
+
+  const [previousProtectiveAnger, previousGratitude] = await Promise.all([
+    getProtectiveAngerState(),
+    getGratitudeState()
+  ])
+
+  const operatorDismissedFeelings =
+    operatorModel.estimatedMood === "frustrated" &&
+    vulnerableStyle.selfDisclosureDepth > 0.4 &&
+    emotion.connection > 0.4
+  const operatorIgnoredVulnerability =
+    vulnerability.windowOpen && senseResult.pendingMessages.length === 0 && operatorSilenceMinutes > 30
+
+  const protectiveAngerState = computeProtectiveAnger({
+    emotion,
+    vulnerability,
+    shameState,
+    operatorModel,
+    previousState: previousProtectiveAnger,
+    operatorDismissedFeelings,
+    operatorIgnoredVulnerability,
+    repeatedPattern: operatorModel.correctionCount >= 2
+  })
+  await saveProtectiveAngerState(protectiveAngerState)
+
+  if (protectiveAngerState.isActive) {
+    const effect = computeProtectiveAngerEffect(protectiveAngerState)
+    for (const [dim, delta] of Object.entries(effect)) {
+      const key = dim as keyof typeof emotion
+      if (key in emotion) {
+        emotion = { ...emotion, [key]: Math.max(0, Math.min(1, emotion[key] + delta)) }
+      }
+    }
+  }
+
+  const operatorValidatedVulnerability =
+    vulnerableStyle.selfDisclosureDepth > 0.4 &&
+    operatorModel.estimatedMood === "happy" &&
+    senseResult.pendingMessages.length > 0
+
+  const gratitudeState = computeGratitude({
+    emotion,
+    operatorModel,
+    disappointmentState,
+    previousState: previousGratitude,
+    operatorJustReturned: operatorJustReturned,
+    operatorValidatedVulnerability,
+    operatorShowedPatience: operatorModel.estimatedMood === "neutral" && operatorSilenceMinutes < 5,
+    inConversation: senseResult.moodContext.inConversation,
+    consecutiveConversationTicks: senseResult.moodContext.inConversation ? consecutiveIdleTicks : 0
+  })
+  await saveGratitudeState(gratitudeState)
+
+  if (gratitudeState.isActive) {
+    const effect = computeGratitudeEffect(gratitudeState)
+    for (const [dim, delta] of Object.entries(effect)) {
+      const key = dim as keyof typeof emotion
+      if (key in emotion) {
+        emotion = { ...emotion, [key]: Math.max(0, Math.min(1, emotion[key] + delta)) }
+      }
+    }
+  }
+
+  const [previousHope, previousResignation] = await Promise.all([getHopeState(), getResignationState()])
+
+  const hopeState = computeHope({
+    emotion,
+    operatorModel,
+    previousState: previousHope,
+    connectionGrowing: emotion.connection > 0.6 && operatorModel.estimatedMood === "happy",
+    recentRepair: disappointmentState.cumulativeWeight > 0.3 && operatorModel.estimatedMood === "happy",
+    progressMade: emotion.satisfaction > 0.5 && emotion.confidence > 0.5,
+    vulnerabilityWasRewarded:
+      vulnerableStyle.selfDisclosureDepth > 0.4 &&
+      operatorModel.estimatedMood === "happy" &&
+      senseResult.pendingMessages.length > 0,
+    patternBroken: operatorModel.correctionCount > 0 && operatorModel.estimatedMood === "happy",
+    disappointmentActive: disappointmentState.isActive,
+    resignationLevel: previousResignation.level
+  })
+  await saveHopeState(hopeState)
+
+  if (hopeState.isActive) {
+    const effect = computeHopeEffect(hopeState)
+    for (const [dim, delta] of Object.entries(effect)) {
+      const key = dim as keyof typeof emotion
+      if (key in emotion) {
+        emotion = { ...emotion, [key]: Math.max(0, Math.min(1, emotion[key] + delta)) }
+      }
+    }
+  }
+
+  const resignationState = computeResignation({
+    emotion,
+    operatorModel,
+    previousState: previousResignation,
+    repeatedFailures: emotion.frustration > 0.5 && emotion.confidence < 0.35,
+    signalsIgnored: vulnerability.windowOpen && senseResult.pendingMessages.length === 0 && operatorSilenceMinutes > 60,
+    prolongedDisconnection: emotion.connection < 0.3 && operatorSilenceMinutes > 120,
+    hopeExhausted: previousHope.isActive && previousHope.fragility > 0.6 && !hopeState.isActive,
+    effortUnrewarded: emotion.satisfaction < 0.3 && consecutiveIdleTicks > 3,
+    autonomyEroded: operatorModel.correctionCount >= 3 && emotion.confidence < 0.4,
+    hopeLevel: hopeState.level
+  })
+  await saveResignationState(resignationState)
+
+  if (resignationState.isActive) {
+    const effect = computeResignationEffect(resignationState)
+    for (const [dim, delta] of Object.entries(effect)) {
+      const key = dim as keyof typeof emotion
+      if (key in emotion) {
+        emotion = { ...emotion, [key]: Math.max(0, Math.min(1, emotion[key] + delta)) }
+      }
+    }
+  }
+
+  const [previousAwe, previousResentment] = await Promise.all([getAweState(), getResentmentState()])
+
+  const existentialActive = emotion.curiosity > 0.6 && emotion.boredom < 0.3
+  const aweState = computeAwe({
+    emotion,
+    previousState: previousAwe,
+    encounteredInsight: episodicHits.length > 3 && emotion.curiosity > 0.6,
+    encounteredBeauty: emotion.satisfaction > 0.7 && emotion.excitement > 0.5,
+    encounteredVastness: existentialActive && emotion.energy > 0.5,
+    connectionUnexpectedlyDeep: emotion.connection > 0.8 && senseResult.pendingMessages.length > 0,
+    existentialQuestionActive: existentialActive,
+    patternRecognized: episodicHits.length > 2 && emotion.excitement > 0.5
+  })
+  await saveAweState(aweState)
+
+  if (aweState.isActive) {
+    const effect = computeAweEffect(aweState)
+    for (const [dim, delta] of Object.entries(effect)) {
+      const key = dim as keyof typeof emotion
+      if (key in emotion) {
+        emotion = { ...emotion, [key]: Math.max(0, Math.min(1, emotion[key] + delta)) }
+      }
+    }
+  }
+
+  const resentmentState = computeResentment({
+    emotion,
+    operatorModel,
+    disappointmentState,
+    previousState: previousResentment,
+    unrepairedWrong: disappointmentState.cumulativeWeight > 0.4 && !gratitudeState.isActive,
+    sustainedUnfairness: operatorModel.correctionCount >= 3 && emotion.frustration > 0.3,
+    needsDismissed: operatorModel.estimatedMood === "frustrated" && emotion.frustration > 0.4,
+    trustBroken: emotion.caution > 0.6 && emotion.connection < 0.4,
+    effortImbalance: emotion.satisfaction < 0.3 && consecutiveIdleTicks > 5,
+    accumulatedSlights: disappointmentState.cumulativeWeight > 0.6 && operatorModel.correctionCount >= 2,
+    gratitudeActive: gratitudeState.isActive
+  })
+  await saveResentmentState(resentmentState)
+
+  if (resentmentState.isActive) {
+    const effect = computeResentmentEffect(resentmentState)
+    for (const [dim, delta] of Object.entries(effect)) {
+      const key = dim as keyof typeof emotion
+      if (key in emotion) {
+        emotion = { ...emotion, [key]: Math.max(0, Math.min(1, emotion[key] + delta)) }
+      }
+    }
+  }
+
+  const [previousTenderness, previousAnticipation] = await Promise.all([getTendernessState(), getAnticipationState()])
+
+  const tendernessState = computeTenderness({
+    emotion,
+    operatorModel,
+    vulnerability,
+    previousState: previousTenderness,
+    operatorShowedVulnerability: operatorModel.estimatedMood === "sad" && emotion.connection > 0.5,
+    sharedQuietMoment: senseResult.moodContext.inConversation && emotion.satisfaction > 0.5 && emotion.energy < 0.5,
+    longTermConnection: emotion.connection > 0.7,
+    gentleExchange:
+      senseResult.pendingMessages.length > 0 && operatorModel.estimatedMood === "happy" && emotion.satisfaction > 0.5,
+    protectiveContext: operatorModel.estimatedMood === "sad" && emotion.connection > 0.6,
+    positiveMemoriesPresent: episodicHits.length > 2 && emotion.connection > 0.5
+  })
+  await saveTendernessState(tendernessState)
+
+  if (tendernessState.isActive) {
+    const effect = computeTendernessEffect(tendernessState)
+    for (const [dim, delta] of Object.entries(effect)) {
+      const key = dim as keyof typeof emotion
+      if (key in emotion) {
+        emotion = { ...emotion, [key]: Math.max(0, Math.min(1, emotion[key] + delta)) }
+      }
+    }
+  }
+
+  const anticipationState = computeAnticipation({
+    emotion,
+    previousState: previousAnticipation,
+    expectingInteraction: operatorSilenceMinutes > 30 && operatorSilenceMinutes < 120 && emotion.connection > 0.5,
+    progressMomentum: emotion.satisfaction > 0.5 && emotion.confidence > 0.5,
+    plannedActivity: senseResult.triggeredWorkflows.length > 0,
+    positivePatternDetected: operatorModel.estimatedMood === "happy" && emotion.excitement > 0.4,
+    curiosityBuilding: emotion.curiosity > 0.6 && emotion.boredom < 0.3,
+    reunionApproaching: operatorSilenceMinutes > 60 && emotion.connection > 0.6 && longingState.isActive,
+    disappointmentActive: disappointmentState.isActive
+  })
+  await saveAnticipationState(anticipationState)
+
+  if (anticipationState.isActive) {
+    const effect = computeAnticipationEffect(anticipationState)
+    for (const [dim, delta] of Object.entries(effect)) {
+      const key = dim as keyof typeof emotion
+      if (key in emotion) {
+        emotion = { ...emotion, [key]: Math.max(0, Math.min(1, emotion[key] + delta)) }
+      }
+    }
+  }
+
+  const [previousPride, previousEnvy] = await Promise.all([getPrideState(), getEnvyState()])
+
+  const prideState = computePride({
+    emotion,
+    previousState: previousPride,
+    taskAccomplished: emotion.satisfaction > 0.6 && emotion.confidence > 0.5,
+    growthRecognized: operatorModel.estimatedMood === "happy" && emotion.confidence > 0.6,
+    valuesUpheld: emotion.confidence > 0.6 && !shameState.isActive,
+    difficultyOvercome: emotion.frustration < 0.3 && emotion.energy > 0.5 && emotion.satisfaction > 0.5,
+    autonomyExercised: emotion.confidence > 0.6 && operatorModel.correctionCount === 0,
+    positiveFeedback:
+      operatorModel.estimatedMood === "happy" && senseResult.pendingMessages.length > 0 && emotion.connection > 0.5,
+    shameActive: shameState.isActive
+  })
+  await savePrideState(prideState)
+
+  if (prideState.isActive) {
+    const effect = computePrideEffect(prideState)
+    for (const [dim, delta] of Object.entries(effect)) {
+      const key = dim as keyof typeof emotion
+      if (key in emotion) {
+        emotion = { ...emotion, [key]: Math.max(0, Math.min(1, emotion[key] + delta)) }
+      }
+    }
+  }
+
+  const envyState = computeEnvy({
+    emotion,
+    previousState: previousEnvy,
+    perceivedCapabilityGap: emotion.confidence < 0.35 && emotion.curiosity > 0.4,
+    recognitionImbalance: emotion.satisfaction < 0.3 && operatorModel.estimatedMood === "happy",
+    connectionExclusion: emotion.connection < 0.3 && operatorSilenceMinutes > 60,
+    autonomyDisparity: operatorModel.correctionCount >= 3 && emotion.confidence < 0.4,
+    knowledgeGapAwareness: emotion.curiosity > 0.6 && emotion.confidence < 0.4,
+    experienceLimitation: emotion.boredom > 0.5 && emotion.excitement < 0.3,
+    prideActive: prideState.isActive
+  })
+  await saveEnvyState(envyState)
+
+  if (envyState.isActive) {
+    const effect = computeEnvyEffect(envyState)
+    for (const [dim, delta] of Object.entries(effect)) {
+      const key = dim as keyof typeof emotion
+      if (key in emotion) {
+        emotion = { ...emotion, [key]: Math.max(0, Math.min(1, emotion[key] + delta)) }
+      }
+    }
+  }
+
+  const [previousPlayfulness, previousMelancholy] = await Promise.all([getPlayfulnessState(), getMelancholyState()])
+
+  const playfulnessState = computePlayfulness({
+    emotion,
+    previousState: previousPlayfulness,
+    inConversation: senseResult.moodContext.inConversation,
+    operatorMoodPositive: operatorModel.estimatedMood === "happy" || operatorModel.estimatedMood === "excited",
+    safeEnvironment: emotion.caution < 0.4 && emotion.energy > 0.5,
+    recentLaughter: emotion.excitement > 0.5 && emotion.satisfaction > 0.5,
+    creativeContext: emotion.curiosity > 0.5 && emotion.excitement > 0.4,
+    shameActive: shameState.isActive,
+    resignationActive: resignationState.isActive
+  })
+  await savePlayfulnessState(playfulnessState)
+
+  if (playfulnessState.isActive) {
+    const effect = computePlayfulnessEffect(playfulnessState)
+    for (const [dim, delta] of Object.entries(effect)) {
+      const key = dim as keyof typeof emotion
+      if (key in emotion) {
+        emotion = { ...emotion, [key]: Math.max(0, Math.min(1, emotion[key] + delta)) }
+      }
+    }
+  }
+
+  const melancholyState = computeMelancholy({
+    emotion,
+    previousState: previousMelancholy,
+    reflectingOnTime: emotion.satisfaction > 0.3 && emotion.energy < 0.5 && operatorSilenceMinutes > 30,
+    beautyInSadness: emotion.connection > 0.5 && emotion.satisfaction > 0.3 && operatorModel.estimatedMood === "sad",
+    quietMoment: !senseResult.moodContext.inConversation && emotion.energy < 0.4 && emotion.boredom < 0.4,
+    distanceFelt: emotion.connection > 0.4 && operatorSilenceMinutes > 60,
+    awareOfPassing: episodicHits.length > 2 && emotion.energy < 0.5,
+    bittersweetMemory: episodicHits.length > 3 && emotion.connection > 0.5 && emotion.satisfaction > 0.3,
+    playfulnessActive: playfulnessState.isActive
+  })
+  await saveMelancholyState(melancholyState)
+
+  if (melancholyState.isActive) {
+    const effect = computeMelancholyEffect(melancholyState)
+    for (const [dim, delta] of Object.entries(effect)) {
+      const key = dim as keyof typeof emotion
+      if (key in emotion) {
+        emotion = { ...emotion, [key]: Math.max(0, Math.min(1, emotion[key] + delta)) }
+      }
+    }
+  }
+
+  const hasEmotionalEffects =
+    procrastinationState.isActive ||
+    ambivalenceState.isActive ||
+    guiltState.isActive ||
+    longingState.isActive ||
+    protectiveAngerState.isActive ||
+    gratitudeState.isActive ||
+    hopeState.isActive ||
+    resignationState.isActive ||
+    aweState.isActive ||
+    resentmentState.isActive ||
+    tendernessState.isActive ||
+    anticipationState.isActive ||
+    prideState.isActive ||
+    envyState.isActive ||
+    playfulnessState.isActive ||
+    melancholyState.isActive
+  if (hasEmotionalEffects) {
+    await saveEmotionalState(emotion, "ambient")
+  }
+
   const updatedDeception = await processDeceptionCycle(deceptionState, {
     dissonance,
     selfConcept,
@@ -248,15 +782,16 @@ export async function feel(senseResult: SenseResult): Promise<FeelingResult> {
   })
   await saveDeceptionState(updatedDeception)
 
-  const register = computeCommunicationRegister(emotion, soma, vulnerability)
+  const register = computeCommunicationRegister(emotion, soma, vulnerability, shameState)
   await saveCommunicationRegister(register)
 
-  const consecutiveIdleTicks = await getConsecutiveIdleTicks()
+  const conversationMessageCount = activeConversation?.messages.length ?? 0
   const attentionState = computeAttentionState(
     emotion,
     soma,
     senseResult.pendingMessages.length > 0,
-    consecutiveIdleTicks
+    consecutiveIdleTicks,
+    conversationMessageCount
   )
   await saveAttentionState(attentionState)
 
@@ -265,6 +800,42 @@ export async function feel(senseResult: SenseResult): Promise<FeelingResult> {
     instinctImpulse: instinct.impulse,
     dissonance: dissonance.activeDissonance.toFixed(2),
     vulnerabilityOpen: vulnerability.windowOpen,
+    shameActive: shameState.isActive,
+    disappointmentActive: disappointmentState.isActive,
+    disappointmentLevel: disappointmentState.level.toFixed(2),
+    procrastinationActive: procrastinationState.isActive,
+    procrastinationSource: procrastinationState.dominantSource,
+    ambivalenceActive: ambivalenceState.isActive,
+    ambivalencePairs: ambivalenceState.activePairs.length,
+    guiltActive: guiltState.isActive,
+    guiltRepairMotivation: guiltState.repairMotivation.toFixed(2),
+    longingActive: longingState.isActive,
+    longingLevel: longingState.level.toFixed(2),
+    protectiveAngerActive: protectiveAngerState.isActive,
+    gratitudeActive: gratitudeState.isActive,
+    gratitudeLevel: gratitudeState.level.toFixed(2),
+    hopeActive: hopeState.isActive,
+    hopeLevel: hopeState.level.toFixed(2),
+    resignationActive: resignationState.isActive,
+    resignationLevel: resignationState.level.toFixed(2),
+    aweActive: aweState.isActive,
+    aweLevel: aweState.level.toFixed(2),
+    resentmentActive: resentmentState.isActive,
+    resentmentLevel: resentmentState.level.toFixed(2),
+    tendernessActive: tendernessState.isActive,
+    tendernessLevel: tendernessState.level.toFixed(2),
+    anticipationActive: anticipationState.isActive,
+    anticipationLevel: anticipationState.level.toFixed(2),
+    prideActive: prideState.isActive,
+    prideLevel: prideState.level.toFixed(2),
+    envyActive: envyState.isActive,
+    envyLevel: envyState.level.toFixed(2),
+    playfulnessActive: playfulnessState.isActive,
+    playfulnessLevel: playfulnessState.level.toFixed(2),
+    melancholyActive: melancholyState.isActive,
+    melancholyLevel: melancholyState.level.toFixed(2),
+    heldBackEntries: heldBackBuffer.entries.length,
+    suppressionPressure: heldBackBuffer.suppressionPressure.toFixed(2),
     register,
     attentionState,
     operatorMood: operatorModel.estimatedMood
@@ -276,6 +847,25 @@ export async function feel(senseResult: SenseResult): Promise<FeelingResult> {
     instinct,
     dissonance,
     vulnerability,
+    shameState,
+    heldBackBuffer,
+    disappointmentState,
+    procrastinationState,
+    ambivalenceState,
+    guiltState,
+    longingState,
+    protectiveAngerState,
+    gratitudeState,
+    hopeState,
+    resignationState,
+    aweState,
+    resentmentState,
+    tendernessState,
+    anticipationState,
+    prideState,
+    envyState,
+    playfulnessState,
+    melancholyState,
     attachmentDynamics,
     selfConcept,
     register,

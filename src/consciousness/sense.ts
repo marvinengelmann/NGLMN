@@ -1,4 +1,5 @@
 import { differenceInMinutes, differenceInSeconds, parseISO } from "date-fns"
+import { getAttachmentStyle } from "@/attachment/state.ts"
 import { detectConversationBoundary } from "@/communication/conversation.ts"
 import { HEALTH_CHECK_INTERVAL, HEARTBEAT } from "@/config/constants.ts"
 import { analyzeMessageSentiment } from "@/emotion/analyze.ts"
@@ -29,6 +30,8 @@ import {
   setPerceptionSummary,
   startNewConversation
 } from "@/memory/working.ts"
+import { getOperatorModel, getRelationalPatterns } from "@/mind/state.ts"
+import { extractSignals, matchRelationalPatterns } from "@/mind/triggers.ts"
 import { readGitActivity, readOwnState, readTelegramActivity, readWeatherData } from "@/perception/sensors.ts"
 import type { PerceptionSummary } from "@/perception/types.ts"
 import { checkWorkflowTriggers, getActiveWorkflows, getRecentTickSummaries } from "@/workflow/engine.ts"
@@ -122,12 +125,32 @@ export async function sense(): Promise<SenseResult> {
     }
   }
 
-  const [lastEmotionTs, triggerTimestamps, activeGoals, dreamState] = await Promise.all([
+  const [
+    lastEmotionTs,
+    triggerTimestamps,
+    activeGoals,
+    dreamState,
+    operatorModel,
+    currentEmotion,
+    attachmentStyle,
+    relationalPatterns
+  ] = await Promise.all([
     getLastEmotionTimestamp(),
     getTriggerTimestamps(),
     getActiveGoals(),
-    getDreamState()
+    getDreamState(),
+    getOperatorModel(),
+    getEmotionalState(),
+    getAttachmentStyle(),
+    getRelationalPatterns()
   ])
+
+  if (newMessages.length > 0) {
+    const messageTexts = newMessages.map((m) => m.text)
+    const signals = extractSignals(messageTexts)
+    const relationalTriggers = matchRelationalPatterns(signals, operatorModel, relationalPatterns)
+    allTriggers.push(...relationalTriggers)
+  }
 
   const elapsedMinutes = lastEmotionTs ? differenceInMinutes(new Date(), parseISO(lastEmotionTs)) : 1
 
@@ -137,7 +160,10 @@ export async function sense(): Promise<SenseResult> {
     systemHealthy: ownState.healthStatus === "healthy",
     budgetOk: ownState.budgetPercent < 80,
     hasActiveGoals: activeGoals.length > 0,
-    isDreaming: dreamState === "dreaming"
+    isDreaming: dreamState === "dreaming",
+    operatorMood: operatorModel.estimatedMood,
+    connectionLevel: currentEmotion.connection,
+    attachmentAvoidance: attachmentStyle.avoidant
   }
 
   const now = nowISO()

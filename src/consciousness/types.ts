@@ -1,9 +1,26 @@
 import * as z from "zod"
 import { AttachmentDynamics } from "@/attachment/types.ts"
+import { ProcrastinationState } from "@/cognition/procrastination/types.ts"
 import { AttentionState, CognitiveConflict, InstinctImpression } from "@/cognition/types.ts"
 import { CommunicationRegister } from "@/communication/types.ts"
 import { DissonanceState } from "@/dissonance/types.ts"
 import { DreamThinkResult } from "@/dream/types.ts"
+import { AmbivalenceState } from "@/emotion/ambivalence/types.ts"
+import { AnticipationState } from "@/emotion/anticipation/types.ts"
+import { AweState } from "@/emotion/awe/types.ts"
+import { DisappointmentState } from "@/emotion/disappointment/types.ts"
+import { EnvyState } from "@/emotion/envy/types.ts"
+import { GratitudeState } from "@/emotion/gratitude/types.ts"
+import { GuiltState } from "@/emotion/guilt/types.ts"
+import { HopeState } from "@/emotion/hope/types.ts"
+import { LongingState } from "@/emotion/longing/types.ts"
+import { MelancholyState } from "@/emotion/melancholy/types.ts"
+import { PlayfulnessState } from "@/emotion/playfulness/types.ts"
+import { PrideState } from "@/emotion/pride/types.ts"
+import { ProtectiveAngerState } from "@/emotion/protective-anger/types.ts"
+import { ResentmentState } from "@/emotion/resentment/types.ts"
+import { ResignationState } from "@/emotion/resignation/types.ts"
+import { TendernessState } from "@/emotion/tenderness/types.ts"
 import { EmotionalState, EmotionUpdateEvent, MoodContext } from "@/emotion/types.ts"
 import { HealthCheckResult } from "@/health/types.ts"
 import { PendingMessage, WeatherData, XPost } from "@/integrations/types.ts"
@@ -11,8 +28,10 @@ import { SemanticCategory, SemanticScope } from "@/memory/types.ts"
 import { OperatorModel } from "@/mind/types.ts"
 import { PerceptionSummary } from "@/perception/types.ts"
 import { InnerDialog } from "@/polyphony/types.ts"
+import { HeldBackBuffer } from "@/psyche/heldback/types.ts"
 import { SelfConcept } from "@/psyche/types.ts"
 import { MorningThinkResult, ReflectionOutput } from "@/routine/types.ts"
+import { ShameState } from "@/shame/types.ts"
 import { SomaticState } from "@/soma/types.ts"
 import { VulnerabilityState } from "@/vulnerability/types.ts"
 import { WorkflowDefinition } from "@/workflow/types.ts"
@@ -150,6 +169,25 @@ export const FeelingResult = z.object({
   instinct: InstinctImpression,
   dissonance: DissonanceState,
   vulnerability: VulnerabilityState,
+  shameState: ShameState,
+  heldBackBuffer: HeldBackBuffer,
+  disappointmentState: DisappointmentState,
+  procrastinationState: ProcrastinationState,
+  ambivalenceState: AmbivalenceState,
+  guiltState: GuiltState,
+  longingState: LongingState,
+  protectiveAngerState: ProtectiveAngerState,
+  gratitudeState: GratitudeState,
+  hopeState: HopeState,
+  resignationState: ResignationState,
+  aweState: AweState,
+  resentmentState: ResentmentState,
+  tendernessState: TendernessState,
+  anticipationState: AnticipationState,
+  prideState: PrideState,
+  envyState: EnvyState,
+  playfulnessState: PlayfulnessState,
+  melancholyState: MelancholyState,
   attachmentDynamics: AttachmentDynamics,
   selfConcept: SelfConcept,
   register: CommunicationRegister,

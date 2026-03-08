@@ -5,17 +5,21 @@ import { ATTENTION, CALENDAR, SOCIAL_MEDIA } from "@/config/constants.ts"
 import { env } from "@/config/env.ts"
 import { callIntelligence } from "@/core/intelligence.ts"
 import { thinkDream } from "@/dream/thinking.ts"
-import { fetchUpcomingEvents } from "@/integrations/caldav.ts"
-import { isCaldavEnabled } from "@/integrations/caldav.ts"
-import { fetchUnreadEmails } from "@/integrations/imap.ts"
-import { isImapEnabled } from "@/integrations/imap.ts"
+import { fetchUpcomingEvents, isCaldavEnabled } from "@/integrations/caldav.ts"
+import { fetchUnreadEmails, isImapEnabled } from "@/integrations/imap.ts"
 import type { CalendarEvent, EmailPreview, XPost } from "@/integrations/types.ts"
 import { getHomeTimeline, isXEnabled } from "@/integrations/x.ts"
 import { log } from "@/lib/logger.ts"
 import { captureError } from "@/lib/sentry.ts"
 import { queryRelated } from "@/memory/episodic.ts"
 import { getGoalsByPriority } from "@/memory/goals.ts"
-import { canCheckCalendar, canCheckEmail, canPerformSocialMedia, getConsecutiveIdleTicks, setCalendarLastCheck } from "@/memory/working.ts"
+import {
+  canCheckCalendar,
+  canCheckEmail,
+  canPerformSocialMedia,
+  getConsecutiveIdleTicks,
+  setCalendarLastCheck
+} from "@/memory/working.ts"
 import { getOperatorProfile } from "@/mind/profile.ts"
 import { generateInnerDialog } from "@/polyphony/dialog.ts"
 import { selectActiveVoices, shouldRunDialog } from "@/polyphony/voices.ts"

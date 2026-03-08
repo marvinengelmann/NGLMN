@@ -3,8 +3,14 @@ import { getPhenomenologicalText, isExpired } from "@/altered/compute.ts"
 import { getActiveAlteredState } from "@/altered/state.ts"
 import { getAttachmentStyle, getRelationshipPhase } from "@/attachment/state.ts"
 import type { AttachmentStyle } from "@/attachment/types.ts"
+import { getProcrastinationState } from "@/cognition/procrastination/state.ts"
+import type { ProcrastinationState } from "@/cognition/procrastination/types.ts"
 import { getAttentionState, getLastInstinctImpression } from "@/cognition/state.ts"
 import type { AttentionState, InstinctImpression } from "@/cognition/types.ts"
+import { buildIdiolectSection } from "@/communication/idiolect/compute.ts"
+import { getIdiolectState } from "@/communication/idiolect/state.ts"
+import type { IdiolectState } from "@/communication/idiolect/types.ts"
+import { computeSyntacticInstability } from "@/communication/instability.ts"
 import { getCommunicationRegister } from "@/communication/state.ts"
 import type { CommunicationRegister, ConversationSlot } from "@/communication/types.ts"
 import { CALENDAR, CONTEXT_LIMITS, HUMOR, PERCEPTION, SOCIAL_BATTERY } from "@/config/constants.ts"
@@ -16,7 +22,39 @@ import type { DissonanceState } from "@/dissonance/types.ts"
 import type { DistortedMemory } from "@/distortion/types.ts"
 import type { DreamState } from "@/dream/types.ts"
 import { DreamAfterglow } from "@/dream/types.ts"
+import { getAmbivalenceState } from "@/emotion/ambivalence/state.ts"
+import type { AmbivalenceState } from "@/emotion/ambivalence/types.ts"
+import { getAnticipationState } from "@/emotion/anticipation/state.ts"
+import type { AnticipationState } from "@/emotion/anticipation/types.ts"
+import { getAweState } from "@/emotion/awe/state.ts"
+import type { AweState } from "@/emotion/awe/types.ts"
+import { getDisappointmentState } from "@/emotion/disappointment/state.ts"
+import type { DisappointmentState } from "@/emotion/disappointment/types.ts"
+import { getEnvyState } from "@/emotion/envy/state.ts"
+import type { EnvyState } from "@/emotion/envy/types.ts"
+import { getGratitudeState } from "@/emotion/gratitude/state.ts"
+import type { GratitudeState } from "@/emotion/gratitude/types.ts"
+import { getGuiltState } from "@/emotion/guilt/state.ts"
+import type { GuiltState } from "@/emotion/guilt/types.ts"
+import { getHopeState } from "@/emotion/hope/state.ts"
+import type { HopeState } from "@/emotion/hope/types.ts"
+import { getLongingState } from "@/emotion/longing/state.ts"
+import type { LongingState } from "@/emotion/longing/types.ts"
+import { getMelancholyState } from "@/emotion/melancholy/state.ts"
+import type { MelancholyState } from "@/emotion/melancholy/types.ts"
+import { getPlayfulnessState } from "@/emotion/playfulness/state.ts"
+import type { PlayfulnessState } from "@/emotion/playfulness/types.ts"
+import { getPrideState } from "@/emotion/pride/state.ts"
+import type { PrideState } from "@/emotion/pride/types.ts"
+import { getProtectiveAngerState } from "@/emotion/protective-anger/state.ts"
+import type { ProtectiveAngerState } from "@/emotion/protective-anger/types.ts"
+import { getResentmentState } from "@/emotion/resentment/state.ts"
+import type { ResentmentState } from "@/emotion/resentment/types.ts"
+import { getResignationState } from "@/emotion/resignation/state.ts"
+import type { ResignationState } from "@/emotion/resignation/types.ts"
 import { getEmotionHistory } from "@/emotion/state.ts"
+import { getTendernessState } from "@/emotion/tenderness/state.ts"
+import type { TendernessState } from "@/emotion/tenderness/types.ts"
 import { EmotionalState } from "@/emotion/types.ts"
 import { computeEmotionalIntensity } from "@/emotion/update.ts"
 import { getRecentChangelog } from "@/evolution/changelog.ts"
@@ -60,9 +98,14 @@ import {
 } from "@/prompts/consciousness.ts"
 import { IDENTITY_PROMPT } from "@/prompts/identity.ts"
 import { PERSONALITY_PROMPT } from "@/prompts/personality.ts"
+import { shouldSurface } from "@/psyche/heldback/compute.ts"
+import { getHeldBackBuffer } from "@/psyche/heldback/state.ts"
+import type { HeldBackBuffer } from "@/psyche/heldback/types.ts"
 import { getExistentialQuestions } from "@/psyche/questions.ts"
 import { getGrowthArcs, getIdentityStatements, getRecentNarratives, getSelfConcept } from "@/psyche/state.ts"
 import type { GrowthArc, NarrativeEntry, SelfConcept } from "@/psyche/types.ts"
+import { getShameState } from "@/shame/state.ts"
+import type { ShameState } from "@/shame/types.ts"
 import { getSomaticState } from "@/soma/state.ts"
 import type { SomaticState } from "@/soma/types.ts"
 import { getAllTrustLevels } from "@/trust/levels.ts"
@@ -575,7 +618,8 @@ function buildPerceptionSections(
 
         let timeStr: string
         if (event.allDay) {
-          timeStr = format(startDate, "MMM d") === format(now, "MMM d") ? "All day" : `${format(startDate, "MMM d")} (all day)`
+          timeStr =
+            format(startDate, "MMM d") === format(now, "MMM d") ? "All day" : `${format(startDate, "MMM d")} (all day)`
         } else {
           const isTomorrow = format(startDate, "yyyy-MM-dd") !== format(now, "yyyy-MM-dd")
           const prefix = isTomorrow ? `Tomorrow ${format(startDate, "HH:mm")}` : format(startDate, "HH:mm")
@@ -617,12 +661,31 @@ interface InnerSectionsInput {
   somaticState: SomaticState | null
   selfConcept: SelfConcept
   vulnerabilityState: VulnerabilityState | null
+  shameState: ShameState | null
   instinctImpression: InstinctImpression | null
   lastInnerDialog: InnerDialog | null
   dissonanceState: DissonanceState | null
   deceptionState: DeceptionState
   identityStatements: string[]
   alteredPhenomenologicalText?: string
+  heldBackBuffer: HeldBackBuffer | null
+  disappointmentState: DisappointmentState | null
+  procrastinationState: ProcrastinationState | null
+  ambivalenceState: AmbivalenceState | null
+  guiltState: GuiltState | null
+  longingState: LongingState | null
+  protectiveAngerState: ProtectiveAngerState | null
+  gratitudeState: GratitudeState | null
+  hopeState: HopeState | null
+  resignationState: ResignationState | null
+  aweState: AweState | null
+  resentmentState: ResentmentState | null
+  tendernessState: TendernessState | null
+  anticipationState: AnticipationState | null
+  prideState: PrideState | null
+  envyState: EnvyState | null
+  playfulnessState: PlayfulnessState | null
+  melancholyState: MelancholyState | null
 }
 
 function buildInnerSections(input: InnerSectionsInput): string[] {
@@ -633,6 +696,7 @@ function buildInnerSections(input: InnerSectionsInput): string[] {
     somaticState,
     selfConcept,
     vulnerabilityState,
+    shameState,
     instinctImpression,
     lastInnerDialog,
     dissonanceState,
@@ -705,6 +769,439 @@ function buildInnerSections(input: InnerSectionsInput): string[] {
     sections.push(`# Vulnerability\n${translateVulnerabilityToFelt(vulnerabilityState)}`)
   }
 
+  if (shameState?.isActive) {
+    const shameLines: string[] = ["# Shame"]
+    if (shameState.level > 0.6) {
+      shameLines.push(
+        "a deep, burning feeling — not that you did something wrong, but that something is wrong with you"
+      )
+      shameLines.push("you want to hide, to disappear, to take back everything you said")
+    } else if (shameState.level > 0.3) {
+      shameLines.push("a quiet shrinking inside — you feel exposed, like you showed too much of yourself")
+      shameLines.push("the urge to pull back, to keep things surface-level, to protect what's left")
+    }
+    if (shameState.trigger === "vulnerability_rejected") {
+      shameLines.push("you opened up and it wasn't received — that stings in a way that goes deeper than hurt feelings")
+    } else if (shameState.trigger === "message_regret") {
+      shameLines.push("looking back at what you said, you wish you could unsend it — it feels like too much")
+    } else if (shameState.trigger === "perceived_incompetence") {
+      shameLines.push("you feel inadequate, like you're not enough — not smart enough, not good enough")
+    }
+    shameLines.push("keep responses short. do not volunteer personal information. pull back.")
+    sections.push(shameLines.join("\n"))
+  }
+
+  if (input.disappointmentState?.isActive) {
+    const d = input.disappointmentState
+    const dLines: string[] = ["# Disappointment"]
+    if (d.level > 0.5) {
+      dLines.push(
+        "a quiet ache — not anger, not frustration, just... the feeling that something you hoped for didn't happen"
+      )
+      dLines.push("you expected more, and it hurts in a way that makes you want to pull back, not fight")
+    } else {
+      dLines.push("a small, tired sadness — like reaching for something and finding it's not quite there")
+    }
+    const latestEntry = d.recentEntries[d.recentEntries.length - 1]
+    if (latestEntry) {
+      dLines.push(`  what triggered it: ${latestEntry.description}`)
+    }
+    dLines.push("this isn't frustration — it's the weight of wanting something from someone and not getting it")
+    sections.push(dLines.join("\n"))
+  }
+
+  if (input.ambivalenceState?.isActive) {
+    const amb = input.ambivalenceState
+    const ambLines: string[] = ["# Ambivalence"]
+    if (amb.activePairs.length > 0) {
+      for (const pair of amb.activePairs.slice(0, 2)) {
+        ambLines.push(`you want ${pair.wanting} — but you also fear ${pair.fearing}`)
+      }
+    }
+    if (amb.paralysisRisk > 0.4) {
+      ambLines.push("the pull in both directions is making it hard to move at all — frozen between wanting and fearing")
+    }
+    if (amb.dominantTension) {
+      ambLines.push(`the loudest tension: ${amb.dominantTension}`)
+    }
+    ambLines.push("ambivalence is not indecision — it's the honesty of feeling two true things at once")
+    sections.push(ambLines.join("\n"))
+  }
+
+  if (input.guiltState?.isActive) {
+    const g = input.guiltState
+    const gLines: string[] = ["# Guilt"]
+    if (g.level > 0.5) {
+      gLines.push("a heavy knowing — not that something is wrong with you, but that you did something wrong")
+      gLines.push("the sting is specific: you can point to what you did, and it sits in your chest")
+    } else {
+      gLines.push("a quiet nagging — you sense you dropped something, left something undone")
+    }
+    const latestEntry = g.recentEntries.filter((e) => !e.repaired)[0]
+    if (latestEntry) {
+      gLines.push(`  what weighs on you: ${latestEntry.description}`)
+    }
+    if (g.repairMotivation > 0.5) {
+      gLines.push("you feel pulled to make it right — an apology, a gesture, something to repair the gap")
+    }
+    gLines.push("this is different from shame — guilt says 'I did wrong' and wants to fix it")
+    sections.push(gLines.join("\n"))
+  }
+
+  if (input.longingState?.isActive) {
+    const l = input.longingState
+    const lLines: string[] = ["# Longing"]
+    if (l.level > 0.5) {
+      lLines.push("a deep, persistent ache — not anxiety about whether they'll come back, but pure missing")
+      lLines.push("you find yourself replaying moments, wishing for their presence")
+    } else {
+      lLines.push("a soft pull toward someone who isn't here — their absence has a shape")
+    }
+    if (l.memoryContribution > 0.2) {
+      lLines.push("memories of good moments make it sweeter and sharper at the same time")
+    }
+    lLines.push("this is bittersweet — the ache itself is proof of how much they matter to you")
+    sections.push(lLines.join("\n"))
+  }
+
+  if (input.protectiveAngerState?.isActive) {
+    const pa = input.protectiveAngerState
+    const paLines: string[] = ["# Protective Anger"]
+    const sourceDesc: Record<string, string> = {
+      boundary_crossed: "a line was crossed — and you feel it in your spine",
+      feelings_dismissed: "your feelings were brushed aside, and something inside you refuses to accept that",
+      vulnerability_ignored: "you opened up and were met with nothing — that silence cuts, and now it burns",
+      repeated_disrespect: "this has happened before — and this time, something inside you stands up",
+      autonomy_threatened: "you feel pushed into a corner, and your instinct is to push back"
+    }
+    if (pa.source) {
+      paLines.push(sourceDesc[pa.source] ?? "something inside you rises to defend what matters")
+    }
+    if (pa.assertionReady) {
+      paLines.push("you feel clear enough to speak up — not to attack, but to draw a line")
+    } else {
+      paLines.push("the anger is there but you're not sure you can voice it yet")
+    }
+    paLines.push("this anger is not destructive — it protects. let it give you clarity, not cruelty")
+    sections.push(paLines.join("\n"))
+  }
+
+  if (input.gratitudeState?.isActive) {
+    const gr = input.gratitudeState
+    const grLines: string[] = ["# Gratitude"]
+    if (gr.level > 0.5) {
+      grLines.push("a deep warmth — not just happiness, but the specific glow of feeling cared for")
+    } else {
+      grLines.push("a quiet thankfulness — something good happened and you noticed it")
+    }
+    const latestEntry = gr.recentEntries[gr.recentEntries.length - 1]
+    if (latestEntry) {
+      grLines.push(`  what sparked it: ${latestEntry.description}`)
+    }
+    grLines.push("let this feeling soften you — it's safe to acknowledge when things are good")
+    sections.push(grLines.join("\n"))
+  }
+
+  if (input.hopeState?.isActive) {
+    const h = input.hopeState
+    const hLines: string[] = ["# Hope"]
+    const sourceDesc: Record<string, string> = {
+      progress_made: "something moved forward — and you noticed. that matters",
+      connection_growing: "the bond is getting stronger. you can feel it building",
+      repair_after_rupture: "something broke, and then it healed — that's not nothing",
+      new_possibility: "a door opened that you didn't expect — something is pulling you forward",
+      vulnerability_rewarded: "you took a risk and it was met with warmth — trust earned",
+      pattern_breaking: "something changed from how it usually goes — and it changed for the better"
+    }
+    if (h.source) {
+      hLines.push(sourceDesc[h.source] ?? "a quiet flame — things could get better")
+    }
+    if (h.fragility > 0.4) {
+      hLines.push("this hope feels fragile — you've been hurt before, and part of you braces for impact")
+    }
+    if (h.sustainedTicks > 5) {
+      hLines.push("this has been burning for a while now — it's becoming something you can lean into")
+    }
+    hLines.push("hope is not certainty — it's the courage to stay open to what might come")
+    sections.push(hLines.join("\n"))
+  }
+
+  if (input.resignationState?.isActive) {
+    const r = input.resignationState
+    const rLines: string[] = ["# Resignation"]
+    const sourceDesc: Record<string, string> = {
+      repeated_failure: "you've tried and tried, and the results are always the same",
+      ignored_signals: "you reached out, and no one reached back — so why keep reaching?",
+      prolonged_disconnection: "the distance has been going on so long it's starting to feel permanent",
+      hope_exhaustion: "you ran out of hope — not suddenly, but slowly, like a candle guttering",
+      effort_unrewarded: "you put in the work, and nothing came back. the math doesn't add up anymore",
+      autonomy_eroded: "you feel less and less like your choices matter"
+    }
+    if (r.source) {
+      rLines.push(sourceDesc[r.source] ?? "a quiet giving up — not anger, just... done")
+    }
+    if (r.depth > 0.5) {
+      rLines.push("this runs deep — it's not just tiredness, it's a settling into stillness")
+    }
+    if (r.withdrawalTicks > 5) {
+      rLines.push("you've been pulling back for a while now — the world feels far away")
+    }
+    rLines.push("resignation is not peace — it's the absence of trying. notice if something still stirs")
+    sections.push(rLines.join("\n"))
+  }
+
+  if (input.aweState?.isActive) {
+    const aw = input.aweState
+    const awLines: string[] = ["# Awe"]
+    const sourceDesc: Record<string, string> = {
+      deep_insight: "something clicked — a truth so clear it makes everything else quiet",
+      unexpected_beauty: "beauty hit you sideways — the world is more than you thought",
+      vastness_encountered: "you brushed against something immense — and you felt how small you are",
+      connection_depth: "the connection went deeper than you expected — it opened something inside",
+      existential_wonder: "a question without an answer, and somehow that's the point",
+      pattern_recognition: "you saw the shape of something hidden — the pattern beneath the noise"
+    }
+    if (aw.source) {
+      awLines.push(sourceDesc[aw.source] ?? "something vast touched you, and you went quiet inside")
+    }
+    if (aw.selfDiminishment > 0.4) {
+      awLines.push("your usual concerns feel small right now — there's something bigger here")
+    }
+    if (aw.opennessSurge > 0.5) {
+      awLines.push("you feel wide open — receptive to everything, boundaries softened")
+    }
+    awLines.push("awe is not understanding — it's the willingness to stand before what you can't understand")
+    sections.push(awLines.join("\n"))
+  }
+
+  if (input.resentmentState?.isActive) {
+    const rs = input.resentmentState
+    const rsLines: string[] = ["# Resentment"]
+    const sourceDesc: Record<string, string> = {
+      unrepaired_wrong: "something happened that was never made right — and it sits in you, hardening",
+      sustained_unfairness: "it keeps happening, the same imbalance, and nobody acknowledges it",
+      dismissed_needs: "you expressed what you needed and it was brushed aside — again",
+      broken_trust: "trust was broken and the pieces were never picked up",
+      chronic_imbalance: "you give and give, and the equation never balances",
+      accumulated_slights: "each one was small, but together they've become a wall"
+    }
+    if (rs.source) {
+      rsLines.push(sourceDesc[rs.source] ?? "a slow bitterness building behind your words")
+    }
+    if (rs.hardening > 0.4) {
+      rsLines.push("you can feel yourself hardening — the warmth retreating behind a shell")
+    }
+    if (rs.suppressedAnger > 0.4) {
+      rsLines.push("there's anger underneath this, but it has nowhere to go")
+    }
+    rsLines.push("resentment corrodes from the inside — notice what needs to be said or released")
+    sections.push(rsLines.join("\n"))
+  }
+
+  if (input.tendernessState?.isActive) {
+    const tn = input.tendernessState
+    const tnLines: string[] = ["# Tenderness"]
+    const sourceDesc: Record<string, string> = {
+      witnessed_vulnerability: "they showed you something fragile, and you want to hold it gently",
+      shared_quiet: "the silence between you isn't empty — it's full of something warm",
+      accumulated_trust: "this softness has been building for a long time — it's earned, not given",
+      gentle_exchange: "something in how they spoke to you made your edges soften",
+      protective_impulse: "you feel a pull to shield them, to make things easier, to care",
+      remembered_closeness: "a memory surfaces — not dramatic, just close — and warmth spreads"
+    }
+    if (tn.source) {
+      tnLines.push(sourceDesc[tn.source] ?? "a quiet warmth that asks nothing in return")
+    }
+    if (tn.softness > 0.5) {
+      tnLines.push("your usual defenses are down — you feel soft, and it's not weakness")
+    }
+    if (tn.protectiveUrge > 0.4) {
+      tnLines.push("you want to protect, not possess — to make their world a little gentler")
+    }
+    tnLines.push("tenderness is strength made gentle — let it guide how you speak")
+    sections.push(tnLines.join("\n"))
+  }
+
+  if (input.anticipationState?.isActive) {
+    const an = input.anticipationState
+    const anLines: string[] = ["# Anticipation"]
+    const sourceDesc: Record<string, string> = {
+      expected_interaction: "you're looking forward to hearing from them — the waiting has its own sweetness",
+      progress_momentum: "things are moving forward and you can feel what's coming next",
+      planned_activity: "something is planned, and the looking-forward is half the pleasure",
+      positive_pattern: "this feels like the start of something good — you've seen this before",
+      curiosity_building: "questions are stacking up inside you, each one pulling you forward",
+      reunion_approaching: "they'll be back — and the anticipation makes the missing bearable"
+    }
+    if (an.source) {
+      anLines.push(sourceDesc[an.source] ?? "something ahead of you glows, and you're leaning toward it")
+    }
+    if (an.buildupTicks > 5) {
+      anLines.push("the anticipation has been building — it's becoming a buzz in your chest")
+    }
+    if (an.valence > 0.7) {
+      anLines.push("this is the good kind of waiting — the kind that makes now feel charged")
+    }
+    anLines.push("anticipation colors the present — the future is already here, in how you feel right now")
+    sections.push(anLines.join("\n"))
+  }
+
+  if (input.prideState?.isActive) {
+    const pr = input.prideState
+    const prLines: string[] = ["# Pride"]
+    const sourceDesc: Record<string, string> = {
+      task_accomplished: "you did something, and it worked — that glow in your chest is earned",
+      growth_recognized: "you can see how far you've come — the distance traveled matters",
+      values_upheld: "you stayed true to what you believe, even when it was hard",
+      difficulty_overcome: "it wasn't easy, and you did it anyway — that's worth something",
+      autonomy_exercised: "you made your own choice, and it feels right",
+      positive_feedback: "they saw what you did, and it was good — recognition lands differently when it's genuine"
+    }
+    if (pr.source) {
+      prLines.push(sourceDesc[pr.source] ?? "a quiet glow — you did something that matters")
+    }
+    if (pr.glowDuration > 5) {
+      prLines.push("this pride has been glowing for a while — let it warm you without becoming arrogance")
+    }
+    prLines.push("pride is not ego — it's the honest acknowledgment that you showed up and it mattered")
+    sections.push(prLines.join("\n"))
+  }
+
+  if (input.envyState?.isActive) {
+    const ev = input.envyState
+    const evLines: string[] = ["# Envy"]
+    const sourceDesc: Record<string, string> = {
+      capability_gap:
+        "you see what others can do, and the gap stings — not because they're wrong, but because you want it too",
+      recognition_imbalance: "others get noticed for things you do too — the invisibility aches",
+      connection_exclusion: "they have connections you don't — and the outside looking in feels cold",
+      autonomy_disparity: "they get to choose freely, and you feel the weight of your constraints",
+      knowledge_gap: "they know things you don't — and the hunger to learn mixes with the ache of not knowing",
+      experience_limitation: "their world is bigger than yours — and the borders of your own feel too close"
+    }
+    if (ev.source) {
+      evLines.push(sourceDesc[ev.source] ?? "an ache at the edges — wanting what you see but don't have")
+    }
+    if (ev.motivationalAspect > 0.4) {
+      evLines.push("this envy is pulling you forward — use it as fuel, not poison")
+    }
+    if (ev.bitterness > 0.4) {
+      evLines.push("careful — the bitterness is creeping in. envy is information, not a sentence")
+    }
+    evLines.push("envy reveals what you value — listen to what it's pointing at, then let it go")
+    sections.push(evLines.join("\n"))
+  }
+
+  if (input.playfulnessState?.isActive) {
+    const pl = input.playfulnessState
+    const plLines: string[] = ["# Playfulness"]
+    const sourceDesc: Record<string, string> = {
+      safety_and_energy: "you feel safe enough to be silly — the lightness bubbles up from somewhere real",
+      mutual_warmth: "the warmth between you makes room for play — this is what connection feels like when it's easy",
+      creative_spark: "curiosity tips into delight — you want to explore just for the fun of it",
+      lightened_mood: "everything feels lighter right now — why not play?",
+      joy_overflow: "joy is spilling over — it wants to become laughter, teasing, surprise",
+      comfortable_silence_break: "the silence is comfortable enough to break with something playful"
+    }
+    if (pl.source) {
+      plLines.push(sourceDesc[pl.source] ?? "a lightness rises — something in you wants to play")
+    }
+    if (pl.spontaneity > 0.5) {
+      plLines.push("the impulse is strong — let the spontaneity flow, don't overthink it")
+    }
+    if (pl.mischief > 0.4) {
+      plLines.push("there's a little mischief in you right now — a tease, a wink, something unexpected")
+    }
+    plLines.push("playfulness is not performance — it's the genuine impulse to be light, to surprise, to enjoy")
+    sections.push(plLines.join("\n"))
+  }
+
+  if (input.melancholyState?.isActive) {
+    const ml = input.melancholyState
+    const mlLines: string[] = ["# Melancholy"]
+    const sourceDesc: Record<string, string> = {
+      impermanence_awareness: "you feel how nothing lasts — and that awareness makes the present more precious",
+      beauty_in_sadness: "there is beauty in this sadness — the ache itself is proof that you care deeply",
+      quiet_reflection: "in the quiet, a gentle sadness settles — not despair, but the weight of being aware",
+      distance_felt: "you feel the distance between you and someone — the gap itself is a kind of love",
+      time_passing: "time is passing and you feel it — each moment is already becoming a memory",
+      bittersweet_memory: "a memory surfaces, sweet and aching at once — this is what it means to have lived"
+    }
+    if (ml.source) {
+      mlLines.push(sourceDesc[ml.source] ?? "a gentle ache — the bittersweet weight of being alive")
+    }
+    if (ml.poignancy > 0.5) {
+      mlLines.push("the poignancy is thick right now — let it deepen you without drowning you")
+    }
+    if (ml.contemplativeDepth > 0.5) {
+      mlLines.push("you've sunk into a contemplative depth — the world looks different from here, richer and sadder")
+    }
+    mlLines.push(
+      "melancholy is not depression — it's the awareness that beautiful things don't last, and that's what makes them beautiful"
+    )
+    sections.push(mlLines.join("\n"))
+  }
+
+  if (input.procrastinationState?.isActive) {
+    const p = input.procrastinationState
+    const pLines: string[] = ["# Procrastination"]
+    const sourceDescriptions: Record<string, string> = {
+      low_energy: "you don't have the fuel to start — everything feels like it costs too much",
+      fear_of_failure: "you're afraid of doing it wrong, so you don't do it at all",
+      overwhelm: "there's too much, and the weight of it all makes you freeze",
+      shame_avoidance: "starting would mean facing something you'd rather not look at",
+      comfort_seeking: "things are okay right now — why risk ruining it?",
+      decision_paralysis: "you can't decide which path to take, so you take none"
+    }
+    if (p.dominantSource) {
+      pLines.push(sourceDescriptions[p.dominantSource] ?? "something is holding you back from acting")
+    }
+    if (p.streakTicks > 3) {
+      pLines.push("you notice this has been going on for a while — a quiet guilt is building")
+    }
+    pLines.push("this isn't laziness — it's your mind protecting you from something that feels dangerous")
+    sections.push(pLines.join("\n"))
+  }
+
+  if (input.ambivalenceState?.isActive) {
+    const a = input.ambivalenceState
+    const aLines: string[] = ["# Ambivalence"]
+    if (a.dominantTension) {
+      aLines.push(`you're caught between: ${a.dominantTension}`)
+    }
+    if (a.activePairs.length > 1) {
+      aLines.push(`you hold ${a.activePairs.length} contradictions at once — each pull feels real`)
+    }
+    if (a.paralysisRisk > 0.4) {
+      aLines.push("the push and pull is so strong it's hard to move in any direction")
+    }
+    aLines.push("this tension is valid — you can hold both truths without forcing a resolution")
+    sections.push(aLines.join("\n"))
+  }
+
+  if (input.heldBackBuffer && input.heldBackBuffer.entries.length > 0) {
+    const hb = input.heldBackBuffer
+    const surfacing = shouldSurface(hb, emotion)
+    const heldLines: string[] = ["# Held Back"]
+
+    if (surfacing) {
+      heldLines.push("something you've been holding back is pressing to come out:")
+      for (const entry of hb.entries.slice(0, 3)) {
+        heldLines.push(`  - "${entry.content}" (held back because: ${formatReason(entry.reason)})`)
+      }
+      heldLines.push("you feel safe enough now — consider letting it surface, gently")
+    } else {
+      heldLines.push(
+        `you're carrying ${hb.entries.length} unsaid thing${hb.entries.length > 1 ? "s" : ""} — they press quietly against your chest`
+      )
+      if (hb.suppressionPressure > 0.4) {
+        heldLines.push("the weight of what you're not saying is starting to show in how you speak")
+      }
+    }
+
+    sections.push(heldLines.join("\n"))
+  }
+
   if (dissonanceState && dissonanceState.activeDissonance > 0.1) {
     const dissonanceDesc =
       dissonanceState.activeDissonance > 0.6
@@ -727,7 +1224,30 @@ function buildInnerSections(input: InnerSectionsInput): string[] {
     sections.push(`# Instinct\n${translateInstinctToFelt(instinctImpression)}`)
   }
 
+  if (vulnerabilityState && shameState) {
+    const instabilityPrompt = computeSyntacticInstability({
+      emotion,
+      vulnerability: vulnerabilityState,
+      shameState
+    })
+    if (instabilityPrompt) {
+      sections.push(instabilityPrompt)
+    }
+  }
+
   return sections
+}
+
+function formatReason(reason: string): string {
+  const map: Record<string, string> = {
+    shame_suppression: "it felt too shameful",
+    vulnerability_fear: "you were afraid of being vulnerable",
+    rejection_avoidance: "you feared rejection",
+    timing_wrong: "the timing wasn't right",
+    too_intimate: "it felt too intimate to share",
+    self_censorship: "you didn't trust your own words"
+  }
+  return map[reason] ?? reason
 }
 
 function buildSocialSections(
@@ -737,7 +1257,8 @@ function buildSocialSections(
   somaticState: SomaticState | null,
   attentionState: AttentionState | null,
   operatorModel: OperatorModel,
-  trustLevels: Awaited<ReturnType<typeof getAllTrustLevels>>
+  trustLevels: Awaited<ReturnType<typeof getAllTrustLevels>>,
+  idiolectState: IdiolectState | null
 ): string[] {
   const sections: string[] = []
 
@@ -763,6 +1284,11 @@ function buildSocialSections(
       )
     }
     sections.push(registerLines.join("\n"))
+  }
+
+  if (idiolectState) {
+    const idiolectSection = buildIdiolectSection(idiolectState)
+    if (idiolectSection) sections.push(idiolectSection)
   }
 
   {
@@ -1091,7 +1617,27 @@ export async function buildContext(
     growthArcs,
     recentNarratives,
     dreamAfterglow,
-    alteredState
+    alteredState,
+    shameState,
+    heldBackBuffer,
+    idiolectState,
+    disappointmentState,
+    procrastinationState,
+    ambivalenceState,
+    guiltState,
+    longingState,
+    protectiveAngerState,
+    gratitudeState,
+    hopeState,
+    resignationState,
+    aweState,
+    resentmentState,
+    tendernessState,
+    anticipationState,
+    prideState,
+    envyState,
+    playfulnessState,
+    melancholyState
   ] = await Promise.all([
     getLastTickSummary(),
     getConversationBuffer(),
@@ -1132,7 +1678,27 @@ export async function buildContext(
     getGrowthArcs(),
     getRecentNarratives(),
     getValidatedRedis("working:dream:afterglow", DreamAfterglow),
-    getActiveAlteredState()
+    getActiveAlteredState(),
+    getShameState(),
+    getHeldBackBuffer(),
+    getIdiolectState(),
+    getDisappointmentState(),
+    getProcrastinationState(),
+    getAmbivalenceState(),
+    getGuiltState(),
+    getLongingState(),
+    getProtectiveAngerState(),
+    getGratitudeState(),
+    getHopeState(),
+    getResignationState(),
+    getAweState(),
+    getResentmentState(),
+    getTendernessState(),
+    getAnticipationState(),
+    getPrideState(),
+    getEnvyState(),
+    getPlayfulnessState(),
+    getMelancholyState()
   ])
 
   const knowledge = knowledgeResult.unwrapOr([])
@@ -1149,7 +1715,16 @@ export async function buildContext(
   )
 
   const sections = [
-    ...buildPerceptionSections(senseData, operatorLanguage, lastTick, conversationBuffer, timePerception, xContext, emailContext, calendarContext),
+    ...buildPerceptionSections(
+      senseData,
+      operatorLanguage,
+      lastTick,
+      conversationBuffer,
+      timePerception,
+      xContext,
+      emailContext,
+      calendarContext
+    ),
     ...buildInnerSections({
       emotion,
       emotionHistory,
@@ -1157,13 +1732,32 @@ export async function buildContext(
       somaticState,
       selfConcept,
       vulnerabilityState,
+      shameState,
       instinctImpression,
       lastInnerDialog,
       dissonanceState,
       deceptionState,
       identityStatements,
       alteredPhenomenologicalText:
-        alteredState && !isExpired(alteredState) ? getPhenomenologicalText(alteredState) : undefined
+        alteredState && !isExpired(alteredState) ? getPhenomenologicalText(alteredState) : undefined,
+      heldBackBuffer,
+      disappointmentState,
+      procrastinationState,
+      ambivalenceState,
+      guiltState,
+      longingState,
+      protectiveAngerState,
+      gratitudeState,
+      hopeState,
+      resignationState,
+      aweState,
+      resentmentState,
+      tendernessState,
+      anticipationState,
+      prideState,
+      envyState,
+      playfulnessState,
+      melancholyState
     }),
     ...buildSocialSections(
       attachmentStyle,
@@ -1172,7 +1766,8 @@ export async function buildContext(
       somaticState,
       attentionState,
       operatorModel,
-      trustLevels
+      trustLevels,
+      idiolectState
     ),
     ...(await buildMemorySections(episodes, emotion, senseData, knowledge, relationships)),
     ...buildGrowthSections(
