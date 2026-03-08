@@ -1,5 +1,6 @@
-import { REGISTER, SOCIAL_BATTERY } from "@/config/constants.ts"
+import { REGISTER, SHAME, SOCIAL_BATTERY } from "@/config/constants.ts"
 import type { EmotionalState } from "@/emotion/types.ts"
+import type { ShameState } from "@/shame/types.ts"
 import type { SomaticState } from "@/soma/types.ts"
 import type { VulnerabilityState } from "@/vulnerability/types.ts"
 import type { CommunicationRegister } from "./types.ts"
@@ -20,9 +21,11 @@ export function isWithdrawn(soma: SomaticState): boolean {
 export function computeCommunicationRegister(
   emotion: EmotionalState,
   soma: SomaticState,
-  vulnerability: VulnerabilityState | null
+  vulnerability: VulnerabilityState | null,
+  shameState?: ShameState | null
 ): CommunicationRegister {
   if (soma.socialBattery < SOCIAL_BATTERY.TERSE_THRESHOLD) return "terse"
+  if (shameState?.isActive && shameState.level > SHAME.REGISTER_OVERRIDE_LEVEL) return "terse"
   if (vulnerability?.windowOpen && emotion.connection > 0.6) return "raw"
   if (emotion.excitement > 0.65 && emotion.connection > 0.5) return "playful"
   if (emotion.energy < 0.3 || soma.gravity > 0.7) return "terse"
