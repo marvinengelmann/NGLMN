@@ -1,3 +1,5 @@
+import { computeVoiceModifiers } from "@/altered/compute.ts"
+import { getActiveAlteredState } from "@/altered/state.ts"
 import { detectCognitiveConflict, shouldInstinctOverride } from "@/cognition/override.ts"
 import { ATTENTION, SOCIAL_MEDIA } from "@/config/constants.ts"
 import { env } from "@/config/env.ts"
@@ -49,11 +51,19 @@ export async function deliberate(senseResult: SenseResult, feelResult: FeelingRe
   const contextString = await buildContext(senseData, feelResult.emotion, xContext)
   const systemPrompt = buildSystemPrompt(contextString)
 
-  const activeVoices = selectActiveVoices(feelResult.emotion, env().PERSONALITY_TYPE, {
-    dissonanceScore: feelResult.dissonance.activeDissonance,
-    action: "pending",
-    hasMessages: senseResult.pendingMessages.length > 0
-  })
+  const alteredState = await getActiveAlteredState()
+  const alteredVoiceModifiers = alteredState ? computeVoiceModifiers(alteredState) : undefined
+
+  const activeVoices = selectActiveVoices(
+    feelResult.emotion,
+    env().PERSONALITY_TYPE,
+    {
+      dissonanceScore: feelResult.dissonance.activeDissonance,
+      action: "pending",
+      hasMessages: senseResult.pendingMessages.length > 0
+    },
+    alteredVoiceModifiers
+  )
 
   let innerDialog: DeliberateResult["innerDialog"]
   if (

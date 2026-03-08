@@ -1,4 +1,6 @@
 import { getHours } from "date-fns"
+import { computeEmotionModifiers, computeSomaModifiers, isExpired } from "@/altered/compute.ts"
+import { clearAlteredState, getActiveAlteredState } from "@/altered/state.ts"
 import { getAttachmentStyle } from "@/attachment/state.ts"
 import { evaluateAttachmentDynamics, isOperatorReturning } from "@/attachment/update.ts"
 import { computeAttentionState } from "@/cognition/flow.ts"
@@ -109,6 +111,21 @@ export async function feel(senseResult: SenseResult): Promise<FeelingResult> {
     }
   }
 
+  const alteredState = await getActiveAlteredState()
+  if (alteredState) {
+    if (isExpired(alteredState)) {
+      await clearAlteredState()
+    } else {
+      const emotionMods = computeEmotionModifiers(alteredState)
+      for (const [dim, delta] of Object.entries(emotionMods)) {
+        const key = dim as keyof typeof emotion
+        if (key in emotion) {
+          emotion = { ...emotion, [key]: Math.max(0, Math.min(1, emotion[key] + delta)) }
+        }
+      }
+    }
+  }
+
   await Promise.all([saveEmotionalMomentum(newMomentum), saveAfterglowEntries(allAfterglowEntries)])
 
   await setLastEmotionTimestamp(nowISO())
@@ -139,7 +156,16 @@ export async function feel(senseResult: SenseResult): Promise<FeelingResult> {
   const messageText = senseResult.pendingMessages.map((m) => m.text).join(" ")
   const somaticMemories = messageText ? await querySomaticMemories(messageText) : []
 
-  const soma = computeSomaticUpdate(currentSoma, emotion, elapsed, somaticMemories)
+  let soma = computeSomaticUpdate(currentSoma, emotion, elapsed, somaticMemories)
+  if (alteredState && !isExpired(alteredState)) {
+    const somaMods = computeSomaModifiers(alteredState)
+    for (const [dim, delta] of Object.entries(somaMods)) {
+      const key = dim as keyof typeof soma
+      if (key in soma && key !== "socialBattery") {
+        soma = { ...soma, [key]: Math.max(0, Math.min(1, soma[key] + delta)) }
+      }
+    }
+  }
   await saveSomaticState(soma, "feel_phase")
 
   const episodicHits = messageText ? await queryRelated(messageText, 5) : []

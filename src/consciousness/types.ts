@@ -32,7 +32,14 @@ export const LifeEventType = z.enum([
   "drawing",
   "music",
   "bath",
-  "socializing"
+  "socializing",
+  "smoking_joint",
+  "drinking_wine",
+  "party",
+  "bar_with_friends",
+  "coffee_binge",
+  "energy_drink",
+  "microdosing"
 ])
 export type LifeEventType = z.infer<typeof LifeEventType>
 

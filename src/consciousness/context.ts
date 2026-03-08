@@ -1,4 +1,6 @@
 import { format } from "date-fns"
+import { getPhenomenologicalText, isExpired } from "@/altered/compute.ts"
+import { getActiveAlteredState } from "@/altered/state.ts"
 import { getAttachmentStyle, getRelationshipPhase } from "@/attachment/state.ts"
 import type { AttachmentStyle } from "@/attachment/types.ts"
 import { getAttentionState, getLastInstinctImpression } from "@/cognition/state.ts"
@@ -566,6 +568,7 @@ interface InnerSectionsInput {
   dissonanceState: DissonanceState | null
   deceptionState: DeceptionState
   identityStatements: string[]
+  alteredPhenomenologicalText?: string
 }
 
 function buildInnerSections(input: InnerSectionsInput): string[] {
@@ -607,6 +610,10 @@ function buildInnerSections(input: InnerSectionsInput): string[] {
 
   if (somaticState) {
     sections.push(`# Somatic State\n${translateSomaticToFelt(somaticState)}`)
+  }
+
+  if (input.alteredPhenomenologicalText) {
+    sections.push(`# Altered Awareness\n${input.alteredPhenomenologicalText}`)
   }
 
   sections.push(`# Psyche\n${translatePsycheToFelt(selfConcept)}`)
@@ -1027,7 +1034,8 @@ export async function buildContext(
     identityStatements,
     growthArcs,
     recentNarratives,
-    dreamAfterglow
+    dreamAfterglow,
+    alteredState
   ] = await Promise.all([
     getLastTickSummary(),
     getConversationBuffer(),
@@ -1067,7 +1075,8 @@ export async function buildContext(
     getIdentityStatements(),
     getGrowthArcs(),
     getRecentNarratives(),
-    getValidatedRedis("working:dream:afterglow", DreamAfterglow)
+    getValidatedRedis("working:dream:afterglow", DreamAfterglow),
+    getActiveAlteredState()
   ])
 
   const knowledge = knowledgeResult.unwrapOr([])
@@ -1096,7 +1105,9 @@ export async function buildContext(
       lastInnerDialog,
       dissonanceState,
       deceptionState,
-      identityStatements
+      identityStatements,
+      alteredPhenomenologicalText:
+        alteredState && !isExpired(alteredState) ? getPhenomenologicalText(alteredState) : undefined
     }),
     ...buildSocialSections(
       attachmentStyle,

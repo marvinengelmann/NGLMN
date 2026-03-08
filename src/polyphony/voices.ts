@@ -15,7 +15,8 @@ interface VoiceContext {
 export function selectActiveVoices(
   emotion: EmotionalState,
   personality: PersonalityType,
-  context: VoiceContext
+  context: VoiceContext,
+  alteredVoiceModifiers?: Partial<Record<InnerVoice, number>>
 ): InnerVoice[] {
   const scores: Record<InnerVoice, number> = {
     explorer: 0,
@@ -47,6 +48,12 @@ export function selectActiveVoices(
   const mbtiWeights = getMbtiWeights(personality)
   for (const [voice, bonus] of Object.entries(mbtiWeights)) {
     scores[voice as InnerVoice] += bonus
+  }
+
+  if (alteredVoiceModifiers) {
+    for (const [voice, bonus] of Object.entries(alteredVoiceModifiers)) {
+      scores[voice as InnerVoice] += bonus
+    }
   }
 
   const sorted = (Object.entries(scores) as [InnerVoice, number][])

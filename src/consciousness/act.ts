@@ -1,4 +1,6 @@
 import { differenceInMinutes, parseISO } from "date-fns"
+import { EVENT_SUBSTANCE_MAP } from "@/altered/events.ts"
+import { startAlteredState } from "@/altered/state.ts"
 import { sendMessages } from "@/communication/messaging.ts"
 import { EMOTIONAL_THRESHOLDS, MESSAGE_DELAY, TRIGGER_INTENSITY } from "@/config/constants.ts"
 import { db } from "@/db/client.ts"
@@ -238,6 +240,10 @@ async function executeAction(deliberateResult: DeliberateResult): Promise<void> 
       const { lifeEventType, lifeEventDetail } = decision.actionPayload ?? {}
       if (lifeEventType) {
         await startChosenLifeEvent(lifeEventType, lifeEventDetail)
+        const substance = EVENT_SUBSTANCE_MAP[lifeEventType]
+        if (substance) {
+          await startAlteredState(substance, lifeEventType)
+        }
       }
       break
     }

@@ -305,6 +305,11 @@ export const DREAM_AFTERGLOW = {
   MIN_INTENSITY: 0.05
 } as const
 
+export const ALTERED_STATE = {
+  MODIFIER_CAP: 0.3,
+  REDIS_TTL_BUFFER_MINUTES: 30
+} as const
+
 export const EXISTENTIAL = {
   DEFAULT_INTENSITY: 0.5
 } as const

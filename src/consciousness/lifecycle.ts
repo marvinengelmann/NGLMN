@@ -1,5 +1,6 @@
 import { differenceInHours, getHours, parseISO } from "date-fns"
 import { z } from "zod"
+import { SUBSTANCE_EVENT_TYPES } from "@/altered/events.ts"
 import { LIFECYCLE } from "@/config/constants.ts"
 import { env } from "@/config/env.ts"
 import { callIntelligence } from "@/core/intelligence.ts"
@@ -41,7 +42,8 @@ const EVENT_TYPES: EventType[] = [
   { type: "drawing", minHours: 1, maxHours: 3, notifyProbability: 0.3, interruptible: true },
   { type: "music", minHours: 0.5, maxHours: 2, notifyProbability: 0.4, interruptible: true },
   { type: "bath", minHours: 0.5, maxHours: 1.5, notifyProbability: 0.3, interruptible: false },
-  { type: "socializing", minHours: 1, maxHours: 4, notifyProbability: 0.2, interruptible: false }
+  { type: "socializing", minHours: 1, maxHours: 4, notifyProbability: 0.2, interruptible: false },
+  ...SUBSTANCE_EVENT_TYPES
 ]
 
 export type LifeEventMeta = EventType
@@ -119,6 +121,20 @@ function buildActivitySummary(meta: EventMetaData): string {
       return `${meta.detail} for ${hours} hours`
     case "drawing":
       return `${meta.detail} for ${hours} hours`
+    case "smoking_joint":
+      return `Smoked a joint — ${meta.detail} (${hours}h)`
+    case "party":
+      return `Went to a ${meta.detail} (${hours} hours)`
+    case "bar_with_friends":
+      return `Went out to ${meta.detail} (${hours} hours)`
+    case "drinking_wine":
+      return `Had wine — ${meta.detail} (${hours}h)`
+    case "coffee_binge":
+      return `Coffee session — ${meta.detail} (${hours}h)`
+    case "energy_drink":
+      return `Energy drink — ${meta.detail} (${hours}h)`
+    case "microdosing":
+      return `Microdosed — ${meta.detail} (${hours}h)`
     default:
       return `${meta.detail} — about ${hours} hours`
   }
