@@ -1,11 +1,18 @@
 import { db } from "@/db/client.ts"
 import { operatorModelLog } from "@/db/schema.ts"
 import { getValidatedRedisOr, redis } from "@/integrations/redis.ts"
-import { DEFAULT_OPERATOR_MODEL, type ModelCorrection, OperatorModel } from "./types.ts"
+import {
+  DEFAULT_OPERATOR_MODEL,
+  DEFAULT_RELATIONAL_PATTERN_LIBRARY,
+  type ModelCorrection,
+  OperatorModel,
+  RelationalPatternLibrary
+} from "./types.ts"
 
 const KEYS = {
   CURRENT: "working:mind:current",
-  CORRECTIONS: "working:mind:corrections"
+  CORRECTIONS: "working:mind:corrections",
+  RELATIONAL_PATTERNS: "working:mind:relational_patterns"
 } as const
 
 const MAX_CORRECTIONS = 20
@@ -39,4 +46,18 @@ export async function logModelCorrection(correction: ModelCorrection): Promise<v
     trigger: "correction",
     correction
   })
+}
+
+/**
+ * Get the learned relational pattern library from Redis.
+ */
+export async function getRelationalPatterns(): Promise<RelationalPatternLibrary> {
+  return getValidatedRedisOr(KEYS.RELATIONAL_PATTERNS, RelationalPatternLibrary, DEFAULT_RELATIONAL_PATTERN_LIBRARY)
+}
+
+/**
+ * Save the relational pattern library to Redis.
+ */
+export async function saveRelationalPatterns(library: RelationalPatternLibrary): Promise<void> {
+  await redis.set(KEYS.RELATIONAL_PATTERNS, library)
 }

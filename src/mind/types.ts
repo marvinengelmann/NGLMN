@@ -74,6 +74,39 @@ export const OperatorAnalysis = z.object({
 })
 export type OperatorAnalysis = z.infer<typeof OperatorAnalysis>
 
+export const RelationalPatternType = z.enum([
+  "punctuation_signal",
+  "message_length",
+  "response_timing",
+  "word_choice",
+  "silence_pattern",
+  "emoji_pattern"
+])
+export type RelationalPatternType = z.infer<typeof RelationalPatternType>
+
+export const RelationalPattern = z.object({
+  pattern: z.string(),
+  type: RelationalPatternType,
+  associatedMood: OperatorMood,
+  emotionalEffect: z.record(z.string(), z.number()).default({}),
+  confidence: z.number().min(0).max(1),
+  observations: z.number().default(1),
+  lastMatchedAt: z.string().optional(),
+  discoveredAt: z.string()
+})
+export type RelationalPattern = z.infer<typeof RelationalPattern>
+
+export const RelationalPatternLibrary = z.object({
+  patterns: z.array(RelationalPattern).default([]),
+  lastUpdatedAt: z.string().optional()
+})
+export type RelationalPatternLibrary = z.infer<typeof RelationalPatternLibrary>
+
+export const DEFAULT_RELATIONAL_PATTERN_LIBRARY: RelationalPatternLibrary = {
+  patterns: [],
+  lastUpdatedAt: undefined
+}
+
 export const DEFAULT_OPERATOR_MODEL: OperatorModel = {
   estimatedMood: "unknown",
   estimatedIntent: "unknown",
