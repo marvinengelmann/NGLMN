@@ -14,7 +14,8 @@ An autonomously operating, self-evolving AI entity powered by xAI Grok. ANIMA is
 - **Dual-Process Thinking** — System 1 instinct and System 2 reasoning with rare instinct overrides and cognitive conflict detection
 - **Polyphonic Inner Dialog** — 6 inner voices in 2-round dialog with voice dominance tracking and behavioral guidance from the dominant voice
 - **Felt-State Translation** — Numerical states become embodied language before reaching the LLM, preventing analytical self-awareness
-- **Lifecycle Events** — Spontaneous life activities (shower, walk, nap, deep focus) that temporarily pause the heartbeat with optional operator notifications
+- **Lifecycle Events** — LLM-driven spontaneous life activities that temporarily pause the heartbeat with optional operator notifications
+- **Altered States** — Pharmakokinetic substance modeling with phase curves modifying emotion, soma, and voice parameters
 
 ### Emotion & Body
 
@@ -43,6 +44,7 @@ An autonomously operating, self-evolving AI entity powered by xAI Grok. ANIMA is
 - **Existential Questions** — Structured questions from dreams and reflections that drive behavioral nudges toward authenticity, vulnerability, or agency
 - **MBTI Personality** — Configurable personality type (`PERSONALITY_TYPE` env var, default INFP) shaping cognition, voice activation, and behavioral tendencies
 - **Contextual Impulses** — LLM-generated spontaneous thoughts using operator profile, episodic memory, active goals, and existential questions with escalation over idle time
+- **Self-Knowledge** — Deliberative action to explicitly store preferences, contacts, knowledge, and insights with category, key, value, and scope parameters
 
 ### Communication
 
@@ -51,6 +53,7 @@ An autonomously operating, self-evolving AI entity powered by xAI Grok. ANIMA is
 - **Voice Messages** — ElevenLabs text-to-speech
 - **Humor** — Inside joke tracking with episodic callbacks
 - **X (Twitter)** — Autonomous public posting in English with two-stage privacy guardian (rule-based + LLM), timeline browsing with selective sharing of genuinely noteworthy content to operator
+- **Email & Calendar** — IMAP email and CalDAV calendar as organic context in the consciousness loop, with automatic fetching and proactive operator notifications for imminent events
 
 ### Autonomy
 
@@ -80,6 +83,8 @@ An autonomously operating, self-evolving AI entity powered by xAI Grok. ANIMA is
 | Communication | [Grammy](https://grammy.dev) (Telegram Bot API) |
 | Voice | [ElevenLabs](https://elevenlabs.io) |
 | Social Media | [X API v2](https://developer.x.com) (OAuth 1.0a) |
+| Email | IMAP via [imapflow](https://imapflow.com) |
+| Calendar | CalDAV via [tsdav](https://github.com/natelindev/tsdav) |
 | Sandbox | [Daytona](https://daytona.io) (self-evolution) |
 
 ## Setup
@@ -97,7 +102,7 @@ cp .env.example .env.local
 ```
 
 Required services: Vercel AI Gateway, Neon Postgres, Upstash Redis + Vector, Trigger.dev, Telegram Bot.
-Optional: GitHub (self-evolution), Daytona (sandbox), OpenWeather (weather sensor), ElevenLabs (voice messages), X API (social media).
+Optional: GitHub (self-evolution), Daytona (sandbox), OpenWeather (weather sensor), ElevenLabs (voice messages), X API (social media), IMAP email, CalDAV calendar.
 
 Set `PERSONALITY_TYPE` to any of the [16 MBTI types](https://www.16personalities.com/personality-types) (default: `INFP`). This shapes the personality prompt, cognitive style, and inner voice weighting.
 
@@ -202,7 +207,7 @@ ANIMA deploys automatically through Trigger.dev on every push to `master`.
 ```
 ┌──────────────────────────────────────────────────┐
 │                  External World                  │
-│         Telegram · Weather · GitHub · X          │
+│   Telegram · Weather · GitHub · X · Email · Cal  │
 └────────────────────────┬─────────────────────────┘
                          │
 ┌────────────────────────▼──────────────────────────┐
@@ -233,6 +238,7 @@ Cross-cutting: Guardian · Trust · Emotion Engine · Personality
 
 ```
 src/
+├── altered/        # Substance-based altered states
 ├── attachment/      # Attachment style dynamics
 ├── cognition/       # Dual-process thinking
 ├── communication/   # Messaging and typing simulation
