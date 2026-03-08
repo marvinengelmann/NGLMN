@@ -6,7 +6,7 @@ import { DissonanceState } from "@/dissonance/types.ts"
 import { DreamThinkResult } from "@/dream/types.ts"
 import { EmotionalState, EmotionUpdateEvent, MoodContext } from "@/emotion/types.ts"
 import { HealthCheckResult } from "@/health/types.ts"
-import { PendingMessage, WeatherData } from "@/integrations/types.ts"
+import { PendingMessage, WeatherData, XPost } from "@/integrations/types.ts"
 import { OperatorModel } from "@/mind/types.ts"
 import { PerceptionSummary } from "@/perception/types.ts"
 import { InnerDialog } from "@/polyphony/types.ts"
@@ -35,7 +35,16 @@ export const LifeEventType = z.enum([
 ])
 export type LifeEventType = z.infer<typeof LifeEventType>
 
-export const AnimaAction = z.enum(["idle", "reflect", "update_goal", "evolve", "dream", "morning", "life_event"])
+export const AnimaAction = z.enum([
+  "idle",
+  "reflect",
+  "update_goal",
+  "evolve",
+  "dream",
+  "morning",
+  "life_event",
+  "social_media"
+])
 export type AnimaAction = z.infer<typeof AnimaAction>
 
 export const AnimaDecision = z.object({
@@ -63,7 +72,9 @@ export const AnimaDecision = z.object({
       evolutionInsight: z.string().optional(),
       capabilityGap: z.string().optional(),
       lifeEventType: LifeEventType.optional(),
-      lifeEventDetail: z.string().optional()
+      lifeEventDetail: z.string().optional(),
+      socialMediaMode: z.enum(["browse", "post"]).optional(),
+      xPostText: z.string().max(280).optional()
     })
     .optional(),
   workflowId: z.string().uuid().nullable().default(null),
@@ -141,7 +152,8 @@ export const DeliberateResult = z.object({
   morningResult: MorningThinkResult.optional(),
   innerDialog: InnerDialog.optional(),
   cognitiveConflict: CognitiveConflict.optional(),
-  instinctOverride: z.boolean().default(false)
+  instinctOverride: z.boolean().default(false),
+  xTimeline: z.array(XPost).optional()
 })
 export type DeliberateResult = z.infer<typeof DeliberateResult>
 

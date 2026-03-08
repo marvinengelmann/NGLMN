@@ -1,13 +1,15 @@
 import { detectCognitiveConflict, shouldInstinctOverride } from "@/cognition/override.ts"
-import { ATTENTION } from "@/config/constants.ts"
+import { ATTENTION, SOCIAL_MEDIA } from "@/config/constants.ts"
 import { env } from "@/config/env.ts"
 import { callIntelligence } from "@/core/intelligence.ts"
 import { thinkDream } from "@/dream/thinking.ts"
+import type { XPost } from "@/integrations/types.ts"
+import { getHomeTimeline, isXEnabled } from "@/integrations/x.ts"
 import { log } from "@/lib/logger.ts"
 import { captureError } from "@/lib/sentry.ts"
 import { queryRelated } from "@/memory/episodic.ts"
 import { getGoalsByPriority } from "@/memory/goals.ts"
-import { getConsecutiveIdleTicks } from "@/memory/working.ts"
+import { canPerformSocialMedia, getConsecutiveIdleTicks } from "@/memory/working.ts"
 import { getOperatorProfile } from "@/mind/profile.ts"
 import { generateInnerDialog } from "@/polyphony/dialog.ts"
 import { selectActiveVoices, shouldRunDialog } from "@/polyphony/voices.ts"
@@ -30,7 +32,21 @@ export async function deliberate(senseResult: SenseResult, feelResult: FeelingRe
     triggeredWorkflows: senseResult.triggeredWorkflows,
     moodContext: senseResult.moodContext
   }
-  const contextString = await buildContext(senseData, feelResult.emotion)
+  let xContext: { canBrowse: boolean; canPost: boolean; timeline?: XPost[] } | undefined
+  if (isXEnabled()) {
+    const socialStatus = await canPerformSocialMedia()
+    let timeline: XPost[] | undefined
+    if (socialStatus.canBrowse) {
+      try {
+        timeline = await getHomeTimeline(SOCIAL_MEDIA.TIMELINE_MAX_RESULTS)
+      } catch (e) {
+        log.warn("Failed to pre-fetch X timeline", { error: e instanceof Error ? e.message : String(e) })
+      }
+    }
+    xContext = { ...socialStatus, timeline }
+  }
+
+  const contextString = await buildContext(senseData, feelResult.emotion, xContext)
   const systemPrompt = buildSystemPrompt(contextString)
 
   const activeVoices = selectActiveVoices(feelResult.emotion, env().PERSONALITY_TYPE, {
@@ -193,6 +209,8 @@ export async function deliberate(senseResult: SenseResult, feelResult: FeelingRe
       return { ...base, morningResult: await thinkMorning(systemPrompt, feelResult.emotion, senseResult.moodContext) }
     case "reflect":
       return { ...base, reflectionResult: await thinkReflect(systemPrompt) }
+    case "social_media":
+      return { ...base, xTimeline: xContext?.timeline }
     default:
       return base
   }

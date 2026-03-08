@@ -20,6 +20,7 @@ import { computeEmotionalIntensity } from "@/emotion/update.ts"
 import { getRecentChangelog } from "@/evolution/changelog.ts"
 import type { CodeProposal, EvolutionCycleResult } from "@/evolution/types.ts"
 import { getValidatedRedis } from "@/integrations/redis.ts"
+import type { XPost } from "@/integrations/types.ts"
 import { nowLocal } from "@/lib/time.ts"
 import {
   queryHumorCallbacks,
@@ -429,7 +430,8 @@ function buildPerceptionSections(
   operatorLanguage: string,
   lastTick: TickSummary | null,
   conversationBuffer: ConversationSlot[],
-  timePerception: ReturnType<typeof computeTimePerception>
+  timePerception: ReturnType<typeof computeTimePerception>,
+  xContext?: { canBrowse: boolean; canPost: boolean; timeline?: XPost[] }
 ): string[] {
   const sections: string[] = []
 
@@ -511,6 +513,28 @@ function buildPerceptionSections(
   }
 
   sections.push(formatConversationBuffer(conversationBuffer))
+
+  if (xContext) {
+    const xLines = ["# X (Twitter)"]
+    const statusParts: string[] = []
+    if (xContext.canBrowse) statusParts.push("browse: available")
+    else statusParts.push("browse: cooldown")
+    if (xContext.canPost) statusParts.push("post: available")
+    else statusParts.push("post: cooldown")
+    xLines.push(`Status: ${statusParts.join(", ")}`)
+
+    if (xContext.timeline && xContext.timeline.length > 0) {
+      xLines.push(`\nTimeline (${xContext.timeline.length} posts):`)
+      for (const post of xContext.timeline) {
+        const author = post.authorUsername ? `@${post.authorUsername}` : post.authorId
+        const text = post.text.length > 200 ? `${post.text.slice(0, 200)}...` : post.text
+        xLines.push(`  - [${author}]: ${text}`)
+        xLines.push(`    ${post.url} | ❤ ${post.likeCount} 🔁 ${post.retweetCount}`)
+      }
+    }
+
+    sections.push(xLines.join("\n"))
+  }
 
   if (senseData.conversationState) {
     const conversationState = senseData.conversationState
@@ -941,7 +965,11 @@ function buildGrowthSections(
  * Build the full context for ANIMA's single LLM call.
  * Gathers all data, formats into ordered sections, joined with double newlines.
  */
-export async function buildContext(senseData: SenseData, emotion: EmotionalState): Promise<string> {
+export async function buildContext(
+  senseData: SenseData,
+  emotion: EmotionalState,
+  xContext?: { canBrowse: boolean; canPost: boolean; timeline?: XPost[] }
+): Promise<string> {
   const emotionIntensity = computeEmotionalIntensity(emotion)
 
   const [
@@ -1034,7 +1062,7 @@ export async function buildContext(senseData: SenseData, emotion: EmotionalState
   )
 
   const sections = [
-    ...buildPerceptionSections(senseData, operatorLanguage, lastTick, conversationBuffer, timePerception),
+    ...buildPerceptionSections(senseData, operatorLanguage, lastTick, conversationBuffer, timePerception, xContext),
     ...buildInnerSections({
       emotion,
       emotionHistory,

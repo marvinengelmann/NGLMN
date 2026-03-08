@@ -38,7 +38,12 @@ const EnvSchema = z.object({
   ELEVENLABS_API_KEY: z.string().optional(),
   ELEVENLABS_VOICE_ID: z.string().default("9GYSBtwJVgyLbYO5E3Ld"),
 
-  XAI_API_KEY: z.string().optional()
+  XAI_API_KEY: z.string().optional(),
+
+  X_API_KEY: z.string().optional(),
+  X_API_SECRET: z.string().optional(),
+  X_ACCESS_TOKEN: z.string().optional(),
+  X_ACCESS_TOKEN_SECRET: z.string().optional()
 })
 
 type EnvKey = keyof z.infer<typeof EnvSchema>

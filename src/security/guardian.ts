@@ -220,7 +220,11 @@ const SECRET_PATTERNS = [
   /postgresql:\/\/\S+/,
   /AI_GATEWAY_API_KEY\s*=\s*\S+/,
   /GITHUB_TOKEN\s*=\s*\S+/,
-  /TELEGRAM_BOT_TOKEN\s*=\s*\S+/
+  /TELEGRAM_BOT_TOKEN\s*=\s*\S+/,
+  /X_API_KEY\s*=\s*\S+/,
+  /X_API_SECRET\s*=\s*\S+/,
+  /X_ACCESS_TOKEN\s*=\s*\S+/,
+  /X_ACCESS_TOKEN_SECRET\s*=\s*\S+/
 ]
 
 /**

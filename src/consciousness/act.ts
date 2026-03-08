@@ -14,16 +14,23 @@ import {
 } from "@/emotion/update.ts"
 import { runEvolutionCycle } from "@/evolution/cycle.ts"
 import { sendMessageWithReply } from "@/integrations/telegram.ts"
+import { postToX } from "@/integrations/x.ts"
 import { log } from "@/lib/logger.ts"
 import { logAndCaptureError, trySafe } from "@/lib/result.ts"
-import { sleep } from "@/lib/time.ts"
+import { nowISO, sleep } from "@/lib/time.ts"
 import { storeEpisode, storeHumorEpisode, storeRelationshipEpisode } from "@/memory/episodic.ts"
 import { executeGoalUpdate } from "@/memory/goals.ts"
-import { getLastTickSummary, setDreamState } from "@/memory/working.ts"
+import {
+  getLastTickSummary,
+  setDreamState,
+  setSocialMediaLastBrowse,
+  setSocialMediaLastPost
+} from "@/memory/working.ts"
 import { generateNarrativeEntry } from "@/psyche/narrative.ts"
 import { savePsycheSnapshot, saveSelfConcept } from "@/psyche/state.ts"
 import { updateSelfConcept } from "@/psyche/update.ts"
 import { executeMorning, executeReflection } from "@/routine/executor.ts"
+import { validatePublicContent } from "@/security/privacy.ts"
 import { saveSomaticState } from "@/soma/state.ts"
 import { computeSomaticUpdate, drainSocialBattery } from "@/soma/update.ts"
 import { executeWorkflow } from "@/workflow/engine.ts"
@@ -230,6 +237,36 @@ async function executeAction(deliberateResult: DeliberateResult): Promise<void> 
       const { lifeEventType, lifeEventDetail } = decision.actionPayload ?? {}
       if (lifeEventType) {
         await startChosenLifeEvent(lifeEventType, lifeEventDetail)
+      }
+      break
+    }
+
+    case "social_media": {
+      const { socialMediaMode, xPostText } = decision.actionPayload ?? {}
+
+      if (socialMediaMode === "browse") {
+        await setSocialMediaLastBrowse(nowISO())
+        log.info("Social media browse completed")
+      }
+
+      if (socialMediaMode === "post" && xPostText) {
+        const privacyCheck = await validatePublicContent(xPostText)
+        if (!privacyCheck.passed) {
+          log.warn("Social media post blocked by privacy guardian", { issues: privacyCheck.issues })
+          break
+        }
+
+        const postResult = await trySafe("X_ERROR", () => postToX(xPostText))
+        if (postResult.isErr()) {
+          logAndCaptureError(postResult.error, { phase: "act_social_media_post" })
+        } else {
+          await setSocialMediaLastPost(nowISO())
+          await storeEpisode(`Posted to X: "${xPostText}" — ${postResult.value.url}`, "social_media", {
+            relevanceScore: 0.6,
+            valence: 0.3
+          })
+          log.info("Posted to X", { tweetId: postResult.value.id, url: postResult.value.url })
+        }
       }
       break
     }

@@ -53,6 +53,8 @@ const KEYS = {
   RELATIONSHIP_TOTAL_INTERACTIONS: "working:relationship:totalInteractions",
   DREAM_NARRATIVE: "working:dream:narrative",
   DRIFT_THROTTLE: "working:drift:throttle",
+  SOCIAL_LAST_BROWSE: "working:social:lastBrowse",
+  SOCIAL_LAST_POST: "working:social:lastPost",
   trustLevel: (actionType: string) => `working:trust:${actionType}` as const
 } as const
 
@@ -501,4 +503,36 @@ export async function setDriftThrottle(severity: string, ttlSeconds: number): Pr
 
 export async function getDriftThrottle(): Promise<string | null> {
   return redis.get<string>(KEYS.DRIFT_THROTTLE)
+}
+
+export async function getSocialMediaLastBrowse(): Promise<string | null> {
+  return redis.get<string>(KEYS.SOCIAL_LAST_BROWSE)
+}
+
+export async function setSocialMediaLastBrowse(isoTimestamp: string): Promise<void> {
+  await redis.set(KEYS.SOCIAL_LAST_BROWSE, isoTimestamp)
+}
+
+export async function getSocialMediaLastPost(): Promise<string | null> {
+  return redis.get<string>(KEYS.SOCIAL_LAST_POST)
+}
+
+export async function setSocialMediaLastPost(isoTimestamp: string): Promise<void> {
+  await redis.set(KEYS.SOCIAL_LAST_POST, isoTimestamp)
+}
+
+/**
+ * Check social media cooldowns for browse and post actions.
+ */
+export async function canPerformSocialMedia(): Promise<{ canBrowse: boolean; canPost: boolean }> {
+  const { SOCIAL_MEDIA } = await import("@/config/constants.ts")
+  const now = Date.now()
+
+  const [lastBrowse, lastPost] = await Promise.all([getSocialMediaLastBrowse(), getSocialMediaLastPost()])
+
+  const canBrowse =
+    !lastBrowse || now - parseISO(lastBrowse).getTime() > SOCIAL_MEDIA.BROWSE_COOLDOWN_MINUTES * 60 * 1000
+  const canPost = !lastPost || now - parseISO(lastPost).getTime() > SOCIAL_MEDIA.POST_COOLDOWN_HOURS * 3600 * 1000
+
+  return { canBrowse, canPost }
 }

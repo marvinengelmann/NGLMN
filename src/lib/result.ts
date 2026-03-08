@@ -29,6 +29,8 @@ export type AnimaErrorTag =
   | "DISSONANCE_ERROR"
   | "VULNERABILITY_ERROR"
   | "FEEL_ERROR"
+  | "X_ERROR"
+  | "PRIVACY_ERROR"
   | "UNKNOWN_ERROR"
 
 export interface AnimaError {

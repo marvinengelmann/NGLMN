@@ -47,6 +47,19 @@ export const PendingMessage = z.object({
 })
 export type PendingMessage = z.infer<typeof PendingMessage>
 
+export const XPost = z.object({
+  id: z.string(),
+  text: z.string(),
+  authorId: z.string(),
+  authorName: z.string().optional(),
+  authorUsername: z.string().optional(),
+  createdAt: z.string(),
+  url: z.string(),
+  likeCount: z.number().default(0),
+  retweetCount: z.number().default(0)
+})
+export type XPost = z.infer<typeof XPost>
+
 export const WeatherData = z.object({
   temperature: z.number(),
   feelsLike: z.number(),
