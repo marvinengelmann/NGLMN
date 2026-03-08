@@ -17,19 +17,19 @@ function parseICalValue(data: string, key: string): string | undefined {
 
 function parseICalDate(value: string): { date: Date; allDay: boolean } {
   if (value.length === 8) {
-    const year = Number.parseInt(value.slice(0, 4))
-    const month = Number.parseInt(value.slice(4, 6)) - 1
-    const day = Number.parseInt(value.slice(6, 8))
+    const year = Number.parseInt(value.slice(0, 4), 10)
+    const month = Number.parseInt(value.slice(4, 6), 10) - 1
+    const day = Number.parseInt(value.slice(6, 8), 10)
     return { date: new Date(year, month, day), allDay: true }
   }
 
   const cleaned = value.replace(/Z$/, "")
-  const year = Number.parseInt(cleaned.slice(0, 4))
-  const month = Number.parseInt(cleaned.slice(4, 6)) - 1
-  const day = Number.parseInt(cleaned.slice(6, 8))
-  const hour = Number.parseInt(cleaned.slice(9, 11))
-  const minute = Number.parseInt(cleaned.slice(11, 13))
-  const second = Number.parseInt(cleaned.slice(13, 15))
+  const year = Number.parseInt(cleaned.slice(0, 4), 10)
+  const month = Number.parseInt(cleaned.slice(4, 6), 10) - 1
+  const day = Number.parseInt(cleaned.slice(6, 8), 10)
+  const hour = Number.parseInt(cleaned.slice(9, 11), 10)
+  const minute = Number.parseInt(cleaned.slice(11, 13), 10)
+  const second = Number.parseInt(cleaned.slice(13, 15), 10)
 
   const date = value.endsWith("Z")
     ? new Date(Date.UTC(year, month, day, hour, minute, second))
@@ -43,7 +43,7 @@ function parseVEvents(icalData: string): CalendarEvent[] {
   const vevents = icalData.split("BEGIN:VEVENT")
 
   for (let i = 1; i < vevents.length; i++) {
-    const block = vevents[i]!.split("END:VEVENT")[0] ?? ""
+    const block = vevents[i]?.split("END:VEVENT")[0] ?? ""
 
     const uid = parseICalValue(block, "UID")
     const summary = parseICalValue(block, "SUMMARY")

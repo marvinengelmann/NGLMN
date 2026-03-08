@@ -43,6 +43,13 @@
       "when": 1772844177140,
       "tag": "0005_slimy_dagger",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1773009714288,
+      "tag": "0006_numerous_whirlwind",
+      "breakpoints": true
     }
   ]
 }

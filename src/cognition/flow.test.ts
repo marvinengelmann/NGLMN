@@ -49,4 +49,35 @@ describe("computeAttentionState", () => {
     })
     expect(computeAttentionState(emotion, makeSomaticState(), false, 0)).toBe("focused")
   })
+
+  it("returns drifting during long conversation with low energy and high boredom", () => {
+    const emotion = makeEmotionalState({
+      energy: ATTENTION.CONVERSATION_DRIFT_ENERGY - 0.05,
+      boredom: ATTENTION.CONVERSATION_DRIFT_BOREDOM + 0.05,
+      curiosity: 0.3
+    })
+    expect(
+      computeAttentionState(emotion, makeSomaticState(), true, 0, ATTENTION.CONVERSATION_DRIFT_MIN_MESSAGES + 5)
+    ).toBe("drifting")
+  })
+
+  it("returns focused in short conversation even with low energy", () => {
+    const emotion = makeEmotionalState({
+      energy: ATTENTION.CONVERSATION_DRIFT_ENERGY - 0.05,
+      boredom: ATTENTION.CONVERSATION_DRIFT_BOREDOM + 0.05,
+      curiosity: 0.3
+    })
+    expect(computeAttentionState(emotion, makeSomaticState(), true, 0, 5)).toBe("focused")
+  })
+
+  it("returns focused during conversation when energy is sufficient", () => {
+    const emotion = makeEmotionalState({
+      energy: 0.6,
+      boredom: ATTENTION.CONVERSATION_DRIFT_BOREDOM + 0.05,
+      curiosity: 0.3
+    })
+    expect(
+      computeAttentionState(emotion, makeSomaticState(), true, 0, ATTENTION.CONVERSATION_DRIFT_MIN_MESSAGES + 5)
+    ).toBe("focused")
+  })
 })

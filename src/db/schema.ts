@@ -337,6 +337,23 @@ export const distortionLog = pgTable(
 export type DistortionLogInsert = typeof distortionLog.$inferInsert
 export type DistortionLogSelect = typeof distortionLog.$inferSelect
 
+export const heldBackLog = pgTable(
+  "held_back_log",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    content: text("content").notNull(),
+    reason: text("reason").notNull(),
+    emotionalCharge: real("emotional_charge").notNull(),
+    surfaced: boolean("surfaced").default(false),
+    surfacedAt: timestamp("surfaced_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow()
+  },
+  (table) => [index("idx_held_back_log_created").on(table.createdAt)]
+)
+
+export type HeldBackLogInsert = typeof heldBackLog.$inferInsert
+export type HeldBackLogSelect = typeof heldBackLog.$inferSelect
+
 export const deceptionLog = pgTable(
   "deception_log",
   {
