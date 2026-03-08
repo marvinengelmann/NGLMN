@@ -366,3 +366,14 @@ export const deceptionLog = pgTable(
   },
   (table) => [index("idx_deception_log_created").on(table.createdAt)]
 )
+
+export const genesis = pgTable("genesis", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  seed: integer("seed").notNull(),
+  dna: jsonb("dna").notNull(),
+  identity: jsonb("identity").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow()
+})
+
+export type GenesisInsert = typeof genesis.$inferInsert
+export type GenesisSelect = typeof genesis.$inferSelect

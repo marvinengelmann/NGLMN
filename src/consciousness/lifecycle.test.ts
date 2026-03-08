@@ -44,7 +44,7 @@ vi.mock("@/lib/sentry.ts", () => ({
 }))
 
 vi.mock("@/prompts/personality.ts", () => ({
-  PERSONALITY_PROMPT: "Test personality prompt"
+  getPersonalityPrompt: vi.fn().mockResolvedValue("Test personality prompt")
 }))
 
 vi.mock("@/lib/time.ts", () => ({

@@ -49,7 +49,7 @@ async function dump() {
   }
 
   const contextString = await buildContext(senseData, emotion)
-  const systemPrompt = buildSystemPrompt(contextString)
+  const systemPrompt = await buildSystemPrompt(contextString)
 
   console.log("=".repeat(80))
   console.log("  SYSTEM PROMPT")

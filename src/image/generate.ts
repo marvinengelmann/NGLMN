@@ -21,7 +21,7 @@ export function generateAnimaImage(
   aspectRatio: "1:1" | "16:9" | "9:16" = "1:1"
 ): AnimaResultAsync<Buffer> {
   return trySafe("LLM_ERROR", async () => {
-    const fullPrompt = buildImagePrompt(prompt, includesSelf)
+    const fullPrompt = await buildImagePrompt(prompt, includesSelf)
 
     const result = await generateImage({
       model: IMAGE_MODEL,

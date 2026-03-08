@@ -14,7 +14,7 @@ import { nowLocal } from "@/lib/time.ts"
 import { storeEpisode } from "@/memory/episodic.ts"
 import { getDreamLastRun, pushToActiveConversation } from "@/memory/working.ts"
 import { LIFECYCLE_MID_EVENT_PROMPT, LIFECYCLE_START_PROMPT } from "@/prompts/lifecycle.ts"
-import { PERSONALITY_PROMPT } from "@/prompts/personality.ts"
+import { getPersonalityPrompt } from "@/prompts/personality.ts"
 
 const LIFECYCLE_EVENT_KEY = "working:lifecycle:event"
 const LIFECYCLE_EVENT_META_KEY = "working:lifecycle:event:meta"
@@ -172,7 +172,8 @@ async function generateLifecycleMessage(eventType: string, context: "start" | "m
     currentMood: emotion
   }
 
-  const system = `${PERSONALITY_PROMPT}\n\n${systemPrompt}`
+  const personalityPrompt = await getPersonalityPrompt()
+  const system = `${personalityPrompt}\n\n${systemPrompt}`
 
   const result = await callIntelligence({
     system,

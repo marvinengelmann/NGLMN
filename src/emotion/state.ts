@@ -13,6 +13,7 @@ import {
   type EmotionTrigger,
   type EmotionUpdateEvent
 } from "./types.ts"
+import { getGenesisDNA } from "@/genesis/state.ts"
 import { computeEmotionalUpdate } from "./update.ts"
 
 const MOMENTUM_KEYS = {
@@ -36,8 +37,10 @@ export async function getEmotionalState(): Promise<EmotionalState> {
     return state
   }
 
-  await setCurrentEmotion(DEFAULT_EMOTIONAL_STATE)
-  return DEFAULT_EMOTIONAL_STATE
+  const dna = await getGenesisDNA()
+  const baseline = dna?.emotionalBaseline ?? DEFAULT_EMOTIONAL_STATE
+  await setCurrentEmotion(baseline)
+  return baseline
 }
 
 /**

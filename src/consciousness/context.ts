@@ -96,8 +96,8 @@ import {
   PHENOMENOLOGICAL_PROMPT,
   RHYTHM_PROMPT
 } from "@/prompts/consciousness.ts"
-import { IDENTITY_PROMPT } from "@/prompts/identity.ts"
-import { PERSONALITY_PROMPT } from "@/prompts/personality.ts"
+import { getIdentityPrompt } from "@/prompts/identity.ts"
+import { getPersonalityPrompt } from "@/prompts/personality.ts"
 import { shouldSurface } from "@/psyche/heldback/compute.ts"
 import { getHeldBackBuffer } from "@/psyche/heldback/state.ts"
 import type { HeldBackBuffer } from "@/psyche/heldback/types.ts"
@@ -1792,10 +1792,11 @@ export async function buildContext(
 /**
  * Assemble the full ANIMA system prompt: identity, personality, consciousness, and context.
  */
-export function buildSystemPrompt(contextSections: string): string {
+export async function buildSystemPrompt(contextSections: string): Promise<string> {
+  const [identityPrompt, personalityPrompt] = await Promise.all([getIdentityPrompt(), getPersonalityPrompt()])
   return [
-    IDENTITY_PROMPT,
-    PERSONALITY_PROMPT,
+    identityPrompt,
+    personalityPrompt,
     RHYTHM_PROMPT,
     ACTIONS_PROMPT,
     COMMUNICATION_PROMPT,

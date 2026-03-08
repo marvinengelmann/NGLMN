@@ -2,7 +2,7 @@ import { computeVoiceModifiers } from "@/altered/compute.ts"
 import { getActiveAlteredState } from "@/altered/state.ts"
 import { detectCognitiveConflict, shouldInstinctOverride } from "@/cognition/override.ts"
 import { ATTENTION, CALENDAR, SOCIAL_MEDIA } from "@/config/constants.ts"
-import { env } from "@/config/env.ts"
+import { getGenesisPersonalityType } from "@/genesis/state.ts"
 import { callIntelligence } from "@/core/intelligence.ts"
 import { thinkDream } from "@/dream/thinking.ts"
 import { fetchUpcomingEvents, isCaldavEnabled } from "@/integrations/caldav.ts"
@@ -90,14 +90,14 @@ export async function deliberate(senseResult: SenseResult, feelResult: FeelingRe
   }
 
   const contextString = await buildContext(senseData, feelResult.emotion, xContext, emailContext, calendarContext)
-  const systemPrompt = buildSystemPrompt(contextString)
+  const systemPrompt = await buildSystemPrompt(contextString)
 
   const alteredState = await getActiveAlteredState()
   const alteredVoiceModifiers = alteredState ? computeVoiceModifiers(alteredState) : undefined
 
   const activeVoices = selectActiveVoices(
     feelResult.emotion,
-    env().PERSONALITY_TYPE,
+    await getGenesisPersonalityType(),
     {
       dissonanceScore: feelResult.dissonance.activeDissonance,
       action: "pending",

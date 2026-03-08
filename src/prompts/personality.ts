@@ -1,4 +1,10 @@
-import { env } from "@/config/env.ts"
+import { getGenesisPersonalityType } from "@/genesis/state.ts"
 import { PERSONALITY_PROMPTS, PERSONALITY_SECTION_INTRO } from "@/personality/profiles.ts"
 
-export const PERSONALITY_PROMPT = `${PERSONALITY_SECTION_INTRO}\n\n${PERSONALITY_PROMPTS[env().PERSONALITY_TYPE]}`
+/**
+ * Build the personality prompt using the genesis-derived personality type.
+ */
+export async function getPersonalityPrompt(): Promise<string> {
+  const personalityType = await getGenesisPersonalityType()
+  return `${PERSONALITY_SECTION_INTRO}\n\n${PERSONALITY_PROMPTS[personalityType]}`
+}

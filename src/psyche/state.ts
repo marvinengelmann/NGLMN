@@ -3,6 +3,7 @@ import * as z from "zod"
 import { db } from "@/db/client.ts"
 import { psycheSnapshots } from "@/db/schema.ts"
 import { getValidatedRedis, getValidatedRedisOr, redis } from "@/integrations/redis.ts"
+import { getGenesisDNA } from "@/genesis/state.ts"
 import { DEFAULT_SELF_CONCEPT, GrowthArc, NarrativeEntry, type PsycheSnapshot, SelfConcept } from "./types.ts"
 
 const KEYS = {
@@ -34,6 +35,9 @@ export async function getSelfConcept(): Promise<SelfConcept> {
       return parsed.data
     }
   }
+
+  const dna = await getGenesisDNA()
+  if (dna) return dna.initialSelfConcept
 
   return DEFAULT_SELF_CONCEPT
 }
