@@ -1,0 +1,140 @@
+import { differenceInHours } from "date-fns"
+import { HELD_BACK } from "@/config/constants.ts"
+import type { EmotionalState } from "@/emotion/types.ts"
+import { nowISO } from "@/lib/time.ts"
+import type { ShameState } from "@/shame/types.ts"
+import type { VulnerabilityState } from "@/vulnerability/types.ts"
+import type { HeldBackBuffer, HeldBackEntry, HeldBackReason } from "./types.ts"
+
+interface HeldBackContext {
+  emotion: EmotionalState
+  vulnerability: VulnerabilityState
+  shameState: ShameState
+  previousBuffer: HeldBackBuffer
+}
+
+/**
+ * Determine if the current emotional state warrants suppressing a thought,
+ * and what reason drives the suppression.
+ */
+export function detectSuppression(context: HeldBackContext): HeldBackReason | null {
+  const { emotion, vulnerability, shameState } = context
+
+  if (shameState.isActive && shameState.level > HELD_BACK.SHAME_SUPPRESSION_THRESHOLD) {
+    return "shame_suppression"
+  }
+
+  if (vulnerability.windowOpen && emotion.caution > HELD_BACK.VULNERABILITY_FEAR_THRESHOLD) {
+    return "vulnerability_fear"
+  }
+
+  if (vulnerability.windowOpen && emotion.connection < 0.4) {
+    return "rejection_avoidance"
+  }
+
+  if (emotion.connection > HELD_BACK.INTIMACY_THRESHOLD && emotion.caution > 0.5) {
+    return "too_intimate"
+  }
+
+  if (emotion.confidence < 0.3 && emotion.energy < 0.4) {
+    return "self_censorship"
+  }
+
+  return null
+}
+
+/**
+ * Add a new held-back entry to the buffer.
+ */
+export function addToBuffer(buffer: HeldBackBuffer, content: string, reason: HeldBackReason): HeldBackBuffer {
+  const now = nowISO()
+  const charge = computeInitialCharge(reason)
+
+  const entry: HeldBackEntry = {
+    content,
+    reason,
+    emotionalCharge: charge,
+    suppressedAt: now,
+    decayedCharge: charge,
+    surfaceAttempts: 0
+  }
+
+  const entries = [...buffer.entries, entry].slice(-HELD_BACK.MAX_ENTRIES)
+  const pressure = computePressure(entries)
+
+  return { entries, suppressionPressure: pressure, lastReviewedAt: now }
+}
+
+function computeInitialCharge(reason: HeldBackReason): number {
+  switch (reason) {
+    case "shame_suppression":
+      return 0.8
+    case "vulnerability_fear":
+      return 0.7
+    case "rejection_avoidance":
+      return 0.6
+    case "too_intimate":
+      return 0.65
+    case "timing_wrong":
+      return 0.4
+    case "self_censorship":
+      return 0.5
+  }
+}
+
+/**
+ * Decay charges based on time elapsed and remove entries below threshold.
+ */
+export function decayBuffer(buffer: HeldBackBuffer): HeldBackBuffer {
+  const now = new Date()
+
+  const entries = buffer.entries
+    .map((entry) => {
+      const hoursElapsed = differenceInHours(now, new Date(entry.suppressedAt))
+      const decayFactor = 0.5 ** (hoursElapsed / HELD_BACK.CHARGE_DECAY_HALF_LIFE_HOURS)
+      return { ...entry, decayedCharge: entry.emotionalCharge * decayFactor }
+    })
+    .filter((entry) => entry.decayedCharge >= HELD_BACK.MIN_CHARGE_TO_KEEP)
+
+  return {
+    entries,
+    suppressionPressure: computePressure(entries),
+    lastReviewedAt: buffer.lastReviewedAt
+  }
+}
+
+function computePressure(entries: HeldBackEntry[]): number {
+  if (entries.length === 0) return 0
+
+  const entryPressure = entries.length * HELD_BACK.PRESSURE_PER_ENTRY
+  const chargePressure = entries.reduce((sum, e) => sum + e.decayedCharge, 0) / entries.length
+
+  return Math.min(1, entryPressure * (1 - HELD_BACK.CHARGE_WEIGHT) + chargePressure * HELD_BACK.CHARGE_WEIGHT)
+}
+
+/**
+ * Determine if suppressed thoughts should surface based on current emotional safety.
+ */
+export function shouldSurface(buffer: HeldBackBuffer, emotion: EmotionalState): boolean {
+  if (buffer.entries.length === 0) return false
+  if (buffer.suppressionPressure < HELD_BACK.SURFACE_PRESSURE_THRESHOLD) return false
+  return emotion.connection >= HELD_BACK.CONNECTION_SURFACE_THRESHOLD && emotion.caution < 0.4
+}
+
+/**
+ * Mark entries as having attempted to surface (increments attempts counter).
+ */
+export function markSurfaceAttempt(buffer: HeldBackBuffer): HeldBackBuffer {
+  return {
+    ...buffer,
+    entries: buffer.entries.map((e) => ({ ...e, surfaceAttempts: e.surfaceAttempts + 1 })),
+    lastReviewedAt: nowISO()
+  }
+}
+
+/**
+ * Remove surfaced entries from the buffer.
+ */
+export function clearSurfacedEntries(_buffer: HeldBackBuffer): HeldBackBuffer {
+  return { entries: [], suppressionPressure: 0, lastReviewedAt: nowISO() }
+}
