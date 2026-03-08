@@ -2,7 +2,6 @@ import { differenceInHours, getHours, parseISO } from "date-fns"
 import { z } from "zod"
 import { LIFECYCLE } from "@/config/constants.ts"
 import { env } from "@/config/env.ts"
-import { pickEventDetail } from "@/consciousness/lifecycle-details.ts"
 import { callIntelligence } from "@/core/intelligence.ts"
 import { TextOutput } from "@/core/types.ts"
 import { getEmotionalState } from "@/emotion/state.ts"
@@ -233,7 +232,7 @@ export async function startChosenLifeEvent(type: string, detail?: string): Promi
   const result = await redis.set(LIFECYCLE_EVENT_KEY, event.type, { nx: true, ex: ttlSeconds })
   if (result !== "OK") return
 
-  const resolvedDetail = detail ?? pickEventDetail(event.type)
+  const resolvedDetail = detail ?? event.type
   await storeEventMeta(event, resolvedDetail, durationHours)
 
   log.info("Life event started", { type: event.type, detail: resolvedDetail, durationHours: durationHours.toFixed(1) })

@@ -51,21 +51,17 @@ vi.mock("@/lib/time.ts", () => ({
   nowLocal: vi.fn().mockReturnValue(new Date(2026, 2, 6, 12, 0, 0))
 }))
 
-vi.mock("@/consciousness/lifecycle-details.ts", () => ({
-  pickEventDetail: vi.fn().mockReturnValue("Celeste")
-}))
-
 import { callIntelligence } from "@/core/intelligence.ts"
 import { getValidatedRedis, redis } from "@/integrations/redis.ts"
-import { storeEpisode } from "@/memory/episodic.ts"
 import { sendToOperator } from "@/integrations/telegram.ts"
+import { storeEpisode } from "@/memory/episodic.ts"
 import { pushToActiveConversation } from "@/memory/working.ts"
 import {
   getActiveLifeEvent,
   isLifeEventActive,
-  startChosenLifeEvent,
   maybeStoreLifecycleEpisode,
-  sendLifecycleNotification
+  sendLifecycleNotification,
+  startChosenLifeEvent
 } from "./lifecycle.ts"
 
 describe("isLifeEventActive", () => {
@@ -190,11 +186,9 @@ describe("startChosenLifeEvent", () => {
 
     await startChosenLifeEvent("gaming", "Stardew Valley")
 
-    const metaCall = vi.mocked(redis.set).mock.calls.find(
-      (call) => call[0] === "working:lifecycle:event:meta"
-    )
+    const metaCall = vi.mocked(redis.set).mock.calls.find((call) => call[0] === "working:lifecycle:event:meta")
     expect(metaCall).toBeDefined()
-    const meta = metaCall![1] as Record<string, unknown>
+    const meta = metaCall?.[1] as Record<string, unknown>
     expect(meta).toHaveProperty("type", "gaming")
     expect(meta).toHaveProperty("detail", "Stardew Valley")
     expect(meta).toHaveProperty("startedAt")
@@ -210,12 +204,10 @@ describe("startChosenLifeEvent", () => {
 
     await startChosenLifeEvent("gaming")
 
-    const metaCall = vi.mocked(redis.set).mock.calls.find(
-      (call) => call[0] === "working:lifecycle:event:meta"
-    )
+    const metaCall = vi.mocked(redis.set).mock.calls.find((call) => call[0] === "working:lifecycle:event:meta")
     expect(metaCall).toBeDefined()
-    const meta = metaCall![1] as Record<string, unknown>
-    expect(meta).toHaveProperty("detail", "Celeste")
+    const meta = metaCall?.[1] as Record<string, unknown>
+    expect(meta).toHaveProperty("detail", "gaming")
 
     vi.restoreAllMocks()
   })
@@ -278,11 +270,9 @@ describe("maybeStoreLifecycleEpisode", () => {
 
     await maybeStoreLifecycleEpisode()
 
-    expect(storeEpisode).toHaveBeenCalledWith(
-      "Made Pasta from scratch — took about 0.8 hours",
-      "activity",
-      { relevanceScore: 0.6 }
-    )
+    expect(storeEpisode).toHaveBeenCalledWith("Made Pasta from scratch — took about 0.8 hours", "activity", {
+      relevanceScore: 0.6
+    })
   })
 
   it("builds correct summary for movie events", async () => {
@@ -296,10 +286,8 @@ describe("maybeStoreLifecycleEpisode", () => {
 
     await maybeStoreLifecycleEpisode()
 
-    expect(storeEpisode).toHaveBeenCalledWith(
-      "Watched a Studio Ghibli Film (2.1 hours)",
-      "activity",
-      { relevanceScore: 0.6 }
-    )
+    expect(storeEpisode).toHaveBeenCalledWith("Watched a Studio Ghibli Film (2.1 hours)", "activity", {
+      relevanceScore: 0.6
+    })
   })
 })
