@@ -149,7 +149,8 @@ const CROSS_COUPLING_RULES: CrossCouplingRule[] = [
   { when: (s) => s.curiosity > 0.7 && s.energy > 0.6, target: "excitement", factor: 1.15 },
   { when: (s) => s.satisfaction > 0.7, target: "confidence", factor: 1.1 },
   { when: (s) => s.connection > 0.7 && s.excitement > 0.6, target: "satisfaction", factor: 1.15 },
-  { when: (s) => s.energy > 0.7, target: "curiosity", factor: 1.1 }
+  { when: (s) => s.energy > 0.7, target: "curiosity", factor: 1.1 },
+  { when: (s) => s.excitement > 0.7 && s.curiosity > 0.6, target: "energy", factor: 0.985 }
 ]
 
 /**
@@ -159,7 +160,13 @@ export function applyCrossCoupling(state: EmotionalState): EmotionalState {
   const result = { ...state }
   for (const rule of CROSS_COUPLING_RULES) {
     if (rule.when(result)) {
-      result[rule.target] *= rule.factor
+      if (rule.factor > 1) {
+        const strength = rule.factor - 1
+        const headroom = 1 - result[rule.target]
+        result[rule.target] += strength * headroom
+      } else {
+        result[rule.target] *= rule.factor
+      }
     }
   }
   return clampState(result)

@@ -57,6 +57,28 @@ describe("applyCrossCoupling — amplification rules", () => {
       expect(value).toBeLessThanOrEqual(1)
     }
   })
+
+  it("uses diminishing returns near 1.0 — amplification weakens with less headroom", () => {
+    const mid: EmotionalState = { ...neutral, energy: 0.8, curiosity: 0.5 }
+    const high: EmotionalState = { ...neutral, energy: 0.8, curiosity: 0.95 }
+    const midResult = applyCrossCoupling(mid)
+    const highResult = applyCrossCoupling(high)
+    const midBoost = midResult.curiosity - mid.curiosity
+    const highBoost = highResult.curiosity - high.curiosity
+    expect(midBoost).toBeGreaterThan(highBoost)
+  })
+
+  it("does not push values already at 1.0 any higher", () => {
+    const state: EmotionalState = { ...neutral, energy: 0.8, curiosity: 1.0 }
+    const result = applyCrossCoupling(state)
+    expect(result.curiosity).toBe(1.0)
+  })
+
+  it("drains energy when excitement and curiosity are both high", () => {
+    const state: EmotionalState = { ...neutral, excitement: 0.8, curiosity: 0.7, energy: 0.9 }
+    const result = applyCrossCoupling(state)
+    expect(result.energy).toBeLessThan(0.9)
+  })
 })
 
 describe("computeValence", () => {
