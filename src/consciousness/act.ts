@@ -26,6 +26,7 @@ import { storeKnowledge } from "@/memory/semantic.ts"
 import {
   getLastTickSummary,
   setDreamState,
+  setEmailLastCheck,
   setSocialMediaLastBrowse,
   setSocialMediaLastPost
 } from "@/memory/working.ts"
@@ -262,6 +263,12 @@ async function executeAction(deliberateResult: DeliberateResult): Promise<void> 
         if (result.isErr()) logAndCaptureError(result.error, { phase: "act_store_knowledge" })
         else log.info("Knowledge stored via action", { category: knowledgeCategory, key: knowledgeKey })
       }
+      break
+    }
+
+    case "check_email": {
+      await setEmailLastCheck(nowISO())
+      log.info("Email check completed")
       break
     }
 

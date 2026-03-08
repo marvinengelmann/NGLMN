@@ -52,7 +52,8 @@ export const AnimaAction = z.enum([
   "morning",
   "life_event",
   "social_media",
-  "store_knowledge"
+  "store_knowledge",
+  "check_email"
 ])
 export type AnimaAction = z.infer<typeof AnimaAction>
 

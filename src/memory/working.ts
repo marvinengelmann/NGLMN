@@ -55,6 +55,8 @@ const KEYS = {
   DRIFT_THROTTLE: "working:drift:throttle",
   SOCIAL_LAST_BROWSE: "working:social:lastBrowse",
   SOCIAL_LAST_POST: "working:social:lastPost",
+  EMAIL_LAST_CHECK: "working:email:lastCheck",
+  CALENDAR_LAST_CHECK: "working:calendar:lastCheck",
   trustLevel: (actionType: string) => `working:trust:${actionType}` as const
 } as const
 
@@ -535,4 +537,32 @@ export async function canPerformSocialMedia(): Promise<{ canBrowse: boolean; can
   const canPost = !lastPost || now - parseISO(lastPost).getTime() > SOCIAL_MEDIA.POST_COOLDOWN_HOURS * 3600 * 1000
 
   return { canBrowse, canPost }
+}
+
+export async function getEmailLastCheck(): Promise<string | null> {
+  return redis.get<string>(KEYS.EMAIL_LAST_CHECK)
+}
+
+export async function setEmailLastCheck(isoTimestamp: string): Promise<void> {
+  await redis.set(KEYS.EMAIL_LAST_CHECK, isoTimestamp)
+}
+
+export async function getCalendarLastCheck(): Promise<string | null> {
+  return redis.get<string>(KEYS.CALENDAR_LAST_CHECK)
+}
+
+export async function setCalendarLastCheck(isoTimestamp: string): Promise<void> {
+  await redis.set(KEYS.CALENDAR_LAST_CHECK, isoTimestamp)
+}
+
+export async function canCheckEmail(): Promise<boolean> {
+  const { EMAIL } = await import("@/config/constants.ts")
+  const last = await getEmailLastCheck()
+  return !last || Date.now() - parseISO(last).getTime() > EMAIL.CHECK_COOLDOWN_MINUTES * 60 * 1000
+}
+
+export async function canCheckCalendar(): Promise<boolean> {
+  const { CALENDAR } = await import("@/config/constants.ts")
+  const last = await getCalendarLastCheck()
+  return !last || Date.now() - parseISO(last).getTime() > CALENDAR.CHECK_COOLDOWN_MINUTES * 60 * 1000
 }

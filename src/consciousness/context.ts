@@ -7,7 +7,7 @@ import { getAttentionState, getLastInstinctImpression } from "@/cognition/state.
 import type { AttentionState, InstinctImpression } from "@/cognition/types.ts"
 import { getCommunicationRegister } from "@/communication/state.ts"
 import type { CommunicationRegister, ConversationSlot } from "@/communication/types.ts"
-import { CONTEXT_LIMITS, HUMOR, PERCEPTION, SOCIAL_BATTERY } from "@/config/constants.ts"
+import { CALENDAR, CONTEXT_LIMITS, HUMOR, PERCEPTION, SOCIAL_BATTERY } from "@/config/constants.ts"
 import type { SenseData, TickSummary } from "@/consciousness/types.ts"
 import { getDeceptionState } from "@/deception/state.ts"
 import type { DeceptionState } from "@/deception/types.ts"
@@ -22,7 +22,7 @@ import { computeEmotionalIntensity } from "@/emotion/update.ts"
 import { getRecentChangelog } from "@/evolution/changelog.ts"
 import type { CodeProposal, EvolutionCycleResult } from "@/evolution/types.ts"
 import { getValidatedRedis } from "@/integrations/redis.ts"
-import type { XPost } from "@/integrations/types.ts"
+import type { CalendarEvent, EmailPreview, XPost } from "@/integrations/types.ts"
 import { nowLocal } from "@/lib/time.ts"
 import {
   queryHumorCallbacks,
@@ -434,7 +434,9 @@ function buildPerceptionSections(
   lastTick: TickSummary | null,
   conversationBuffer: ConversationSlot[],
   timePerception: ReturnType<typeof computeTimePerception>,
-  xContext?: { canBrowse: boolean; canPost: boolean; timeline?: XPost[] }
+  xContext?: { canBrowse: boolean; canPost: boolean; timeline?: XPost[] },
+  emailContext?: { canCheck: boolean; unread?: EmailPreview[] },
+  calendarContext?: { canCheck: boolean; upcoming?: CalendarEvent[] }
 ): string[] {
   const sections: string[] = []
 
@@ -537,6 +539,58 @@ function buildPerceptionSections(
     }
 
     sections.push(xLines.join("\n"))
+  }
+
+  if (emailContext) {
+    const emailLines = ["# Email"]
+    emailLines.push(`Status: check: ${emailContext.canCheck ? "available" : "cooldown"}`)
+    if (emailContext.unread && emailContext.unread.length > 0) {
+      emailLines.push(`Unread (${emailContext.unread.length}):`)
+      for (const mail of emailContext.unread) {
+        const dateStr = format(new Date(mail.date), "HH:mm")
+        emailLines.push(`  - [${mail.from}]: ${mail.subject} — ${dateStr}`)
+        if (mail.snippet) {
+          const truncated = mail.snippet.length > 150 ? `${mail.snippet.slice(0, 150)}...` : mail.snippet
+          emailLines.push(`    ${truncated}`)
+        }
+      }
+    } else if (emailContext.canCheck) {
+      emailLines.push("No unread emails.")
+    }
+    sections.push(emailLines.join("\n"))
+  }
+
+  if (calendarContext) {
+    const calLines = ["# Calendar"]
+    calLines.push(`Status: check: ${calendarContext.canCheck ? "available" : "cooldown"}`)
+    if (calendarContext.upcoming && calendarContext.upcoming.length > 0) {
+      calLines.push(`Upcoming events (next 24h):`)
+      const now = new Date()
+      const reminderWindow = CALENDAR.REMINDER_WINDOW_MINUTES * 60 * 1000
+      for (const event of calendarContext.upcoming) {
+        const startDate = new Date(event.start)
+        const endDate = new Date(event.end)
+        const timeUntil = startDate.getTime() - now.getTime()
+        const isImminent = timeUntil > 0 && timeUntil <= reminderWindow
+
+        let timeStr: string
+        if (event.allDay) {
+          timeStr = format(startDate, "MMM d") === format(now, "MMM d") ? "All day" : `${format(startDate, "MMM d")} (all day)`
+        } else {
+          const isTomorrow = format(startDate, "yyyy-MM-dd") !== format(now, "yyyy-MM-dd")
+          const prefix = isTomorrow ? `Tomorrow ${format(startDate, "HH:mm")}` : format(startDate, "HH:mm")
+          timeStr = `${prefix}-${format(endDate, "HH:mm")}`
+        }
+
+        const locationStr = event.location ? ` (${event.location})` : ""
+        const imminentPrefix = isImminent ? `⚡ ` : ""
+        const imminentSuffix = isImminent ? ` (in ${Math.round(timeUntil / 60000)} min!)` : ""
+        calLines.push(`  - ${imminentPrefix}${timeStr}: ${event.summary}${locationStr}${imminentSuffix}`)
+      }
+    } else if (calendarContext.canCheck) {
+      calLines.push("No upcoming events.")
+    }
+    sections.push(calLines.join("\n"))
   }
 
   if (senseData.conversationState) {
@@ -997,7 +1051,9 @@ function buildGrowthSections(
 export async function buildContext(
   senseData: SenseData,
   emotion: EmotionalState,
-  xContext?: { canBrowse: boolean; canPost: boolean; timeline?: XPost[] }
+  xContext?: { canBrowse: boolean; canPost: boolean; timeline?: XPost[] },
+  emailContext?: { canCheck: boolean; unread?: EmailPreview[] },
+  calendarContext?: { canCheck: boolean; upcoming?: CalendarEvent[] }
 ): Promise<string> {
   const emotionIntensity = computeEmotionalIntensity(emotion)
 
@@ -1093,7 +1149,7 @@ export async function buildContext(
   )
 
   const sections = [
-    ...buildPerceptionSections(senseData, operatorLanguage, lastTick, conversationBuffer, timePerception, xContext),
+    ...buildPerceptionSections(senseData, operatorLanguage, lastTick, conversationBuffer, timePerception, xContext, emailContext, calendarContext),
     ...buildInnerSections({
       emotion,
       emotionHistory,

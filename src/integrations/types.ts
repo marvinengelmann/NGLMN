@@ -60,6 +60,25 @@ export const XPost = z.object({
 })
 export type XPost = z.infer<typeof XPost>
 
+export const EmailPreview = z.object({
+  uid: z.number(),
+  from: z.string(),
+  subject: z.string(),
+  date: z.string(),
+  snippet: z.string()
+})
+export type EmailPreview = z.infer<typeof EmailPreview>
+
+export const CalendarEvent = z.object({
+  uid: z.string(),
+  summary: z.string(),
+  location: z.string().optional(),
+  start: z.string(),
+  end: z.string(),
+  allDay: z.boolean()
+})
+export type CalendarEvent = z.infer<typeof CalendarEvent>
+
 export const WeatherData = z.object({
   temperature: z.number(),
   feelsLike: z.number(),

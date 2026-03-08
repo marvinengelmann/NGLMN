@@ -43,7 +43,16 @@ const EnvSchema = z.object({
   X_API_KEY: z.string().optional(),
   X_API_SECRET: z.string().optional(),
   X_ACCESS_TOKEN: z.string().optional(),
-  X_ACCESS_TOKEN_SECRET: z.string().optional()
+  X_ACCESS_TOKEN_SECRET: z.string().optional(),
+
+  IMAP_HOST: z.string().optional(),
+  IMAP_PORT: z.coerce.number().default(993),
+  IMAP_USER: z.string().optional(),
+  IMAP_PASS: z.string().optional(),
+
+  CALDAV_SERVER_URL: z.string().optional(),
+  CALDAV_USER: z.string().optional(),
+  CALDAV_PASS: z.string().optional()
 })
 
 type EnvKey = keyof z.infer<typeof EnvSchema>

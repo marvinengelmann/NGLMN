@@ -30,6 +30,8 @@ export type AnimaErrorTag =
   | "VULNERABILITY_ERROR"
   | "FEEL_ERROR"
   | "X_ERROR"
+  | "IMAP_ERROR"
+  | "CALDAV_ERROR"
   | "PRIVACY_ERROR"
   | "UNKNOWN_ERROR"
 

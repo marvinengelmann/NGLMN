@@ -1,17 +1,21 @@
 import { computeVoiceModifiers } from "@/altered/compute.ts"
 import { getActiveAlteredState } from "@/altered/state.ts"
 import { detectCognitiveConflict, shouldInstinctOverride } from "@/cognition/override.ts"
-import { ATTENTION, SOCIAL_MEDIA } from "@/config/constants.ts"
+import { ATTENTION, CALENDAR, SOCIAL_MEDIA } from "@/config/constants.ts"
 import { env } from "@/config/env.ts"
 import { callIntelligence } from "@/core/intelligence.ts"
 import { thinkDream } from "@/dream/thinking.ts"
-import type { XPost } from "@/integrations/types.ts"
+import { fetchUpcomingEvents } from "@/integrations/caldav.ts"
+import { isCaldavEnabled } from "@/integrations/caldav.ts"
+import { fetchUnreadEmails } from "@/integrations/imap.ts"
+import { isImapEnabled } from "@/integrations/imap.ts"
+import type { CalendarEvent, EmailPreview, XPost } from "@/integrations/types.ts"
 import { getHomeTimeline, isXEnabled } from "@/integrations/x.ts"
 import { log } from "@/lib/logger.ts"
 import { captureError } from "@/lib/sentry.ts"
 import { queryRelated } from "@/memory/episodic.ts"
 import { getGoalsByPriority } from "@/memory/goals.ts"
-import { canPerformSocialMedia, getConsecutiveIdleTicks } from "@/memory/working.ts"
+import { canCheckCalendar, canCheckEmail, canPerformSocialMedia, getConsecutiveIdleTicks, setCalendarLastCheck } from "@/memory/working.ts"
 import { getOperatorProfile } from "@/mind/profile.ts"
 import { generateInnerDialog } from "@/polyphony/dialog.ts"
 import { selectActiveVoices, shouldRunDialog } from "@/polyphony/voices.ts"
@@ -48,7 +52,40 @@ export async function deliberate(senseResult: SenseResult, feelResult: FeelingRe
     xContext = { ...socialStatus, timeline }
   }
 
-  const contextString = await buildContext(senseData, feelResult.emotion, xContext)
+  let emailContext: { canCheck: boolean; unread?: EmailPreview[] } | undefined
+  if (isImapEnabled()) {
+    const canCheck = await canCheckEmail()
+    if (canCheck) {
+      try {
+        const unread = await fetchUnreadEmails()
+        emailContext = { canCheck: true, unread }
+      } catch (e) {
+        log.warn("Failed to pre-fetch emails", { error: e instanceof Error ? e.message : String(e) })
+        emailContext = { canCheck: true }
+      }
+    } else {
+      emailContext = { canCheck: false }
+    }
+  }
+
+  let calendarContext: { canCheck: boolean; upcoming?: CalendarEvent[] } | undefined
+  if (isCaldavEnabled()) {
+    const canCheck = await canCheckCalendar()
+    if (canCheck) {
+      try {
+        const upcoming = await fetchUpcomingEvents(CALENDAR.UPCOMING_WINDOW_HOURS)
+        calendarContext = { canCheck: true, upcoming }
+        await setCalendarLastCheck(new Date().toISOString())
+      } catch (e) {
+        log.warn("Failed to pre-fetch calendar", { error: e instanceof Error ? e.message : String(e) })
+        calendarContext = { canCheck: true }
+      }
+    } else {
+      calendarContext = { canCheck: false }
+    }
+  }
+
+  const contextString = await buildContext(senseData, feelResult.emotion, xContext, emailContext, calendarContext)
   const systemPrompt = buildSystemPrompt(contextString)
 
   const alteredState = await getActiveAlteredState()
