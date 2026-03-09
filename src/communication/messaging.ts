@@ -1,3 +1,4 @@
+import { pushToActiveConversation } from "@/communication/state.ts"
 import { computeTypingDuration, simulateTyping, splitIntoParagraphs } from "@/communication/timing.ts"
 import { maybeIntroduceTypo } from "@/communication/typos.ts"
 import { MESSAGE_DELAY, THINKING, TYPOS } from "@/config/constants.ts"
@@ -16,8 +17,8 @@ import { convertMp3ToOggOpus } from "@/lib/audio.ts"
 import { log } from "@/lib/logger.ts"
 import { captureError } from "@/lib/sentry.ts"
 import { nowISO, sleep } from "@/lib/time.ts"
-import { pushRecentResponse, pushToActiveConversation, setGuardianResult } from "@/memory/working.ts"
 import { handleGuardianVerdict, validateOutput } from "@/security/guardian.ts"
+import { pushRecentResponse, setGuardianResult } from "@/security/state.ts"
 import { getCommunicationRegister } from "./state.ts"
 
 interface MessagingResult {

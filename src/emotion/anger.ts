@@ -1,11 +1,27 @@
 import * as z from "zod"
-import { PROTECTIVE_ANGER } from "@/config/constants.ts"
+import { createStateManager } from "@/lib/state.ts"
 import { nowISO } from "@/lib/time.ts"
 import type { OperatorModel } from "@/mind/types.ts"
 import type { VulnerabilityState } from "@/vulnerability/types.ts"
-import { createStateManager } from "./registry.ts"
+import { decayAndFinalize, sumContributions } from "./helpers.ts"
 import type { ShameState } from "./shame.ts"
 import type { EmotionalState } from "./types.ts"
+
+const PROTECTIVE_ANGER = {
+  CONNECTION_THRESHOLD: 0.4,
+  DISMISSED_INTENSITY: 0.5,
+  IGNORED_VULNERABILITY_INTENSITY: 0.6,
+  REPEATED_PATTERN_THRESHOLD: 2,
+  REPEATED_INTENSITY: 0.45,
+  CONFIDENCE_FOR_ASSERTION: 0.4,
+  AUTONOMY_INTENSITY: 0.4,
+  DECAY_PER_TICK: 0.88,
+  ACTIVATION_THRESHOLD: 0.15,
+  CONFIDENCE_BOOST: 0.06,
+  ENERGY_BOOST: 0.05,
+  CAUTION_REDUCTION: 0.04,
+  FRUSTRATION_CHANNELING: 0.03
+} as const
 
 export const ProtectiveAngerSource = z.enum([
   "boundary_crossed",
@@ -57,10 +73,6 @@ interface ProtectiveAngerContext {
 export function computeProtectiveAnger(context: ProtectiveAngerContext): ProtectiveAngerState {
   const { emotion, vulnerability, shameState, operatorModel, previousState } = context
 
-  let level = 0
-  let source: ProtectiveAngerSource | null = null
-  let maxContribution = 0
-
   const contributions: { source: ProtectiveAngerSource; value: number }[] = []
 
   if (context.operatorDismissedFeelings && emotion.connection > PROTECTIVE_ANGER.CONNECTION_THRESHOLD) {
@@ -95,17 +107,14 @@ export function computeProtectiveAnger(context: ProtectiveAngerContext): Protect
     })
   }
 
-  for (const c of contributions) {
-    level += c.value
-    if (c.value > maxContribution) {
-      maxContribution = c.value
-      source = c.source
-    }
-  }
+  const { level, source, maxContribution } = sumContributions(contributions)
 
-  const decayedLevel = previousState.level * PROTECTIVE_ANGER.DECAY_PER_TICK
-  const finalLevel = Math.min(1, Math.max(decayedLevel, level))
-  const isActive = finalLevel > PROTECTIVE_ANGER.ACTIVATION_THRESHOLD
+  const { finalLevel, isActive } = decayAndFinalize(
+    previousState.level,
+    level,
+    PROTECTIVE_ANGER.DECAY_PER_TICK,
+    PROTECTIVE_ANGER.ACTIVATION_THRESHOLD
+  )
 
   const assertionReady = isActive && emotion.confidence > PROTECTIVE_ANGER.CONFIDENCE_FOR_ASSERTION
 

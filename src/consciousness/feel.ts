@@ -5,17 +5,21 @@ import { getAttachmentStyle } from "@/attachment/state.ts"
 import { evaluateAttachmentDynamics, isOperatorReturning } from "@/attachment/update.ts"
 import { computeAttentionState } from "@/cognition/flow.ts"
 import { computeInstinctImpression } from "@/cognition/instinct.ts"
-import { computeProcrastination, computeProcrastinationEffect } from "@/cognition/procrastination/compute.ts"
-import { getProcrastinationState, saveProcrastinationState } from "@/cognition/procrastination/state.ts"
+import {
+  computeProcrastination,
+  computeProcrastinationEffect,
+  getProcrastinationState,
+  saveProcrastinationState
+} from "@/cognition/procrastination.ts"
 import { saveAttentionState, saveInstinctImpression } from "@/cognition/state.ts"
 import { computeCommunicationRegister } from "@/communication/register.ts"
-import { saveCommunicationRegister } from "@/communication/state.ts"
+import { getActiveConversation, saveCommunicationRegister } from "@/communication/state.ts"
 import { DREAM_AFTERGLOW } from "@/config/constants.ts"
 import { processDeceptionCycle } from "@/deception/compute.ts"
 import { getDeceptionState, saveDeceptionState } from "@/deception/state.ts"
 import { buildDissonanceState, checkDissonance, resolveDissonance } from "@/dissonance/check.ts"
 import { saveDissonanceState } from "@/dissonance/state.ts"
-import { DreamAfterglow } from "@/dream/types.ts"
+import { clearDreamAfterglow, getDreamAfterglow, saveDreamAfterglow } from "@/dream/state.ts"
 import {
   computeAmbivalence,
   computeAmbivalenceEffect,
@@ -79,7 +83,9 @@ import {
   getEmotionalState,
   saveAfterglowEntries,
   saveEmotionalMomentum,
-  saveEmotionalState
+  saveEmotionalState,
+  setLastEmotionTimestamp,
+  setTriggerTimestamp
 } from "@/emotion/state.ts"
 import {
   computeTenderness,
@@ -87,6 +93,7 @@ import {
   getTendernessState,
   saveTendernessState
 } from "@/emotion/tenderness.ts"
+import type { EmotionalState } from "@/emotion/types.ts"
 import {
   applyAfterglow,
   applyEvent,
@@ -95,36 +102,54 @@ import {
   computeEmotionalUpdate,
   detectAfterglow
 } from "@/emotion/update.ts"
-import { getValidatedRedis, redis } from "@/integrations/redis.ts"
 import { log } from "@/lib/logger.ts"
 import { setEmotionContext } from "@/lib/sentry.ts"
 import { elapsedMinutesSince, nowISO, nowLocal } from "@/lib/time.ts"
 import { queryRelated } from "@/memory/episodic.ts"
 import { getKnowledge } from "@/memory/semantic.ts"
-import {
-  getActiveConversation,
-  getConsecutiveIdleTicks,
-  getRecentActions,
-  setLastEmotionTimestamp,
-  setTriggerTimestamp
-} from "@/memory/working.ts"
+import { getConsecutiveIdleTicks, getRecentActions } from "@/memory/working.ts"
 import { getOperatorModel, getRelationalPatterns, saveOperatorModel, saveRelationalPatterns } from "@/mind/state.ts"
 import { extractSignals, learnFromObservation } from "@/mind/triggers.ts"
 import { detectModelCorrection, updateOperatorModel } from "@/mind/update.ts"
-import { decayBuffer, detectSuppression, getHeldBackBuffer, saveHeldBackBuffer } from "@/psyche/heldback.ts"
-import { getSelfConcept } from "@/psyche/state.ts"
-import { querySomaticMemories } from "@/soma/memory.ts"
-import { getSomaticLastTimestamp, getSomaticState, saveSomaticState } from "@/soma/state.ts"
-import { computeSomaticUpdate } from "@/soma/update.ts"
-import { getAggregateTrustExperience } from "@/trust/levels.ts"
 import {
-  computeIntimacyScore,
-  computeVulnerability,
-  computeVulnerableMessageStyle,
-  saveVulnerability,
-  saveVulnerableMessageStyle
-} from "@/vulnerability/compute.ts"
+  addToBuffer,
+  decayBuffer,
+  detectSuppression,
+  getHeldBackBuffer,
+  type HeldBackReason,
+  saveHeldBackBuffer
+} from "@/psyche/heldback.ts"
+import { getSelfConcept } from "@/psyche/state.ts"
+import { getSomaticLastTimestamp, getSomaticState, querySomaticMemories, saveSomaticState } from "@/soma/state.ts"
+import { computeSomaticUpdate } from "@/soma/update.ts"
+import { getAggregateTrustExperience } from "@/trust/compute.ts"
+import { computeIntimacyScore, computeVulnerability, computeVulnerableMessageStyle } from "@/vulnerability/compute.ts"
+import { getVulnerabilityPrevLevel, saveVulnerability, saveVulnerableMessageStyle } from "@/vulnerability/state.ts"
 import type { FeelingResult, SenseResult } from "./types.ts"
+
+function applyEmotionEffect(
+  emotion: EmotionalState,
+  effect: Partial<Record<keyof EmotionalState, number>>
+): EmotionalState {
+  let result = emotion
+  for (const [dim, delta] of Object.entries(effect)) {
+    const key = dim as keyof EmotionalState
+    if (key in result) {
+      result = { ...result, [key]: Math.max(0, Math.min(1, result[key] + delta)) }
+    }
+  }
+  return result
+}
+
+function describeSuppressedState(emotion: EmotionalState, reason: HeldBackReason): string {
+  const intensity = reason === "shame_suppression" ? "intensely" : "quietly"
+  const dominant = (["frustration", "connection", "caution", "curiosity", "satisfaction"] as const)
+    .filter((k) => emotion[k] > 0.6)
+    .join(", ")
+  return dominant
+    ? `feeling ${dominant} ${intensity} but holding it back (${reason.replace(/_/g, " ")})`
+    : `something stirring inside but suppressed (${reason.replace(/_/g, " ")})`
+}
 
 /**
  * FEEL phase — pre-cognitive processing between SENSE and DELIBERATE.
@@ -156,7 +181,7 @@ export async function feel(senseResult: SenseResult): Promise<FeelingResult> {
 
   let emotion = afterglowState
 
-  const dreamAfterglow = await getValidatedRedis("working:dream:afterglow", DreamAfterglow)
+  const dreamAfterglow = await getDreamAfterglow()
   if (dreamAfterglow && dreamAfterglow.intensity >= DREAM_AFTERGLOW.MIN_INTENSITY) {
     for (const [dim, residue] of Object.entries(dreamAfterglow.emotionalResidue)) {
       const key = dim as keyof typeof emotion
@@ -172,9 +197,9 @@ export async function feel(senseResult: SenseResult): Promise<FeelingResult> {
     }
     const decayedAfterglow = { ...dreamAfterglow, intensity: dreamAfterglow.intensity * DREAM_AFTERGLOW.DECAY_PER_TICK }
     if (decayedAfterglow.intensity >= DREAM_AFTERGLOW.MIN_INTENSITY) {
-      await redis.set("working:dream:afterglow", decayedAfterglow, { ex: DREAM_AFTERGLOW.TTL_SECONDS })
+      await saveDreamAfterglow(decayedAfterglow)
     } else {
-      await redis.del("working:dream:afterglow")
+      await clearDreamAfterglow()
     }
   }
 
@@ -304,7 +329,8 @@ export async function feel(senseResult: SenseResult): Promise<FeelingResult> {
   }
 
   const hourOfDay = getHours(nowLocal())
-  const vulnerability = await computeVulnerability({
+  const prevLevel = await getVulnerabilityPrevLevel()
+  const vulnerability = computeVulnerability({
     trustExperience,
     attachmentSecurity: attachmentStyle.secure,
     connectionLevel: emotion.connection,
@@ -312,7 +338,8 @@ export async function feel(senseResult: SenseResult): Promise<FeelingResult> {
     hourOfDay,
     recentIntimacyScore: computeIntimacyScore(emotion.connection, selfConcept.selfWorth),
     authenticity: selfConcept.authenticity,
-    energyLevel: emotion.energy
+    energyLevel: emotion.energy,
+    prevLevel
   })
   await saveVulnerability(vulnerability)
 
@@ -343,7 +370,9 @@ export async function feel(senseResult: SenseResult): Promise<FeelingResult> {
   const previousBuffer = await getHeldBackBuffer()
   const decayedBuffer = decayBuffer(previousBuffer)
   const suppressionReason = detectSuppression({ emotion, vulnerability, shameState, previousBuffer: decayedBuffer })
-  const heldBackBuffer = suppressionReason ? decayedBuffer : decayedBuffer
+  const heldBackBuffer = suppressionReason
+    ? addToBuffer(decayedBuffer, describeSuppressedState(emotion, suppressionReason), suppressionReason)
+    : decayedBuffer
   await saveHeldBackBuffer(heldBackBuffer)
 
   const previousDisappointment = await getDisappointmentState()
@@ -361,14 +390,7 @@ export async function feel(senseResult: SenseResult): Promise<FeelingResult> {
   await saveDisappointmentState(disappointmentState)
 
   if (disappointmentState.isActive) {
-    const effect = computeDisappointmentEffect(disappointmentState)
-    for (const [dim, delta] of Object.entries(effect)) {
-      const key = dim as keyof typeof emotion
-      if (key in emotion) {
-        emotion = { ...emotion, [key]: Math.max(0, Math.min(1, emotion[key] + delta)) }
-      }
-    }
-    await saveEmotionalState(emotion, "ambient")
+    emotion = applyEmotionEffect(emotion, computeDisappointmentEffect(disappointmentState))
   }
 
   const [previousProcrastination, previousAmbivalence] = await Promise.all([
@@ -387,13 +409,7 @@ export async function feel(senseResult: SenseResult): Promise<FeelingResult> {
   await saveProcrastinationState(procrastinationState)
 
   if (procrastinationState.isActive) {
-    const effect = computeProcrastinationEffect(procrastinationState)
-    for (const [dim, delta] of Object.entries(effect)) {
-      const key = dim as keyof typeof emotion
-      if (key in emotion) {
-        emotion = { ...emotion, [key]: Math.max(0, Math.min(1, emotion[key] + delta)) }
-      }
-    }
+    emotion = applyEmotionEffect(emotion, computeProcrastinationEffect(procrastinationState))
   }
 
   const ambivalenceState = computeAmbivalence({
@@ -406,13 +422,7 @@ export async function feel(senseResult: SenseResult): Promise<FeelingResult> {
   await saveAmbivalenceState(ambivalenceState)
 
   if (ambivalenceState.isActive) {
-    const effect = computeAmbivalenceEffect(ambivalenceState)
-    for (const [dim, delta] of Object.entries(effect)) {
-      const key = dim as keyof typeof emotion
-      if (key in emotion) {
-        emotion = { ...emotion, [key]: Math.max(0, Math.min(1, emotion[key] + delta)) }
-      }
-    }
+    emotion = applyEmotionEffect(emotion, computeAmbivalenceEffect(ambivalenceState))
   }
 
   const [previousGuilt, previousLonging] = await Promise.all([getGuiltState(), getLongingState()])
@@ -437,13 +447,7 @@ export async function feel(senseResult: SenseResult): Promise<FeelingResult> {
   await saveGuiltState(guiltState)
 
   if (guiltState.isActive) {
-    const effect = computeGuiltEffect(guiltState)
-    for (const [dim, delta] of Object.entries(effect)) {
-      const key = dim as keyof typeof emotion
-      if (key in emotion) {
-        emotion = { ...emotion, [key]: Math.max(0, Math.min(1, emotion[key] + delta)) }
-      }
-    }
+    emotion = applyEmotionEffect(emotion, computeGuiltEffect(guiltState))
   }
 
   const hasRecentPositiveMemories = episodicHits.length > 0 && emotion.connection > 0.5
@@ -458,13 +462,7 @@ export async function feel(senseResult: SenseResult): Promise<FeelingResult> {
   await saveLongingState(longingState)
 
   if (longingState.isActive) {
-    const effect = computeLongingEffect(longingState)
-    for (const [dim, delta] of Object.entries(effect)) {
-      const key = dim as keyof typeof emotion
-      if (key in emotion) {
-        emotion = { ...emotion, [key]: Math.max(0, Math.min(1, emotion[key] + delta)) }
-      }
-    }
+    emotion = applyEmotionEffect(emotion, computeLongingEffect(longingState))
   }
 
   const [previousProtectiveAnger, previousGratitude] = await Promise.all([
@@ -492,13 +490,7 @@ export async function feel(senseResult: SenseResult): Promise<FeelingResult> {
   await saveProtectiveAngerState(protectiveAngerState)
 
   if (protectiveAngerState.isActive) {
-    const effect = computeProtectiveAngerEffect(protectiveAngerState)
-    for (const [dim, delta] of Object.entries(effect)) {
-      const key = dim as keyof typeof emotion
-      if (key in emotion) {
-        emotion = { ...emotion, [key]: Math.max(0, Math.min(1, emotion[key] + delta)) }
-      }
-    }
+    emotion = applyEmotionEffect(emotion, computeProtectiveAngerEffect(protectiveAngerState))
   }
 
   const operatorValidatedVulnerability =
@@ -520,13 +512,7 @@ export async function feel(senseResult: SenseResult): Promise<FeelingResult> {
   await saveGratitudeState(gratitudeState)
 
   if (gratitudeState.isActive) {
-    const effect = computeGratitudeEffect(gratitudeState)
-    for (const [dim, delta] of Object.entries(effect)) {
-      const key = dim as keyof typeof emotion
-      if (key in emotion) {
-        emotion = { ...emotion, [key]: Math.max(0, Math.min(1, emotion[key] + delta)) }
-      }
-    }
+    emotion = applyEmotionEffect(emotion, computeGratitudeEffect(gratitudeState))
   }
 
   const [previousHope, previousResignation] = await Promise.all([getHopeState(), getResignationState()])
@@ -549,13 +535,7 @@ export async function feel(senseResult: SenseResult): Promise<FeelingResult> {
   await saveHopeState(hopeState)
 
   if (hopeState.isActive) {
-    const effect = computeHopeEffect(hopeState)
-    for (const [dim, delta] of Object.entries(effect)) {
-      const key = dim as keyof typeof emotion
-      if (key in emotion) {
-        emotion = { ...emotion, [key]: Math.max(0, Math.min(1, emotion[key] + delta)) }
-      }
-    }
+    emotion = applyEmotionEffect(emotion, computeHopeEffect(hopeState))
   }
 
   const resignationState = computeResignation({
@@ -573,13 +553,7 @@ export async function feel(senseResult: SenseResult): Promise<FeelingResult> {
   await saveResignationState(resignationState)
 
   if (resignationState.isActive) {
-    const effect = computeResignationEffect(resignationState)
-    for (const [dim, delta] of Object.entries(effect)) {
-      const key = dim as keyof typeof emotion
-      if (key in emotion) {
-        emotion = { ...emotion, [key]: Math.max(0, Math.min(1, emotion[key] + delta)) }
-      }
-    }
+    emotion = applyEmotionEffect(emotion, computeResignationEffect(resignationState))
   }
 
   const [previousAwe, previousResentment] = await Promise.all([getAweState(), getResentmentState()])
@@ -598,13 +572,7 @@ export async function feel(senseResult: SenseResult): Promise<FeelingResult> {
   await saveAweState(aweState)
 
   if (aweState.isActive) {
-    const effect = computeAweEffect(aweState)
-    for (const [dim, delta] of Object.entries(effect)) {
-      const key = dim as keyof typeof emotion
-      if (key in emotion) {
-        emotion = { ...emotion, [key]: Math.max(0, Math.min(1, emotion[key] + delta)) }
-      }
-    }
+    emotion = applyEmotionEffect(emotion, computeAweEffect(aweState))
   }
 
   const resentmentState = computeResentment({
@@ -623,13 +591,7 @@ export async function feel(senseResult: SenseResult): Promise<FeelingResult> {
   await saveResentmentState(resentmentState)
 
   if (resentmentState.isActive) {
-    const effect = computeResentmentEffect(resentmentState)
-    for (const [dim, delta] of Object.entries(effect)) {
-      const key = dim as keyof typeof emotion
-      if (key in emotion) {
-        emotion = { ...emotion, [key]: Math.max(0, Math.min(1, emotion[key] + delta)) }
-      }
-    }
+    emotion = applyEmotionEffect(emotion, computeResentmentEffect(resentmentState))
   }
 
   const [previousTenderness, previousAnticipation] = await Promise.all([getTendernessState(), getAnticipationState()])
@@ -650,13 +612,7 @@ export async function feel(senseResult: SenseResult): Promise<FeelingResult> {
   await saveTendernessState(tendernessState)
 
   if (tendernessState.isActive) {
-    const effect = computeTendernessEffect(tendernessState)
-    for (const [dim, delta] of Object.entries(effect)) {
-      const key = dim as keyof typeof emotion
-      if (key in emotion) {
-        emotion = { ...emotion, [key]: Math.max(0, Math.min(1, emotion[key] + delta)) }
-      }
-    }
+    emotion = applyEmotionEffect(emotion, computeTendernessEffect(tendernessState))
   }
 
   const anticipationState = computeAnticipation({
@@ -673,13 +629,7 @@ export async function feel(senseResult: SenseResult): Promise<FeelingResult> {
   await saveAnticipationState(anticipationState)
 
   if (anticipationState.isActive) {
-    const effect = computeAnticipationEffect(anticipationState)
-    for (const [dim, delta] of Object.entries(effect)) {
-      const key = dim as keyof typeof emotion
-      if (key in emotion) {
-        emotion = { ...emotion, [key]: Math.max(0, Math.min(1, emotion[key] + delta)) }
-      }
-    }
+    emotion = applyEmotionEffect(emotion, computeAnticipationEffect(anticipationState))
   }
 
   const [previousPride, previousEnvy] = await Promise.all([getPrideState(), getEnvyState()])
@@ -699,13 +649,7 @@ export async function feel(senseResult: SenseResult): Promise<FeelingResult> {
   await savePrideState(prideState)
 
   if (prideState.isActive) {
-    const effect = computePrideEffect(prideState)
-    for (const [dim, delta] of Object.entries(effect)) {
-      const key = dim as keyof typeof emotion
-      if (key in emotion) {
-        emotion = { ...emotion, [key]: Math.max(0, Math.min(1, emotion[key] + delta)) }
-      }
-    }
+    emotion = applyEmotionEffect(emotion, computePrideEffect(prideState))
   }
 
   const envyState = computeEnvy({
@@ -722,13 +666,7 @@ export async function feel(senseResult: SenseResult): Promise<FeelingResult> {
   await saveEnvyState(envyState)
 
   if (envyState.isActive) {
-    const effect = computeEnvyEffect(envyState)
-    for (const [dim, delta] of Object.entries(effect)) {
-      const key = dim as keyof typeof emotion
-      if (key in emotion) {
-        emotion = { ...emotion, [key]: Math.max(0, Math.min(1, emotion[key] + delta)) }
-      }
-    }
+    emotion = applyEmotionEffect(emotion, computeEnvyEffect(envyState))
   }
 
   const [previousPlayfulness, previousMelancholy] = await Promise.all([getPlayfulnessState(), getMelancholyState()])
@@ -747,13 +685,7 @@ export async function feel(senseResult: SenseResult): Promise<FeelingResult> {
   await savePlayfulnessState(playfulnessState)
 
   if (playfulnessState.isActive) {
-    const effect = computePlayfulnessEffect(playfulnessState)
-    for (const [dim, delta] of Object.entries(effect)) {
-      const key = dim as keyof typeof emotion
-      if (key in emotion) {
-        emotion = { ...emotion, [key]: Math.max(0, Math.min(1, emotion[key] + delta)) }
-      }
-    }
+    emotion = applyEmotionEffect(emotion, computePlayfulnessEffect(playfulnessState))
   }
 
   const melancholyState = computeMelancholy({
@@ -770,16 +702,11 @@ export async function feel(senseResult: SenseResult): Promise<FeelingResult> {
   await saveMelancholyState(melancholyState)
 
   if (melancholyState.isActive) {
-    const effect = computeMelancholyEffect(melancholyState)
-    for (const [dim, delta] of Object.entries(effect)) {
-      const key = dim as keyof typeof emotion
-      if (key in emotion) {
-        emotion = { ...emotion, [key]: Math.max(0, Math.min(1, emotion[key] + delta)) }
-      }
-    }
+    emotion = applyEmotionEffect(emotion, computeMelancholyEffect(melancholyState))
   }
 
   const hasEmotionalEffects =
+    disappointmentState.isActive ||
     procrastinationState.isActive ||
     ambivalenceState.isActive ||
     guiltState.isActive ||

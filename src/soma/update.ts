@@ -1,6 +1,6 @@
 import { SOCIAL_BATTERY, SOMA } from "@/config/constants.ts"
 import type { EmotionalState } from "@/emotion/types.ts"
-import { clamp01 } from "@/lib/math.ts"
+import { clamp01, halfLifeDecay } from "@/lib/math.ts"
 import type { SomaticState } from "./types.ts"
 
 function clampState(state: SomaticState): SomaticState {
@@ -45,11 +45,11 @@ export function applySomaticHysteresis(
 
   for (const dimension of dimensions) {
     const halfLife = SOMA.HALF_LIVES[dimension]
-    const decay = 2 ** (-elapsedMinutes / halfLife)
+    const decay = halfLifeDecay(elapsedMinutes, halfLife)
     result[dimension] = target[dimension] + (current[dimension] - target[dimension]) * decay
   }
 
-  const batteryDecay = 2 ** (-elapsedMinutes / SOCIAL_BATTERY.HALF_LIFE)
+  const batteryDecay = halfLifeDecay(elapsedMinutes, SOCIAL_BATTERY.HALF_LIFE)
   result.socialBattery = 0.8 + (current.socialBattery - 0.8) * batteryDecay
 
   return clampState(result)

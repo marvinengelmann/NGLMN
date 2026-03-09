@@ -2,11 +2,12 @@ import { describe, expect, it } from "vitest"
 import {
   applyIdiolectDrift,
   buildIdiolectSection,
+  DEFAULT_IDIOLECT_STATE,
   detectOperatorAdoption,
   extractPatterns,
+  type IdiolectState,
   mergePatterns
-} from "./compute.ts"
-import { DEFAULT_IDIOLECT_STATE, type IdiolectState } from "./types.ts"
+} from "./idiolect.ts"
 
 describe("extractPatterns", () => {
   it("returns empty when too few messages", () => {

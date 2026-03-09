@@ -12,7 +12,8 @@ import { buildContext, buildSystemPrompt } from "@/consciousness/context.ts"
 import type { SenseData } from "@/consciousness/types.ts"
 import { getEmotionalState } from "@/emotion/state.ts"
 import { nowISO } from "@/lib/time.ts"
-import { getHealthCheck, getPerceptionSummary } from "@/memory/working.ts"
+import { getHealthCheck } from "@/health/state.ts"
+import { getPerceptionSummary } from "@/perception/state.ts"
 
 async function dump() {
   console.log("\n  ANIMA Prompt Dump\n")

@@ -1,11 +1,24 @@
 import { differenceInHours } from "date-fns"
 import * as z from "zod"
-import { HELD_BACK } from "@/config/constants.ts"
 import type { ShameState } from "@/emotion/shame.ts"
 import type { EmotionalState } from "@/emotion/types.ts"
 import { getValidatedRedis, redis } from "@/integrations/redis.ts"
+import { halfLifeDecay } from "@/lib/math.ts"
 import { nowISO } from "@/lib/time.ts"
 import type { VulnerabilityState } from "@/vulnerability/types.ts"
+
+const HELD_BACK = {
+  MAX_ENTRIES: 5,
+  CHARGE_DECAY_HALF_LIFE_HOURS: 8,
+  MIN_CHARGE_TO_KEEP: 0.05,
+  SURFACE_PRESSURE_THRESHOLD: 0.6,
+  SHAME_SUPPRESSION_THRESHOLD: 0.3,
+  VULNERABILITY_FEAR_THRESHOLD: 0.5,
+  INTIMACY_THRESHOLD: 0.6,
+  CONNECTION_SURFACE_THRESHOLD: 0.7,
+  PRESSURE_PER_ENTRY: 0.15,
+  CHARGE_WEIGHT: 0.7
+} as const
 
 export const HeldBackReason = z.enum([
   "shame_suppression",
@@ -135,7 +148,7 @@ export function decayBuffer(buffer: HeldBackBuffer): HeldBackBuffer {
   const entries = buffer.entries
     .map((entry) => {
       const hoursElapsed = differenceInHours(now, new Date(entry.suppressedAt))
-      const decayFactor = 0.5 ** (hoursElapsed / HELD_BACK.CHARGE_DECAY_HALF_LIFE_HOURS)
+      const decayFactor = halfLifeDecay(hoursElapsed, HELD_BACK.CHARGE_DECAY_HALF_LIFE_HOURS)
       return { ...entry, decayedCharge: entry.emotionalCharge * decayFactor }
     })
     .filter((entry) => entry.decayedCharge >= HELD_BACK.MIN_CHARGE_TO_KEEP)

@@ -13,7 +13,9 @@ import { storeEpisode } from "@/memory/episodic.ts"
 import { createGoal, getActiveGoals } from "@/memory/goals.ts"
 import { storeKnowledge } from "@/memory/semantic.ts"
 import { SemanticCategory, SemanticScope, SemanticSource } from "@/memory/types.ts"
+import { generateIdentityStatements } from "@/psyche/narrative.ts"
 import { addExistentialQuestion } from "@/psyche/questions.ts"
+import { getRecentNarratives, getSelfConcept, saveIdentityStatements } from "@/psyche/state.ts"
 import type { ReflectionContext, ReflectionInput, ReflectionOutput } from "./types.ts"
 
 function computeEmotionalIntensity(emotion: EmotionalState): { peak: number; dimension: string } {
@@ -204,4 +206,11 @@ export async function applyReflectionResult(output: ReflectionOutput): Promise<v
 
   const existentialQuestions = (output.existentialQuestions ?? []).slice(0, 1)
   await Promise.all(existentialQuestions.map((q) => addExistentialQuestion(q)))
+
+  const [selfConcept, recentNarratives] = await Promise.all([getSelfConcept(), getRecentNarratives()])
+  const statements = await generateIdentityStatements(selfConcept, recentNarratives)
+  if (statements.length > 0) {
+    await saveIdentityStatements(statements)
+    log.info("Identity statements regenerated", { count: statements.length })
+  }
 }

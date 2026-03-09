@@ -1,7 +1,6 @@
 import { subDays } from "date-fns"
 import { afterEach, describe, expect, it, vi } from "vitest"
-import { NOSTALGIA } from "@/config/constants.ts"
-import { detectNostalgia } from "./nostalgia.ts"
+import { detectNostalgia, NOSTALGIA } from "./nostalgia.ts"
 
 afterEach(() => {
   vi.restoreAllMocks()

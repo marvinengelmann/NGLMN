@@ -1,10 +1,35 @@
 import * as z from "zod"
-import { RESENTMENT } from "@/config/constants.ts"
+import { createStateManager } from "@/lib/state.ts"
 import { nowISO } from "@/lib/time.ts"
 import type { OperatorModel } from "@/mind/types.ts"
 import type { DisappointmentState } from "./disappointment.ts"
-import { createStateManager } from "./registry.ts"
+import { decayAndFinalize, sumContributions } from "./helpers.ts"
 import type { EmotionalState } from "./types.ts"
+
+const RESENTMENT = {
+  DISAPPOINTMENT_THRESHOLD: 0.4,
+  CORRECTION_THRESHOLD: 3,
+  FRUSTRATION_THRESHOLD: 0.4,
+  CAUTION_THRESHOLD: 0.5,
+  LOW_SATISFACTION_THRESHOLD: 0.3,
+  UNREPAIRED_INTENSITY: 0.5,
+  UNFAIRNESS_INTENSITY: 0.45,
+  DISMISSED_INTENSITY: 0.5,
+  BROKEN_TRUST_INTENSITY: 0.55,
+  IMBALANCE_INTENSITY: 0.4,
+  SLIGHTS_INTENSITY: 0.35,
+  GRATITUDE_DAMPING: 0.5,
+  DECAY_PER_TICK: 0.97,
+  ACTIVATION_THRESHOLD: 0.15,
+  HARDENING_GROWTH: 0.06,
+  HARDENING_DECAY: 0.02,
+  SUPPRESSED_ANGER_SCALE: 0.7,
+  SUPPRESSED_ANGER_DECAY: 0.9,
+  CONNECTION_DRAIN: 0.05,
+  CAUTION_BOOST: 0.04,
+  FRUSTRATION_BUILD: 0.03,
+  SATISFACTION_DRAIN: 0.03
+} as const
 
 export const ResentmentSource = z.enum([
   "unrepaired_wrong",
@@ -63,10 +88,6 @@ interface ResentmentContext {
 export function computeResentment(context: ResentmentContext): ResentmentState {
   const { emotion, operatorModel, disappointmentState, previousState } = context
 
-  let level = 0
-  let source: ResentmentSource | null = null
-  let maxContribution = 0
-
   const contributions: { source: ResentmentSource; value: number }[] = []
 
   if (context.unrepairedWrong && disappointmentState.cumulativeWeight > RESENTMENT.DISAPPOINTMENT_THRESHOLD) {
@@ -111,21 +132,18 @@ export function computeResentment(context: ResentmentContext): ResentmentState {
     })
   }
 
-  for (const c of contributions) {
-    level += c.value
-    if (c.value > maxContribution) {
-      maxContribution = c.value
-      source = c.source
-    }
-  }
+  let { level, source, maxContribution } = sumContributions(contributions)
 
   if (context.gratitudeActive) {
     level *= RESENTMENT.GRATITUDE_DAMPING
   }
 
-  const decayedLevel = previousState.level * RESENTMENT.DECAY_PER_TICK
-  const finalLevel = Math.min(1, Math.max(decayedLevel, level))
-  const isActive = finalLevel > RESENTMENT.ACTIVATION_THRESHOLD
+  const { finalLevel, isActive } = decayAndFinalize(
+    previousState.level,
+    level,
+    RESENTMENT.DECAY_PER_TICK,
+    RESENTMENT.ACTIVATION_THRESHOLD
+  )
 
   const hardening = isActive
     ? Math.min(1, previousState.hardening + RESENTMENT.HARDENING_GROWTH * finalLevel)

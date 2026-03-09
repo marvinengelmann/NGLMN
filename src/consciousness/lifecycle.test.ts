@@ -30,8 +30,11 @@ vi.mock("@/integrations/telegram.ts", () => ({
   sendToOperator: vi.fn().mockResolvedValue(42)
 }))
 
-vi.mock("@/memory/working.ts", () => ({
-  getDreamLastRun: vi.fn().mockResolvedValue(null),
+vi.mock("@/dream/state.ts", () => ({
+  getDreamLastRun: vi.fn().mockResolvedValue(null)
+}))
+
+vi.mock("@/communication/state.ts", () => ({
   pushToActiveConversation: vi.fn().mockResolvedValue(undefined)
 }))
 
@@ -51,11 +54,11 @@ vi.mock("@/lib/time.ts", () => ({
   nowLocal: vi.fn().mockReturnValue(new Date(2026, 2, 6, 12, 0, 0))
 }))
 
+import { pushToActiveConversation } from "@/communication/state.ts"
 import { callIntelligence } from "@/core/intelligence.ts"
 import { getValidatedRedis, redis } from "@/integrations/redis.ts"
 import { sendToOperator } from "@/integrations/telegram.ts"
 import { storeEpisode } from "@/memory/episodic.ts"
-import { pushToActiveConversation } from "@/memory/working.ts"
 import {
   getActiveLifeEvent,
   isLifeEventActive,

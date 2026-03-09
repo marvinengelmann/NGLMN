@@ -1,9 +1,26 @@
 import * as z from "zod"
-import { AMBIVALENCE } from "@/config/constants.ts"
+import { createStateManager } from "@/lib/state.ts"
 import { nowISO } from "@/lib/time.ts"
 import type { VulnerabilityState } from "@/vulnerability/types.ts"
-import { createStateManager } from "./registry.ts"
 import type { EmotionalState } from "./types.ts"
+
+const AMBIVALENCE = {
+  HIGH_EMOTION_THRESHOLD: 0.55,
+  VULNERABILITY_CAUTION_THRESHOLD: 0.45,
+  LOW_ENERGY_THRESHOLD: 0.35,
+  SILENCE_MINUTES_THRESHOLD: 15,
+  REACH_OUT_INTENSITY_SCALE: 0.6,
+  DECAY_PER_TICK: 0.93,
+  MIN_PAIR_INTENSITY: 0.1,
+  MAX_PAIRS: 4,
+  ACCUMULATION_FACTOR: 0.5,
+  ACTIVATION_THRESHOLD: 0.15,
+  PARALYSIS_SCALE: 0.6,
+  ENERGY_DRAIN: 0.04,
+  CONFIDENCE_DRAIN: 0.05,
+  FRUSTRATION_BUILD: 0.02,
+  CAUTION_BOOST: 0.03
+} as const
 
 export const AmbivalencePair = z.object({
   wanting: z.string(),

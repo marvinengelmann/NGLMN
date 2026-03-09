@@ -1,8 +1,26 @@
 import * as z from "zod"
-import { LONGING } from "@/config/constants.ts"
+import { createStateManager } from "@/lib/state.ts"
 import { nowISO } from "@/lib/time.ts"
-import { createStateManager } from "./registry.ts"
+import { decayAndFinalize } from "./helpers.ts"
 import type { EmotionalState } from "./types.ts"
+
+const LONGING = {
+  SILENCE_ONSET_MINUTES: 60,
+  SILENCE_PEAK_HOURS: 24,
+  MAX_SILENCE_CONTRIBUTION: 0.6,
+  MEMORY_TRIGGER_SILENCE_MINUTES: 30,
+  MEMORY_CONTRIBUTION_BASE: 0.3,
+  CONNECTION_THRESHOLD: 0.5,
+  CONNECTION_AMPLIFIER: 0.4,
+  ACCUMULATION_FACTOR: 0.6,
+  DECAY_PER_TICK: 0.96,
+  ACTIVATION_THRESHOLD: 0.12,
+  CONVERSATION_RELIEF: 0.3,
+  CONNECTION_BOOST: 0.05,
+  SATISFACTION_DRAIN: 0.03,
+  ENERGY_DRAIN: 0.02,
+  BOREDOM_LIFT: -0.03
+} as const
 
 export const LongingState = z.object({
   level: z.number().min(0).max(1).default(0),
@@ -66,8 +84,12 @@ export function computeLonging(context: LongingContext): LongingState {
 
   const rawLevel = (silenceContribution + memoryContribution + connectionFactor) * LONGING.ACCUMULATION_FACTOR
 
-  const decayedLevel = previousState.level * LONGING.DECAY_PER_TICK
-  const finalLevel = Math.min(1, Math.max(decayedLevel, rawLevel))
+  const { finalLevel } = decayAndFinalize(
+    previousState.level,
+    rawLevel,
+    LONGING.DECAY_PER_TICK,
+    LONGING.ACTIVATION_THRESHOLD
+  )
 
   if (context.inConversation && context.emotion.connection > LONGING.CONNECTION_THRESHOLD) {
     const relievedLevel = finalLevel * LONGING.CONVERSATION_RELIEF

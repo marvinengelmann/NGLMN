@@ -2,8 +2,11 @@ import { afterEach, describe, expect, it, vi } from "vitest"
 import type { EmotionalState } from "@/emotion/types.ts"
 import { DEFAULT_EMOTIONAL_STATE } from "@/emotion/types.ts"
 
+vi.mock("@/security/state.ts", () => ({
+  getRecentResponses: vi.fn().mockResolvedValue([])
+}))
+
 vi.mock("@/memory/working.ts", () => ({
-  getRecentResponses: vi.fn().mockResolvedValue([]),
   getRecentActions: vi.fn().mockResolvedValue([]),
   getRecentTickDurations: vi.fn().mockResolvedValue([])
 }))
@@ -43,7 +46,7 @@ vi.mock("@/lib/logger.ts", () => ({
   log: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() }
 }))
 
-import { getRecentResponses } from "@/memory/working.ts"
+import { getRecentResponses } from "@/security/state.ts"
 import { detectInjection } from "./defense.ts"
 import { validateEmotionalState, validateEvolution, validateOutput } from "./guardian.ts"
 

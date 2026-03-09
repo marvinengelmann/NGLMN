@@ -1,15 +1,14 @@
 import { differenceInSeconds, parseISO } from "date-fns"
+import {
+  clearConversationWaitingSince,
+  getConversationWaitingSince,
+  setConversationWaitingSince
+} from "@/communication/state.ts"
 import { HEARTBEAT } from "@/config/constants.ts"
 import { log } from "@/lib/logger.ts"
 import { setTickContext } from "@/lib/sentry.ts"
 import { nowISO } from "@/lib/time.ts"
-import {
-  clearBusy,
-  clearConversationWaitingSince,
-  getConversationWaitingSince,
-  setConversationWaitingSince,
-  tryAcquireBusy
-} from "@/memory/working.ts"
+import { clearBusy, tryAcquireBusy } from "@/memory/working.ts"
 import { act } from "./act.ts"
 import { deliberate } from "./deliberate.ts"
 import { feel } from "./feel.ts"

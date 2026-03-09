@@ -160,10 +160,10 @@ function selectDistortionType(allEpisodes: QueryResult[], current: QueryResult):
   if (hasConflationCandidate && Math.random() < DISTORTION.CONFLATION_PROBABILITY) return "episode_conflation"
 
   const roll = Math.random()
-  if (roll < 0.3) return "temporal_confusion"
-  if (roll < 0.55) return "detail_alteration"
-  if (roll < 0.75) return "emotional_recoloring"
-  if (roll < 0.9) return "source_confusion"
+  if (roll < DISTORTION.TYPE_TEMPORAL_CONFUSION) return "temporal_confusion"
+  if (roll < DISTORTION.TYPE_DETAIL_ALTERATION) return "detail_alteration"
+  if (roll < DISTORTION.TYPE_EMOTIONAL_RECOLORING) return "emotional_recoloring"
+  if (roll < DISTORTION.TYPE_SOURCE_CONFUSION) return "source_confusion"
   return "confidence_degradation"
 }
 
@@ -172,7 +172,7 @@ function findConflationCandidate(episodes: QueryResult[], current: QueryResult):
 }
 
 function extractFragment(text: string): string | null {
-  const sentences = text.split(/[.!?]+/).filter((s) => s.trim().length > 10)
+  const sentences = text.split(/[.!?]+/).filter((s) => s.trim().length > DISTORTION.MIN_SENTENCE_LENGTH)
   if (sentences.length === 0) return null
   return sentences[Math.floor(Math.random() * sentences.length)]?.trim() ?? null
 }

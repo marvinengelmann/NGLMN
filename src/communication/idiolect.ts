@@ -1,6 +1,62 @@
-import { IDIOLECT } from "@/config/constants.ts"
+import * as z from "zod"
+import { getValidatedRedis, redis } from "@/integrations/redis.ts"
 import { nowISO } from "@/lib/time.ts"
-import type { IdiolectPattern, IdiolectPatternType, IdiolectState } from "./types.ts"
+
+const IDIOLECT = {
+  MAX_PATTERNS: 20,
+  MIN_MESSAGES_FOR_EXTRACTION: 5,
+  MIN_PHRASE_FREQUENCY: 2,
+  CONFIDENCE_PER_USE: 0.08,
+  INITIAL_ADOPTED_CONFIDENCE: 0.25,
+  DRIFT_DECAY_RATE: 0.02,
+  MIN_CONFIDENCE_TO_KEEP: 0.05,
+  DISPLAY_THRESHOLD: 0.3,
+  DRIFT_PROBABILITY: 0.05
+} as const
+
+export const IdiolectPatternType = z.enum([
+  "opening_phrase",
+  "closing_phrase",
+  "filler_word",
+  "expression",
+  "punctuation_habit",
+  "sentence_structure"
+])
+export type IdiolectPatternType = z.infer<typeof IdiolectPatternType>
+
+export const IdiolectPattern = z.object({
+  type: IdiolectPatternType,
+  phrase: z.string(),
+  context: z.string().optional(),
+  frequency: z.number().default(1),
+  confidence: z.number().min(0).max(1),
+  adoptedFrom: z.enum(["self", "operator"]).default("self"),
+  discoveredAt: z.string()
+})
+export type IdiolectPattern = z.infer<typeof IdiolectPattern>
+
+export const IdiolectState = z.object({
+  patterns: z.array(IdiolectPattern).default([]),
+  dominantStyle: z.string().optional(),
+  lastDriftAt: z.string().optional()
+})
+export type IdiolectState = z.infer<typeof IdiolectState>
+
+export const DEFAULT_IDIOLECT_STATE: IdiolectState = {
+  patterns: [],
+  dominantStyle: undefined,
+  lastDriftAt: undefined
+}
+
+const KEY = "working:communication:idiolect"
+
+export async function getIdiolectState(): Promise<IdiolectState> {
+  return (await getValidatedRedis(KEY, IdiolectState)) ?? DEFAULT_IDIOLECT_STATE
+}
+
+export async function saveIdiolectState(state: IdiolectState): Promise<void> {
+  await redis.set(KEY, state)
+}
 
 /**
  * Extract potential idiolect patterns from ANIMA's own sent messages.

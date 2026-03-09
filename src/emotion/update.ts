@@ -9,7 +9,7 @@ import {
   type EmotionUpdateEvent,
   type MoodContext
 } from "@/emotion/types.ts"
-import { clamp01 } from "@/lib/math.ts"
+import { clamp01, halfLifeDecay } from "@/lib/math.ts"
 
 type EmotionDeltas = Partial<Record<keyof EmotionalState, number>>
 
@@ -106,7 +106,7 @@ export function applyDrift(state: EmotionalState, baseline: EmotionalState, elap
   const result = { ...state }
   for (const dimension of Object.keys(EMOTION.HALF_LIVES) as (keyof typeof EMOTION.HALF_LIVES)[]) {
     const halfLife = EMOTION.HALF_LIVES[dimension]
-    const decay = 2 ** (-elapsedMinutes / halfLife)
+    const decay = halfLifeDecay(elapsedMinutes, halfLife)
     result[dimension] = baseline[dimension] + (state[dimension] - baseline[dimension]) * decay
   }
   return result

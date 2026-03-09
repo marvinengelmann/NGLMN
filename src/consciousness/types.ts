@@ -1,6 +1,6 @@
 import * as z from "zod"
 import { AttachmentDynamics } from "@/attachment/types.ts"
-import { ProcrastinationState } from "@/cognition/procrastination/types.ts"
+import { ProcrastinationState } from "@/cognition/procrastination.ts"
 import { AttentionState, CognitiveConflict, InstinctImpression } from "@/cognition/types.ts"
 import { CommunicationRegister } from "@/communication/types.ts"
 import { DissonanceState } from "@/dissonance/types.ts"
@@ -206,7 +206,8 @@ export const DeliberateResult = z.object({
   innerDialog: InnerDialog.optional(),
   cognitiveConflict: CognitiveConflict.optional(),
   instinctOverride: z.boolean().default(false),
-  xTimeline: z.array(z.any()).optional() as z.ZodOptional<z.ZodArray<z.ZodType<EnrichedTweet>>>
+  xTimeline: z.array(z.any()).optional() as z.ZodOptional<z.ZodArray<z.ZodType<EnrichedTweet>>>,
+  calendarChecked: z.boolean().optional()
 })
 export type DeliberateResult = z.infer<typeof DeliberateResult>
 

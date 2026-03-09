@@ -1,4 +1,4 @@
-import { TwitterApi, type TweetV2, type UserV2 } from "twitter-api-v2"
+import { type TweetV2, TwitterApi, type UserV2 } from "twitter-api-v2"
 import { env } from "@/config/env.ts"
 import { redis } from "@/integrations/redis.ts"
 import { log } from "@/lib/logger.ts"

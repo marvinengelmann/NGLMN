@@ -1,11 +1,24 @@
 import * as z from "zod"
-import { SHAME } from "@/config/constants.ts"
+import { halfLifeDecay } from "@/lib/math.ts"
+import { createStateManager } from "@/lib/state.ts"
 import { elapsedMinutesSince } from "@/lib/time.ts"
 import type { OperatorModel } from "@/mind/types.ts"
 import type { SelfConcept } from "@/psyche/types.ts"
 import type { VulnerabilityState } from "@/vulnerability/types.ts"
-import { createStateManager } from "./registry.ts"
 import type { EmotionalState } from "./types.ts"
+
+export const SHAME = {
+  HALF_LIFE_MINUTES: 720,
+  MIN_ACTIVE_LEVEL: 0.2,
+  REJECTION_BOOST: 0.35,
+  INADEQUACY_BOOST: 0.5,
+  REGRET_BOOST: 0.1,
+  LOW_SELF_WORTH_THRESHOLD: 0.4,
+  VULNERABILITY_DISCLOSURE_THRESHOLD: 0.4,
+  POST_DISCLOSURE_CONNECTION_THRESHOLD: 0.4,
+  COLD_RESPONSE_MAX_LENGTH: 30,
+  REGISTER_OVERRIDE_LEVEL: 0.3
+} as const
 
 export const ShameTrigger = z.enum([
   "vulnerability_rejected",
@@ -72,7 +85,7 @@ export function computeShameState(context: ShameContext): ShameState {
 
   if (previousShame.lastTriggeredAt) {
     const minutesSince = elapsedMinutesSince(previousShame.lastTriggeredAt)
-    const decay = 2 ** (-minutesSince / SHAME.HALF_LIFE_MINUTES)
+    const decay = halfLifeDecay(minutesSince, SHAME.HALF_LIFE_MINUTES)
     level *= decay
   }
 

@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest"
-import { clamp01, shuffle } from "./math.ts"
+import { clamp01, halfLifeDecay, shuffle } from "./math.ts"
 
 describe("clamp01", () => {
   it("returns 0 for negative values", () => {
@@ -20,6 +20,28 @@ describe("clamp01", () => {
   it("returns exact boundary values", () => {
     expect(clamp01(0)).toBe(0)
     expect(clamp01(1)).toBe(1)
+  })
+})
+
+describe("halfLifeDecay", () => {
+  it("returns 1 when no time has elapsed", () => {
+    expect(halfLifeDecay(0, 10)).toBe(1)
+  })
+
+  it("returns 0.5 after one half-life", () => {
+    expect(halfLifeDecay(10, 10)).toBeCloseTo(0.5)
+  })
+
+  it("returns 0.25 after two half-lives", () => {
+    expect(halfLifeDecay(20, 10)).toBeCloseTo(0.25)
+  })
+
+  it("approaches 0 for large elapsed times", () => {
+    expect(halfLifeDecay(1000, 10)).toBeCloseTo(0, 5)
+  })
+
+  it("works with fractional half-lives", () => {
+    expect(halfLifeDecay(0.5, 1)).toBeCloseTo(2 ** -0.5)
   })
 })
 

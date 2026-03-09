@@ -1,8 +1,29 @@
 import * as z from "zod"
-import { ANTICIPATION } from "@/config/constants.ts"
+import { createStateManager } from "@/lib/state.ts"
 import { nowISO } from "@/lib/time.ts"
-import { createStateManager } from "./registry.ts"
+import { decayAndFinalize } from "./helpers.ts"
 import type { EmotionalState } from "./types.ts"
+
+const ANTICIPATION = {
+  CONNECTION_THRESHOLD: 0.4,
+  SATISFACTION_THRESHOLD: 0.4,
+  EXCITEMENT_THRESHOLD: 0.4,
+  CURIOSITY_THRESHOLD: 0.5,
+  INTERACTION_INTENSITY: 0.5,
+  MOMENTUM_INTENSITY: 0.4,
+  PLANNED_INTENSITY: 0.35,
+  PATTERN_INTENSITY: 0.45,
+  CURIOSITY_INTENSITY: 0.4,
+  REUNION_INTENSITY: 0.55,
+  DISAPPOINTMENT_DAMPING: 0.6,
+  DECAY_PER_TICK: 0.92,
+  ACTIVATION_THRESHOLD: 0.12,
+  EXCITEMENT_BOOST: 0.05,
+  ENERGY_BOOST: 0.04,
+  CURIOSITY_BOOST: 0.03,
+  BOREDOM_REDUCTION: 0.04,
+  SATISFACTION_BOOST: 0.03
+} as const
 
 export const AnticipationSource = z.enum([
   "expected_interaction",
@@ -128,9 +149,12 @@ export function computeAnticipation(context: AnticipationContext): AnticipationS
     level *= ANTICIPATION.DISAPPOINTMENT_DAMPING
   }
 
-  const decayedLevel = previousState.level * ANTICIPATION.DECAY_PER_TICK
-  const finalLevel = Math.min(1, Math.max(decayedLevel, level))
-  const isActive = finalLevel > ANTICIPATION.ACTIVATION_THRESHOLD
+  const { finalLevel, isActive } = decayAndFinalize(
+    previousState.level,
+    level,
+    ANTICIPATION.DECAY_PER_TICK,
+    ANTICIPATION.ACTIVATION_THRESHOLD
+  )
 
   const valence = valenceCount > 0 ? valenceSum / valenceCount : previousState.valence * 0.95
 

@@ -1,9 +1,75 @@
-import { PROCRASTINATION } from "@/config/constants.ts"
+import * as z from "zod"
 import type { DisappointmentState } from "@/emotion/disappointment.ts"
 import type { ShameState } from "@/emotion/shame.ts"
 import type { EmotionalState } from "@/emotion/types.ts"
+import { getValidatedRedis, redis } from "@/integrations/redis.ts"
 import { nowISO } from "@/lib/time.ts"
-import type { ProcrastinationSource, ProcrastinationState } from "./types.ts"
+
+const PROCRASTINATION = {
+  LOW_ENERGY_THRESHOLD: 0.3,
+  LOW_CONFIDENCE_THRESHOLD: 0.35,
+  HIGH_CAUTION_THRESHOLD: 0.6,
+  COMFORT_SATISFACTION_THRESHOLD: 0.7,
+  COMFORT_LOW_CURIOSITY_THRESHOLD: 0.3,
+  ENERGY_WEIGHT: 0.8,
+  FAILURE_FEAR_WEIGHT: 0.7,
+  OVERWHELM_WEIGHT: 0.5,
+  SHAME_WEIGHT: 0.4,
+  COMFORT_WEIGHT: 0.35,
+  PARALYSIS_CAUTION_THRESHOLD: 0.5,
+  PARALYSIS_CURIOSITY_THRESHOLD: 0.4,
+  PARALYSIS_BASE: 0.4,
+  IDLE_STREAK_BOOST_TICKS: 3,
+  IDLE_STREAK_BOOST: 0.1,
+  DECAY_PER_TICK: 0.92,
+  ACTIVATION_THRESHOLD: 0.2,
+  MAX_AVOIDED_ACTIONS: 5,
+  STREAK_GUILT_SCALE: 0.1,
+  SATISFACTION_DRAIN: 0.04,
+  CONFIDENCE_DRAIN: 0.06,
+  GUILT_FRUSTRATION: 0.03,
+  ENERGY_FEEDBACK_DRAIN: 0.02
+} as const
+
+export const ProcrastinationSource = z.enum([
+  "low_energy",
+  "fear_of_failure",
+  "overwhelm",
+  "shame_avoidance",
+  "comfort_seeking",
+  "decision_paralysis"
+])
+export type ProcrastinationSource = z.infer<typeof ProcrastinationSource>
+
+export const ProcrastinationState = z.object({
+  level: z.number().min(0).max(1).default(0),
+  isActive: z.boolean().default(false),
+  dominantSource: ProcrastinationSource.nullable().default(null),
+  avoidedActions: z.array(z.string()).default([]),
+  lastTriggeredAt: z.string().optional(),
+  streakTicks: z.number().default(0)
+})
+export type ProcrastinationState = z.infer<typeof ProcrastinationState>
+
+export const DEFAULT_PROCRASTINATION_STATE: ProcrastinationState = {
+  level: 0,
+  isActive: false,
+  dominantSource: null,
+  avoidedActions: [],
+  lastTriggeredAt: undefined,
+  streakTicks: 0
+}
+
+const REDIS_KEY = "working:cognition:procrastination"
+
+export async function getProcrastinationState(): Promise<ProcrastinationState> {
+  const stored = await getValidatedRedis(REDIS_KEY, ProcrastinationState)
+  return stored ?? DEFAULT_PROCRASTINATION_STATE
+}
+
+export async function saveProcrastinationState(state: ProcrastinationState): Promise<void> {
+  await redis.set(REDIS_KEY, state)
+}
 
 export interface ProcrastinationContext {
   emotion: EmotionalState

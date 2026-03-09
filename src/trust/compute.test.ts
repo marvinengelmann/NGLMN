@@ -1,5 +1,15 @@
-import { describe, expect, it } from "vitest"
-import { getAutonomyLevel } from "./assessment.ts"
+import { describe, expect, it, vi } from "vitest"
+
+vi.mock("@/emotion/state.ts", () => ({
+  getCurrentEmotion: vi.fn()
+}))
+
+vi.mock("./state.ts", () => ({
+  getTrustEventLog: vi.fn(),
+  pushTrustEvent: vi.fn()
+}))
+
+import { getAutonomyLevel } from "./compute.ts"
 
 describe("getAutonomyLevel", () => {
   it("returns locked when experience is 0", () => {

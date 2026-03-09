@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { detectConflict } from "./conflict.ts"
+import { detectConflict } from "./update.ts"
 
 describe("detectConflict", () => {
   it("returns false when no conflict indicators", () => {

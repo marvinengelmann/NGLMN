@@ -128,3 +128,35 @@ export async function getAttachmentHistory(limit = 10): Promise<AttachmentSnapsh
     })
     .filter((r): r is AttachmentSnapshot => r != null)
 }
+
+const REL_KEYS = {
+  RELATIONSHIP_CONFLICT_COUNT: "working:relationship:conflictCount",
+  RELATIONSHIP_FIRST_INTERACTION_AT: "working:relationship:firstInteractionAt",
+  RELATIONSHIP_TOTAL_INTERACTIONS: "working:relationship:totalInteractions"
+} as const
+
+export async function getConflictCount(): Promise<number> {
+  const raw = await redis.get<number>(REL_KEYS.RELATIONSHIP_CONFLICT_COUNT)
+  return raw ?? 0
+}
+
+export async function incrementConflictCount(): Promise<void> {
+  await redis.incr(REL_KEYS.RELATIONSHIP_CONFLICT_COUNT)
+}
+
+export async function getFirstInteractionAt(): Promise<string | null> {
+  return redis.get<string>(REL_KEYS.RELATIONSHIP_FIRST_INTERACTION_AT)
+}
+
+export async function setFirstInteractionAt(isoTimestamp: string): Promise<void> {
+  await redis.set(REL_KEYS.RELATIONSHIP_FIRST_INTERACTION_AT, isoTimestamp)
+}
+
+export async function getTotalInteractions(): Promise<number> {
+  const raw = await redis.get<number>(REL_KEYS.RELATIONSHIP_TOTAL_INTERACTIONS)
+  return raw ?? 0
+}
+
+export async function incrementTotalInteractions(): Promise<void> {
+  await redis.incr(REL_KEYS.RELATIONSHIP_TOTAL_INTERACTIONS)
+}

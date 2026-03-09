@@ -1,8 +1,33 @@
 import * as z from "zod"
-import { MELANCHOLY } from "@/config/constants.ts"
+import { createStateManager } from "@/lib/state.ts"
 import { nowISO } from "@/lib/time.ts"
-import { createStateManager } from "./registry.ts"
+import { decayAndFinalize, sumContributions } from "./helpers.ts"
 import type { EmotionalState } from "./types.ts"
+
+const MELANCHOLY = {
+  SATISFACTION_THRESHOLD: 0.3,
+  CONNECTION_THRESHOLD: 0.4,
+  LOW_ENERGY_THRESHOLD: 0.4,
+  LOW_BOREDOM_THRESHOLD: 0.4,
+  IMPERMANENCE_INTENSITY: 0.45,
+  BEAUTY_INTENSITY: 0.5,
+  QUIET_INTENSITY: 0.35,
+  DISTANCE_INTENSITY: 0.45,
+  TIME_INTENSITY: 0.4,
+  MEMORY_INTENSITY: 0.5,
+  PLAYFULNESS_DAMPING: 0.4,
+  DECAY_PER_TICK: 0.94,
+  ACTIVATION_THRESHOLD: 0.12,
+  POIGNANCY_SCALE: 0.8,
+  POIGNANCY_DECAY: 0.06,
+  DEPTH_GROWTH: 0.06,
+  DEPTH_DECAY: 0.03,
+  CONNECTION_BOOST: 0.04,
+  SATISFACTION_BOOST: 0.02,
+  EXCITEMENT_REDUCTION: 0.03,
+  ENERGY_REDUCTION: 0.02,
+  BOREDOM_REDUCTION: 0.03
+} as const
 
 export const MelancholySource = z.enum([
   "impermanence_awareness",
@@ -58,10 +83,6 @@ interface MelancholyContext {
 export function computeMelancholy(context: MelancholyContext): MelancholyState {
   const { emotion, previousState } = context
 
-  let level = 0
-  let source: MelancholySource | null = null
-  let maxContribution = 0
-
   const contributions: { source: MelancholySource; value: number }[] = []
 
   if (context.reflectingOnTime && emotion.satisfaction > MELANCHOLY.SATISFACTION_THRESHOLD) {
@@ -110,21 +131,18 @@ export function computeMelancholy(context: MelancholyContext): MelancholyState {
     })
   }
 
-  for (const c of contributions) {
-    level += c.value
-    if (c.value > maxContribution) {
-      maxContribution = c.value
-      source = c.source
-    }
-  }
+  let { level, source, maxContribution } = sumContributions(contributions)
 
   if (context.playfulnessActive) {
     level *= MELANCHOLY.PLAYFULNESS_DAMPING
   }
 
-  const decayedLevel = previousState.level * MELANCHOLY.DECAY_PER_TICK
-  const finalLevel = Math.min(1, Math.max(decayedLevel, level))
-  const isActive = finalLevel > MELANCHOLY.ACTIVATION_THRESHOLD
+  const { finalLevel, isActive } = decayAndFinalize(
+    previousState.level,
+    level,
+    MELANCHOLY.DECAY_PER_TICK,
+    MELANCHOLY.ACTIVATION_THRESHOLD
+  )
 
   const poignancy = isActive
     ? Math.min(1, finalLevel * MELANCHOLY.POIGNANCY_SCALE)

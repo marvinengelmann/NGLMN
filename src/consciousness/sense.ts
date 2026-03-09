@@ -1,38 +1,39 @@
 import { differenceInMinutes, differenceInSeconds, parseISO } from "date-fns"
-import { getAttachmentStyle } from "@/attachment/state.ts"
+import {
+  getAttachmentStyle,
+  getFirstInteractionAt,
+  incrementTotalInteractions,
+  setFirstInteractionAt
+} from "@/attachment/state.ts"
 import { detectConversationBoundary } from "@/communication/conversation.ts"
-import { HEALTH_CHECK_INTERVAL, HEARTBEAT } from "@/config/constants.ts"
+import {
+  getActiveConversation,
+  getConversationWaitingSince,
+  pushToActiveConversation,
+  setConversationWaitingSince,
+  startNewConversation
+} from "@/communication/state.ts"
+import { HEALTH_CHECK_INTERVAL, HEARTBEAT, TRIGGER_INTENSITY } from "@/config/constants.ts"
+import { getDreamState } from "@/dream/state.ts"
 import { analyzeMessageSentiment } from "@/emotion/analyze.ts"
-import { getEmotionalState } from "@/emotion/state.ts"
+import { getEmotionalState, getLastEmotionTimestamp, getTriggerTimestamps } from "@/emotion/state.ts"
 import type { EmotionUpdateEvent, MoodContext } from "@/emotion/types.ts"
 import { collectHealthStatus } from "@/health/check.ts"
+import { getHealthCheck, setHealthCheck } from "@/health/state.ts"
 import { fetchNewMessages } from "@/integrations/telegram.ts"
 import { log } from "@/lib/logger.ts"
 import { nowISO } from "@/lib/time.ts"
 import { getActiveGoals } from "@/memory/goals.ts"
-import {
-  clearOperatorSilentFlag,
-  getActiveConversation,
-  getConversationWaitingSince,
-  getDreamState,
-  getFirstInteractionAt,
-  getHealthCheck,
-  getLastEmotionTimestamp,
-  getOperatorSilentFlag,
-  getTriggerTimestamps,
-  incrementTotalInteractions,
-  pushToActiveConversation,
-  setConversationWaitingSince,
-  setFirstInteractionAt,
-  setHealthCheck,
-  setLastUpdateId,
-  setOperatorLastActivity,
-  setPerceptionSummary,
-  startNewConversation
-} from "@/memory/working.ts"
+import { setLastUpdateId } from "@/memory/working.ts"
 import { getOperatorModel, getRelationalPatterns } from "@/mind/state.ts"
 import { extractSignals, matchRelationalPatterns } from "@/mind/triggers.ts"
 import { readGitActivity, readOwnState, readTelegramActivity, readWeatherData } from "@/perception/sensors.ts"
+import {
+  clearOperatorSilentFlag,
+  getOperatorSilentFlag,
+  setOperatorLastActivity,
+  setPerceptionSummary
+} from "@/perception/state.ts"
 import type { PerceptionSummary } from "@/perception/types.ts"
 import { checkWorkflowTriggers, getActiveWorkflows, getRecentTickSummaries } from "@/workflow/engine.ts"
 import type { ConversationState, SenseResult } from "./types.ts"
@@ -110,7 +111,11 @@ export async function sense(): Promise<SenseResult> {
           const sentimentResult = await analyzeMessageSentiment(newMessages)
           if (sentimentResult.isOk()) return sentimentResult.value
           return [
-            { trigger: "message_received" as const, intensity: 0.6, detail: `${newMessages.length} new message(s)` }
+            {
+              trigger: "message_received" as const,
+              intensity: TRIGGER_INTENSITY.MESSAGE_RECEIVED,
+              detail: `${newMessages.length} new message(s)`
+            }
           ]
         })()
       : [])
@@ -120,7 +125,11 @@ export async function sense(): Promise<SenseResult> {
   if (newMessages.length > 0) {
     const wasSilent = await getOperatorSilentFlag()
     if (wasSilent) {
-      allTriggers.push({ trigger: "operator_returned", intensity: 0.7, detail: "Operator returned after silence" })
+      allTriggers.push({
+        trigger: "operator_returned",
+        intensity: TRIGGER_INTENSITY.OPERATOR_RETURNED,
+        detail: "Operator returned after silence"
+      })
       shouldClearSilentFlag = true
     }
   }

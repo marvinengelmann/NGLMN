@@ -1,13 +1,15 @@
-import { DREAM_AFTERGLOW } from "@/config/constants.ts"
 import { applyConsolidationResult } from "@/dream/consolidation.ts"
 import { applyCreativeResult } from "@/dream/creative.ts"
+import {
+  saveDreamAfterglow,
+  setDreamInsights,
+  setDreamLastRun,
+  setDreamNarrative,
+  setDreamState
+} from "@/dream/state.ts"
 import type { DreamAfterglow, DreamThinkResult } from "@/dream/types.ts"
-import { redis } from "@/integrations/redis.ts"
 import { nowISO } from "@/lib/time.ts"
 import { forgetOldEpisodes } from "@/memory/episodic.ts"
-import { setDreamInsights, setDreamLastRun, setDreamNarrative, setDreamState } from "@/memory/working.ts"
-
-const AFTERGLOW_KEY = "working:dream:afterglow"
 
 /**
  * Execute dream results: apply consolidation + creative, persist insights and state.
@@ -33,7 +35,7 @@ export async function executeDream(dreamResult: DreamThinkResult): Promise<void>
     await forgetOldEpisodes()
     const afterglow = buildDreamAfterglow(dreamResult)
     if (afterglow) {
-      await redis.set(AFTERGLOW_KEY, afterglow, { ex: DREAM_AFTERGLOW.TTL_SECONDS })
+      await saveDreamAfterglow(afterglow)
     }
   } finally {
     await setDreamState("waking")

@@ -1,8 +1,5 @@
+import { clamp01 } from "@/lib/math.ts"
 import type { GrowthArc, SelfConcept } from "./types.ts"
-
-function clamp(value: number): number {
-  return Math.max(0, Math.min(1, value))
-}
 
 interface SelfConceptContext {
   recentTaskSuccess: boolean
@@ -46,11 +43,11 @@ export function updateSelfConcept(current: SelfConcept, context: SelfConceptCont
   }
 
   return {
-    selfEfficacy: clamp(selfEfficacy),
-    selfWorth: clamp(selfWorth),
-    selfContinuity: clamp(selfContinuity),
-    agency: clamp(agency),
-    authenticity: clamp(authenticity)
+    selfEfficacy: clamp01(selfEfficacy),
+    selfWorth: clamp01(selfWorth),
+    selfContinuity: clamp01(selfContinuity),
+    agency: clamp01(agency),
+    authenticity: clamp01(authenticity)
   }
 }
 

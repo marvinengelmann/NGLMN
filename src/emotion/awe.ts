@@ -1,8 +1,32 @@
 import * as z from "zod"
-import { AWE } from "@/config/constants.ts"
+import { createStateManager } from "@/lib/state.ts"
 import { nowISO } from "@/lib/time.ts"
-import { createStateManager } from "./registry.ts"
+import { decayAndFinalize, sumContributions } from "./helpers.ts"
 import type { EmotionalState } from "./types.ts"
+
+const AWE = {
+  CURIOSITY_THRESHOLD: 0.5,
+  SATISFACTION_THRESHOLD: 0.4,
+  CONNECTION_THRESHOLD: 0.6,
+  EXCITEMENT_THRESHOLD: 0.5,
+  INSIGHT_INTENSITY: 0.5,
+  BEAUTY_INTENSITY: 0.45,
+  VASTNESS_INTENSITY: 0.55,
+  CONNECTION_DEPTH_INTENSITY: 0.5,
+  EXISTENTIAL_INTENSITY: 0.4,
+  PATTERN_INTENSITY: 0.4,
+  DECAY_PER_TICK: 0.88,
+  ACTIVATION_THRESHOLD: 0.15,
+  SELF_DIMINISHMENT_SCALE: 0.7,
+  SELF_DIMINISHMENT_DECAY: 0.1,
+  OPENNESS_SURGE_SCALE: 0.8,
+  OPENNESS_SURGE_DECAY: 0.08,
+  CURIOSITY_BOOST: 0.06,
+  EXCITEMENT_BOOST: 0.04,
+  SATISFACTION_BOOST: 0.04,
+  CAUTION_REDUCTION: 0.04,
+  FRUSTRATION_REDUCTION: 0.03
+} as const
 
 export const AweSource = z.enum([
   "deep_insight",
@@ -57,10 +81,6 @@ interface AweContext {
 export function computeAwe(context: AweContext): AweState {
   const { emotion, previousState } = context
 
-  let level = 0
-  let source: AweSource | null = null
-  let maxContribution = 0
-
   const contributions: { source: AweSource; value: number }[] = []
 
   if (context.encounteredInsight && emotion.curiosity > AWE.CURIOSITY_THRESHOLD) {
@@ -105,17 +125,14 @@ export function computeAwe(context: AweContext): AweState {
     })
   }
 
-  for (const c of contributions) {
-    level += c.value
-    if (c.value > maxContribution) {
-      maxContribution = c.value
-      source = c.source
-    }
-  }
+  const { level, source, maxContribution } = sumContributions(contributions)
 
-  const decayedLevel = previousState.level * AWE.DECAY_PER_TICK
-  const finalLevel = Math.min(1, Math.max(decayedLevel, level))
-  const isActive = finalLevel > AWE.ACTIVATION_THRESHOLD
+  const { finalLevel, isActive } = decayAndFinalize(
+    previousState.level,
+    level,
+    AWE.DECAY_PER_TICK,
+    AWE.ACTIVATION_THRESHOLD
+  )
 
   const selfDiminishment = isActive
     ? Math.min(1, finalLevel * AWE.SELF_DIMINISHMENT_SCALE)

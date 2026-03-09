@@ -6,6 +6,13 @@ export function clamp01(value: number): number {
 }
 
 /**
+ * Exponential half-life decay factor. Returns how much of the original value remains.
+ */
+export function halfLifeDecay(elapsed: number, halfLife: number): number {
+  return 2 ** (-elapsed / halfLife)
+}
+
+/**
  * Fisher-Yates shuffle — returns a new shuffled copy of the array.
  */
 export function shuffle<T>(array: T[]): T[] {

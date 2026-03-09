@@ -1,7 +1,9 @@
 import { and, desc, gte, lte } from "drizzle-orm"
+import { SOMA } from "@/config/constants.ts"
 import { db } from "@/db/client.ts"
 import { somaticHistory } from "@/db/schema.ts"
 import { getValidatedRedis, redis } from "@/integrations/redis.ts"
+import { queryRelated } from "@/memory/episodic.ts"
 import { DEFAULT_SOMATIC_STATE, SomaticState } from "./types.ts"
 
 const KEYS = {
@@ -82,4 +84,22 @@ export async function getSomaticStatesNear(timestamps: string[], limit: number):
     .map((r) => SomaticState.safeParse(r.state))
     .filter((r) => r.success)
     .map((r) => r.data)
+}
+
+/**
+ * Query somatic memories from similar past situations.
+ * Finds episodic matches, then retrieves somatic states recorded near those episodes.
+ */
+export async function querySomaticMemories(
+  contextText: string,
+  topK: number = SOMA.MEMORY_QUERY_TOP_K
+): Promise<SomaticState[]> {
+  const episodes = await queryRelated(contextText, topK)
+  if (episodes.length === 0) return []
+
+  const episodeTimestamps = episodes.map((e) => e.metadata?.timestamp).filter((t): t is string => t != null)
+
+  if (episodeTimestamps.length === 0) return []
+
+  return getSomaticStatesNear(episodeTimestamps, topK)
 }

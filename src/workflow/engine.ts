@@ -16,7 +16,7 @@ import { createGoal } from "@/memory/goals.ts"
 import { getOperatorLanguage } from "@/memory/semantic.ts"
 import type { PerceptionSummary } from "@/perception/types.ts"
 import { PERCEPTION_TRIGGER_EVAL_PROMPT, WORKFLOW_EXECUTION_SYSTEM_PROMPT } from "@/prompts/workflow.ts"
-import { recordFailure, recordSuccess } from "@/trust/history.ts"
+import { recordFailure, recordSuccess } from "@/trust/compute.ts"
 import {
   type WorkflowDefinition,
   type WorkflowExecutionResult,

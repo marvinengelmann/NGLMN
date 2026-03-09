@@ -7,6 +7,7 @@ import { db } from "@/db/client.ts"
 import { narrativeEntries } from "@/db/schema.ts"
 import { isDissonanceSignificant } from "@/dissonance/check.ts"
 import { executeDream } from "@/dream/executor.ts"
+import { setDreamState } from "@/dream/state.ts"
 import { getEmotionalState, saveEmotionalState } from "@/emotion/state.ts"
 import {
   computeEmotionalIntensity,
@@ -15,6 +16,12 @@ import {
   summarizeEmotions
 } from "@/emotion/update.ts"
 import { runEvolutionCycle } from "@/evolution/cycle.ts"
+import {
+  setCalendarLastCheck,
+  setEmailLastCheck,
+  setSocialMediaLastBrowse,
+  setSocialMediaLastPost
+} from "@/integrations/cooldowns.ts"
 import { sendMessageWithReply } from "@/integrations/telegram.ts"
 import { postToX } from "@/integrations/x.ts"
 import { log } from "@/lib/logger.ts"
@@ -23,16 +30,10 @@ import { nowISO, sleep } from "@/lib/time.ts"
 import { storeEpisode, storeHumorEpisode, storeRelationshipEpisode } from "@/memory/episodic.ts"
 import { executeGoalUpdate } from "@/memory/goals.ts"
 import { storeKnowledge } from "@/memory/semantic.ts"
-import {
-  getLastTickSummary,
-  setDreamState,
-  setEmailLastCheck,
-  setSocialMediaLastBrowse,
-  setSocialMediaLastPost
-} from "@/memory/working.ts"
-import { generateNarrativeEntry } from "@/psyche/narrative.ts"
-import { savePsycheSnapshot, saveSelfConcept } from "@/psyche/state.ts"
-import { updateSelfConcept } from "@/psyche/update.ts"
+import { getLastTickSummary } from "@/memory/working.ts"
+import { buildNarrativeSummary, generateNarrativeEntry } from "@/psyche/narrative.ts"
+import { addGrowthArc, addNarrativeEntry, savePsycheSnapshot, saveSelfConcept } from "@/psyche/state.ts"
+import { detectGrowthArc, updateSelfConcept } from "@/psyche/update.ts"
 import { executeMorning, executeReflection } from "@/routine/executor.ts"
 import { validatePublicContent } from "@/security/privacy.ts"
 import { saveSomaticState } from "@/soma/state.ts"
@@ -74,6 +75,10 @@ export async function act(
   }
 
   await executeAction(deliberateResult)
+
+  if (deliberateResult.calendarChecked) {
+    await setCalendarLastCheck(nowISO())
+  }
 
   if (decision.workflowId) {
     const workflow = senseResult.triggeredWorkflows.find((wf) => wf.id === decision.workflowId)
@@ -126,6 +131,12 @@ export async function act(
   })
   await saveSelfConcept(updatedConcept)
 
+  const growthArc = detectGrowthArc(updatedConcept, feelResult.selfConcept, nowISO())
+  if (growthArc) {
+    await addGrowthArc(growthArc)
+    log.info("Growth arc detected", { observation: growthArc.observation })
+  }
+
   if (decision.action === "reflect" || decision.action === "morning") {
     const emotionSummary = summarizeEmotions(feelResult.emotion)
 
@@ -140,12 +151,13 @@ export async function act(
         emotionalColoring: entry.emotionalColoring,
         significance: entry.significance
       })
+      await addNarrativeEntry(entry)
 
       await savePsycheSnapshot({
         selfConcept: updatedConcept,
         aspirations: [],
         fears: [],
-        narrativeSummary: `[${entry.emotionalColoring}] ${entry.content}`,
+        narrativeSummary: buildNarrativeSummary([entry]),
         timestamp: entry.timestamp
       })
 

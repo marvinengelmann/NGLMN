@@ -3,11 +3,11 @@ import { db } from "@/db/client.ts"
 import { genesis } from "@/db/schema.ts"
 import { getValidatedRedis, redis } from "@/integrations/redis.ts"
 import type { PersonalityType } from "@/personality/types.ts"
-import { GenesisDNA, GenesisRecord } from "./types.ts"
+import { type GenesisDNA, GenesisRecord } from "./types.ts"
 
 export const GENESIS_REDIS_KEY = "working:genesis:record"
 
-let memoryCache: GenesisRecord | null | undefined = undefined
+let memoryCache: GenesisRecord | null | undefined
 
 /**
  * Get the genesis record: memory cache → Redis → DB → null.

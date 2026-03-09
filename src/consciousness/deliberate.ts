@@ -6,6 +6,7 @@ import { callIntelligence } from "@/core/intelligence.ts"
 import { thinkDream } from "@/dream/thinking.ts"
 import { getGenesisPersonalityType } from "@/genesis/state.ts"
 import { fetchUpcomingEvents, isCaldavEnabled } from "@/integrations/caldav.ts"
+import { canCheckCalendar, canCheckEmail, canPerformSocialMedia } from "@/integrations/cooldowns.ts"
 import { fetchUnreadEmails, isImapEnabled } from "@/integrations/imap.ts"
 import type { CalendarEvent, EmailPreview } from "@/integrations/types.ts"
 import { type EnrichedTweet, getHomeTimeline, isXEnabled } from "@/integrations/x.ts"
@@ -13,13 +14,7 @@ import { log } from "@/lib/logger.ts"
 import { captureError } from "@/lib/sentry.ts"
 import { queryRelated } from "@/memory/episodic.ts"
 import { getGoalsByPriority } from "@/memory/goals.ts"
-import {
-  canCheckCalendar,
-  canCheckEmail,
-  canPerformSocialMedia,
-  getConsecutiveIdleTicks,
-  setCalendarLastCheck
-} from "@/memory/working.ts"
+import { getConsecutiveIdleTicks } from "@/memory/working.ts"
 import { getOperatorProfile } from "@/mind/profile.ts"
 import { generateInnerDialog } from "@/polyphony/dialog.ts"
 import { selectActiveVoices, shouldRunDialog } from "@/polyphony/voices.ts"
@@ -79,7 +74,6 @@ export async function deliberate(senseResult: SenseResult, feelResult: FeelingRe
       try {
         const upcoming = await fetchUpcomingEvents(CALENDAR.UPCOMING_WINDOW_HOURS)
         calendarContext = { canCheck: true, upcoming }
-        await setCalendarLastCheck(new Date().toISOString())
       } catch (e) {
         captureError(e, { phase: "calendar_fetch" })
         calendarContext = { canCheck: true }
@@ -251,7 +245,15 @@ export async function deliberate(senseResult: SenseResult, feelResult: FeelingRe
 
   const cognitiveConflict = detectCognitiveConflict(feelResult.instinct, decision.action)
 
-  const base = { decision, systemPrompt, innerDialog, cognitiveConflict, instinctOverride: false as const }
+  const calendarChecked = calendarContext?.upcoming !== undefined
+  const base = {
+    decision,
+    systemPrompt,
+    innerDialog,
+    cognitiveConflict,
+    instinctOverride: false as const,
+    calendarChecked
+  }
 
   switch (decision.action) {
     case "dream":

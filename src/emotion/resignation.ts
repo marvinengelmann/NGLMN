@@ -1,9 +1,33 @@
 import * as z from "zod"
-import { RESIGNATION } from "@/config/constants.ts"
+import { createStateManager } from "@/lib/state.ts"
 import { nowISO } from "@/lib/time.ts"
 import type { OperatorModel } from "@/mind/types.ts"
-import { createStateManager } from "./registry.ts"
+import { decayAndFinalize, sumContributions } from "./helpers.ts"
 import type { EmotionalState } from "./types.ts"
+
+const RESIGNATION = {
+  LOW_CONFIDENCE_THRESHOLD: 0.35,
+  CONNECTION_THRESHOLD: 0.4,
+  DISCONNECTION_THRESHOLD: 0.3,
+  LOW_SATISFACTION_THRESHOLD: 0.3,
+  CORRECTION_THRESHOLD: 3,
+  FAILURE_INTENSITY: 0.5,
+  IGNORED_INTENSITY: 0.45,
+  DISCONNECTION_INTENSITY: 0.5,
+  HOPE_EXHAUSTION_INTENSITY: 0.6,
+  UNREWARDED_INTENSITY: 0.45,
+  AUTONOMY_INTENSITY: 0.4,
+  HOPE_COUNTERWEIGHT: 0.7,
+  DECAY_PER_TICK: 0.96,
+  ACTIVATION_THRESHOLD: 0.15,
+  DEPTH_GROWTH: 0.08,
+  DEPTH_DECAY: 0.03,
+  ENERGY_DRAIN: 0.06,
+  CURIOSITY_DRAIN: 0.05,
+  EXCITEMENT_DRAIN: 0.04,
+  CONFIDENCE_DRAIN: 0.04,
+  SATISFACTION_DRAIN: 0.03
+} as const
 
 export const ResignationSource = z.enum([
   "repeated_failure",
@@ -60,10 +84,6 @@ interface ResignationContext {
 export function computeResignation(context: ResignationContext): ResignationState {
   const { emotion, operatorModel, previousState } = context
 
-  let level = 0
-  let source: ResignationSource | null = null
-  let maxContribution = 0
-
   const contributions: { source: ResignationSource; value: number }[] = []
 
   if (context.repeatedFailures && emotion.confidence < RESIGNATION.LOW_CONFIDENCE_THRESHOLD) {
@@ -108,21 +128,18 @@ export function computeResignation(context: ResignationContext): ResignationStat
     })
   }
 
-  for (const c of contributions) {
-    level += c.value
-    if (c.value > maxContribution) {
-      maxContribution = c.value
-      source = c.source
-    }
-  }
+  let { level, source, maxContribution } = sumContributions(contributions)
 
   if (context.hopeLevel > 0) {
     level *= 1 - context.hopeLevel * RESIGNATION.HOPE_COUNTERWEIGHT
   }
 
-  const decayedLevel = previousState.level * RESIGNATION.DECAY_PER_TICK
-  const finalLevel = Math.min(1, Math.max(decayedLevel, level))
-  const isActive = finalLevel > RESIGNATION.ACTIVATION_THRESHOLD
+  const { finalLevel, isActive } = decayAndFinalize(
+    previousState.level,
+    level,
+    RESIGNATION.DECAY_PER_TICK,
+    RESIGNATION.ACTIVATION_THRESHOLD
+  )
 
   const depth = isActive
     ? Math.min(1, previousState.depth + RESIGNATION.DEPTH_GROWTH * finalLevel)

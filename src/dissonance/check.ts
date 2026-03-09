@@ -2,6 +2,7 @@ import { differenceInHours } from "date-fns"
 import { callIntelligence } from "@/core/intelligence.ts"
 import type { EmotionalState } from "@/emotion/types.ts"
 import { log } from "@/lib/logger.ts"
+import { halfLifeDecay } from "@/lib/math.ts"
 import { nowISO } from "@/lib/time.ts"
 import { VALUE_ACTION_PROMPT } from "@/prompts/dissonance.ts"
 import type { SelfConcept } from "@/psyche/types.ts"
@@ -103,7 +104,7 @@ export function computeDissonanceScore(events: DissonanceEvent[]): number {
       const resolutionWeight = event.resolution && event.resolution !== "unresolved" ? 0.3 : 1.0
       const eventDate = new Date(event.timestamp)
       const hoursAgo = Number.isNaN(eventDate.getTime()) ? 0 : differenceInHours(now, eventDate)
-      const temporalDecay = 0.5 ** (Math.max(0, hoursAgo) / 6)
+      const temporalDecay = halfLifeDecay(Math.max(0, hoursAgo), 6)
       return {
         total: acc.total + event.dissonanceScore * resolutionWeight * temporalDecay,
         weightSum: acc.weightSum + temporalDecay

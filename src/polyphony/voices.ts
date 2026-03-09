@@ -72,7 +72,7 @@ export function selectActiveVoices(
   return sorted.slice(0, 4)
 }
 
-const DOMINANCE_HISTORY_KEY = "working:polyphony:voiceDominanceHistory"
+export const DOMINANCE_HISTORY_KEY = "working:polyphony:voiceDominanceHistory"
 const DOMINANCE_FREQUENCY_BOOST = 0.1
 
 /**

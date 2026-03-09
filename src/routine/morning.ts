@@ -1,15 +1,10 @@
+import { pushToActiveConversation } from "@/communication/state.ts"
+import { clearDreamInsights, clearDreamNarrative, getDreamNarrative, setDreamState } from "@/dream/state.ts"
 import type { EmotionalState } from "@/emotion/types.ts"
 import { sendToOperator } from "@/integrations/telegram.ts"
 import { log } from "@/lib/logger.ts"
 import { captureError } from "@/lib/sentry.ts"
 import { storeEpisode } from "@/memory/episodic.ts"
-import {
-  clearDreamInsights,
-  clearDreamNarrative,
-  getDreamNarrative,
-  pushToActiveConversation,
-  setDreamState
-} from "@/memory/working.ts"
 import { MORNING_MESSAGE_SYSTEM_PROMPT } from "@/prompts/routine.ts"
 
 /**

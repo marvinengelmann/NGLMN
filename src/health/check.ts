@@ -5,6 +5,8 @@ import { BUDGET, HEALTH_CHECK } from "@/config/constants.ts"
 import { getBudgetState } from "@/core/budget.ts"
 import { db } from "@/db/client.ts"
 import { semanticMemory } from "@/db/schema.ts"
+import { getCurrentEmotion } from "@/emotion/state.ts"
+import { pingRedis, setHealthCheck, setLastHealthyCommit } from "@/health/state.ts"
 import type { HealthCheckResult, OverallStatus, ProcessStatus, ServiceStatus } from "@/health/types.ts"
 import { getRef } from "@/integrations/github.ts"
 import { pingTelegram } from "@/integrations/telegram.ts"
@@ -13,13 +15,7 @@ import { log } from "@/lib/logger.ts"
 import { extractErrorMessage } from "@/lib/result.ts"
 import { captureError } from "@/lib/sentry.ts"
 import { nowISO } from "@/lib/time.ts"
-import {
-  getCurrentEmotion,
-  getLastTickSummary,
-  pingRedis,
-  setHealthCheck,
-  setLastHealthyCommit
-} from "@/memory/working.ts"
+import { getLastTickSummary } from "@/memory/working.ts"
 import { validateEmotionalState } from "@/security/guardian.ts"
 
 /**

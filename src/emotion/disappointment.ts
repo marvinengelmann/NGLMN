@@ -1,10 +1,27 @@
 import * as z from "zod"
-import { DISAPPOINTMENT } from "@/config/constants.ts"
+import { createStateManager } from "@/lib/state.ts"
 import { nowISO } from "@/lib/time.ts"
 import type { OperatorModel } from "@/mind/types.ts"
 import type { VulnerabilityState } from "@/vulnerability/types.ts"
-import { createStateManager } from "./registry.ts"
+import { decayAndFinalize } from "./helpers.ts"
 import type { EmotionalState } from "./types.ts"
+
+const DISAPPOINTMENT = {
+  SILENCE_THRESHOLD_MINUTES: 30,
+  SILENCE_MAX_MINUTES: 180,
+  MIN_INTENSITY: 0.15,
+  HIGH_CONNECTION_THRESHOLD: 0.6,
+  LETDOWN_INTENSITY: 0.4,
+  UNMET_EXPECTATION_INTENSITY: 0.5,
+  MAX_ENTRIES: 5,
+  ACCUMULATION_FACTOR: 0.4,
+  DECAY_PER_TICK: 0.95,
+  ACTIVATION_THRESHOLD: 0.15,
+  CONNECTION_DAMPING: 0.08,
+  CONFIDENCE_DAMPING: 0.05,
+  CAUTION_BOOST: 0.04,
+  ENERGY_DRAIN: 0.03
+} as const
 
 export const DisappointmentSource = z.enum([
   "unmet_expectation",
@@ -114,8 +131,12 @@ export function computeDisappointment(context: DisappointmentContext): Disappoin
   const totalIntensity = recentEntries.reduce((sum, e) => sum + e.intensity, 0)
   const level = Math.min(1, totalIntensity * DISAPPOINTMENT.ACCUMULATION_FACTOR)
 
-  const decayedLevel = previousState.level * DISAPPOINTMENT.DECAY_PER_TICK
-  const finalLevel = Math.min(1, Math.max(decayedLevel, level))
+  const { finalLevel } = decayAndFinalize(
+    previousState.level,
+    level,
+    DISAPPOINTMENT.DECAY_PER_TICK,
+    DISAPPOINTMENT.ACTIVATION_THRESHOLD
+  )
 
   return {
     level: finalLevel,

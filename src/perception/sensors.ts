@@ -2,21 +2,21 @@ import { differenceInHours, differenceInSeconds, parseISO } from "date-fns"
 import { PERCEPTION } from "@/config/constants.ts"
 import { getBudgetState } from "@/core/budget.ts"
 import type { EmotionUpdateEvent } from "@/emotion/types.ts"
+import { getHealthCheck } from "@/health/state.ts"
 import type { OverallStatus } from "@/health/types.ts"
 import { listCommits } from "@/integrations/github.ts"
 import { resolveOperatorLocation } from "@/integrations/location.ts"
 import { getCachedOrFetchWeather } from "@/integrations/openweather.ts"
 import type { WeatherData } from "@/integrations/types.ts"
 import { log } from "@/lib/logger.ts"
+import { getLastTickSummary } from "@/memory/working.ts"
 import {
-  getHealthCheck,
   getLastSystemStatus,
-  getLastTickSummary,
   getOperatorLastActivity,
   getOperatorSilentFlag,
   setLastSystemStatus,
   setOperatorSilentFlag
-} from "@/memory/working.ts"
+} from "@/perception/state.ts"
 
 /**
  * Read ANIMA's own state and generate emotional triggers from it.

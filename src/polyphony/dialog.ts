@@ -4,9 +4,9 @@ import { getValidatedRedis, redis } from "@/integrations/redis.ts"
 import { log } from "@/lib/logger.ts"
 import type { SomaticState } from "@/soma/types.ts"
 import { InnerDialog, type InnerVoice } from "./types.ts"
+import { DOMINANCE_HISTORY_KEY } from "./voices.ts"
 
 const POLYPHONY_LAST_DIALOG = "working:polyphony:lastDialog"
-const DOMINANCE_HISTORY_KEY = "working:polyphony:voiceDominanceHistory"
 const MAX_DOMINANCE_HISTORY = 50
 
 interface DialogContext {

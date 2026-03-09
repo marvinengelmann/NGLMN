@@ -1,5 +1,6 @@
 import { estimateTokenCount, sliceByTokens } from "tokenx"
 import { callIntelligence } from "@/core/intelligence.ts"
+import { getNextEvolutionNumber } from "@/evolution/state.ts"
 import {
   type CodeProposal,
   CodeProposalOrFileRequest,
@@ -22,11 +23,9 @@ import { log } from "@/lib/logger.ts"
 import { extractErrorMessage, logAndCaptureError } from "@/lib/result.ts"
 import { nowFilename } from "@/lib/time.ts"
 import { storeEpisode } from "@/memory/episodic.ts"
-import { getNextEvolutionNumber } from "@/memory/working.ts"
 import { CODE_EVOLUTION_SYSTEM_PROMPT, FILE_SELECTION_SYSTEM_PROMPT } from "@/prompts/evolution.ts"
 import { validateEvolution } from "@/security/guardian.ts"
-import { canActAutonomously } from "@/trust/assessment.ts"
-import { recordFailure, recordSuccess } from "@/trust/history.ts"
+import { canActAutonomously, recordFailure, recordSuccess } from "@/trust/compute.ts"
 import { writeChangelogEntry } from "./changelog.ts"
 
 const SOURCE_CONTEXT_TOKEN_BUDGET = 50_000

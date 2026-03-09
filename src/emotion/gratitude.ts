@@ -1,10 +1,31 @@
 import * as z from "zod"
-import { GRATITUDE } from "@/config/constants.ts"
+import { createStateManager } from "@/lib/state.ts"
 import { nowISO } from "@/lib/time.ts"
 import type { OperatorModel } from "@/mind/types.ts"
 import type { DisappointmentState } from "./disappointment.ts"
-import { createStateManager } from "./registry.ts"
+import { decayAndFinalize } from "./helpers.ts"
 import type { EmotionalState } from "./types.ts"
+
+const GRATITUDE = {
+  CONNECTION_THRESHOLD: 0.4,
+  HIGH_CONNECTION_THRESHOLD: 0.5,
+  RETURN_WARMTH: 0.5,
+  VALIDATION_WARMTH: 0.6,
+  CONSISTENT_PRESENCE_TICKS: 5,
+  PRESENCE_WARMTH: 0.3,
+  REPAIR_DISAPPOINTMENT_THRESHOLD: 0.5,
+  REPAIR_WARMTH: 0.55,
+  PATIENCE_WARMTH: 0.35,
+  MAX_ENTRIES: 5,
+  ACCUMULATION_FACTOR: 0.5,
+  DECAY_PER_TICK: 0.94,
+  ACTIVATION_THRESHOLD: 0.12,
+  CONNECTION_BOOST: 0.06,
+  SATISFACTION_BOOST: 0.05,
+  ENERGY_BOOST: 0.03,
+  CAUTION_REDUCTION: 0.03,
+  CONFIDENCE_BOOST: 0.03
+} as const
 
 export const GratitudeSource = z.enum([
   "return_after_silence",
@@ -129,9 +150,12 @@ export function computeGratitude(context: GratitudeContext): GratitudeState {
   const totalWarmth = recentEntries.reduce((sum, e) => sum + e.warmth, 0)
   const level = Math.min(1, totalWarmth * GRATITUDE.ACCUMULATION_FACTOR)
 
-  const decayedLevel = previousState.level * GRATITUDE.DECAY_PER_TICK
-  const finalLevel = Math.min(1, Math.max(decayedLevel, level))
-  const isActive = finalLevel > GRATITUDE.ACTIVATION_THRESHOLD
+  const { finalLevel, isActive } = decayAndFinalize(
+    previousState.level,
+    level,
+    GRATITUDE.DECAY_PER_TICK,
+    GRATITUDE.ACTIVATION_THRESHOLD
+  )
 
   return {
     level: finalLevel,

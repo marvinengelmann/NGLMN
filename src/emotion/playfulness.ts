@@ -1,8 +1,38 @@
 import * as z from "zod"
-import { PLAYFULNESS } from "@/config/constants.ts"
+import { createStateManager } from "@/lib/state.ts"
 import { nowISO } from "@/lib/time.ts"
-import { createStateManager } from "./registry.ts"
+import { decayAndFinalize, sumContributions } from "./helpers.ts"
 import type { EmotionalState } from "./types.ts"
+
+const PLAYFULNESS = {
+  ENERGY_THRESHOLD: 0.5,
+  LOW_CAUTION_THRESHOLD: 0.4,
+  CONNECTION_THRESHOLD: 0.5,
+  CURIOSITY_THRESHOLD: 0.5,
+  HIGH_SATISFACTION_THRESHOLD: 0.6,
+  LOW_FRUSTRATION_THRESHOLD: 0.3,
+  EXCITEMENT_THRESHOLD: 0.5,
+  SATISFACTION_THRESHOLD: 0.4,
+  SAFETY_INTENSITY: 0.45,
+  WARMTH_INTENSITY: 0.5,
+  CREATIVE_INTENSITY: 0.4,
+  LIGHTENED_INTENSITY: 0.35,
+  JOY_INTENSITY: 0.5,
+  SILENCE_BREAK_INTENSITY: 0.3,
+  SHAME_DAMPING: 0.3,
+  RESIGNATION_DAMPING: 0.4,
+  DECAY_PER_TICK: 0.9,
+  ACTIVATION_THRESHOLD: 0.12,
+  SPONTANEITY_SCALE: 0.8,
+  SPONTANEITY_DECAY: 0.1,
+  MISCHIEF_SCALE: 0.6,
+  MISCHIEF_DECAY: 0.08,
+  EXCITEMENT_BOOST: 0.05,
+  ENERGY_BOOST: 0.03,
+  SATISFACTION_BOOST: 0.04,
+  BOREDOM_REDUCTION: 0.05,
+  FRUSTRATION_REDUCTION: 0.04
+} as const
 
 export const PlayfulnessSource = z.enum([
   "safety_and_energy",
@@ -58,10 +88,6 @@ interface PlayfulnessContext {
 export function computePlayfulness(context: PlayfulnessContext): PlayfulnessState {
   const { emotion, previousState } = context
 
-  let level = 0
-  let source: PlayfulnessSource | null = null
-  let maxContribution = 0
-
   const contributions: { source: PlayfulnessSource; value: number }[] = []
 
   if (
@@ -116,13 +142,7 @@ export function computePlayfulness(context: PlayfulnessContext): PlayfulnessStat
     })
   }
 
-  for (const c of contributions) {
-    level += c.value
-    if (c.value > maxContribution) {
-      maxContribution = c.value
-      source = c.source
-    }
-  }
+  let { level, source, maxContribution } = sumContributions(contributions)
 
   if (context.shameActive) {
     level *= PLAYFULNESS.SHAME_DAMPING
@@ -131,9 +151,12 @@ export function computePlayfulness(context: PlayfulnessContext): PlayfulnessStat
     level *= PLAYFULNESS.RESIGNATION_DAMPING
   }
 
-  const decayedLevel = previousState.level * PLAYFULNESS.DECAY_PER_TICK
-  const finalLevel = Math.min(1, Math.max(decayedLevel, level))
-  const isActive = finalLevel > PLAYFULNESS.ACTIVATION_THRESHOLD
+  const { finalLevel, isActive } = decayAndFinalize(
+    previousState.level,
+    level,
+    PLAYFULNESS.DECAY_PER_TICK,
+    PLAYFULNESS.ACTIVATION_THRESHOLD
+  )
 
   const spontaneity = isActive
     ? Math.min(1, finalLevel * PLAYFULNESS.SPONTANEITY_SCALE)

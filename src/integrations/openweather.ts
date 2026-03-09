@@ -1,7 +1,7 @@
 import { env } from "@/config/env.ts"
 import { fetchWithTimeout } from "@/lib/fetch.ts"
 import { nowISO } from "@/lib/time.ts"
-import { getWeatherData, setWeatherData } from "@/memory/working.ts"
+import { getWeatherData, setWeatherData } from "@/perception/state.ts"
 import type { WeatherData } from "./types.ts"
 
 interface OpenWeatherResponse {

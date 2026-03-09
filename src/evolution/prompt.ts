@@ -7,8 +7,7 @@ import { PromptProposalOutput } from "@/evolution/types.ts"
 import { log } from "@/lib/logger.ts"
 import { logAndCaptureError } from "@/lib/result.ts"
 import { PROMPT_EVOLUTION_SYSTEM_PROMPT } from "@/prompts/evolution.ts"
-import { canActAutonomously } from "@/trust/assessment.ts"
-import { recordSuccess } from "@/trust/history.ts"
+import { canActAutonomously, recordSuccess } from "@/trust/compute.ts"
 import { writeChangelogEntry } from "./changelog.ts"
 
 interface PromptProposal extends PromptProposalOutput {

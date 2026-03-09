@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest"
-import { computeProcrastination, computeProcrastinationEffect } from "./compute.ts"
-import { DEFAULT_PROCRASTINATION_STATE } from "./types.ts"
+import type { DisappointmentState } from "@/emotion/disappointment.ts"
+import type { ShameState } from "@/emotion/shame.ts"
+import {
+  computeProcrastination,
+  computeProcrastinationEffect,
+  DEFAULT_PROCRASTINATION_STATE
+} from "./procrastination.ts"
 
 const baseEmotion = {
   curiosity: 0.5,
@@ -13,9 +18,6 @@ const baseEmotion = {
   confidence: 0.6,
   energy: 0.7
 }
-
-import type { DisappointmentState } from "@/emotion/disappointment.ts"
-import type { ShameState } from "@/emotion/shame.ts"
 
 const baseShame: ShameState = {
   level: 0,

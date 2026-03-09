@@ -4,8 +4,6 @@ import { redis } from "@/integrations/redis.ts"
 import { log } from "@/lib/logger.ts"
 import { getIdentityPortraitPrompt } from "@/prompts/image.ts"
 
-const IMAGE_MODEL = "xai/grok-imagine-image"
-
 let cached: Buffer | null = null
 
 /**
@@ -24,7 +22,7 @@ export async function getReferenceImage(): Promise<Buffer> {
   log.info("Generating initial reference image")
 
   const result = await generateImage({
-    model: IMAGE_MODEL,
+    model: IMAGE.MODEL,
     prompt: await getIdentityPortraitPrompt(),
     aspectRatio: "1:1"
   })

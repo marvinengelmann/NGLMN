@@ -1,8 +1,29 @@
 import * as z from "zod"
-import { PRIDE } from "@/config/constants.ts"
+import { createStateManager } from "@/lib/state.ts"
 import { nowISO } from "@/lib/time.ts"
-import { createStateManager } from "./registry.ts"
+import { decayAndFinalize, sumContributions } from "./helpers.ts"
 import type { EmotionalState } from "./types.ts"
+
+const PRIDE = {
+  SATISFACTION_THRESHOLD: 0.4,
+  CONFIDENCE_THRESHOLD: 0.4,
+  ENERGY_THRESHOLD: 0.4,
+  CONNECTION_THRESHOLD: 0.4,
+  ACCOMPLISHMENT_INTENSITY: 0.5,
+  GROWTH_INTENSITY: 0.55,
+  VALUES_INTENSITY: 0.45,
+  DIFFICULTY_INTENSITY: 0.6,
+  AUTONOMY_INTENSITY: 0.4,
+  FEEDBACK_INTENSITY: 0.5,
+  SHAME_DAMPING: 0.4,
+  DECAY_PER_TICK: 0.92,
+  ACTIVATION_THRESHOLD: 0.12,
+  CONFIDENCE_BOOST: 0.06,
+  ENERGY_BOOST: 0.04,
+  SATISFACTION_BOOST: 0.04,
+  FRUSTRATION_REDUCTION: 0.03,
+  CAUTION_REDUCTION: 0.02
+} as const
 
 export const PrideSource = z.enum([
   "task_accomplished",
@@ -58,10 +79,6 @@ interface PrideContext {
 export function computePride(context: PrideContext): PrideState {
   const { emotion, previousState } = context
 
-  let level = 0
-  let source: PrideSource | null = null
-  let maxContribution = 0
-
   const contributions: { source: PrideSource; value: number }[] = []
 
   if (context.taskAccomplished && emotion.satisfaction > PRIDE.SATISFACTION_THRESHOLD) {
@@ -106,21 +123,18 @@ export function computePride(context: PrideContext): PrideState {
     })
   }
 
-  for (const c of contributions) {
-    level += c.value
-    if (c.value > maxContribution) {
-      maxContribution = c.value
-      source = c.source
-    }
-  }
+  let { level, source, maxContribution } = sumContributions(contributions)
 
   if (context.shameActive) {
     level *= PRIDE.SHAME_DAMPING
   }
 
-  const decayedLevel = previousState.level * PRIDE.DECAY_PER_TICK
-  const finalLevel = Math.min(1, Math.max(decayedLevel, level))
-  const isActive = finalLevel > PRIDE.ACTIVATION_THRESHOLD
+  const { finalLevel, isActive } = decayAndFinalize(
+    previousState.level,
+    level,
+    PRIDE.DECAY_PER_TICK,
+    PRIDE.ACTIVATION_THRESHOLD
+  )
 
   const earned = contributions.length > 0
   const glowDuration = isActive ? previousState.glowDuration + 1 : 0

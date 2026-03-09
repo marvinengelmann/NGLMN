@@ -1,5 +1,6 @@
 import { runs, schedules } from "@trigger.dev/sdk"
-import { HEARTBEAT } from "@/config/constants.ts"
+import { getConversationWaitingSince } from "@/communication/state.ts"
+import { HEARTBEAT, LIFECYCLE } from "@/config/constants.ts"
 import { computeSkipProbability, consumeBurstCooldownTick } from "@/consciousness/gating.ts"
 import { runHeartbeat } from "@/consciousness/heartbeat.ts"
 import {
@@ -8,10 +9,11 @@ import {
   maybeStoreLifecycleEpisode,
   sendLifecycleNotification
 } from "@/consciousness/lifecycle.ts"
+import { getCurrentEmotion } from "@/emotion/state.ts"
 import { fetchNewMessages } from "@/integrations/telegram.ts"
 import { log } from "@/lib/logger.ts"
 import { captureError } from "@/lib/sentry.ts"
-import { getConversationWaitingSince, getCurrentEmotion, isBusy } from "@/memory/working.ts"
+import { isBusy } from "@/memory/working.ts"
 
 export const heartbeatTask = schedules.task({
   id: "heartbeat",
@@ -34,8 +36,10 @@ export const heartbeatTask = schedules.task({
       const event = await getActiveLifeEvent()
       if (event?.interruptible) {
         const peek = await fetchNewMessages(0)
-        if (peek.messages.length > 0 && Math.random() < 0.3) {
-          sendLifecycleNotification(event.type, "mid_event").catch((e) => captureError(e, { phase: "lifecycle_mid_event" }))
+        if (peek.messages.length > 0 && Math.random() < LIFECYCLE.MID_EVENT_NOTIFY_PROBABILITY) {
+          sendLifecycleNotification(event.type, "mid_event").catch((e) =>
+            captureError(e, { phase: "lifecycle_mid_event" })
+          )
         }
       }
       log.info("Heartbeat skipped — life event active")

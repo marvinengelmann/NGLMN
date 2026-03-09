@@ -1,35 +1,41 @@
 import { differenceInDays, differenceInMinutes, parseISO } from "date-fns"
-import { detectConflict } from "@/attachment/conflict.ts"
 import { computeRelationshipPhase, shouldTransitionPhase } from "@/attachment/phases.ts"
 import {
   getAttachmentStyle,
+  getConflictCount,
+  getFirstInteractionAt,
   getPhaseTickCount,
   getRelationshipPhase,
+  getTotalInteractions,
+  incrementConflictCount,
   incrementPhaseTickCount,
   saveAttachmentStyle,
   saveRelationshipPhase
 } from "@/attachment/state.ts"
-import { hasStyleChanged, updateAttachmentStyle } from "@/attachment/update.ts"
+import { detectConflict, hasStyleChanged, updateAttachmentStyle } from "@/attachment/update.ts"
+import {
+  applyIdiolectDrift,
+  detectOperatorAdoption,
+  extractPatterns,
+  getIdiolectState,
+  mergePatterns,
+  saveIdiolectState
+} from "@/communication/idiolect.ts"
 import { MOMENTUM } from "@/config/constants.ts"
 import { getMoodBaseline, saveMoodBaseline } from "@/emotion/state.ts"
 import { clampState } from "@/emotion/update.ts"
 import { log } from "@/lib/logger.ts"
 import { logAndCaptureError } from "@/lib/result.ts"
 import { applyOpinionDrift } from "@/memory/semantic.ts"
-import {
-  getConflictCount,
-  getFirstInteractionAt,
-  getLastTickSummary,
-  getTotalInteractions,
-  incrementConflictCount,
-  incrementConsecutiveIdleTicks,
-  resetConsecutiveIdleTicks
-} from "@/memory/working.ts"
+import { getLastTickSummary, incrementConsecutiveIdleTicks, resetConsecutiveIdleTicks } from "@/memory/working.ts"
 import { handleDriftCheck } from "@/security/guardian.ts"
 import { getSomaticState, saveSomaticState } from "@/soma/state.ts"
 import { rechargeSocialBattery } from "@/soma/update.ts"
 import { logActionResult, logTick } from "./recorder.ts"
 import type { DeliberateResult, FeelingResult, MaintainInput, TickSummary } from "./types.ts"
+
+const OPINION_DRIFT_PROBABILITY = 0.05
+const IDIOLECT_DRIFT_PROBABILITY = 0.05
 
 /**
  * MAINTAIN phase — persist state, detect drift, update attachment, track phases and idle ticks.
@@ -120,9 +126,25 @@ export async function maintain(
   })
   await saveMoodBaseline(newBaseline)
 
-  if (Math.random() < 0.05) {
+  if (Math.random() < OPINION_DRIFT_PROBABILITY) {
     const driftResult = await applyOpinionDrift()
     if (driftResult.isErr()) logAndCaptureError(driftResult.error)
+  }
+
+  const idiolectState = await getIdiolectState()
+  const operatorTexts = input.senseResult.pendingMessages.map((m) => m.text || "")
+  const animaTexts = input.decision.messages.map((m) => m.text)
+
+  const selfPatterns = animaTexts.length > 0 ? extractPatterns(animaTexts) : []
+  const adoptedPatterns = operatorTexts.length > 0 ? detectOperatorAdoption(operatorTexts, idiolectState) : []
+  const allNewPatterns = [...selfPatterns, ...adoptedPatterns]
+
+  if (allNewPatterns.length > 0) {
+    const merged = mergePatterns(idiolectState, allNewPatterns)
+    await saveIdiolectState(merged)
+  } else if (Math.random() < IDIOLECT_DRIFT_PROBABILITY) {
+    const drifted = applyIdiolectDrift(idiolectState)
+    await saveIdiolectState(drifted)
   }
 
   const durationMs = Date.now() - input.startTime

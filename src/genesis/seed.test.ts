@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest"
-import { GenesisDNA } from "./types.ts"
 import { decodeSeed, encodeSeed, generateDNA, generateSeed } from "./seed.ts"
+import { GenesisDNA } from "./types.ts"
 
 describe("encodeSeed / decodeSeed", () => {
   it("roundtrips for 0", () => {
@@ -114,8 +114,22 @@ describe("generateDNA", () => {
 
   it("produces a valid MBTI type", () => {
     const validTypes = [
-      "INTJ", "INTP", "ENTJ", "ENTP", "INFJ", "INFP", "ENFJ", "ENFP",
-      "ISTJ", "ISFJ", "ESTJ", "ESFJ", "ISTP", "ISFP", "ESTP", "ESFP"
+      "INTJ",
+      "INTP",
+      "ENTJ",
+      "ENTP",
+      "INFJ",
+      "INFP",
+      "ENFJ",
+      "ENFP",
+      "ISTJ",
+      "ISFJ",
+      "ESTJ",
+      "ESFJ",
+      "ISTP",
+      "ISFP",
+      "ESTP",
+      "ESFP"
     ]
     for (const seed of ["000-000", "000-001", "000-016", "abc-def", "zzz-zzz", "123-456"]) {
       const dna = generateDNA(seed)

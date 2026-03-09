@@ -1,7 +1,14 @@
 import { differenceInDays, parseISO } from "date-fns"
-import { NOSTALGIA } from "@/config/constants.ts"
 import { clamp01 } from "@/lib/math.ts"
 import type { EmotionUpdateEvent } from "./types.ts"
+
+export const NOSTALGIA = {
+  AGE_THRESHOLD_DAYS: 7,
+  BASE_PROBABILITY: 0.15,
+  AGE_SCALE_DAYS: 30,
+  MAX_PROBABILITY: 0.4,
+  INTENSITY: 0.5
+} as const
 
 /**
  * Detect nostalgia from old episodic memories surfacing during recall.

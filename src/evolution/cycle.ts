@@ -1,6 +1,12 @@
 import { collectMetrics } from "@/emotion/metrics.ts"
 import { executeCodeEvolution, proposeCodeChange } from "@/evolution/code.ts"
 import { applyPromptChange, loadPrompt, proposePromptChange } from "@/evolution/prompt.ts"
+import {
+  clearPendingEvolutionProposal,
+  getPendingEvolutionProposal,
+  setEvolutionCycleResult,
+  setPendingEvolutionProposal
+} from "@/evolution/state.ts"
 import type {
   CodeProposal,
   EvolutionCycleResult,
@@ -14,14 +20,8 @@ import { log } from "@/lib/logger.ts"
 import { extractErrorMessage, logAndCaptureError } from "@/lib/result.ts"
 import { captureError } from "@/lib/sentry.ts"
 import { nowISO } from "@/lib/time.ts"
-import {
-  clearPendingEvolutionProposal,
-  getPendingEvolutionProposal,
-  getRecentResponses,
-  setEvolutionCycleResult,
-  setPendingEvolutionProposal,
-  setTaskActive
-} from "@/memory/working.ts"
+import { setTaskActive } from "@/memory/working.ts"
+import { getRecentResponses } from "@/security/state.ts"
 import { getRecentTickSummaries } from "@/workflow/engine.ts"
 
 const MAX_EVOLUTION_RETRIES = 3

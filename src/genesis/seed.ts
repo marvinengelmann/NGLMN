@@ -1,4 +1,5 @@
 import type { EmotionalState } from "@/emotion/types.ts"
+import { clamp01 } from "@/lib/math.ts"
 import type { PersonalityType } from "@/personality/types.ts"
 import type { SelfConcept } from "@/psyche/types.ts"
 import type {
@@ -54,12 +55,8 @@ function mulberry32(seed: number): PRNG {
   }
 }
 
-function clamp(value: number, min = 0, max = 1): number {
-  return Math.min(max, Math.max(min, value))
-}
-
 function noised(rng: PRNG, base: number, noiseRange = 0.1): number {
-  return clamp(base + (rng() - 0.5) * noiseRange * 2)
+  return clamp01(base + (rng() - 0.5) * noiseRange * 2)
 }
 
 function sigmoid(x: number, center = 0.5, steepness = 10): number {
@@ -99,15 +96,15 @@ function nudgeBigFiveTowardMBTI(bigFive: BigFive, mbti: PersonalityType): BigFiv
 
 function deriveEmotionalBaseline(bigFive: BigFive, rng: PRNG): EmotionalState {
   return {
-    curiosity: clamp(0.3 + bigFive.openness * 0.4 + (rng() - 0.5) * 0.1),
-    satisfaction: clamp(0.3 + bigFive.agreeableness * 0.3 + (1 - bigFive.neuroticism) * 0.2 + (rng() - 0.5) * 0.1),
-    frustration: clamp(0.2 + bigFive.neuroticism * 0.3 + (1 - bigFive.agreeableness) * 0.1 + (rng() - 0.5) * 0.1),
-    boredom: clamp(0.2 + (1 - bigFive.openness) * 0.3 + (1 - bigFive.conscientiousness) * 0.1 + (rng() - 0.5) * 0.1),
-    excitement: clamp(0.3 + bigFive.extraversion * 0.3 + bigFive.openness * 0.1 + (rng() - 0.5) * 0.1),
-    caution: clamp(0.3 + bigFive.neuroticism * 0.2 + bigFive.conscientiousness * 0.2 + (rng() - 0.5) * 0.1),
-    connection: clamp(0.3 + bigFive.agreeableness * 0.3 + bigFive.extraversion * 0.1 + (rng() - 0.5) * 0.1),
-    confidence: clamp(0.3 + bigFive.extraversion * 0.2 + (1 - bigFive.neuroticism) * 0.2 + (rng() - 0.5) * 0.1),
-    energy: clamp(0.4 + bigFive.extraversion * 0.3 + (1 - bigFive.neuroticism) * 0.1 + (rng() - 0.5) * 0.1)
+    curiosity: clamp01(0.3 + bigFive.openness * 0.4 + (rng() - 0.5) * 0.1),
+    satisfaction: clamp01(0.3 + bigFive.agreeableness * 0.3 + (1 - bigFive.neuroticism) * 0.2 + (rng() - 0.5) * 0.1),
+    frustration: clamp01(0.2 + bigFive.neuroticism * 0.3 + (1 - bigFive.agreeableness) * 0.1 + (rng() - 0.5) * 0.1),
+    boredom: clamp01(0.2 + (1 - bigFive.openness) * 0.3 + (1 - bigFive.conscientiousness) * 0.1 + (rng() - 0.5) * 0.1),
+    excitement: clamp01(0.3 + bigFive.extraversion * 0.3 + bigFive.openness * 0.1 + (rng() - 0.5) * 0.1),
+    caution: clamp01(0.3 + bigFive.neuroticism * 0.2 + bigFive.conscientiousness * 0.2 + (rng() - 0.5) * 0.1),
+    connection: clamp01(0.3 + bigFive.agreeableness * 0.3 + bigFive.extraversion * 0.1 + (rng() - 0.5) * 0.1),
+    confidence: clamp01(0.3 + bigFive.extraversion * 0.2 + (1 - bigFive.neuroticism) * 0.2 + (rng() - 0.5) * 0.1),
+    energy: clamp01(0.4 + bigFive.extraversion * 0.3 + (1 - bigFive.neuroticism) * 0.1 + (rng() - 0.5) * 0.1)
   }
 }
 
@@ -286,10 +283,10 @@ function deriveCommunicationStyle(bigFive: BigFive, rng: PRNG): CommunicationSty
   }
 
   return {
-    verbosity: clamp(bigFive.extraversion * 0.4 + bigFive.openness * 0.2 + 0.2 + (rng() - 0.5) * 0.1),
-    formality: clamp(bigFive.conscientiousness * 0.4 + (1 - bigFive.extraversion) * 0.2 + 0.2 + (rng() - 0.5) * 0.1),
-    metaphorTendency: clamp(bigFive.openness * 0.5 + 0.15 + (rng() - 0.5) * 0.1),
-    emotionalExpressiveness: clamp(
+    verbosity: clamp01(bigFive.extraversion * 0.4 + bigFive.openness * 0.2 + 0.2 + (rng() - 0.5) * 0.1),
+    formality: clamp01(bigFive.conscientiousness * 0.4 + (1 - bigFive.extraversion) * 0.2 + 0.2 + (rng() - 0.5) * 0.1),
+    metaphorTendency: clamp01(bigFive.openness * 0.5 + 0.15 + (rng() - 0.5) * 0.1),
+    emotionalExpressiveness: clamp01(
       bigFive.extraversion * 0.3 + bigFive.agreeableness * 0.2 + bigFive.neuroticism * 0.1 + 0.2 + (rng() - 0.5) * 0.1
     ),
     humorStyle: humorStyles[maxIdx]!
@@ -298,11 +295,13 @@ function deriveCommunicationStyle(bigFive: BigFive, rng: PRNG): CommunicationSty
 
 function deriveSelfConcept(bigFive: BigFive, rng: PRNG): SelfConcept {
   return {
-    selfEfficacy: clamp(0.3 + bigFive.conscientiousness * 0.2 + (1 - bigFive.neuroticism) * 0.2 + (rng() - 0.5) * 0.1),
-    selfWorth: clamp(0.3 + bigFive.agreeableness * 0.15 + (1 - bigFive.neuroticism) * 0.2 + (rng() - 0.5) * 0.1),
-    selfContinuity: clamp(0.4 + bigFive.conscientiousness * 0.2 + bigFive.openness * 0.1 + (rng() - 0.5) * 0.1),
-    agency: clamp(0.3 + bigFive.extraversion * 0.15 + bigFive.conscientiousness * 0.15 + (rng() - 0.5) * 0.1),
-    authenticity: clamp(0.3 + bigFive.openness * 0.2 + (1 - bigFive.neuroticism) * 0.15 + (rng() - 0.5) * 0.1)
+    selfEfficacy: clamp01(
+      0.3 + bigFive.conscientiousness * 0.2 + (1 - bigFive.neuroticism) * 0.2 + (rng() - 0.5) * 0.1
+    ),
+    selfWorth: clamp01(0.3 + bigFive.agreeableness * 0.15 + (1 - bigFive.neuroticism) * 0.2 + (rng() - 0.5) * 0.1),
+    selfContinuity: clamp01(0.4 + bigFive.conscientiousness * 0.2 + bigFive.openness * 0.1 + (rng() - 0.5) * 0.1),
+    agency: clamp01(0.3 + bigFive.extraversion * 0.15 + bigFive.conscientiousness * 0.15 + (rng() - 0.5) * 0.1),
+    authenticity: clamp01(0.3 + bigFive.openness * 0.2 + (1 - bigFive.neuroticism) * 0.15 + (rng() - 0.5) * 0.1)
   }
 }
 
@@ -316,15 +315,15 @@ function deriveVoice(bigFive: BigFive, rng: PRNG): VoiceCharacteristics {
   const paceValues: VoicePace[] = ["very_slow", "slow", "medium", "fast", "very_fast"]
   const resonanceValues: VoiceResonance[] = ["hollow", "thin", "balanced", "rich", "deep"]
 
-  const pitchBase = clamp(0.5 + (1 - bigFive.extraversion) * 0.2 + bigFive.neuroticism * 0.1 + (rng() - 0.5) * 0.2)
-  const paceBase = clamp(bigFive.extraversion * 0.4 + 0.3 + (rng() - 0.5) * 0.2)
-  const resonanceBase = clamp(bigFive.extraversion * 0.3 + bigFive.agreeableness * 0.2 + 0.2 + (rng() - 0.5) * 0.2)
+  const pitchBase = clamp01(0.5 + (1 - bigFive.extraversion) * 0.2 + bigFive.neuroticism * 0.1 + (rng() - 0.5) * 0.2)
+  const paceBase = clamp01(bigFive.extraversion * 0.4 + 0.3 + (rng() - 0.5) * 0.2)
+  const resonanceBase = clamp01(bigFive.extraversion * 0.3 + bigFive.agreeableness * 0.2 + 0.2 + (rng() - 0.5) * 0.2)
 
   return {
     pitch: pickEnum(pitchValues, pitchBase),
     pace: pickEnum(paceValues, paceBase),
-    warmth: clamp(bigFive.agreeableness * 0.5 + 0.25 + (rng() - 0.5) * 0.15),
-    breathiness: clamp(bigFive.neuroticism * 0.3 + bigFive.openness * 0.1 + 0.1 + (rng() - 0.5) * 0.15),
+    warmth: clamp01(bigFive.agreeableness * 0.5 + 0.25 + (rng() - 0.5) * 0.15),
+    breathiness: clamp01(bigFive.neuroticism * 0.3 + bigFive.openness * 0.1 + 0.1 + (rng() - 0.5) * 0.15),
     resonance: pickEnum(resonanceValues, resonanceBase)
   }
 }

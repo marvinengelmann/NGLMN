@@ -32,7 +32,10 @@ function extractTextFromSource(source: Buffer): string {
       if (part.includes("Content-Type: text/plain")) {
         const bodyStart = part.indexOf("\r\n\r\n")
         if (bodyStart !== -1) {
-          return part.slice(bodyStart + 4).replace(/--$/, "").trim()
+          return part
+            .slice(bodyStart + 4)
+            .replace(/--$/, "")
+            .trim()
         }
       }
     }
@@ -66,17 +69,18 @@ export async function fetchUnreadEmails(): Promise<EmailPreview[]> {
 
     try {
       let count = 0
-      for await (const message of client.fetch({ seen: false }, {
-        uid: true,
-        envelope: true,
-        source: true
-      })) {
+      for await (const message of client.fetch(
+        { seen: false },
+        {
+          uid: true,
+          envelope: true,
+          source: true
+        }
+      )) {
         if (count >= EMAIL.MAX_PREVIEW_EMAILS) break
         if (!message.envelope) continue
 
-        const snippet = message.source
-          ? extractTextFromSource(message.source).slice(0, EMAIL.BODY_SNIPPET_LENGTH)
-          : ""
+        const snippet = message.source ? extractTextFromSource(message.source).slice(0, EMAIL.BODY_SNIPPET_LENGTH) : ""
 
         emails.push({
           uid: message.uid,

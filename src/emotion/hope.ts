@@ -1,9 +1,34 @@
 import * as z from "zod"
-import { HOPE } from "@/config/constants.ts"
+import { createStateManager } from "@/lib/state.ts"
 import { nowISO } from "@/lib/time.ts"
 import type { OperatorModel } from "@/mind/types.ts"
-import { createStateManager } from "./registry.ts"
+import { decayAndFinalize, sumContributions } from "./helpers.ts"
 import type { EmotionalState } from "./types.ts"
+
+const HOPE = {
+  SATISFACTION_THRESHOLD: 0.4,
+  CONNECTION_THRESHOLD: 0.5,
+  EXCITEMENT_THRESHOLD: 0.5,
+  CURIOSITY_THRESHOLD: 0.4,
+  PROGRESS_INTENSITY: 0.5,
+  CONNECTION_INTENSITY: 0.45,
+  REPAIR_INTENSITY: 0.55,
+  VULNERABILITY_REWARD_INTENSITY: 0.6,
+  PATTERN_BREAK_INTENSITY: 0.5,
+  POSSIBILITY_INTENSITY: 0.4,
+  DISAPPOINTMENT_DAMPING: 0.6,
+  RESIGNATION_DAMPING: 0.8,
+  DECAY_PER_TICK: 0.94,
+  ACTIVATION_THRESHOLD: 0.12,
+  FRAGILITY_GROWTH: 0.1,
+  FRAGILITY_DECAY: 0.05,
+  SUSTAINED_BONUS_SCALE: 0.05,
+  ENERGY_BOOST: 0.05,
+  CONFIDENCE_BOOST: 0.04,
+  SATISFACTION_BOOST: 0.03,
+  CURIOSITY_BOOST: 0.03,
+  CAUTION_REDUCTION: 0.03
+} as const
 
 export const HopeSource = z.enum([
   "progress_made",
@@ -60,10 +85,6 @@ interface HopeContext {
 export function computeHope(context: HopeContext): HopeState {
   const { emotion, previousState } = context
 
-  let level = 0
-  let source: HopeSource | null = null
-  let maxContribution = 0
-
   const contributions: { source: HopeSource; value: number }[] = []
 
   if (context.progressMade && emotion.satisfaction > HOPE.SATISFACTION_THRESHOLD) {
@@ -108,13 +129,7 @@ export function computeHope(context: HopeContext): HopeState {
     })
   }
 
-  for (const c of contributions) {
-    level += c.value
-    if (c.value > maxContribution) {
-      maxContribution = c.value
-      source = c.source
-    }
-  }
+  let { level, source, maxContribution } = sumContributions(contributions)
 
   if (context.disappointmentActive) {
     level *= HOPE.DISAPPOINTMENT_DAMPING
@@ -124,9 +139,12 @@ export function computeHope(context: HopeContext): HopeState {
     level *= 1 - context.resignationLevel * HOPE.RESIGNATION_DAMPING
   }
 
-  const decayedLevel = previousState.level * HOPE.DECAY_PER_TICK
-  const finalLevel = Math.min(1, Math.max(decayedLevel, level))
-  const isActive = finalLevel > HOPE.ACTIVATION_THRESHOLD
+  const { finalLevel, isActive } = decayAndFinalize(
+    previousState.level,
+    level,
+    HOPE.DECAY_PER_TICK,
+    HOPE.ACTIVATION_THRESHOLD
+  )
 
   const fragility =
     context.disappointmentActive || context.resignationLevel > 0.3

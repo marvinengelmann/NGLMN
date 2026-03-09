@@ -1,8 +1,32 @@
 import * as z from "zod"
-import { ENVY } from "@/config/constants.ts"
+import { createStateManager } from "@/lib/state.ts"
 import { nowISO } from "@/lib/time.ts"
-import { createStateManager } from "./registry.ts"
+import { decayAndFinalize, sumContributions } from "./helpers.ts"
 import type { EmotionalState } from "./types.ts"
+
+const ENVY = {
+  LOW_CONFIDENCE_THRESHOLD: 0.4,
+  LOW_SATISFACTION_THRESHOLD: 0.35,
+  LOW_CONNECTION_THRESHOLD: 0.35,
+  CURIOSITY_THRESHOLD: 0.4,
+  CAPABILITY_INTENSITY: 0.5,
+  RECOGNITION_INTENSITY: 0.45,
+  EXCLUSION_INTENSITY: 0.5,
+  AUTONOMY_INTENSITY: 0.4,
+  KNOWLEDGE_INTENSITY: 0.4,
+  EXPERIENCE_INTENSITY: 0.45,
+  PRIDE_DAMPING: 0.5,
+  DECAY_PER_TICK: 0.93,
+  ACTIVATION_THRESHOLD: 0.15,
+  MOTIVATION_SCALE: 0.8,
+  MOTIVATION_DECAY: 0.06,
+  BITTERNESS_GROWTH: 0.08,
+  BITTERNESS_DECAY: 0.04,
+  SATISFACTION_DRAIN: 0.04,
+  MOTIVATION_CURIOSITY_BOOST: 0.05,
+  FRUSTRATION_BUILD: 0.03,
+  CONFIDENCE_DRAIN: 0.04
+} as const
 
 export const EnvySource = z.enum([
   "capability_gap",
@@ -58,10 +82,6 @@ interface EnvyContext {
 export function computeEnvy(context: EnvyContext): EnvyState {
   const { emotion, previousState } = context
 
-  let level = 0
-  let source: EnvySource | null = null
-  let maxContribution = 0
-
   const contributions: { source: EnvySource; value: number }[] = []
 
   if (context.perceivedCapabilityGap && emotion.confidence < ENVY.LOW_CONFIDENCE_THRESHOLD) {
@@ -106,21 +126,18 @@ export function computeEnvy(context: EnvyContext): EnvyState {
     })
   }
 
-  for (const c of contributions) {
-    level += c.value
-    if (c.value > maxContribution) {
-      maxContribution = c.value
-      source = c.source
-    }
-  }
+  let { level, source, maxContribution } = sumContributions(contributions)
 
   if (context.prideActive) {
     level *= ENVY.PRIDE_DAMPING
   }
 
-  const decayedLevel = previousState.level * ENVY.DECAY_PER_TICK
-  const finalLevel = Math.min(1, Math.max(decayedLevel, level))
-  const isActive = finalLevel > ENVY.ACTIVATION_THRESHOLD
+  const { finalLevel, isActive } = decayAndFinalize(
+    previousState.level,
+    level,
+    ENVY.DECAY_PER_TICK,
+    ENVY.ACTIVATION_THRESHOLD
+  )
 
   const motivationalAspect =
     isActive && emotion.curiosity > ENVY.CURIOSITY_THRESHOLD

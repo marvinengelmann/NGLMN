@@ -3,15 +3,12 @@ import { getPhenomenologicalText, isExpired } from "@/altered/compute.ts"
 import { getActiveAlteredState } from "@/altered/state.ts"
 import { getAttachmentStyle, getRelationshipPhase } from "@/attachment/state.ts"
 import type { AttachmentStyle } from "@/attachment/types.ts"
-import { getProcrastinationState } from "@/cognition/procrastination/state.ts"
-import type { ProcrastinationState } from "@/cognition/procrastination/types.ts"
+import { getProcrastinationState, type ProcrastinationState } from "@/cognition/procrastination.ts"
 import { getAttentionState, getLastInstinctImpression } from "@/cognition/state.ts"
 import type { AttentionState, InstinctImpression } from "@/cognition/types.ts"
-import { buildIdiolectSection } from "@/communication/idiolect/compute.ts"
-import { getIdiolectState } from "@/communication/idiolect/state.ts"
-import type { IdiolectState } from "@/communication/idiolect/types.ts"
+import { buildIdiolectSection, getIdiolectState, type IdiolectState } from "@/communication/idiolect.ts"
 import { computeSyntacticInstability } from "@/communication/instability.ts"
-import { getCommunicationRegister } from "@/communication/state.ts"
+import { getCommunicationRegister, getConversationBuffer } from "@/communication/state.ts"
 import type { CommunicationRegister, ConversationSlot } from "@/communication/types.ts"
 import { CALENDAR, CONTEXT_LIMITS, HUMOR, PERCEPTION, SOCIAL_BATTERY } from "@/config/constants.ts"
 import type { SenseData, TickSummary } from "@/consciousness/types.ts"
@@ -20,8 +17,8 @@ import type { DeceptionState } from "@/deception/types.ts"
 import { getDissonanceState } from "@/dissonance/state.ts"
 import type { DissonanceState } from "@/dissonance/types.ts"
 import type { DistortedMemory } from "@/distortion/types.ts"
-import type { DreamState } from "@/dream/types.ts"
-import { DreamAfterglow } from "@/dream/types.ts"
+import { getDreamAfterglow, getDreamInsights, getDreamLastRun, getDreamState } from "@/dream/state.ts"
+import type { DreamAfterglow, DreamState } from "@/dream/types.ts"
 import { type AmbivalenceState, getAmbivalenceState } from "@/emotion/ambivalence.ts"
 import { getProtectiveAngerState, type ProtectiveAngerState } from "@/emotion/anger.ts"
 import { type AnticipationState, getAnticipationState } from "@/emotion/anticipation.ts"
@@ -43,8 +40,8 @@ import { getTendernessState, type TendernessState } from "@/emotion/tenderness.t
 import { EmotionalState } from "@/emotion/types.ts"
 import { computeEmotionalIntensity } from "@/emotion/update.ts"
 import { getRecentChangelog } from "@/evolution/changelog.ts"
+import { getEvolutionCycleResult, getPendingEvolutionProposal } from "@/evolution/state.ts"
 import type { CodeProposal, EvolutionCycleResult } from "@/evolution/types.ts"
-import { getValidatedRedis } from "@/integrations/redis.ts"
 import type { CalendarEvent, EmailPreview } from "@/integrations/types.ts"
 import type { EnrichedTweet } from "@/integrations/x.ts"
 import { nowLocal } from "@/lib/time.ts"
@@ -60,13 +57,7 @@ import { getKnowledge, getOperatorLanguage, getRelatedEntities } from "@/memory/
 import type { EpisodeMetadata } from "@/memory/types.ts"
 import {
   getConsecutiveIdleTicks,
-  getConversationBuffer,
-  getDreamInsights,
-  getDreamLastRun,
-  getDreamState,
-  getEvolutionCycleResult,
   getLastTickSummary,
-  getPendingEvolutionProposal,
   getRecentTickDurations,
   getReflectionLastAt
 } from "@/memory/working.ts"
@@ -90,8 +81,8 @@ import { getGrowthArcs, getIdentityStatements, getRecentNarratives, getSelfConce
 import type { GrowthArc, NarrativeEntry, SelfConcept } from "@/psyche/types.ts"
 import { getSomaticState } from "@/soma/state.ts"
 import type { SomaticState } from "@/soma/types.ts"
-import { getAllTrustLevels } from "@/trust/levels.ts"
-import { getVulnerability } from "@/vulnerability/compute.ts"
+import { getAllTrustLevels } from "@/trust/compute.ts"
+import { getVulnerability } from "@/vulnerability/state.ts"
 import type { VulnerabilityState } from "@/vulnerability/types.ts"
 import type { WorkflowDefinition } from "@/workflow/types.ts"
 
@@ -1659,7 +1650,7 @@ export async function buildContext(
     getIdentityStatements(),
     getGrowthArcs(),
     getRecentNarratives(),
-    getValidatedRedis("working:dream:afterglow", DreamAfterglow),
+    getDreamAfterglow(),
     getActiveAlteredState(),
     getShameState(),
     getHeldBackBuffer(),

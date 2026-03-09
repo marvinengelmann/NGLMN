@@ -7,9 +7,8 @@ import { log } from "@/lib/logger.ts"
 import { PERSONALITY_PROMPTS, PERSONALITY_SECTION_INTRO } from "@/personality/profiles.ts"
 import { addNarrativeEntry } from "@/psyche/state.ts"
 import { generateDNA, generateSeed } from "./seed.ts"
-import { GENESIS_REDIS_KEY, cacheGenesisRecord, getGenesisRecord } from "./state.ts"
-import { GenesisIdentity, type GenesisDNA, type GenesisRecord } from "./types.ts"
-
+import { cacheGenesisRecord, GENESIS_REDIS_KEY, getGenesisRecord } from "./state.ts"
+import { type GenesisDNA, GenesisIdentity, type GenesisRecord } from "./types.ts"
 
 /**
  * Run the genesis process: generate DNA, create identity via LLM, store everything.

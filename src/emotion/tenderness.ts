@@ -1,10 +1,33 @@
 import * as z from "zod"
-import { TENDERNESS } from "@/config/constants.ts"
+import { createStateManager } from "@/lib/state.ts"
 import { nowISO } from "@/lib/time.ts"
 import type { OperatorModel } from "@/mind/types.ts"
 import type { VulnerabilityState } from "@/vulnerability/types.ts"
-import { createStateManager } from "./registry.ts"
+import { decayAndFinalize, sumContributions } from "./helpers.ts"
 import type { EmotionalState } from "./types.ts"
+
+const TENDERNESS = {
+  CONNECTION_THRESHOLD: 0.5,
+  HIGH_CONNECTION_THRESHOLD: 0.7,
+  SATISFACTION_THRESHOLD: 0.4,
+  WITNESSED_VULNERABILITY_INTENSITY: 0.55,
+  SHARED_QUIET_INTENSITY: 0.4,
+  TRUST_INTENSITY: 0.45,
+  GENTLE_EXCHANGE_INTENSITY: 0.4,
+  PROTECTIVE_INTENSITY: 0.5,
+  MEMORY_INTENSITY: 0.35,
+  DECAY_PER_TICK: 0.93,
+  ACTIVATION_THRESHOLD: 0.12,
+  SOFTNESS_SCALE: 0.8,
+  SOFTNESS_DECAY: 0.06,
+  PROTECTIVE_URGE_SCALE: 0.7,
+  PROTECTIVE_URGE_DECAY: 0.08,
+  CONNECTION_BOOST: 0.05,
+  SATISFACTION_BOOST: 0.04,
+  CAUTION_REDUCTION: 0.04,
+  FRUSTRATION_REDUCTION: 0.03,
+  ENERGY_BOOST: 0.02
+} as const
 
 export const TendernessSource = z.enum([
   "witnessed_vulnerability",
@@ -61,10 +84,6 @@ interface TendernessContext {
 export function computeTenderness(context: TendernessContext): TendernessState {
   const { emotion, previousState } = context
 
-  let level = 0
-  let source: TendernessSource | null = null
-  let maxContribution = 0
-
   const contributions: { source: TendernessSource; value: number }[] = []
 
   if (context.operatorShowedVulnerability && emotion.connection > TENDERNESS.CONNECTION_THRESHOLD) {
@@ -109,17 +128,14 @@ export function computeTenderness(context: TendernessContext): TendernessState {
     })
   }
 
-  for (const c of contributions) {
-    level += c.value
-    if (c.value > maxContribution) {
-      maxContribution = c.value
-      source = c.source
-    }
-  }
+  const { level, source, maxContribution } = sumContributions(contributions)
 
-  const decayedLevel = previousState.level * TENDERNESS.DECAY_PER_TICK
-  const finalLevel = Math.min(1, Math.max(decayedLevel, level))
-  const isActive = finalLevel > TENDERNESS.ACTIVATION_THRESHOLD
+  const { finalLevel, isActive } = decayAndFinalize(
+    previousState.level,
+    level,
+    TENDERNESS.DECAY_PER_TICK,
+    TENDERNESS.ACTIVATION_THRESHOLD
+  )
 
   const softness = isActive
     ? Math.min(1, finalLevel * TENDERNESS.SOFTNESS_SCALE)

@@ -6,7 +6,7 @@ import { logAndCaptureError } from "@/lib/result.ts"
 import { nowISO } from "@/lib/time.ts"
 import { getKnowledge, storeKnowledge } from "@/memory/semantic.ts"
 import { SemanticCategory, SemanticScope, SemanticSource } from "@/memory/types.ts"
-import { clearWeatherData, getOperatorLocation, setOperatorLocation } from "@/memory/working.ts"
+import { clearWeatherData, getOperatorLocation, setOperatorLocation } from "@/perception/state.ts"
 
 const OPENWEATHER_GEO_URL = "https://api.openweathermap.org/geo/1.0/direct"
 const ENV_DEFAULT_CACHE_TTL_SECONDS = 86400

@@ -1,11 +1,11 @@
 import { experimental_generateImage as generateImage } from "ai"
+import { IMAGE } from "@/config/constants.ts"
 import { trackApiCost } from "@/core/budget.ts"
 import type { AnimaResultAsync } from "@/lib/result.ts"
 import { trySafe } from "@/lib/result.ts"
 import { buildImagePrompt } from "@/prompts/image.ts"
 import { getReferenceImage } from "./references.ts"
 
-const IMAGE_MODEL = "xai/grok-imagine-image"
 const COST_PER_IMAGE = 0.07
 
 /**
@@ -24,7 +24,7 @@ export function generateAnimaImage(
     const fullPrompt = await buildImagePrompt(prompt, includesSelf)
 
     const result = await generateImage({
-      model: IMAGE_MODEL,
+      model: IMAGE.MODEL,
       prompt: includesSelf ? { text: fullPrompt, images: [await getReferenceImage()] } : fullPrompt,
       aspectRatio
     })
