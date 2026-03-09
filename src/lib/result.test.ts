@@ -15,7 +15,8 @@ vi.mock("@/lib/sentry.ts", () => ({
 
 import { log } from "@/lib/logger.ts"
 import { captureError } from "@/lib/sentry.ts"
-import { animaError, fromCatch, logAndCaptureError, trySafe } from "./result.ts"
+import * as z from "zod"
+import { animaError, fromCatch, logAndCaptureError, trySafe, zodParse } from "./result.ts"
 
 const mockedLog = vi.mocked(log)
 const mockedCaptureError = vi.mocked(captureError)
@@ -83,6 +84,40 @@ describe("trySafe", () => {
     expect(result.isErr()).toBe(true)
     expect(result._unsafeUnwrapErr().tag).toBe("LLM_ERROR")
     expect(result._unsafeUnwrapErr().message).toBe("boom")
+  })
+})
+
+describe("zodParse", () => {
+  const TestSchema = z.object({
+    name: z.string(),
+    age: z.number().min(0)
+  })
+
+  it("returns ok for valid data", () => {
+    const result = zodParse(TestSchema, { name: "Anima", age: 3 }, "VALIDATION_ERROR")
+    expect(result.isOk()).toBe(true)
+    expect(result._unsafeUnwrap()).toEqual({ name: "Anima", age: 3 })
+  })
+
+  it("returns err for invalid data", () => {
+    const result = zodParse(TestSchema, { name: 42 }, "VALIDATION_ERROR")
+    expect(result.isErr()).toBe(true)
+    expect(result._unsafeUnwrapErr().tag).toBe("VALIDATION_ERROR")
+    expect(result._unsafeUnwrapErr().message).toContain("expected string")
+  })
+
+  it("works with complex discriminated union schemas", () => {
+    const ActionSchema = z.discriminatedUnion("type", [
+      z.object({ type: z.literal("schedule"), hour: z.number() }),
+      z.object({ type: z.literal("emotion"), dimension: z.string() })
+    ])
+
+    const validResult = zodParse(ActionSchema, { type: "schedule", hour: 10 }, "PARSE_ERROR")
+    expect(validResult.isOk()).toBe(true)
+
+    const invalidResult = zodParse(ActionSchema, { type: "unknown" }, "PARSE_ERROR")
+    expect(invalidResult.isErr()).toBe(true)
+    expect(invalidResult._unsafeUnwrapErr().tag).toBe("PARSE_ERROR")
   })
 })
 

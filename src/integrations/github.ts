@@ -36,6 +36,12 @@ const GitTreeSchema = z.object({
   tree: z.array(z.object({ path: z.string(), type: z.string() }))
 })
 
+function parseOrThrow<T>(schema: z.ZodType<T>, data: unknown, context: string): T {
+  const result = schema.safeParse(data)
+  if (!result.success) throw new Error(`GitHub ${context} validation failed: ${result.error.message}`)
+  return result.data
+}
+
 function getConfig() {
   const token = env().GITHUB_TOKEN
   const owner = env().GITHUB_OWNER
@@ -70,7 +76,7 @@ export async function getRef(ref: string): Promise<{ sha: string; ref: string }>
     throw new Error(`GitHub getRef failed: ${response.status} ${await response.text()}`)
   }
 
-  const data = GitRefSchema.parse(await response.json())
+  const data = parseOrThrow(GitRefSchema, await response.json(), "getRef")
   return { sha: data.object.sha, ref: data.ref }
 }
 
@@ -108,7 +114,7 @@ export async function listCommits(
     throw new Error(`GitHub listCommits failed: ${response.status} ${await response.text()}`)
   }
 
-  const data = GitCommitSchema.parse(await response.json())
+  const data = parseOrThrow(GitCommitSchema, await response.json(), "listCommits")
   return data.map((c) => ({
     sha: c.sha,
     message: c.commit.message,
@@ -162,7 +168,7 @@ export async function getFileContent(
     throw new Error(`GitHub getFileContent failed: ${response.status} ${await response.text()}`)
   }
 
-  const data = GitFileContentSchema.parse(await response.json())
+  const data = parseOrThrow(GitFileContentSchema, await response.json(), "getFileContent")
   const content = Buffer.from(data.content, "base64").toString("utf-8")
   return { content, sha: data.sha }
 }
@@ -179,7 +185,7 @@ export async function getRepoTree(branch: string = "master"): Promise<string[]> 
     throw new Error(`GitHub getRepoTree ref failed: ${refRes.status} ${await refRes.text()}`)
   }
 
-  const refData = GitRefSchema.parse(await refRes.json())
+  const refData = parseOrThrow(GitRefSchema, await refRes.json(), "getRepoTree ref")
   const treeSha = refData.object.sha
 
   const treeRes = await githubFetch(`${GITHUB_API_BASE}/repos/${owner}/${repo}/git/trees/${treeSha}?recursive=1`, token)
@@ -188,7 +194,7 @@ export async function getRepoTree(branch: string = "master"): Promise<string[]> 
     throw new Error(`GitHub getRepoTree tree failed: ${treeRes.status} ${await treeRes.text()}`)
   }
 
-  const treeData = GitTreeSchema.parse(await treeRes.json())
+  const treeData = parseOrThrow(GitTreeSchema, await treeRes.json(), "getRepoTree tree")
 
   return treeData.tree
     .filter((entry) => entry.type === "blob" && entry.path.startsWith("src/") && entry.path.endsWith(".ts"))

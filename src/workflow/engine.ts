@@ -9,7 +9,7 @@ import { tickLog, workflows } from "@/db/schema.ts"
 import { getEmotionHistory } from "@/emotion/state.ts"
 import { EmotionalState } from "@/emotion/types.ts"
 import { sendToOperator } from "@/integrations/telegram.ts"
-import { logAndCaptureError, trySafe } from "@/lib/result.ts"
+import { animaError, logAndCaptureError, trySafe, zodParse } from "@/lib/result.ts"
 import { nowLocal } from "@/lib/time.ts"
 import { storeEpisode } from "@/memory/episodic.ts"
 import { createGoal } from "@/memory/goals.ts"
@@ -31,21 +31,35 @@ import {
 export async function getActiveWorkflows(): Promise<WorkflowDefinition[]> {
   const rows = await db.select().from(workflows).where(eq(workflows.enabled, true))
 
-  return rows.map((row) => ({
-    id: row.id,
-    name: row.name,
-    description: row.description ?? null,
-    trigger: WorkflowTrigger.parse(row.trigger),
-    instruction: row.instruction,
-    outputAction: WorkflowOutputAction.parse(row.outputAction),
-    enabled: row.enabled ?? false,
-    createdBy: row.createdBy,
-    executionCount: row.executionCount ?? 0,
-    lastExecutedAt: row.lastExecutedAt ? formatISO(row.lastExecutedAt) : null,
-    version: row.version ?? 1,
-    createdAt: formatISO(row.createdAt ?? new Date()),
-    updatedAt: formatISO(row.updatedAt ?? new Date())
-  }))
+  return rows.flatMap((row) => {
+    const trigger = zodParse(WorkflowTrigger, row.trigger, "WORKFLOW_ERROR")
+    if (trigger.isErr()) {
+      logAndCaptureError(trigger.error, { workflowId: row.id, field: "trigger" })
+      return []
+    }
+    const outputAction = zodParse(WorkflowOutputAction, row.outputAction, "WORKFLOW_ERROR")
+    if (outputAction.isErr()) {
+      logAndCaptureError(outputAction.error, { workflowId: row.id, field: "outputAction" })
+      return []
+    }
+    return [
+      {
+        id: row.id,
+        name: row.name,
+        description: row.description ?? null,
+        trigger: trigger.value,
+        instruction: row.instruction,
+        outputAction: outputAction.value,
+        enabled: row.enabled ?? false,
+        createdBy: row.createdBy,
+        executionCount: row.executionCount ?? 0,
+        lastExecutedAt: row.lastExecutedAt ? formatISO(row.lastExecutedAt) : null,
+        version: row.version ?? 1,
+        createdAt: formatISO(row.createdAt ?? new Date()),
+        updatedAt: formatISO(row.updatedAt ?? new Date())
+      }
+    ]
+  })
 }
 
 /**
@@ -54,15 +68,24 @@ export async function getActiveWorkflows(): Promise<WorkflowDefinition[]> {
 export async function getRecentTickSummaries(limit: number = 50): Promise<TickSummary[]> {
   const rows = await db.select().from(tickLog).orderBy(desc(tickLog.createdAt)).limit(limit)
 
-  return rows.map((row) => ({
-    tickId: row.tickId,
-    timestamp: row.timestamp.toISOString(),
-    action: AnimaAction.parse(row.action),
-    reasoning: row.reasoning,
-    messagesProcessed: row.messagesProcessed,
-    responseSent: row.responseSent,
-    durationMs: row.durationMs
-  }))
+  return rows.flatMap((row) => {
+    const action = zodParse(AnimaAction, row.action, "WORKFLOW_ERROR")
+    if (action.isErr()) {
+      logAndCaptureError(action.error, { tickId: row.tickId, field: "action" })
+      return []
+    }
+    return [
+      {
+        tickId: row.tickId,
+        timestamp: row.timestamp.toISOString(),
+        action: action.value,
+        reasoning: row.reasoning,
+        messagesProcessed: row.messagesProcessed,
+        responseSent: row.responseSent,
+        durationMs: row.durationMs
+      }
+    ]
+  })
 }
 
 /**
@@ -77,14 +100,12 @@ export async function checkWorkflowTriggers(
   const triggered: WorkflowDefinition[] = []
 
   for (const workflow of activeWorkflows) {
-    const trigger = WorkflowTrigger.parse(workflow.trigger)
-
     if (workflow.lastExecutedAt) {
       const hoursSinceLastExec = differenceInHours(new Date(), new Date(workflow.lastExecutedAt))
       if (hoursSinceLastExec < WORKFLOW.MIN_EXECUTION_GAP_HOURS) continue
     }
 
-    const shouldTrigger = await evaluateTrigger(trigger, emotion, perception, recentActions)
+    const shouldTrigger = await evaluateTrigger(workflow.trigger, emotion, perception, recentActions)
 
     if (shouldTrigger) {
       triggered.push(workflow)
@@ -298,9 +319,13 @@ export async function executeWorkflow(
 }
 
 async function performOutputAction(action: string, output: string): Promise<void> {
-  const parsedAction = WorkflowOutputAction.parse(action)
+  const parsedAction = zodParse(WorkflowOutputAction, action, "WORKFLOW_ERROR")
+  if (parsedAction.isErr()) {
+    logAndCaptureError(parsedAction.error, { action })
+    return
+  }
 
-  switch (parsedAction) {
+  switch (parsedAction.value) {
     case "telegram_send":
       await sendToOperator(output)
       break
@@ -308,8 +333,19 @@ async function performOutputAction(action: string, output: string): Promise<void
       await storeEpisode(output, "observation", { relevanceScore: 0.7 })
       break
     case "create_goal": {
-      const goalData = WorkflowGoalOutput.parse(JSON.parse(output))
-      const goalResult = await createGoal(goalData.title, goalData.description, "self", goalData.priority)
+      let parsed: unknown
+      try {
+        parsed = JSON.parse(output)
+      } catch {
+        logAndCaptureError(animaError("WORKFLOW_ERROR", `Invalid JSON in create_goal output: ${output.slice(0, 100)}`))
+        return
+      }
+      const goalData = zodParse(WorkflowGoalOutput, parsed, "WORKFLOW_ERROR")
+      if (goalData.isErr()) {
+        logAndCaptureError(goalData.error)
+        return
+      }
+      const goalResult = await createGoal(goalData.value.title, goalData.value.description, "self", goalData.value.priority)
       if (goalResult.isErr()) logAndCaptureError(goalResult.error)
       break
     }

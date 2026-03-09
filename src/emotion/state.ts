@@ -5,6 +5,8 @@ import { db } from "@/db/client.ts"
 import { emotionHistory } from "@/db/schema.ts"
 import { getGenesisDNA } from "@/genesis/state.ts"
 import { getValidatedRedis, getValidatedRedisOr, redis } from "@/integrations/redis.ts"
+import { log } from "@/lib/logger.ts"
+import { zodParse } from "@/lib/result.ts"
 import {
   AfterglowEntry,
   DEFAULT_EMOTIONAL_MOMENTUM,
@@ -32,9 +34,12 @@ export async function getEmotionalState(): Promise<EmotionalState> {
   const rows = await db.select().from(emotionHistory).orderBy(desc(emotionHistory.createdAt)).limit(1)
 
   if (rows.length > 0) {
-    const state = EmotionalState.parse(rows[0]?.state)
-    await setCurrentEmotion(state)
-    return state
+    const parsed = zodParse(EmotionalState, rows[0]?.state, "EMOTION_ERROR")
+    if (parsed.isOk()) {
+      await setCurrentEmotion(parsed.value)
+      return parsed.value
+    }
+    log.warn("Invalid emotional state in DB, falling back to genesis default", { error: parsed.error.message })
   }
 
   const dna = await getGenesisDNA()
@@ -135,6 +140,19 @@ export async function setTriggerTimestamp(trigger: string, isoTimestamp: string)
   const raw = await redis.get<Record<string, string>>(WORKING_KEYS.EMOTION_TRIGGER_TIMESTAMPS)
   const timestamps = raw ?? {}
   timestamps[trigger] = isoTimestamp
+  await redis.set(WORKING_KEYS.EMOTION_TRIGGER_TIMESTAMPS, timestamps)
+}
+
+/**
+ * Batch-set multiple trigger timestamps in a single Redis read+write.
+ */
+export async function setTriggerTimestamps(entries: Array<{ trigger: string; timestamp: string }>): Promise<void> {
+  if (entries.length === 0) return
+  const raw = await redis.get<Record<string, string>>(WORKING_KEYS.EMOTION_TRIGGER_TIMESTAMPS)
+  const timestamps = raw ?? {}
+  for (const { trigger, timestamp } of entries) {
+    timestamps[trigger] = timestamp
+  }
   await redis.set(WORKING_KEYS.EMOTION_TRIGGER_TIMESTAMPS, timestamps)
 }
 

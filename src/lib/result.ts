@@ -1,4 +1,5 @@
-import { fromPromise, type Result, type ResultAsync } from "neverthrow"
+import { err, fromPromise, ok, type Result, type ResultAsync } from "neverthrow"
+import type { ZodType } from "zod"
 import { log } from "@/lib/logger.ts"
 import { captureError } from "@/lib/sentry.ts"
 
@@ -78,6 +79,15 @@ export function extractErrorMessage(e: unknown): string {
 
 export type AnimaResult<T> = Result<T, AnimaError>
 export type AnimaResultAsync<T> = ResultAsync<T, AnimaError>
+
+/**
+ * Parse data with a Zod schema, returning an AnimaResult instead of throwing.
+ */
+export function zodParse<T>(schema: ZodType<T>, data: unknown, tag: AnimaErrorTag): AnimaResult<T> {
+  const result = schema.safeParse(data)
+  if (result.success) return ok(result.data)
+  return err(animaError(tag, result.error.message))
+}
 
 /**
  * Wrap an async operation in a Result, catching any thrown errors.
