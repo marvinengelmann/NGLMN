@@ -5,7 +5,7 @@ import { redis } from "@/integrations/redis.ts"
 import { log } from "@/lib/logger.ts"
 import { PERSONALITY_PROMPTS, PERSONALITY_SECTION_INTRO } from "@/personality/profiles.ts"
 import { addNarrativeEntry } from "@/psyche/state.ts"
-import { generateDNA } from "./seed.ts"
+import { generateDNA, generateSeed } from "./seed.ts"
 import { GENESIS_REDIS_KEY, cacheGenesisRecord, getGenesisRecord } from "./state.ts"
 import { GenesisIdentity, type GenesisDNA, type GenesisRecord } from "./types.ts"
 
@@ -21,7 +21,7 @@ export async function runGenesis(): Promise<GenesisRecord> {
     return existing
   }
 
-  const seed = Math.floor(Math.random() * 2 ** 31)
+  const seed = generateSeed()
   log.info("🌱 Genesis initiated", { seed })
 
   const dna = generateDNA(seed)

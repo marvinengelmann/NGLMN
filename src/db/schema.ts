@@ -369,7 +369,7 @@ export const deceptionLog = pgTable(
 
 export const genesis = pgTable("genesis", {
   id: uuid("id").primaryKey().defaultRandom(),
-  seed: integer("seed").notNull(),
+  seed: text("seed").notNull(),
   dna: jsonb("dna").notNull(),
   identity: jsonb("identity").notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow()

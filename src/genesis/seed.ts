@@ -15,6 +15,32 @@ import type {
 
 type PRNG = () => number
 
+const SEED_REGEX = /^[0-9a-z]{3}-[0-9a-z]{3}$/
+const SEED_SALT = 0x27d4eb2f
+
+/**
+ * Encode a numeric seed (0..2^31-1) into human-readable `xxx-xxx` base36 format.
+ */
+export function encodeSeed(n: number): string {
+  const raw = n.toString(36).padStart(6, "0")
+  return `${raw.slice(0, 3)}-${raw.slice(3)}`
+}
+
+/**
+ * Decode a `xxx-xxx` base36 seed back into a number.
+ */
+export function decodeSeed(s: string): number {
+  if (!SEED_REGEX.test(s)) throw new Error(`Invalid seed format: ${s}`)
+  return Number.parseInt(s.replace("-", ""), 36)
+}
+
+/**
+ * Generate a random seed in `xxx-xxx` format.
+ */
+export function generateSeed(): string {
+  return encodeSeed(Math.floor(Math.random() * 2 ** 31))
+}
+
 /**
  * mulberry32 — deterministic 32-bit PRNG. This algorithm MUST NEVER be changed (breaks seeds).
  */
@@ -304,10 +330,10 @@ function deriveVoice(bigFive: BigFive, rng: PRNG): VoiceCharacteristics {
 }
 
 /**
- * Generate a complete GenesisDNA from a numeric seed. Pure, deterministic, synchronous.
+ * Generate a complete GenesisDNA from a seed in `xxx-xxx` format. Pure, deterministic, synchronous.
  */
-export function generateDNA(seed: number): GenesisDNA {
-  const rng = mulberry32(seed)
+export function generateDNA(seed: string): GenesisDNA {
+  const rng = mulberry32((decodeSeed(seed) ^ SEED_SALT) >>> 0)
 
   const rawBigFive = generateBigFive(rng)
   const personalityType = deriveMBTI(rawBigFive, rng)

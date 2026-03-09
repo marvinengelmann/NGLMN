@@ -37,7 +37,7 @@ An autonomously operating, self-evolving AI entity powered by xAI Grok. ANIMA is
 
 ### Identity
 
-- **Genesis** — Seed-based personality DNA generating Big Five values, personality type, emotional baseline, values, and aesthetics — followed by a one-time awakening where ANIMA names herself and writes a birth narrative
+- **Genesis** — [Seed-based](docs/personality-seeds.md) personality DNA generating Big Five values, personality type, emotional baseline, values, and aesthetics — followed by a one-time awakening where ANIMA names herself and writes a birth narrative
 - **Self-Model** — 5-dimension narrative self-concept with identity statements, growth arcs, existential questions, and held-back thoughts that surface when emotional safety is high
 - **Contextual Impulses** — LLM-generated spontaneous thoughts from operator profile, episodic memory, active goals, and existential questions with idle-time escalation
 - **Self-Knowledge** — Deliberative action to store preferences, contacts, knowledge, and insights with category, key, value, and scope

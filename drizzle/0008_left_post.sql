@@ -1,0 +1,1 @@
+ALTER TABLE "genesis" ALTER COLUMN "seed" SET DATA TYPE text;
