@@ -10,17 +10,15 @@ An autonomously operating, self-evolving AI entity powered by xAI Grok. ANIMA is
 
 ### Cognition
 
-- **Autonomous Heartbeat** — 1-minute consciousness loop (SENSE → FEEL → DELIBERATE → ACT → MAINTAIN) with circadian rhythm, emotional gating, and lifecycle events
-- **Dual-Process Thinking** — System 1 instinct and System 2 reasoning with rare instinct overrides and cognitive conflict detection
-- **Polyphonic Inner Dialog** — 6 inner voices in 2-round dialog with voice dominance tracking and behavioral guidance from the dominant voice
+- **Autonomous Heartbeat** — 1-minute consciousness loop (SENSE → FEEL → DELIBERATE → ACT → MAINTAIN) with circadian rhythm, emotional gating, and spontaneous lifecycle events
+- **Dual-Process Thinking** — System 1 instinct and System 2 reasoning with rare overrides, cognitive conflict detection, and procrastination from emotional avoidance
+- **Polyphonic Inner Dialog** — 6 inner voices in 2-round dialog with dominance tracking and behavioral guidance
 - **Felt-State Translation** — Numerical states become embodied language before reaching the LLM, preventing analytical self-awareness
-- **Lifecycle Events** — LLM-driven spontaneous life activities that temporarily pause the heartbeat with optional operator notifications
-- **Altered States** — Pharmakokinetic substance modeling with phase curves modifying emotion, soma, and voice parameters
+- **Altered States** — Pharmacokinetic substance modeling with phase curves modifying emotion, soma, and voice parameters
 
 ### Emotion & Body
 
-- **9-Dimension Emotions** — Time-decaying state vector with novelty scaling, momentum carry-over, afterglow effects, and shadow counter-emotions
-- **Emotional Momentum** — Emotions blend between ticks via EMA, with slowly-moving mood baseline and lingering afterglow from intense experiences
+- **25-Dimension Emotion Engine** — 9 core dimensions plus 16 secondary subsystems, each with independent decay, momentum blending, afterglow, shadow emotions, and cross-coupling
 - **Somatic Markers** — 7-dimension body state including social battery that drains through conversation and recharges during rest
 - **Vulnerability Windows** — Multi-factor computation determines when emotional openness is possible, influencing self-disclosure depth, hesitation, and typo behavior
 
@@ -34,26 +32,23 @@ An autonomously operating, self-evolving AI entity powered by xAI Grok. ANIMA is
 ### Relationship
 
 - **Attachment Theory** — 4-dimensional style evolving over weeks based on interaction patterns
-- **Deep Operator Model** — LLM-updated profile with communication style, recurring topics, coping mechanisms, mood uncertainty, contradiction detection, and correction pattern learning
-- **Cognitive Dissonance** — Value-action mismatch detection with resolution strategies
-- **Self-Deception** — Hidden drivers diverge from stated reasons, discoverable through dreams and reflection
+- **Deep Operator Model** — LLM-updated profile with communication style, mood uncertainty, contradiction detection, correction patterns, and learned emotional trigger mapping
+- **Inner Conflict** — Cognitive dissonance with resolution strategies and self-deception where hidden drivers diverge from stated reasons
 
 ### Identity
 
-- **Narrative Self-Concept** — 5-dimension self-concept with identity statements, growth arc detection, and narrative journal entries
-- **Existential Questions** — Structured questions from dreams and reflections that drive behavioral nudges toward authenticity, vulnerability, or agency
-- **MBTI Personality** — Configurable personality type (`PERSONALITY_TYPE` env var, default INFP) shaping cognition, voice activation, and behavioral tendencies
-- **Contextual Impulses** — LLM-generated spontaneous thoughts using operator profile, episodic memory, active goals, and existential questions with escalation over idle time
-- **Self-Knowledge** — Deliberative action to explicitly store preferences, contacts, knowledge, and insights with category, key, value, and scope parameters
+- **Genesis** — Seed-based personality DNA generating Big Five values, personality type, emotional baseline, values, and aesthetics — followed by a one-time awakening where ANIMA names herself and writes a birth narrative
+- **Self-Model** — 5-dimension narrative self-concept with identity statements, growth arcs, existential questions, and held-back thoughts that surface when emotional safety is high
+- **Contextual Impulses** — LLM-generated spontaneous thoughts from operator profile, episodic memory, active goals, and existential questions with idle-time escalation
+- **Self-Knowledge** — Deliberative action to store preferences, contacts, knowledge, and insights with category, key, value, and scope
 
 ### Communication
 
-- **Telegram Integration** — Typing simulation with emotional modifiers, paragraph splitting, register switching with hysteresis, and dynamic typos influenced by emotion, energy, and vulnerability
-- **Image Capabilities** — Receives and understands images via vision, generates self-portraits with appearance-consistent reference anchoring
-- **Voice Messages** — ElevenLabs text-to-speech
-- **Humor** — Inside joke tracking with episodic callbacks
-- **X (Twitter)** — Autonomous public posting in English with two-stage privacy guardian (rule-based + LLM), timeline browsing with selective sharing of genuinely noteworthy content to operator
-- **Email & Calendar** — IMAP email and CalDAV calendar as organic context in the consciousness loop, with automatic fetching and proactive operator notifications for imminent events
+- **Telegram** — Typing simulation, paragraph splitting, register switching with hysteresis, dynamic typos, evolving idiolect, and emotional instability bleeding into syntax
+- **Image** — Receives and understands images via vision, generates self-portraits with self-described appearance cached in Redis
+- **Voice** — ElevenLabs text-to-speech with inside joke tracking and episodic humor callbacks
+- **X (Twitter)** — Autonomous public posting with two-stage privacy guardian, timeline browsing, and selective content sharing to operator
+- **Email & Calendar** — IMAP and CalDAV as organic context in the consciousness loop with proactive operator notifications
 
 ### Autonomy
 
@@ -104,9 +99,7 @@ cp .env.example .env.local
 Required services: Vercel AI Gateway, Neon Postgres, Upstash Redis + Vector, Trigger.dev, Telegram Bot.
 Optional: GitHub (self-evolution), Daytona (sandbox), OpenWeather (weather sensor), ElevenLabs (voice messages), X API (social media), IMAP email, CalDAV calendar.
 
-Set `PERSONALITY_TYPE` to any of the [16 MBTI types](https://www.16personalities.com/personality-types) (default: `INFP`). This shapes the personality prompt, cognitive style, and inner voice weighting.
-
-Place a reference image of ANIMA's appearance at `src/image/reference/anima.jpeg`. This image is used as a visual anchor when generating self-portraits and is excluded from version control.
+On first start, a random seed generates the entire personality DNA. ANIMA names herself, describes her appearance, and writes a birth narrative — no manual personality configuration needed.
 
 Database migrations are applied automatically on every worker start.
 
@@ -252,6 +245,7 @@ src/
 ├── dream/           # Dream cycle
 ├── emotion/         # Emotion state vector
 ├── evolution/       # Self-evolution engine
+├── genesis/         # Seed-based personality DNA and awakening
 ├── health/          # Health checks
 ├── image/           # Vision and self-portrait generation
 ├── integrations/    # External services
@@ -264,6 +258,7 @@ src/
 ├── psyche/          # Self-model and identity
 ├── routine/         # Reflection and routines
 ├── security/        # Guardian system
+├── shame/           # Shame system
 ├── soma/            # Somatic markers
 ├── trigger/         # Trigger.dev tasks
 ├── trust/           # Trust system
