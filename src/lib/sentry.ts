@@ -36,12 +36,8 @@ let _isSendingAlert = false
 
 function formatAlertMessage(error: unknown, context?: Record<string, unknown>): string {
   const message = extractErrorMessage(error)
-  const errorType = error instanceof Error ? error.constructor.name : "Error"
   const location = context?.phase ?? context?.service ?? context?.module
-  const lines = [`🚨 *[CRITICAL]* Sentry Error`]
-  if (location) lines.push(`📍 Phase: ${location}`)
-  lines.push(`💬 ${errorType}: ${message}`)
-  return lines.join("\n")
+  return location ? `${location}: ${message}` : message
 }
 
 /**
@@ -61,7 +57,7 @@ export function captureError(error: unknown, context?: Record<string, unknown>):
   if (!_isSendingAlert) {
     _isSendingAlert = true
     import("@/integrations/telegram")
-      .then(({ sendAlert }) => sendAlert("critical", formatAlertMessage(error, context)))
+      .then(({ sendSystemNotification }) => sendSystemNotification(formatAlertMessage(error, context)))
       .catch((alertError) => {
         log.error("Failed to send Telegram alert", { error: extractErrorMessage(alertError) })
       })
