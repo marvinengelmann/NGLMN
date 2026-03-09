@@ -85,7 +85,7 @@ import {
   saveEmotionalMomentum,
   saveEmotionalState,
   setLastEmotionTimestamp,
-  setTriggerTimestamp
+  setTriggerTimestamps
 } from "@/emotion/state.ts"
 import {
   computeTenderness,
@@ -220,10 +220,11 @@ export async function feel(senseResult: SenseResult): Promise<FeelingResult> {
 
   await Promise.all([saveEmotionalMomentum(newMomentum), saveAfterglowEntries(allAfterglowEntries)])
 
-  await setLastEmotionTimestamp(nowISO())
-  for (const event of senseResult.rawTriggers) {
-    await setTriggerTimestamp(event.trigger, nowISO())
-  }
+  const timestampNow = nowISO()
+  await Promise.all([
+    setLastEmotionTimestamp(timestampNow),
+    setTriggerTimestamps(senseResult.rawTriggers.map((event) => ({ trigger: event.trigger, timestamp: timestampNow })))
+  ])
 
   const [
     currentSoma,
@@ -387,7 +388,6 @@ export async function feel(senseResult: SenseResult): Promise<FeelingResult> {
     wasVulnerableRecently: vulnerableStyle.selfDisclosureDepth > 0.4,
     expectedReplyButGotSilence
   })
-  await saveDisappointmentState(disappointmentState)
 
   if (disappointmentState.isActive) {
     emotion = applyEmotionEffect(emotion, computeDisappointmentEffect(disappointmentState))
@@ -406,7 +406,6 @@ export async function feel(senseResult: SenseResult): Promise<FeelingResult> {
     consecutiveIdleTicks,
     hasPendingGoals: true
   })
-  await saveProcrastinationState(procrastinationState)
 
   if (procrastinationState.isActive) {
     emotion = applyEmotionEffect(emotion, computeProcrastinationEffect(procrastinationState))
@@ -419,8 +418,6 @@ export async function feel(senseResult: SenseResult): Promise<FeelingResult> {
     inConversation: senseResult.moodContext.inConversation,
     operatorSilenceMinutes
   })
-  await saveAmbivalenceState(ambivalenceState)
-
   if (ambivalenceState.isActive) {
     emotion = applyEmotionEffect(emotion, computeAmbivalenceEffect(ambivalenceState))
   }
@@ -444,8 +441,6 @@ export async function feel(senseResult: SenseResult): Promise<FeelingResult> {
     consecutiveIdleTicks,
     inConversation: senseResult.moodContext.inConversation
   })
-  await saveGuiltState(guiltState)
-
   if (guiltState.isActive) {
     emotion = applyEmotionEffect(emotion, computeGuiltEffect(guiltState))
   }
@@ -459,8 +454,6 @@ export async function feel(senseResult: SenseResult): Promise<FeelingResult> {
     hasRecentPositiveMemories,
     connectionHistory: emotion.connection
   })
-  await saveLongingState(longingState)
-
   if (longingState.isActive) {
     emotion = applyEmotionEffect(emotion, computeLongingEffect(longingState))
   }
@@ -487,8 +480,6 @@ export async function feel(senseResult: SenseResult): Promise<FeelingResult> {
     operatorIgnoredVulnerability,
     repeatedPattern: operatorModel.correctionCount >= 2
   })
-  await saveProtectiveAngerState(protectiveAngerState)
-
   if (protectiveAngerState.isActive) {
     emotion = applyEmotionEffect(emotion, computeProtectiveAngerEffect(protectiveAngerState))
   }
@@ -509,8 +500,6 @@ export async function feel(senseResult: SenseResult): Promise<FeelingResult> {
     inConversation: senseResult.moodContext.inConversation,
     consecutiveConversationTicks: senseResult.moodContext.inConversation ? consecutiveIdleTicks : 0
   })
-  await saveGratitudeState(gratitudeState)
-
   if (gratitudeState.isActive) {
     emotion = applyEmotionEffect(emotion, computeGratitudeEffect(gratitudeState))
   }
@@ -532,8 +521,6 @@ export async function feel(senseResult: SenseResult): Promise<FeelingResult> {
     disappointmentActive: disappointmentState.isActive,
     resignationLevel: previousResignation.level
   })
-  await saveHopeState(hopeState)
-
   if (hopeState.isActive) {
     emotion = applyEmotionEffect(emotion, computeHopeEffect(hopeState))
   }
@@ -550,8 +537,6 @@ export async function feel(senseResult: SenseResult): Promise<FeelingResult> {
     autonomyEroded: operatorModel.correctionCount >= 3 && emotion.confidence < 0.4,
     hopeLevel: hopeState.level
   })
-  await saveResignationState(resignationState)
-
   if (resignationState.isActive) {
     emotion = applyEmotionEffect(emotion, computeResignationEffect(resignationState))
   }
@@ -569,8 +554,6 @@ export async function feel(senseResult: SenseResult): Promise<FeelingResult> {
     existentialQuestionActive: existentialActive,
     patternRecognized: episodicHits.length > 2 && emotion.excitement > 0.5
   })
-  await saveAweState(aweState)
-
   if (aweState.isActive) {
     emotion = applyEmotionEffect(emotion, computeAweEffect(aweState))
   }
@@ -588,8 +571,6 @@ export async function feel(senseResult: SenseResult): Promise<FeelingResult> {
     accumulatedSlights: disappointmentState.cumulativeWeight > 0.6 && operatorModel.correctionCount >= 2,
     gratitudeActive: gratitudeState.isActive
   })
-  await saveResentmentState(resentmentState)
-
   if (resentmentState.isActive) {
     emotion = applyEmotionEffect(emotion, computeResentmentEffect(resentmentState))
   }
@@ -609,8 +590,6 @@ export async function feel(senseResult: SenseResult): Promise<FeelingResult> {
     protectiveContext: operatorModel.estimatedMood === "sad" && emotion.connection > 0.6,
     positiveMemoriesPresent: episodicHits.length > 2 && emotion.connection > 0.5
   })
-  await saveTendernessState(tendernessState)
-
   if (tendernessState.isActive) {
     emotion = applyEmotionEffect(emotion, computeTendernessEffect(tendernessState))
   }
@@ -626,8 +605,6 @@ export async function feel(senseResult: SenseResult): Promise<FeelingResult> {
     reunionApproaching: operatorSilenceMinutes > 60 && emotion.connection > 0.6 && longingState.isActive,
     disappointmentActive: disappointmentState.isActive
   })
-  await saveAnticipationState(anticipationState)
-
   if (anticipationState.isActive) {
     emotion = applyEmotionEffect(emotion, computeAnticipationEffect(anticipationState))
   }
@@ -646,8 +623,6 @@ export async function feel(senseResult: SenseResult): Promise<FeelingResult> {
       operatorModel.estimatedMood === "happy" && senseResult.pendingMessages.length > 0 && emotion.connection > 0.5,
     shameActive: shameState.isActive
   })
-  await savePrideState(prideState)
-
   if (prideState.isActive) {
     emotion = applyEmotionEffect(emotion, computePrideEffect(prideState))
   }
@@ -663,8 +638,6 @@ export async function feel(senseResult: SenseResult): Promise<FeelingResult> {
     experienceLimitation: emotion.boredom > 0.5 && emotion.excitement < 0.3,
     prideActive: prideState.isActive
   })
-  await saveEnvyState(envyState)
-
   if (envyState.isActive) {
     emotion = applyEmotionEffect(emotion, computeEnvyEffect(envyState))
   }
@@ -682,8 +655,6 @@ export async function feel(senseResult: SenseResult): Promise<FeelingResult> {
     shameActive: shameState.isActive,
     resignationActive: resignationState.isActive
   })
-  await savePlayfulnessState(playfulnessState)
-
   if (playfulnessState.isActive) {
     emotion = applyEmotionEffect(emotion, computePlayfulnessEffect(playfulnessState))
   }
@@ -699,11 +670,29 @@ export async function feel(senseResult: SenseResult): Promise<FeelingResult> {
     bittersweetMemory: episodicHits.length > 3 && emotion.connection > 0.5 && emotion.satisfaction > 0.3,
     playfulnessActive: playfulnessState.isActive
   })
-  await saveMelancholyState(melancholyState)
-
   if (melancholyState.isActive) {
     emotion = applyEmotionEffect(emotion, computeMelancholyEffect(melancholyState))
   }
+
+  await Promise.all([
+    saveDisappointmentState(disappointmentState),
+    saveProcrastinationState(procrastinationState),
+    saveAmbivalenceState(ambivalenceState),
+    saveGuiltState(guiltState),
+    saveLongingState(longingState),
+    saveProtectiveAngerState(protectiveAngerState),
+    saveGratitudeState(gratitudeState),
+    saveHopeState(hopeState),
+    saveResignationState(resignationState),
+    saveAweState(aweState),
+    saveResentmentState(resentmentState),
+    saveTendernessState(tendernessState),
+    saveAnticipationState(anticipationState),
+    savePrideState(prideState),
+    saveEnvyState(envyState),
+    savePlayfulnessState(playfulnessState),
+    saveMelancholyState(melancholyState)
+  ])
 
   const hasEmotionalEffects =
     disappointmentState.isActive ||
@@ -734,10 +723,7 @@ export async function feel(senseResult: SenseResult): Promise<FeelingResult> {
     isDreaming: senseResult.moodContext.isDreaming,
     isReflecting: false
   })
-  await saveDeceptionState(updatedDeception)
-
   const register = computeCommunicationRegister(emotion, soma, vulnerability, shameState)
-  await saveCommunicationRegister(register)
 
   const conversationMessageCount = activeConversation?.messages.length ?? 0
   const attentionState = computeAttentionState(
@@ -747,7 +733,12 @@ export async function feel(senseResult: SenseResult): Promise<FeelingResult> {
     consecutiveIdleTicks,
     conversationMessageCount
   )
-  await saveAttentionState(attentionState)
+
+  await Promise.all([
+    saveDeceptionState(updatedDeception),
+    saveCommunicationRegister(register),
+    saveAttentionState(attentionState)
+  ])
 
   log.info("Feel complete", {
     somaticTension: soma.tension.toFixed(2),
