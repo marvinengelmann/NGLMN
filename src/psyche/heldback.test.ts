@@ -1,15 +1,16 @@
 import { describe, expect, it } from "vitest"
-import { DEFAULT_SHAME_STATE } from "@/shame/types.ts"
+import { DEFAULT_SHAME_STATE } from "@/emotion/shame.ts"
 import { makeEmotionalState } from "@/test/factories.ts"
 import {
   addToBuffer,
   clearSurfacedEntries,
+  DEFAULT_HELD_BACK_BUFFER,
   decayBuffer,
   detectSuppression,
+  type HeldBackBuffer,
   markSurfaceAttempt,
   shouldSurface
-} from "./compute.ts"
-import { DEFAULT_HELD_BACK_BUFFER, type HeldBackBuffer } from "./types.ts"
+} from "./heldback.ts"
 
 const baseVulnerability = { level: 0.3, windowOpen: false, contributing: [], timestamp: new Date().toISOString() }
 

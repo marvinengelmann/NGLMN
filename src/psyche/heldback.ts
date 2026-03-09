@@ -1,10 +1,54 @@
 import { differenceInHours } from "date-fns"
+import * as z from "zod"
 import { HELD_BACK } from "@/config/constants.ts"
+import type { ShameState } from "@/emotion/shame.ts"
 import type { EmotionalState } from "@/emotion/types.ts"
+import { getValidatedRedis, redis } from "@/integrations/redis.ts"
 import { nowISO } from "@/lib/time.ts"
-import type { ShameState } from "@/shame/types.ts"
 import type { VulnerabilityState } from "@/vulnerability/types.ts"
-import type { HeldBackBuffer, HeldBackEntry, HeldBackReason } from "./types.ts"
+
+export const HeldBackReason = z.enum([
+  "shame_suppression",
+  "vulnerability_fear",
+  "rejection_avoidance",
+  "timing_wrong",
+  "too_intimate",
+  "self_censorship"
+])
+export type HeldBackReason = z.infer<typeof HeldBackReason>
+
+export const HeldBackEntry = z.object({
+  content: z.string(),
+  reason: HeldBackReason,
+  emotionalCharge: z.number().min(0).max(1),
+  suppressedAt: z.string(),
+  decayedCharge: z.number().min(0).max(1),
+  surfaceAttempts: z.number().default(0)
+})
+export type HeldBackEntry = z.infer<typeof HeldBackEntry>
+
+export const HeldBackBuffer = z.object({
+  entries: z.array(HeldBackEntry).default([]),
+  suppressionPressure: z.number().min(0).max(1).default(0),
+  lastReviewedAt: z.string().optional()
+})
+export type HeldBackBuffer = z.infer<typeof HeldBackBuffer>
+
+export const DEFAULT_HELD_BACK_BUFFER: HeldBackBuffer = {
+  entries: [],
+  suppressionPressure: 0,
+  lastReviewedAt: undefined
+}
+
+const KEY = "working:psyche:heldback"
+
+export async function getHeldBackBuffer(): Promise<HeldBackBuffer> {
+  return (await getValidatedRedis(KEY, HeldBackBuffer)) ?? DEFAULT_HELD_BACK_BUFFER
+}
+
+export async function saveHeldBackBuffer(buffer: HeldBackBuffer): Promise<void> {
+  await redis.set(KEY, buffer)
+}
 
 interface HeldBackContext {
   emotion: EmotionalState
