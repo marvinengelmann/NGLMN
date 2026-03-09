@@ -1,5 +1,5 @@
+import type { ShameState } from "@/emotion/shame.ts"
 import type { EmotionalState } from "@/emotion/types.ts"
-import type { ShameState } from "@/shame/types.ts"
 import type { VulnerabilityState } from "@/vulnerability/types.ts"
 
 interface InstabilityContext {

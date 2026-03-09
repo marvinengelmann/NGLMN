@@ -1,6 +1,6 @@
 import { REGISTER, SHAME, SOCIAL_BATTERY } from "@/config/constants.ts"
+import type { ShameState } from "@/emotion/shame.ts"
 import type { EmotionalState } from "@/emotion/types.ts"
-import type { ShameState } from "@/shame/types.ts"
 import type { SomaticState } from "@/soma/types.ts"
 import type { VulnerabilityState } from "@/vulnerability/types.ts"
 import type { CommunicationRegister } from "./types.ts"

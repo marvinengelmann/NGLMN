@@ -2,6 +2,7 @@ import { desc } from "drizzle-orm"
 import * as z from "zod"
 import { db } from "@/db/client.ts"
 import { emotionHistory } from "@/db/schema.ts"
+import { getGenesisDNA } from "@/genesis/state.ts"
 import { getValidatedRedisOr, redis } from "@/integrations/redis.ts"
 import { getCurrentEmotion, setCurrentEmotion } from "@/memory/working.ts"
 import {
@@ -13,7 +14,6 @@ import {
   type EmotionTrigger,
   type EmotionUpdateEvent
 } from "./types.ts"
-import { getGenesisDNA } from "@/genesis/state.ts"
 import { computeEmotionalUpdate } from "./update.ts"
 
 const MOMENTUM_KEYS = {

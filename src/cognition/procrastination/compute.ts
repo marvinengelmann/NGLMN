@@ -1,8 +1,8 @@
 import { PROCRASTINATION } from "@/config/constants.ts"
-import type { DisappointmentState } from "@/emotion/disappointment/types.ts"
+import type { DisappointmentState } from "@/emotion/disappointment.ts"
+import type { ShameState } from "@/emotion/shame.ts"
 import type { EmotionalState } from "@/emotion/types.ts"
 import { nowISO } from "@/lib/time.ts"
-import type { ShameState } from "@/shame/types.ts"
 import type { ProcrastinationSource, ProcrastinationState } from "./types.ts"
 
 export interface ProcrastinationContext {

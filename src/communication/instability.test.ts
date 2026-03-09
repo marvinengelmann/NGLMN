@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { DEFAULT_SHAME_STATE } from "@/shame/types.ts"
+import { DEFAULT_SHAME_STATE } from "@/emotion/shame.ts"
 import { makeEmotionalState } from "@/test/factories.ts"
 import { computeSyntacticInstability } from "./instability.ts"
 

@@ -14,8 +14,8 @@ const baseEmotion = {
   energy: 0.7
 }
 
-import type { DisappointmentState } from "@/emotion/disappointment/types.ts"
-import type { ShameState } from "@/shame/types.ts"
+import type { DisappointmentState } from "@/emotion/disappointment.ts"
+import type { ShameState } from "@/emotion/shame.ts"
 
 const baseShame: ShameState = {
   level: 0,

@@ -16,37 +16,63 @@ import { getDeceptionState, saveDeceptionState } from "@/deception/state.ts"
 import { buildDissonanceState, checkDissonance, resolveDissonance } from "@/dissonance/check.ts"
 import { saveDissonanceState } from "@/dissonance/state.ts"
 import { DreamAfterglow } from "@/dream/types.ts"
-import { computeAmbivalence, computeAmbivalenceEffect } from "@/emotion/ambivalence/compute.ts"
-import { getAmbivalenceState, saveAmbivalenceState } from "@/emotion/ambivalence/state.ts"
-import { computeAnticipation, computeAnticipationEffect } from "@/emotion/anticipation/compute.ts"
-import { getAnticipationState, saveAnticipationState } from "@/emotion/anticipation/state.ts"
-import { computeAwe, computeAweEffect } from "@/emotion/awe/compute.ts"
-import { getAweState, saveAweState } from "@/emotion/awe/state.ts"
-import { computeDisappointment, computeDisappointmentEffect } from "@/emotion/disappointment/compute.ts"
-import { getDisappointmentState, saveDisappointmentState } from "@/emotion/disappointment/state.ts"
-import { computeEnvy, computeEnvyEffect } from "@/emotion/envy/compute.ts"
-import { getEnvyState, saveEnvyState } from "@/emotion/envy/state.ts"
-import { computeGratitude, computeGratitudeEffect } from "@/emotion/gratitude/compute.ts"
-import { getGratitudeState, saveGratitudeState } from "@/emotion/gratitude/state.ts"
-import { computeGuilt, computeGuiltEffect } from "@/emotion/guilt/compute.ts"
-import { getGuiltState, saveGuiltState } from "@/emotion/guilt/state.ts"
-import { computeHope, computeHopeEffect } from "@/emotion/hope/compute.ts"
-import { getHopeState, saveHopeState } from "@/emotion/hope/state.ts"
-import { computeLonging, computeLongingEffect } from "@/emotion/longing/compute.ts"
-import { getLongingState, saveLongingState } from "@/emotion/longing/state.ts"
-import { computeMelancholy, computeMelancholyEffect } from "@/emotion/melancholy/compute.ts"
-import { getMelancholyState, saveMelancholyState } from "@/emotion/melancholy/state.ts"
+import {
+  computeAmbivalence,
+  computeAmbivalenceEffect,
+  getAmbivalenceState,
+  saveAmbivalenceState
+} from "@/emotion/ambivalence.ts"
+import {
+  computeProtectiveAnger,
+  computeProtectiveAngerEffect,
+  getProtectiveAngerState,
+  saveProtectiveAngerState
+} from "@/emotion/anger.ts"
+import {
+  computeAnticipation,
+  computeAnticipationEffect,
+  getAnticipationState,
+  saveAnticipationState
+} from "@/emotion/anticipation.ts"
+import { computeAwe, computeAweEffect, getAweState, saveAweState } from "@/emotion/awe.ts"
+import {
+  computeDisappointment,
+  computeDisappointmentEffect,
+  getDisappointmentState,
+  saveDisappointmentState
+} from "@/emotion/disappointment.ts"
+import { computeEnvy, computeEnvyEffect, getEnvyState, saveEnvyState } from "@/emotion/envy.ts"
+import { computeGratitude, computeGratitudeEffect, getGratitudeState, saveGratitudeState } from "@/emotion/gratitude.ts"
+import { computeGuilt, computeGuiltEffect, getGuiltState, saveGuiltState } from "@/emotion/guilt.ts"
+import { computeHope, computeHopeEffect, getHopeState, saveHopeState } from "@/emotion/hope.ts"
+import { computeLonging, computeLongingEffect, getLongingState, saveLongingState } from "@/emotion/longing.ts"
+import {
+  computeMelancholy,
+  computeMelancholyEffect,
+  getMelancholyState,
+  saveMelancholyState
+} from "@/emotion/melancholy.ts"
 import { detectNostalgia } from "@/emotion/nostalgia.ts"
-import { computePlayfulness, computePlayfulnessEffect } from "@/emotion/playfulness/compute.ts"
-import { getPlayfulnessState, savePlayfulnessState } from "@/emotion/playfulness/state.ts"
-import { computePride, computePrideEffect } from "@/emotion/pride/compute.ts"
-import { getPrideState, savePrideState } from "@/emotion/pride/state.ts"
-import { computeProtectiveAnger, computeProtectiveAngerEffect } from "@/emotion/protective-anger/compute.ts"
-import { getProtectiveAngerState, saveProtectiveAngerState } from "@/emotion/protective-anger/state.ts"
-import { computeResentment, computeResentmentEffect } from "@/emotion/resentment/compute.ts"
-import { getResentmentState, saveResentmentState } from "@/emotion/resentment/state.ts"
-import { computeResignation, computeResignationEffect } from "@/emotion/resignation/compute.ts"
-import { getResignationState, saveResignationState } from "@/emotion/resignation/state.ts"
+import {
+  computePlayfulness,
+  computePlayfulnessEffect,
+  getPlayfulnessState,
+  savePlayfulnessState
+} from "@/emotion/playfulness.ts"
+import { computePride, computePrideEffect, getPrideState, savePrideState } from "@/emotion/pride.ts"
+import {
+  computeResentment,
+  computeResentmentEffect,
+  getResentmentState,
+  saveResentmentState
+} from "@/emotion/resentment.ts"
+import {
+  computeResignation,
+  computeResignationEffect,
+  getResignationState,
+  saveResignationState
+} from "@/emotion/resignation.ts"
+import { computeShameState, detectColdResponse, getShameState, saveShameState } from "@/emotion/shame.ts"
 import {
   getAfterglowEntries,
   getEmotionalMomentum,
@@ -55,8 +81,12 @@ import {
   saveEmotionalMomentum,
   saveEmotionalState
 } from "@/emotion/state.ts"
-import { computeTenderness, computeTendernessEffect } from "@/emotion/tenderness/compute.ts"
-import { getTendernessState, saveTendernessState } from "@/emotion/tenderness/state.ts"
+import {
+  computeTenderness,
+  computeTendernessEffect,
+  getTendernessState,
+  saveTendernessState
+} from "@/emotion/tenderness.ts"
 import {
   applyAfterglow,
   applyEvent,
@@ -81,11 +111,8 @@ import {
 import { getOperatorModel, getRelationalPatterns, saveOperatorModel, saveRelationalPatterns } from "@/mind/state.ts"
 import { extractSignals, learnFromObservation } from "@/mind/triggers.ts"
 import { detectModelCorrection, updateOperatorModel } from "@/mind/update.ts"
-import { decayBuffer, detectSuppression } from "@/psyche/heldback/compute.ts"
-import { getHeldBackBuffer, saveHeldBackBuffer } from "@/psyche/heldback/state.ts"
+import { decayBuffer, detectSuppression, getHeldBackBuffer, saveHeldBackBuffer } from "@/psyche/heldback.ts"
 import { getSelfConcept } from "@/psyche/state.ts"
-import { computeShameState, detectColdResponse } from "@/shame/compute.ts"
-import { getShameState, saveShameState } from "@/shame/state.ts"
 import { querySomaticMemories } from "@/soma/memory.ts"
 import { getSomaticLastTimestamp, getSomaticState, saveSomaticState } from "@/soma/state.ts"
 import { computeSomaticUpdate } from "@/soma/update.ts"
