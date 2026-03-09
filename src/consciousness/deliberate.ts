@@ -7,8 +7,8 @@ import { callIntelligence } from "@/core/intelligence.ts"
 import { thinkDream } from "@/dream/thinking.ts"
 import { fetchUpcomingEvents, isCaldavEnabled } from "@/integrations/caldav.ts"
 import { fetchUnreadEmails, isImapEnabled } from "@/integrations/imap.ts"
-import type { CalendarEvent, EmailPreview, XPost } from "@/integrations/types.ts"
-import { getHomeTimeline, isXEnabled } from "@/integrations/x.ts"
+import type { CalendarEvent, EmailPreview } from "@/integrations/types.ts"
+import { type EnrichedTweet, getHomeTimeline, isXEnabled } from "@/integrations/x.ts"
 import { log } from "@/lib/logger.ts"
 import { captureError } from "@/lib/sentry.ts"
 import { queryRelated } from "@/memory/episodic.ts"
@@ -42,10 +42,10 @@ export async function deliberate(senseResult: SenseResult, feelResult: FeelingRe
     triggeredWorkflows: senseResult.triggeredWorkflows,
     moodContext: senseResult.moodContext
   }
-  let xContext: { canBrowse: boolean; canPost: boolean; timeline?: XPost[] } | undefined
+  let xContext: { canBrowse: boolean; canPost: boolean; timeline?: EnrichedTweet[] } | undefined
   if (isXEnabled()) {
     const socialStatus = await canPerformSocialMedia()
-    let timeline: XPost[] | undefined
+    let timeline: EnrichedTweet[] | undefined
     if (socialStatus.canBrowse) {
       try {
         timeline = await getHomeTimeline(SOCIAL_MEDIA.TIMELINE_MAX_RESULTS)

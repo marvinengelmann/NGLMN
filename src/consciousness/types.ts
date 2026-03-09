@@ -23,7 +23,8 @@ import { ResignationState } from "@/emotion/resignation/types.ts"
 import { TendernessState } from "@/emotion/tenderness/types.ts"
 import { EmotionalState, EmotionUpdateEvent, MoodContext } from "@/emotion/types.ts"
 import { HealthCheckResult } from "@/health/types.ts"
-import { PendingMessage, WeatherData, XPost } from "@/integrations/types.ts"
+import { PendingMessage, WeatherData } from "@/integrations/types.ts"
+import type { EnrichedTweet } from "@/integrations/x.ts"
 import { SemanticCategory, SemanticScope } from "@/memory/types.ts"
 import { OperatorModel } from "@/mind/types.ts"
 import { PerceptionSummary } from "@/perception/types.ts"
@@ -205,7 +206,7 @@ export const DeliberateResult = z.object({
   innerDialog: InnerDialog.optional(),
   cognitiveConflict: CognitiveConflict.optional(),
   instinctOverride: z.boolean().default(false),
-  xTimeline: z.array(XPost).optional()
+  xTimeline: z.array(z.any()).optional() as z.ZodOptional<z.ZodArray<z.ZodType<EnrichedTweet>>>
 })
 export type DeliberateResult = z.infer<typeof DeliberateResult>
 

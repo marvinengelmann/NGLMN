@@ -60,7 +60,8 @@ import { computeEmotionalIntensity } from "@/emotion/update.ts"
 import { getRecentChangelog } from "@/evolution/changelog.ts"
 import type { CodeProposal, EvolutionCycleResult } from "@/evolution/types.ts"
 import { getValidatedRedis } from "@/integrations/redis.ts"
-import type { CalendarEvent, EmailPreview, XPost } from "@/integrations/types.ts"
+import type { CalendarEvent, EmailPreview } from "@/integrations/types.ts"
+import type { EnrichedTweet } from "@/integrations/x.ts"
 import { nowLocal } from "@/lib/time.ts"
 import {
   queryHumorCallbacks,
@@ -477,7 +478,7 @@ function buildPerceptionSections(
   lastTick: TickSummary | null,
   conversationBuffer: ConversationSlot[],
   timePerception: ReturnType<typeof computeTimePerception>,
-  xContext?: { canBrowse: boolean; canPost: boolean; timeline?: XPost[] },
+  xContext?: { canBrowse: boolean; canPost: boolean; timeline?: EnrichedTweet[] },
   emailContext?: { canCheck: boolean; unread?: EmailPreview[] },
   calendarContext?: { canCheck: boolean; upcoming?: CalendarEvent[] }
 ): string[] {
@@ -1577,7 +1578,7 @@ function buildGrowthSections(
 export async function buildContext(
   senseData: SenseData,
   emotion: EmotionalState,
-  xContext?: { canBrowse: boolean; canPost: boolean; timeline?: XPost[] },
+  xContext?: { canBrowse: boolean; canPost: boolean; timeline?: EnrichedTweet[] },
   emailContext?: { canCheck: boolean; unread?: EmailPreview[] },
   calendarContext?: { canCheck: boolean; upcoming?: CalendarEvent[] }
 ): Promise<string> {
