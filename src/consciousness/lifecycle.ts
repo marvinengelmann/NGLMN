@@ -184,7 +184,7 @@ async function generateLifecycleMessage(eventType: string, context: "start" | "m
   })
 
   if (result.isErr()) {
-    log.error("Failed to generate lifecycle message", { error: result.error, eventType, context })
+    captureError(result.error.cause, { phase: "lifecycle_message", eventType, context })
     return null
   }
 

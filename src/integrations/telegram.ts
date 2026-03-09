@@ -75,7 +75,8 @@ export async function fetchNewMessages(timeout: number): Promise<{
           voiceDurationSeconds: telegramMessage.voice.duration
         })
       } catch (error) {
-        log.warn("Failed to transcribe voice message", { error: String(error) })
+        const { captureError } = await import("@/lib/sentry.ts")
+        captureError(error, { phase: "voice_transcription" })
       }
       continue
     }
@@ -98,7 +99,8 @@ export async function fetchNewMessages(timeout: number): Promise<{
           image: { base64, mimeType: "image/jpeg" }
         })
       } catch (error) {
-        log.warn("Failed to download photo", { error: String(error) })
+        const { captureError } = await import("@/lib/sentry.ts")
+        captureError(error, { phase: "photo_download" })
       }
       continue
     }

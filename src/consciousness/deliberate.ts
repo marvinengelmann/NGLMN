@@ -64,7 +64,7 @@ export async function deliberate(senseResult: SenseResult, feelResult: FeelingRe
         const unread = await fetchUnreadEmails()
         emailContext = { canCheck: true, unread }
       } catch (e) {
-        log.warn("Failed to pre-fetch emails", { error: e instanceof Error ? e.message : String(e) })
+        captureError(e, { phase: "email_fetch" })
         emailContext = { canCheck: true }
       }
     } else {
@@ -81,7 +81,7 @@ export async function deliberate(senseResult: SenseResult, feelResult: FeelingRe
         calendarContext = { canCheck: true, upcoming }
         await setCalendarLastCheck(new Date().toISOString())
       } catch (e) {
-        log.warn("Failed to pre-fetch calendar", { error: e instanceof Error ? e.message : String(e) })
+        captureError(e, { phase: "calendar_fetch" })
         calendarContext = { canCheck: true }
       }
     } else {

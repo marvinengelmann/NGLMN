@@ -14,6 +14,7 @@ import {
 } from "@/integrations/telegram.ts"
 import { convertMp3ToOggOpus } from "@/lib/audio.ts"
 import { log } from "@/lib/logger.ts"
+import { captureError } from "@/lib/sentry.ts"
 import { nowISO, sleep } from "@/lib/time.ts"
 import { pushRecentResponse, pushToActiveConversation, setGuardianResult } from "@/memory/working.ts"
 import { handleGuardianVerdict, validateOutput } from "@/security/guardian.ts"
@@ -53,14 +54,14 @@ export async function sendMessages(decision: AnimaDecision): Promise<MessagingRe
             { role: "anima", text: message.text || "[Image]", timestamp: nowISO(), messageId: sentId, hasImage: true }
           ])
         } else {
-          log.warn("Image generation failed, falling back to text", { error: imageResult.error.message })
+          captureError(imageResult.error.cause, { phase: "image_generation" })
           const sentId = await sendMessageWithReply(message.text, message.replyTo)
           await pushToActiveConversation([
             { role: "anima", text: message.text, timestamp: nowISO(), messageId: sentId }
           ])
         }
       } catch (error) {
-        log.warn("Image send failed, falling back to text", { error: String(error) })
+        captureError(error, { phase: "image_send" })
         const sentId = await sendMessageWithReply(message.text, message.replyTo)
         await pushToActiveConversation([{ role: "anima", text: message.text, timestamp: nowISO(), messageId: sentId }])
       }
@@ -75,7 +76,7 @@ export async function sendMessages(decision: AnimaDecision): Promise<MessagingRe
           { role: "anima", text: message.text, timestamp: nowISO(), messageId: sentId, isVoice: true }
         ])
       } catch (error) {
-        log.warn("Voice send failed, falling back to text", { error: String(error) })
+        captureError(error, { phase: "voice_send" })
         const sentId = await sendMessageWithReply(message.text, message.replyTo)
         await pushToActiveConversation([{ role: "anima", text: message.text, timestamp: nowISO(), messageId: sentId }])
       }
