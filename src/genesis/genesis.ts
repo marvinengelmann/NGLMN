@@ -1,3 +1,4 @@
+import { env } from "@/config/env.ts"
 import { callIntelligence } from "@/core/intelligence.ts"
 import { db } from "@/db/client.ts"
 import { genesis } from "@/db/schema.ts"
@@ -21,8 +22,8 @@ export async function runGenesis(): Promise<GenesisRecord> {
     return existing
   }
 
-  const seed = generateSeed()
-  log.info("🌱 Genesis initiated", { seed })
+  const seed = env().GENESIS_SEED ?? generateSeed()
+  log.info("🌱 Genesis initiated", { seed, fixed: !!env().GENESIS_SEED })
 
   const dna = generateDNA(seed)
   const identity = await generateIdentity(dna)

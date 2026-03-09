@@ -49,7 +49,12 @@ const EnvSchema = z.object({
 
   CALDAV_SERVER_URL: z.string().optional(),
   CALDAV_USER: z.string().optional(),
-  CALDAV_PASS: z.string().optional()
+  CALDAV_PASS: z.string().optional(),
+
+  GENESIS_SEED: z
+    .string()
+    .regex(/^[0-9a-z]{3}-[0-9a-z]{3}$/)
+    .optional()
 })
 
 type EnvKey = keyof z.infer<typeof EnvSchema>
