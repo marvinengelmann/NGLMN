@@ -38,7 +38,7 @@ vi.mock("@/core/intelligence.ts", () => ({
 }))
 
 vi.mock("@/config/env.ts", () => ({
-  env: () => ({ OPERATOR_PREFERRED_LANGUAGE: "German", PERSONALITY_TYPE: "INFJ" })
+  env: () => ({ OPERATOR_PREFERRED_LANGUAGE: "German" })
 }))
 
 vi.mock("@/lib/sentry.ts", () => ({
