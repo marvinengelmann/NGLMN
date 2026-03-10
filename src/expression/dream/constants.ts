@@ -1,0 +1,6 @@
+export const DREAM_AFTERGLOW = {
+  TTL_SECONDS: 14400,
+  DECAY_PER_TICK: 0.9,
+  BLEND_WEIGHT: 0.2,
+  MIN_INTENSITY: 0.05
+} as const

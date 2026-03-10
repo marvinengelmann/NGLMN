@@ -1,8 +1,8 @@
+import { saveEmotionalState } from "@/affect/emotion/state.ts"
+import type { EmotionalState } from "@/affect/emotion/types.ts"
 import type { AnimaDecision, DeliberateResult, MaintainInput, TickSummary } from "@/consciousness/types.ts"
-import { db } from "@/db/client.ts"
-import { routineLog, tickLog } from "@/db/schema.ts"
-import { saveEmotionalState } from "@/emotion/state.ts"
-import type { EmotionalState } from "@/emotion/types.ts"
+import { db } from "@/infra/db/client.ts"
+import { routineLog, tickLog } from "@/infra/db/schema.ts"
 import { pushRecentAction, pushRecentTickDuration, setLastTickSummary } from "@/memory/working.ts"
 
 /**

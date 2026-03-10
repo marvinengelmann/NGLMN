@@ -1,9 +1,9 @@
 import { neon } from "@neondatabase/serverless"
 import { drizzle } from "drizzle-orm/neon-http"
 import { migrate } from "drizzle-orm/neon-http/migrator"
-import { env } from "@/config/env.ts"
-import { runGenesis } from "@/genesis/genesis.ts"
-import { setupSentry } from "@/lib/sentry.ts"
+import { env } from "@/infra/config/env.ts"
+import { setupSentry } from "@/infra/lib/sentry.ts"
+import { runGenesis } from "@/self/genesis/genesis.ts"
 
 /**
  * Runs database migrations, Sentry initialization, and genesis (if first run).

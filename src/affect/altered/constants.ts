@@ -1,0 +1,4 @@
+export const ALTERED_STATE = {
+  MODIFIER_CAP: 0.3,
+  REDIS_TTL_BUFFER_MINUTES: 30
+} as const

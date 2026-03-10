@@ -1,24 +1,29 @@
 import * as z from "zod"
-import { AttachmentDynamics } from "@/attachment/types.ts"
-import { AttentionState, CognitiveConflict, InstinctImpression } from "@/cognition/types.ts"
-import { CommunicationRegister } from "@/communication/types.ts"
-import { DissonanceState } from "@/dissonance/types.ts"
-import { DreamThinkResult } from "@/dream/types.ts"
-import { ShameState } from "@/emotion/shame.ts"
-import { EmotionalState, EmotionUpdateEvent, MoodContext, type SecondaryEmotionState } from "@/emotion/types.ts"
-import { HealthCheckResult } from "@/health/types.ts"
-import { PendingMessage, WeatherData } from "@/integrations/types.ts"
-import type { EnrichedTweet } from "@/integrations/x.ts"
+import { DriveState } from "@/affect/drive/types.ts"
+import { ShameState } from "@/affect/emotion/shame.ts"
+import { EmotionalState, EmotionUpdateEvent, MoodContext, type SecondaryEmotionState } from "@/affect/emotion/types.ts"
+import { SomaticState } from "@/affect/soma/types.ts"
+import { InnerDialog } from "@/cognition/polyphony/types.ts"
+import { AttentionState, CognitiveConflict, InstinctImpression, MetacognitiveState } from "@/cognition/types.ts"
+import { CommunicationRegister } from "@/expression/communication/types.ts"
+import { CreativeUrgeState } from "@/expression/creativity/types.ts"
+import { DreamThinkResult } from "@/expression/dream/types.ts"
+import { MorningThinkResult, ReflectionOutput } from "@/expression/routine/types.ts"
+import { HealthCheckResult } from "@/governance/health/types.ts"
+import { WorkflowDefinition } from "@/governance/workflow/types.ts"
+import { PendingMessage, WeatherData } from "@/infra/integrations/types.ts"
+import type { EnrichedTweet } from "@/infra/integrations/x.ts"
 import { SemanticCategory, SemanticScope } from "@/memory/types.ts"
-import { OperatorModel } from "@/mind/types.ts"
+import { AnticipatoryState } from "@/perception/anticipation/types.ts"
+import { SubjectiveTimeState } from "@/perception/time/types.ts"
 import { PerceptionSummary } from "@/perception/types.ts"
-import { InnerDialog } from "@/polyphony/types.ts"
-import { HeldBackBuffer } from "@/psyche/heldback.ts"
-import { SelfConcept } from "@/psyche/types.ts"
-import { MorningThinkResult, ReflectionOutput } from "@/routine/types.ts"
-import { SomaticState } from "@/soma/types.ts"
-import { VulnerabilityState } from "@/vulnerability/types.ts"
-import { WorkflowDefinition } from "@/workflow/types.ts"
+import { AttachmentDynamics, VulnerabilityState } from "@/relational/attachment/types.ts"
+import { OperatorModel } from "@/relational/mind/types.ts"
+import { BoundaryState } from "@/self/boundaries/types.ts"
+import { CoherenceState } from "@/self/coherence/types.ts"
+import { DissonanceState } from "@/self/dissonance/types.ts"
+import { HeldBackBuffer } from "@/self/psyche/heldback.ts"
+import { SelfConcept } from "@/self/psyche/types.ts"
 
 export const LifeEventType = z.enum([
   "shower",
@@ -56,7 +61,8 @@ export const AnimaAction = z.enum([
   "life_event",
   "social_media",
   "store_knowledge",
-  "check_email"
+  "check_email",
+  "create"
 ])
 export type AnimaAction = z.infer<typeof AnimaAction>
 
@@ -160,7 +166,14 @@ export const FeelingResult = z.object({
   selfConcept: SelfConcept,
   register: CommunicationRegister,
   attentionState: AttentionState,
-  operatorModel: OperatorModel
+  operatorModel: OperatorModel,
+  driveState: DriveState,
+  anticipatoryState: AnticipatoryState,
+  subjectiveTime: SubjectiveTimeState,
+  coherenceState: CoherenceState,
+  creativeUrge: CreativeUrgeState,
+  boundaryState: BoundaryState,
+  metacognitiveState: MetacognitiveState
 })
 export type FeelingResult = z.infer<typeof FeelingResult>
 

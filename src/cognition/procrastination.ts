@@ -1,11 +1,11 @@
 import * as z from "zod"
-import { SECONDARY_EMOTIONS } from "@/emotion/constants.ts"
-import type { DisappointmentState } from "@/emotion/disappointment.ts"
-import { registerSecondaryEmotion } from "@/emotion/registry.ts"
-import type { ShameState } from "@/emotion/shame.ts"
-import type { EmotionalState } from "@/emotion/types.ts"
-import { getValidatedRedis, redis } from "@/integrations/redis.ts"
-import { nowISO } from "@/lib/time.ts"
+import { SECONDARY_EMOTIONS } from "@/affect/emotion/constants.ts"
+import type { DisappointmentState } from "@/affect/emotion/disappointment.ts"
+import { registerSecondaryEmotion } from "@/affect/emotion/registry.ts"
+import type { ShameState } from "@/affect/emotion/shame.ts"
+import type { EmotionalState } from "@/affect/emotion/types.ts"
+import { getValidatedRedis, redis } from "@/infra/integrations/redis.ts"
+import { nowISO } from "@/infra/lib/time.ts"
 
 const PROCRASTINATION = SECONDARY_EMOTIONS.procrastination
 

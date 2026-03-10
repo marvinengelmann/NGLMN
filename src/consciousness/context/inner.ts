@@ -1,17 +1,16 @@
+import type { ShameState } from "@/affect/emotion/shame.ts"
+import type { EmotionalState, SecondaryEmotionState } from "@/affect/emotion/types.ts"
+import type { SomaticState } from "@/affect/soma/types.ts"
+import type { InnerDialog } from "@/cognition/polyphony/types.ts"
 import type { InstinctImpression } from "@/cognition/types.ts"
-import { computeSyntacticInstability } from "@/communication/instability.ts"
 import type { SenseData } from "@/consciousness/types.ts"
-import type { DeceptionState } from "@/deception/types.ts"
-import type { DissonanceState } from "@/dissonance/types.ts"
-import type { ShameState } from "@/emotion/shame.ts"
-import type { EmotionalState, SecondaryEmotionState } from "@/emotion/types.ts"
-import type { InnerDialog } from "@/polyphony/types.ts"
-import type { HeldBackBuffer } from "@/psyche/heldback.ts"
-import { shouldSurface } from "@/psyche/heldback.ts"
-import type { SelfConcept } from "@/psyche/types.ts"
-import type { SomaticState } from "@/soma/types.ts"
-import type { VulnerabilityState } from "@/vulnerability/types.ts"
-import { renderSecondaryEmotion } from "./emotion-render.ts"
+import { computeSyntacticInstability } from "@/expression/communication/instability.ts"
+import type { VulnerabilityState } from "@/relational/attachment/types.ts"
+import type { DeceptionState } from "@/self/deception/types.ts"
+import type { DissonanceState } from "@/self/dissonance/types.ts"
+import type { HeldBackBuffer } from "@/self/psyche/heldback.ts"
+import { shouldSurface } from "@/self/psyche/heldback.ts"
+import type { SelfConcept } from "@/self/psyche/types.ts"
 import {
   translateEmotionToFelt,
   translateEmotionTrajectoryToFelt,
@@ -20,6 +19,7 @@ import {
   translateSomaticToFelt,
   translateVulnerabilityToFelt
 } from "./render.ts"
+import { renderSecondaryEmotion } from "./rendering.ts"
 
 interface InnerSectionsInput {
   emotion: EmotionalState

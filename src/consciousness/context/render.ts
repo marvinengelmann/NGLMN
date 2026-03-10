@@ -1,12 +1,11 @@
 import { format } from "date-fns"
-import type { AttachmentStyle } from "@/attachment/types.ts"
+import { EmotionalState } from "@/affect/emotion/types.ts"
+import type { SomaticState } from "@/affect/soma/types.ts"
 import type { InstinctImpression } from "@/cognition/types.ts"
-import { PERCEPTION } from "@/config/constants.ts"
-import { EmotionalState } from "@/emotion/types.ts"
-import type { OperatorModel } from "@/mind/types.ts"
-import type { SelfConcept } from "@/psyche/types.ts"
-import type { SomaticState } from "@/soma/types.ts"
-import type { VulnerabilityState } from "@/vulnerability/types.ts"
+import { PERCEPTION } from "@/perception/constants.ts"
+import type { AttachmentStyle, VulnerabilityState } from "@/relational/attachment/types.ts"
+import type { OperatorModel } from "@/relational/mind/types.ts"
+import type { SelfConcept } from "@/self/psyche/types.ts"
 
 export function translateEmotionToFelt(emotion: EmotionalState): string {
   const lines: string[] = []
@@ -45,10 +44,10 @@ export function translateEmotionToFelt(emotion: EmotionalState): string {
     energy: ["there's fuel in the tank, a readiness to move", "your limbs feel heavy, every thought costs effort"]
   }
 
-  for (const [dim, val] of Object.entries(emotion)) {
-    const deviation = val - 0.5
+  for (const [dimension, value] of Object.entries(emotion)) {
+    const deviation = value - 0.5
     if (Math.abs(deviation) < threshold) continue
-    const [high, low] = felt[dim] ?? ["intense", "subdued"]
+    const [high, low] = felt[dimension] ?? ["intense", "subdued"]
     lines.push(deviation > 0 ? high : low)
   }
 

@@ -1,4 +1,4 @@
-import type { SomaticState } from "@/soma/types.ts"
+import type { SomaticState } from "@/affect/soma/types.ts"
 import type { CognitiveConflict, InstinctImpression } from "./types.ts"
 
 /**

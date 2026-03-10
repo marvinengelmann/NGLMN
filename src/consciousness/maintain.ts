@@ -1,5 +1,33 @@
 import { differenceInDays, differenceInMinutes, parseISO } from "date-fns"
-import { computeRelationshipPhase, shouldTransitionPhase } from "@/attachment/phases.ts"
+import { MOMENTUM } from "@/affect/emotion/constants.ts"
+import { getMoodBaseline, saveMoodBaseline } from "@/affect/emotion/state.ts"
+import { clampState } from "@/affect/emotion/update.ts"
+import { getSomaticState, saveSomaticState } from "@/affect/soma/state.ts"
+import { rechargeSocialBattery } from "@/affect/soma/update.ts"
+import { updateHabitState } from "@/cognition/habit.ts"
+import { getHabitState, saveHabitState } from "@/cognition/habits.ts"
+import {
+  applyIdiolectDrift,
+  detectOperatorAdoption,
+  extractPatterns,
+  getIdiolectState,
+  mergePatterns,
+  saveIdiolectState
+} from "@/expression/communication/idiolect.ts"
+import { handleDriftCheck } from "@/governance/security/guardian.ts"
+import { log } from "@/infra/lib/logger.ts"
+import { logAndCaptureError } from "@/infra/lib/result.ts"
+import { addKeyMoment, getRelationalMemoryState, saveRelationalMemoryState } from "@/memory/relational.ts"
+import { applyOpinionDrift } from "@/memory/semantic.ts"
+import {
+  getLastTickSummary,
+  getRecentActions,
+  incrementConsecutiveConversationTicks,
+  incrementConsecutiveIdleTicks,
+  resetConsecutiveConversationTicks,
+  resetConsecutiveIdleTicks
+} from "@/memory/working.ts"
+import { computeRelationshipPhase, shouldTransitionPhase } from "@/relational/attachment/phases.ts"
 import {
   getAttachmentStyle,
   getConflictCount,
@@ -11,32 +39,11 @@ import {
   incrementPhaseTickCount,
   saveAttachmentStyle,
   saveRelationshipPhase
-} from "@/attachment/state.ts"
-import { detectConflict, hasStyleChanged, updateAttachmentStyle } from "@/attachment/update.ts"
-import {
-  applyIdiolectDrift,
-  detectOperatorAdoption,
-  extractPatterns,
-  getIdiolectState,
-  mergePatterns,
-  saveIdiolectState
-} from "@/communication/idiolect.ts"
-import { MOMENTUM } from "@/config/constants.ts"
-import { getMoodBaseline, saveMoodBaseline } from "@/emotion/state.ts"
-import { clampState } from "@/emotion/update.ts"
-import { log } from "@/lib/logger.ts"
-import { logAndCaptureError } from "@/lib/result.ts"
-import { applyOpinionDrift } from "@/memory/semantic.ts"
-import {
-  getLastTickSummary,
-  incrementConsecutiveConversationTicks,
-  incrementConsecutiveIdleTicks,
-  resetConsecutiveConversationTicks,
-  resetConsecutiveIdleTicks
-} from "@/memory/working.ts"
-import { handleDriftCheck } from "@/security/guardian.ts"
-import { getSomaticState, saveSomaticState } from "@/soma/state.ts"
-import { rechargeSocialBattery } from "@/soma/update.ts"
+} from "@/relational/attachment/state.ts"
+import { detectConflict, hasStyleChanged, updateAttachmentStyle } from "@/relational/attachment/update.ts"
+import { formBoundary } from "@/self/boundaries/compute.ts"
+import { BOUNDARIES } from "@/self/boundaries/constants.ts"
+import { getBoundaryState, saveBoundaryState } from "@/self/boundaries/state.ts"
 import { logActionResult, logTick } from "./recorder.ts"
 import type { DeliberateResult, FeelingResult, MaintainInput, TickSummary } from "./types.ts"
 
@@ -155,6 +162,54 @@ export async function maintain(
   } else if (Math.random() < IDIOLECT_DRIFT_PROBABILITY) {
     const drifted = applyIdiolectDrift(idiolectState)
     await saveIdiolectState(drifted)
+  }
+
+  const previousHabitState = await getHabitState()
+  const recentActionsForHabit = await getRecentActions()
+  const habitState = updateHabitState(previousHabitState, recentActionsForHabit, input.decision.action)
+  await saveHabitState(habitState)
+
+  if (input.actResult.responseSent && input.senseResult.pendingMessages.length > 0) {
+    const relationalState = await getRelationalMemoryState()
+
+    if (feelResult.emotion.connection > 0.7) {
+      const updated = addKeyMoment(
+        relationalState,
+        `${input.decision.action}: ${input.decision.reasoning.slice(0, 100)}`,
+        feelResult.emotion.connection
+      )
+      await saveRelationalMemoryState(updated)
+    }
+  }
+
+  const negativeEmotionalPressure = (feelResult.emotion.frustration + feelResult.emotion.caution) / 2
+  if (
+    negativeEmotionalPressure > BOUNDARIES.FORMATION_NEGATIVE_THRESHOLD &&
+    input.senseResult.pendingMessages.length > 0
+  ) {
+    const boundaryState = await getBoundaryState()
+    if (boundaryState.boundaries.length < BOUNDARIES.MAX_BOUNDARIES) {
+      const triggerText = input.senseResult.pendingMessages
+        .map((m) => m.text)
+        .join(" ")
+        .slice(0, 100)
+      const newBoundary = formBoundary(
+        "emotional",
+        `negative pattern: high frustration/caution during interaction`,
+        triggerText
+          .toLowerCase()
+          .split(/\s+/)
+          .filter((w) => w.length > 4)
+          .slice(0, 3)
+          .join("|"),
+        `maintain_phase: frustration=${feelResult.emotion.frustration.toFixed(2)} caution=${feelResult.emotion.caution.toFixed(2)}`
+      )
+      await saveBoundaryState({
+        ...boundaryState,
+        boundaries: [...boundaryState.boundaries, newBoundary]
+      })
+      log.info("Boundary formed from negative pattern", { boundaryId: newBoundary.id })
+    }
   }
 
   const durationMs = Date.now() - input.startTime

@@ -1,6 +1,6 @@
-import { HEARTBEAT } from "@/config/constants.ts"
 import { TickSummary } from "@/consciousness/types.ts"
-import { getValidatedRedis, redis } from "@/integrations/redis.ts"
+import { HEARTBEAT } from "@/infra/config/constants.ts"
+import { getValidatedRedis, redis } from "@/infra/integrations/redis.ts"
 
 const KEYS = {
   TICK_LAST: "working:tick:last",

@@ -1,0 +1,24 @@
+export const SOCIAL_MEDIA = {
+  BROWSE_COOLDOWN_MINUTES: 120,
+  POST_COOLDOWN_HOURS: 4,
+  TIMELINE_MAX_RESULTS: 15,
+  MAX_POST_LENGTH: 280
+} as const
+
+export const EMAIL = {
+  CHECK_COOLDOWN_MINUTES: 30,
+  BODY_SNIPPET_LENGTH: 500,
+  MAX_PREVIEW_EMAILS: 5
+} as const
+
+export const CALENDAR = {
+  CHECK_COOLDOWN_MINUTES: 60,
+  UPCOMING_WINDOW_HOURS: 24,
+  REMINDER_WINDOW_MINUTES: 60,
+  MAX_UPCOMING_EVENTS: 5
+} as const
+
+export const IMAGE = {
+  REFERENCE_KEY: "working:image:reference",
+  MODEL: "xai/grok-imagine-image"
+} as const

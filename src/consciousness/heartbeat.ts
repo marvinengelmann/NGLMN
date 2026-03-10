@@ -3,11 +3,11 @@ import {
   clearConversationWaitingSince,
   getConversationWaitingSince,
   setConversationWaitingSince
-} from "@/communication/state.ts"
-import { HEARTBEAT } from "@/config/constants.ts"
-import { log } from "@/lib/logger.ts"
-import { setTickContext } from "@/lib/sentry.ts"
-import { nowISO } from "@/lib/time.ts"
+} from "@/expression/communication/state.ts"
+import { HEARTBEAT } from "@/infra/config/constants.ts"
+import { log } from "@/infra/lib/logger.ts"
+import { setTickContext } from "@/infra/lib/sentry.ts"
+import { nowISO } from "@/infra/lib/time.ts"
 import { clearBusy, tryAcquireBusy } from "@/memory/working.ts"
 import { act } from "./act.ts"
 import { deliberate } from "./deliberate.ts"

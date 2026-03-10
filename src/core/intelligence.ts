@@ -1,8 +1,8 @@
 import { generateText, Output } from "ai"
 import type * as z from "zod"
-import { MAX_OUTPUT_TOKENS } from "@/config/constants.ts"
-import type { AnimaResultAsync } from "@/lib/result.ts"
-import { trySafe } from "@/lib/result.ts"
+import { MAX_OUTPUT_TOKENS } from "@/infra/config/constants.ts"
+import type { AnimaResultAsync } from "@/infra/lib/result.ts"
+import { trySafe } from "@/infra/lib/result.ts"
 import { estimateCallCost, trackApiCost } from "./budget.ts"
 
 export const FAST = "xai/grok-4-1-fast-non-reasoning"

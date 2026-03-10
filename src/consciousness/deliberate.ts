@@ -1,25 +1,28 @@
-import { computeVoiceModifiers } from "@/altered/compute.ts"
-import { getActiveAlteredState } from "@/altered/state.ts"
+import { computeVoiceModifiers } from "@/affect/altered/compute.ts"
+import { getActiveAlteredState } from "@/affect/altered/state.ts"
+import { ATTENTION } from "@/cognition/constants.ts"
+import { findAutomaticHabit } from "@/cognition/habit.ts"
+import { getHabitState } from "@/cognition/habits.ts"
 import { detectCognitiveConflict, shouldInstinctOverride } from "@/cognition/override.ts"
-import { ATTENTION, CALENDAR, SOCIAL_MEDIA } from "@/config/constants.ts"
+import { generateInnerDialog } from "@/cognition/polyphony/dialog.ts"
+import { selectActiveVoices, shouldRunDialog } from "@/cognition/polyphony/voices.ts"
 import { callIntelligence } from "@/core/intelligence.ts"
-import { thinkDream } from "@/dream/thinking.ts"
-import { getGenesisPersonalityType } from "@/genesis/state.ts"
-import { fetchUpcomingEvents, isCaldavEnabled } from "@/integrations/caldav.ts"
-import { canCheckCalendar, canCheckEmail, canPerformSocialMedia } from "@/integrations/cooldowns.ts"
-import { fetchUnreadEmails, isImapEnabled } from "@/integrations/imap.ts"
-import type { CalendarEvent, EmailPreview } from "@/integrations/types.ts"
-import { type EnrichedTweet, getHomeTimeline, isXEnabled } from "@/integrations/x.ts"
-import { log } from "@/lib/logger.ts"
-import { captureError } from "@/lib/sentry.ts"
+import { thinkDream } from "@/expression/dream/thinking.ts"
+import { thinkMorning, thinkReflect } from "@/expression/routine/thinking.ts"
+import { fetchUpcomingEvents, isCaldavEnabled } from "@/infra/integrations/caldav.ts"
+import { CALENDAR, SOCIAL_MEDIA } from "@/infra/integrations/constants.ts"
+import { canCheckCalendar, canCheckEmail, canPerformSocialMedia } from "@/infra/integrations/cooldowns.ts"
+import { fetchUnreadEmails, isImapEnabled } from "@/infra/integrations/imap.ts"
+import type { CalendarEvent, EmailPreview } from "@/infra/integrations/types.ts"
+import { type EnrichedTweet, getHomeTimeline, isXEnabled } from "@/infra/integrations/x.ts"
+import { log } from "@/infra/lib/logger.ts"
+import { captureError } from "@/infra/lib/sentry.ts"
 import { queryRelated } from "@/memory/episodic.ts"
 import { getGoalsByPriority } from "@/memory/goals.ts"
 import { getConsecutiveIdleTicks } from "@/memory/working.ts"
-import { getOperatorProfile } from "@/mind/profile.ts"
-import { generateInnerDialog } from "@/polyphony/dialog.ts"
-import { selectActiveVoices, shouldRunDialog } from "@/polyphony/voices.ts"
-import { getStructuredExistentialQuestions } from "@/psyche/questions.ts"
-import { thinkMorning, thinkReflect } from "@/routine/thinking.ts"
+import { getOperatorProfile } from "@/relational/mind/profile.ts"
+import { getGenesisPersonalityType } from "@/self/genesis/state.ts"
+import { getStructuredExistentialQuestions } from "@/self/psyche/questions.ts"
 import { generateContextualImpulse } from "./boredom.ts"
 import { buildContext, buildSystemPrompt } from "./context/builder.ts"
 import { AnimaDecision, type DeliberateResult, type FeelingResult, type SenseData, type SenseResult } from "./types.ts"
@@ -121,6 +124,29 @@ export async function deliberate(senseResult: SenseResult, feelResult: FeelingRe
         dissonanceScore: feelResult.dissonance.activeDissonance,
         instinctImpulse: feelResult.instinct.impulse
       })) ?? undefined
+  }
+
+  const habitState = await getHabitState()
+  const automaticHabit = senseResult.pendingMessages.length === 0 ? findAutomaticHabit(habitState.habits, "idle") : null
+  if (automaticHabit) {
+    log.info("Automatic habit triggered", { pattern: automaticHabit.pattern, strength: automaticHabit.strength })
+
+    const action = automaticHabit.pattern === "idle" ? "idle" : "reflect"
+    const decision: AnimaDecision = {
+      reasoning: `Automatic habit: ${automaticHabit.pattern} (strength ${automaticHabit.strength.toFixed(2)})`,
+      messages: [],
+      expectsReply: false,
+      action,
+      workflowId: null,
+      corrections: []
+    }
+
+    return {
+      decision,
+      systemPrompt,
+      instinctOverride: false,
+      innerDialog
+    }
   }
 
   if (shouldInstinctOverride(feelResult.instinct, feelResult.soma)) {

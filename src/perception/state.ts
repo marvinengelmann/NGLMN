@@ -1,6 +1,6 @@
-import { PERCEPTION } from "@/config/constants.ts"
-import { getValidatedRedis, redis } from "@/integrations/redis.ts"
-import { OperatorLocation, WeatherData } from "@/integrations/types.ts"
+import { getValidatedRedis, redis } from "@/infra/integrations/redis.ts"
+import { OperatorLocation, WeatherData } from "@/infra/integrations/types.ts"
+import { PERCEPTION } from "./constants.ts"
 import { PerceptionSummary } from "./types.ts"
 
 const KEYS = {

@@ -1,5 +1,5 @@
-import type { EmotionUpdateEvent } from "@/emotion/types.ts"
-import { nowISO } from "@/lib/time.ts"
+import type { EmotionUpdateEvent } from "@/affect/emotion/types.ts"
+import { nowISO } from "@/infra/lib/time.ts"
 import { setPerceptionSummary } from "@/perception/state.ts"
 import type { PerceptionSummary } from "@/perception/types.ts"
 import { readGitActivity, readOwnState, readTelegramActivity, readWeatherData } from "./sensors.ts"

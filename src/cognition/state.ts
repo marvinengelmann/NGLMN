@@ -1,4 +1,4 @@
-import { getValidatedRedis, redis } from "@/integrations/redis.ts"
+import { getValidatedRedis, redis } from "@/infra/integrations/redis.ts"
 import { AttentionState, InstinctImpression } from "./types.ts"
 
 const KEYS = {

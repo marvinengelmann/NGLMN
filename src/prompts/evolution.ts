@@ -71,7 +71,7 @@ You receive:
 - Tests: Vitest with vi.mock() at file top, test factories from @/test/factories.ts, run via "bun run test" (NOT "bun test")
 - No inline comments — code must be self-explanatory. Only JSDoc/docstrings for function signatures
 - Dates/times: Always use date-fns (format, parseISO, addDays, etc.) — never raw Date methods
-- Emotion values: Always [0,1] range, use clamp01() from @/lib/math.ts
+- Emotion values: Always [0,1] range, use clamp01() from @/infra/lib/math.ts
 - Path aliases: @/* maps to src/* — always use @/ imports
 - Linting: Biome enforces const over let, no non-null assertions (!), no unused variables
 - When modifying a source file, always update its corresponding .test.ts file to cover the changes

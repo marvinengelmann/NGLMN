@@ -1,13 +1,13 @@
 import { differenceInDays, parseISO, subDays } from "date-fns"
 import { callIntelligence } from "@/core/intelligence.ts"
 import { TextOutput } from "@/core/types.ts"
-import { applyDistortions } from "@/distortion/compute.ts"
-import type { DistortedMemory } from "@/distortion/types.ts"
-import { vectorIndex } from "@/integrations/vector.ts"
-import { log } from "@/lib/logger.ts"
-import { extractErrorMessage } from "@/lib/result.ts"
-import { nowISO } from "@/lib/time.ts"
+import { vectorIndex } from "@/infra/integrations/vector.ts"
+import { log } from "@/infra/lib/logger.ts"
+import { extractErrorMessage } from "@/infra/lib/result.ts"
+import { nowISO } from "@/infra/lib/time.ts"
 import type { EpisodeMetadata, EpisodicCategory } from "@/memory/types.ts"
+import { applyDistortions } from "@/perception/distortion/compute.ts"
+import type { DistortedMemory } from "@/perception/distortion/types.ts"
 
 /**
  * Store an episode in Upstash Vector with auto-embedding.
@@ -213,7 +213,10 @@ export async function summarizeOldEpisodes(
   )
 
   return categoryResults.reduce(
-    (acc, r) => ({ summarized: acc.summarized + r.summarized, created: acc.created + r.created }),
+    (accumulator, result) => ({
+      summarized: accumulator.summarized + result.summarized,
+      created: accumulator.created + result.created
+    }),
     { summarized: 0, created: 0 }
   )
 }

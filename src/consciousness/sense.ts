@@ -1,32 +1,26 @@
 import { differenceInMinutes, differenceInSeconds, parseISO } from "date-fns"
-import {
-  getAttachmentStyle,
-  getFirstInteractionAt,
-  incrementTotalInteractions,
-  setFirstInteractionAt
-} from "@/attachment/state.ts"
-import { detectConversationBoundary } from "@/communication/conversation.ts"
+import { analyzeMessageSentiment } from "@/affect/emotion/analyze.ts"
+import { TRIGGER_INTENSITY } from "@/affect/emotion/constants.ts"
+import { getEmotionalState, getLastEmotionTimestamp, getTriggerTimestamps } from "@/affect/emotion/state.ts"
+import type { EmotionUpdateEvent, MoodContext } from "@/affect/emotion/types.ts"
+import { detectConversationBoundary } from "@/expression/communication/conversation.ts"
 import {
   getActiveConversation,
   getConversationWaitingSince,
   pushToActiveConversation,
   setConversationWaitingSince,
   startNewConversation
-} from "@/communication/state.ts"
-import { HEALTH_CHECK_INTERVAL, HEARTBEAT, TRIGGER_INTENSITY } from "@/config/constants.ts"
-import { getDreamState } from "@/dream/state.ts"
-import { analyzeMessageSentiment } from "@/emotion/analyze.ts"
-import { getEmotionalState, getLastEmotionTimestamp, getTriggerTimestamps } from "@/emotion/state.ts"
-import type { EmotionUpdateEvent, MoodContext } from "@/emotion/types.ts"
-import { collectHealthStatus } from "@/health/check.ts"
-import { getHealthCheck, setHealthCheck } from "@/health/state.ts"
-import { fetchNewMessages } from "@/integrations/telegram.ts"
-import { log } from "@/lib/logger.ts"
-import { nowISO } from "@/lib/time.ts"
+} from "@/expression/communication/state.ts"
+import { getDreamState } from "@/expression/dream/state.ts"
+import { collectHealthStatus } from "@/governance/health/check.ts"
+import { getHealthCheck, setHealthCheck } from "@/governance/health/state.ts"
+import { checkWorkflowTriggers, getActiveWorkflows, getRecentTickSummaries } from "@/governance/workflow/engine.ts"
+import { HEALTH_CHECK_INTERVAL, HEARTBEAT } from "@/infra/config/constants.ts"
+import { fetchNewMessages } from "@/infra/integrations/telegram.ts"
+import { log } from "@/infra/lib/logger.ts"
+import { nowISO } from "@/infra/lib/time.ts"
 import { getActiveGoals } from "@/memory/goals.ts"
 import { setLastUpdateId } from "@/memory/working.ts"
-import { getOperatorModel, getRelationalPatterns } from "@/mind/state.ts"
-import { extractSignals, matchRelationalPatterns } from "@/mind/triggers.ts"
 import { readGitActivity, readOwnState, readTelegramActivity, readWeatherData } from "@/perception/sensors.ts"
 import {
   clearOperatorSilentFlag,
@@ -35,7 +29,14 @@ import {
   setPerceptionSummary
 } from "@/perception/state.ts"
 import type { PerceptionSummary } from "@/perception/types.ts"
-import { checkWorkflowTriggers, getActiveWorkflows, getRecentTickSummaries } from "@/workflow/engine.ts"
+import {
+  getAttachmentStyle,
+  getFirstInteractionAt,
+  incrementTotalInteractions,
+  setFirstInteractionAt
+} from "@/relational/attachment/state.ts"
+import { getOperatorModel, getRelationalPatterns } from "@/relational/mind/state.ts"
+import { extractSignals, matchRelationalPatterns } from "@/relational/mind/triggers.ts"
 import type { ConversationState, SenseResult } from "./types.ts"
 
 /**

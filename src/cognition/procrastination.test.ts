@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest"
-import type { DisappointmentState } from "@/emotion/disappointment.ts"
-import type { ShameState } from "@/emotion/shame.ts"
+import type { DisappointmentState } from "@/affect/emotion/disappointment.ts"
+import type { ShameState } from "@/affect/emotion/shame.ts"
 import {
   computeProcrastination,
   computeProcrastinationEffect,

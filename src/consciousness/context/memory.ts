@@ -1,7 +1,7 @@
-import { CONTEXT_LIMITS, HUMOR } from "@/config/constants.ts"
+import type { EmotionalState } from "@/affect/emotion/types.ts"
+import { HUMOR } from "@/consciousness/constants.ts"
 import type { SenseData } from "@/consciousness/types.ts"
-import type { DistortedMemory } from "@/distortion/types.ts"
-import type { EmotionalState } from "@/emotion/types.ts"
+import { CONTEXT_LIMITS } from "@/infra/config/constants.ts"
 import {
   queryHumorCallbacks,
   queryHumorMemories,
@@ -10,6 +10,7 @@ import {
 } from "@/memory/episodic.ts"
 import { getRelatedEntities } from "@/memory/semantic.ts"
 import type { EpisodeMetadata } from "@/memory/types.ts"
+import type { DistortedMemory } from "@/perception/distortion/types.ts"
 
 function formatKnowledgeByScope(knowledge: { category: string; key: string; value: unknown; scope: string }[]): string {
   const grouped: { self: string[]; operator: string[]; world: string[] } = { self: [], operator: [], world: [] }

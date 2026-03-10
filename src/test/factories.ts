@@ -1,26 +1,46 @@
-import type { AttachmentDynamics, AttachmentStyle } from "@/attachment/types.ts"
-import { DEFAULT_ATTACHMENT } from "@/attachment/types.ts"
-import type { InstinctImpression } from "@/cognition/types.ts"
-import type { ConversationClimate, ConversationMessage, ConversationSlot } from "@/communication/types.ts"
-import type { DeceptionState, HiddenDriver } from "@/deception/types.ts"
-import { DEFAULT_DECEPTION_STATE } from "@/deception/types.ts"
-import type { DissonanceEvent, DissonanceState } from "@/dissonance/types.ts"
-import type { DreamAfterglow } from "@/dream/types.ts"
-import type { AfterglowEntry, EmotionalMomentum, EmotionalState, MoodContext } from "@/emotion/types.ts"
-import { DEFAULT_EMOTIONAL_MOMENTUM, DEFAULT_EMOTIONAL_STATE } from "@/emotion/types.ts"
-import type { HealthCheckResult } from "@/health/types.ts"
-import type { PendingMessage } from "@/integrations/types.ts"
-import type { CorrectionPattern, MoodUncertainty, OperatorModel, OperatorProfile } from "@/mind/types.ts"
-import { DEFAULT_OPERATOR_MODEL, DEFAULT_OPERATOR_PROFILE } from "@/mind/types.ts"
+import type { DriveLevel, DriveState } from "@/affect/drive/types.ts"
+import { DEFAULT_DRIVE_STATE } from "@/affect/drive/types.ts"
+import type { AfterglowEntry, EmotionalMomentum, EmotionalState, MoodContext } from "@/affect/emotion/types.ts"
+import { DEFAULT_EMOTIONAL_MOMENTUM, DEFAULT_EMOTIONAL_STATE } from "@/affect/emotion/types.ts"
+import type { SomaticState } from "@/affect/soma/types.ts"
+import { DEFAULT_SOMATIC_STATE } from "@/affect/soma/types.ts"
+import type { Habit, HabitState, InstinctImpression, MetacognitiveState } from "@/cognition/types.ts"
+import { DEFAULT_HABIT_STATE, DEFAULT_METACOGNITIVE_STATE } from "@/cognition/types.ts"
+import type { ConversationClimate, ConversationMessage, ConversationSlot } from "@/expression/communication/types.ts"
+import type { CreativeUrgeState } from "@/expression/creativity/types.ts"
+import { DEFAULT_CREATIVE_URGE_STATE } from "@/expression/creativity/types.ts"
+import type { DreamAfterglow } from "@/expression/dream/types.ts"
+import type { HealthCheckResult } from "@/governance/health/types.ts"
+import type { GuardianResult } from "@/governance/security/types.ts"
+import type { PendingMessage } from "@/infra/integrations/types.ts"
+import type { RelationalMemoryState, RelationalRitual } from "@/memory/relational.ts"
+import { DEFAULT_RELATIONAL_MEMORY_STATE } from "@/memory/relational.ts"
+import type { AnticipatoryState, Expectation, ExpectationViolation } from "@/perception/anticipation/types.ts"
+import { DEFAULT_ANTICIPATORY_STATE } from "@/perception/anticipation/types.ts"
+import type { NoveltyState, SurpriseState } from "@/perception/novelty/types.ts"
+import { DEFAULT_NOVELTY_STATE, DEFAULT_SURPRISE_STATE } from "@/perception/novelty/types.ts"
+import type { SubjectiveTimeState } from "@/perception/time/types.ts"
+import { DEFAULT_SUBJECTIVE_TIME_STATE } from "@/perception/time/types.ts"
 import type { PerceptionSummary } from "@/perception/types.ts"
-import type { ExistentialQuestion, GrowthArc, SelfConcept } from "@/psyche/types.ts"
-import { DEFAULT_SELF_CONCEPT } from "@/psyche/types.ts"
-import type { GuardianResult } from "@/security/types.ts"
-import type { SomaticState } from "@/soma/types.ts"
-import { DEFAULT_SOMATIC_STATE } from "@/soma/types.ts"
-import type { TrustEvent } from "@/trust/types.ts"
-import type { VulnerabilityState, VulnerableMessageStyle } from "@/vulnerability/types.ts"
-import { DEFAULT_VULNERABLE_MESSAGE_STYLE } from "@/vulnerability/types.ts"
+import type {
+  AttachmentDynamics,
+  AttachmentStyle,
+  VulnerabilityState,
+  VulnerableMessageStyle
+} from "@/relational/attachment/types.ts"
+import { DEFAULT_ATTACHMENT, DEFAULT_VULNERABLE_MESSAGE_STYLE } from "@/relational/attachment/types.ts"
+import type { CorrectionPattern, MoodUncertainty, OperatorModel, OperatorProfile } from "@/relational/mind/types.ts"
+import { DEFAULT_OPERATOR_MODEL, DEFAULT_OPERATOR_PROFILE } from "@/relational/mind/types.ts"
+import type { TrustEvent } from "@/relational/trust/types.ts"
+import type { Boundary, BoundaryState } from "@/self/boundaries/types.ts"
+import { DEFAULT_BOUNDARY_STATE } from "@/self/boundaries/types.ts"
+import type { CoherenceState } from "@/self/coherence/types.ts"
+import { DEFAULT_COHERENCE_STATE } from "@/self/coherence/types.ts"
+import type { DeceptionState, HiddenDriver } from "@/self/deception/types.ts"
+import { DEFAULT_DECEPTION_STATE } from "@/self/deception/types.ts"
+import type { DissonanceEvent, DissonanceState } from "@/self/dissonance/types.ts"
+import type { ExistentialQuestion, GrowthArc, SelfConcept } from "@/self/psyche/types.ts"
+import { DEFAULT_SELF_CONCEPT } from "@/self/psyche/types.ts"
 
 export function makeEmotionalState(overrides?: Partial<EmotionalState>): EmotionalState {
   return { ...DEFAULT_EMOTIONAL_STATE, ...overrides }
@@ -299,4 +319,117 @@ export function makeAfterglowEntry(overrides?: Partial<AfterglowEntry>): Aftergl
     intensity: 0.8,
     ...overrides
   }
+}
+
+export function makeDriveLevel(overrides?: Partial<DriveLevel>): DriveLevel {
+  return {
+    satiation: 0.5,
+    frustration: 0,
+    salience: 0.5,
+    lastSatisfiedAt: "2026-03-06T12:00:00Z",
+    consecutiveBlockedTicks: 0,
+    ...overrides
+  }
+}
+
+export function makeDriveState(overrides?: Partial<DriveState>): DriveState {
+  return { ...DEFAULT_DRIVE_STATE, ...overrides }
+}
+
+export function makeExpectation(overrides?: Partial<Expectation>): Expectation {
+  return {
+    content: "operator will respond",
+    source: "pattern",
+    confidence: 0.5,
+    expectedAt: null,
+    valence: 0.3,
+    ...overrides
+  }
+}
+
+export function makeExpectationViolation(overrides?: Partial<ExpectationViolation>): ExpectationViolation {
+  return {
+    expectation: makeExpectation(),
+    actualOutcome: "no response received",
+    surpriseIntensity: 0.5,
+    valence: -0.3,
+    ...overrides
+  }
+}
+
+export function makeAnticipatoryState(overrides?: Partial<AnticipatoryState>): AnticipatoryState {
+  return { ...DEFAULT_ANTICIPATORY_STATE, ...overrides }
+}
+
+export function makeNoveltyState(overrides?: Partial<NoveltyState>): NoveltyState {
+  return { ...DEFAULT_NOVELTY_STATE, ...overrides }
+}
+
+export function makeSurpriseState(overrides?: Partial<SurpriseState>): SurpriseState {
+  return { ...DEFAULT_SURPRISE_STATE, ...overrides }
+}
+
+export function makeHabit(overrides?: Partial<Habit>): Habit {
+  return {
+    id: "habit-test-1",
+    pattern: "reflect",
+    type: "emotional",
+    strength: 0.5,
+    repetitions: 5,
+    lastActivatedAt: "2026-03-06T12:00:00Z",
+    isAutomatic: false,
+    ...overrides
+  }
+}
+
+export function makeHabitState(overrides?: Partial<HabitState>): HabitState {
+  return { ...DEFAULT_HABIT_STATE, ...overrides }
+}
+
+export function makeCoherenceState(overrides?: Partial<CoherenceState>): CoherenceState {
+  return { ...DEFAULT_COHERENCE_STATE, ...overrides }
+}
+
+export function makeRelationalRitual(overrides?: Partial<RelationalRitual>): RelationalRitual {
+  return {
+    pattern: "morning greeting",
+    frequency: 5,
+    lastOccurredAt: "2026-03-06T12:00:00Z",
+    emotionalSignificance: 0.6,
+    firstObservedAt: "2026-03-01T08:00:00Z",
+    ...overrides
+  }
+}
+
+export function makeRelationalMemoryState(overrides?: Partial<RelationalMemoryState>): RelationalMemoryState {
+  return { ...DEFAULT_RELATIONAL_MEMORY_STATE, ...overrides }
+}
+
+export function makeMetacognitiveState(overrides?: Partial<MetacognitiveState>): MetacognitiveState {
+  return { ...DEFAULT_METACOGNITIVE_STATE, ...overrides }
+}
+
+export function makeSubjectiveTimeState(overrides?: Partial<SubjectiveTimeState>): SubjectiveTimeState {
+  return { ...DEFAULT_SUBJECTIVE_TIME_STATE, ...overrides }
+}
+
+export function makeCreativeUrgeState(overrides?: Partial<CreativeUrgeState>): CreativeUrgeState {
+  return { ...DEFAULT_CREATIVE_URGE_STATE, ...overrides }
+}
+
+export function makeBoundary(overrides?: Partial<Boundary>): Boundary {
+  return {
+    id: "boundary-test-1",
+    type: "topic",
+    description: "avoid discussing past mistakes",
+    pattern: "past mistakes|failures",
+    strength: 0.5,
+    origin: "negative experience",
+    violationCount: 0,
+    ...overrides
+  }
+}
+
+export function makeBoundaryState(overrides?: Partial<BoundaryState>): BoundaryState {
+  return { ...DEFAULT_BOUNDARY_STATE, ...overrides }
 }

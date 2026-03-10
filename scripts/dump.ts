@@ -10,9 +10,9 @@ import "dotenv/config"
 import { estimateTokenCount } from "tokenx"
 import { buildContext, buildSystemPrompt } from "@/consciousness/context/builder.ts"
 import type { SenseData } from "@/consciousness/types.ts"
-import { getEmotionalState } from "@/emotion/state.ts"
-import { nowISO } from "@/lib/time.ts"
-import { getHealthCheck } from "@/health/state.ts"
+import { getEmotionalState } from "@/affect/emotion/state.ts"
+import { nowISO } from "@/infra/lib/time.ts"
+import { getHealthCheck } from "@/governance/health/state.ts"
 import { getPerceptionSummary } from "@/perception/state.ts"
 
 async function dump() {

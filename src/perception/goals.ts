@@ -1,10 +1,11 @@
-import { PERCEPTION, TRIGGER_INTENSITY } from "@/config/constants.ts"
-import { processEmotionTrigger } from "@/emotion/state.ts"
-import type { EmotionalState } from "@/emotion/types.ts"
-import { redis } from "@/integrations/redis.ts"
-import { logAndCaptureError } from "@/lib/result.ts"
+import { TRIGGER_INTENSITY } from "@/affect/emotion/constants.ts"
+import { processEmotionTrigger } from "@/affect/emotion/state.ts"
+import type { EmotionalState } from "@/affect/emotion/types.ts"
+import { redis } from "@/infra/integrations/redis.ts"
+import { logAndCaptureError } from "@/infra/lib/result.ts"
 import { createGoal, goalExistsByTitle } from "@/memory/goals.ts"
 import type { PerceptionSummary } from "@/perception/types.ts"
+import { PERCEPTION } from "./constants.ts"
 
 const FREQUENCY_KEY = "working:perception:lastGoalCheck"
 

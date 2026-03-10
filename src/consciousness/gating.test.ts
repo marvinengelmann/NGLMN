@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest"
-import type { EmotionalState } from "@/emotion/types.ts"
+import type { EmotionalState } from "@/affect/emotion/types.ts"
 
-vi.mock("@/integrations/redis.ts", () => ({
+vi.mock("@/infra/integrations/redis.ts", () => ({
   redis: {
     get: vi.fn().mockResolvedValue(null),
     set: vi.fn().mockResolvedValue("OK"),
@@ -9,7 +9,7 @@ vi.mock("@/integrations/redis.ts", () => ({
   }
 }))
 
-vi.mock("@/lib/time.ts", () => {
+vi.mock("@/infra/lib/time.ts", () => {
   const { TZDate } = require("@date-fns/tz")
   return {
     nowLocal: vi.fn(() => new TZDate("2025-06-15T10:00:00", "Europe/Berlin"))
@@ -21,11 +21,11 @@ vi.mock("@/memory/working.ts", () => ({
   getDreamLastRun: vi.fn().mockResolvedValue(new Date().toISOString())
 }))
 
-vi.mock("@/db/client.ts", () => ({
+vi.mock("@/infra/db/client.ts", () => ({
   db: {}
 }))
 
-vi.mock("@/integrations/telegram.ts", () => ({
+vi.mock("@/infra/integrations/telegram.ts", () => ({
   sendToOperator: vi.fn().mockResolvedValue(1)
 }))
 
@@ -37,11 +37,11 @@ vi.mock("@/core/intelligence.ts", () => ({
   callIntelligence: vi.fn()
 }))
 
-vi.mock("@/config/env.ts", () => ({
+vi.mock("@/infra/config/env.ts", () => ({
   env: () => ({ OPERATOR_PREFERRED_LANGUAGE: "German" })
 }))
 
-vi.mock("@/lib/sentry.ts", () => ({
+vi.mock("@/infra/lib/sentry.ts", () => ({
   captureError: vi.fn()
 }))
 
@@ -49,7 +49,7 @@ vi.mock("@/prompts/personality.ts", () => ({
   getPersonalityPrompt: vi.fn().mockResolvedValue("Test personality prompt")
 }))
 
-vi.mock("@/emotion/state.ts", () => ({
+vi.mock("@/affect/emotion/state.ts", () => ({
   getEmotionalState: vi.fn().mockResolvedValue({
     curiosity: 0.5,
     satisfaction: 0.5,
@@ -64,8 +64,8 @@ vi.mock("@/emotion/state.ts", () => ({
 }))
 
 import { TZDate } from "@date-fns/tz"
-import { redis } from "@/integrations/redis.ts"
-import { nowLocal } from "@/lib/time.ts"
+import { redis } from "@/infra/integrations/redis.ts"
+import { nowLocal } from "@/infra/lib/time.ts"
 import { computeSkipProbability, recordActiveTick } from "./gating.ts"
 
 const baseEmotion: EmotionalState = {

@@ -1,7 +1,7 @@
 import * as z from "zod"
-import { EmotionUpdateEvent } from "@/emotion/types.ts"
-import { OverallStatus } from "@/health/types.ts"
-import { WeatherData } from "@/integrations/types.ts"
+import { EmotionUpdateEvent } from "@/affect/emotion/types.ts"
+import { OverallStatus } from "@/governance/health/types.ts"
+import { WeatherData } from "@/infra/integrations/types.ts"
 
 export const PerceptionSummary = z.object({
   timestamp: z.string(),

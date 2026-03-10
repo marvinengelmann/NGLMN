@@ -1,12 +1,12 @@
 import { format } from "date-fns"
-import type { ConversationSlot } from "@/communication/types.ts"
-import { CALENDAR } from "@/config/constants.ts"
 import type { SenseData, TickSummary } from "@/consciousness/types.ts"
-import type { CalendarEvent, EmailPreview } from "@/integrations/types.ts"
-import type { EnrichedTweet } from "@/integrations/x.ts"
-import { nowLocal } from "@/lib/time.ts"
-import type { computeTimePerception } from "@/perception/time.ts"
-import type { WorkflowDefinition } from "@/workflow/types.ts"
+import type { ConversationSlot } from "@/expression/communication/types.ts"
+import type { WorkflowDefinition } from "@/governance/workflow/types.ts"
+import { CALENDAR } from "@/infra/integrations/constants.ts"
+import type { CalendarEvent, EmailPreview } from "@/infra/integrations/types.ts"
+import type { EnrichedTweet } from "@/infra/integrations/x.ts"
+import { nowLocal } from "@/infra/lib/time.ts"
+import type { computeTimePerception } from "@/perception/pace.ts"
 
 export function formatConversationMessage(
   message: {
@@ -28,7 +28,7 @@ export function formatConversationMessage(
 
 function formatConversationSlot(slot: ConversationSlot, label: string): string {
   if (slot.messages.length === 0) return ""
-  const lines = [`${label}:`, ...slot.messages.map((msg) => `  ${formatConversationMessage(msg)}`)]
+  const lines = [`${label}:`, ...slot.messages.map((message) => `  ${formatConversationMessage(message)}`)]
   if (slot.climate) {
     lines.push(`  Climate: tone=${slot.climate.tone}, engagement=${slot.climate.operatorEngagement.toFixed(1)}`)
     if (slot.climate.themes.length > 0) {
@@ -54,7 +54,7 @@ function formatConversationBuffer(buffer: ConversationSlot[]): string {
         parts.push(
           [
             `Earlier conversation (${slot.messages.length} messages, last 3):`,
-            ...preview.map((msg) => `  ${formatConversationMessage(msg, 200)}`)
+            ...preview.map((message) => `  ${formatConversationMessage(message, 200)}`)
           ].join("\n")
         )
       }

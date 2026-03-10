@@ -1,8 +1,8 @@
 import { formatISO } from "date-fns"
 import * as z from "zod"
-import { BUDGET } from "@/config/constants.ts"
 import type { BudgetState } from "@/core/types.ts"
-import { redis } from "@/integrations/redis.ts"
+import { BUDGET } from "@/infra/config/constants.ts"
+import { redis } from "@/infra/integrations/redis.ts"
 
 const TTL_SECONDS = 86_400
 

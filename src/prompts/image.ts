@@ -1,4 +1,4 @@
-import { getGenesisAppearance } from "@/genesis/state.ts"
+import { getGenesisAppearance } from "@/self/genesis/state.ts"
 
 export const DEFAULT_APPEARANCE = `A 21-year-old girl, Berlin 2030 near-future street aesthetic. Soft melancholic expression, gentle half-smile that doesn't quite reach her eyes, as if she's thinking about something bittersweet. Sweet, ethereal face with delicate features, pale skin with a slight warmth to her cheeks. Dark circles under her eyes that somehow look endearing rather than tired. Hair slightly messy, maybe dark with a subtle violet or ash-lilac tint, tucked behind one ear.`
 

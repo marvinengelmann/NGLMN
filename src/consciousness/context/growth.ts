@@ -1,8 +1,8 @@
-import type { DreamAfterglow, DreamState } from "@/dream/types.ts"
-import type { getRecentChangelog } from "@/evolution/changelog.ts"
-import type { CodeProposal, EvolutionCycleResult } from "@/evolution/types.ts"
+import type { DreamAfterglow, DreamState } from "@/expression/dream/types.ts"
+import type { getRecentChangelog } from "@/governance/evolution/changelog.ts"
+import type { CodeProposal, EvolutionCycleResult } from "@/governance/evolution/types.ts"
 import type { getGoalsByPriority } from "@/memory/goals.ts"
-import type { GrowthArc, NarrativeEntry } from "@/psyche/types.ts"
+import type { GrowthArc, NarrativeEntry } from "@/self/psyche/types.ts"
 
 export function buildGrowthSections(
   existentialQuestions: string[],

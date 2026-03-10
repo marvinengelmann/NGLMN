@@ -1,11 +1,11 @@
-import type { AttachmentStyle } from "@/attachment/types.ts"
+import { SOCIAL_BATTERY } from "@/affect/soma/constants.ts"
+import type { SomaticState } from "@/affect/soma/types.ts"
 import type { AttentionState } from "@/cognition/types.ts"
-import { buildIdiolectSection, type IdiolectState } from "@/communication/idiolect.ts"
-import type { CommunicationRegister } from "@/communication/types.ts"
-import { SOCIAL_BATTERY } from "@/config/constants.ts"
-import type { OperatorModel } from "@/mind/types.ts"
-import type { SomaticState } from "@/soma/types.ts"
-import type { getAllTrustLevels } from "@/trust/compute.ts"
+import { buildIdiolectSection, type IdiolectState } from "@/expression/communication/idiolect.ts"
+import type { CommunicationRegister } from "@/expression/communication/types.ts"
+import type { AttachmentStyle } from "@/relational/attachment/types.ts"
+import type { OperatorModel } from "@/relational/mind/types.ts"
+import type { getAllTrustLevels } from "@/relational/trust/compute.ts"
 import { translateAttachmentToFelt, translateOperatorModelToFelt } from "./render.ts"
 
 export function buildSocialSections(

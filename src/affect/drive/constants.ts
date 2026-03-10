@@ -1,0 +1,27 @@
+export const DRIVES = {
+  HALF_LIVES: {
+    curiosity: 120,
+    connection: 240,
+    mastery: 360,
+    autonomy: 480,
+    expression: 180
+  },
+  FRUSTRATION_GROWTH: 0.05,
+  FRUSTRATION_DECAY: 0.97,
+  FRUSTRATION_SALIENCE_FACTOR: 0.5,
+  SATISFACTION_FRUSTRATION_RELIEF: 0.2,
+  SALIENCE_THRESHOLD: 0.6,
+  SATISFACTION_AMOUNTS: {
+    curiosity: 0.4,
+    connection: 0.5,
+    mastery: 0.3,
+    autonomy: 0.35,
+    expression: 0.45
+  },
+  CONFLICT_THRESHOLD: 0.6,
+  EMOTION_TRIGGER_FRUSTRATION: 0.7,
+  FRUSTRATION_EMOTION_INTENSITY: 0.5,
+  CONFLICT_EMOTION_INTENSITY: 0.4,
+  CONNECTION_BLOCKED_SILENCE_MINUTES: 120,
+  EXPRESSION_BLOCKED_IDLE_TICKS: 5
+} as const

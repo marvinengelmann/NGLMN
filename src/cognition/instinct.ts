@@ -1,8 +1,8 @@
-import type { EmotionalState } from "@/emotion/types.ts"
-import type { PendingMessage } from "@/integrations/types.ts"
+import type { EmotionalState } from "@/affect/emotion/types.ts"
+import type { SomaticState } from "@/affect/soma/types.ts"
+import type { PendingMessage } from "@/infra/integrations/types.ts"
 import { queryRelated } from "@/memory/episodic.ts"
 import type { EpisodeMetadata } from "@/memory/types.ts"
-import type { SomaticState } from "@/soma/types.ts"
 import type { InstinctImpression } from "./types.ts"
 
 /**

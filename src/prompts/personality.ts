@@ -1,5 +1,5 @@
-import { getGenesisPersonalityType } from "@/genesis/state.ts"
-import { PERSONALITY_PROMPTS, PERSONALITY_SECTION_INTRO } from "@/personality/profiles.ts"
+import { getGenesisPersonalityType } from "@/self/genesis/state.ts"
+import { PERSONALITY_PROMPTS, PERSONALITY_SECTION_INTRO } from "@/self/personality/profiles.ts"
 
 /**
  * Build the personality prompt using the genesis-derived personality type.

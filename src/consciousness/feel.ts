@@ -1,24 +1,41 @@
 import { getHours } from "date-fns"
-import { computeEmotionModifiers, computeSomaModifiers, isExpired } from "@/altered/compute.ts"
-import { clearAlteredState, getActiveAlteredState } from "@/altered/state.ts"
-import { getAttachmentStyle } from "@/attachment/state.ts"
-import { evaluateAttachmentDynamics, isOperatorReturning } from "@/attachment/update.ts"
-import { computeAttentionState } from "@/cognition/flow.ts"
+import { computeEmotionModifiers, computeSomaModifiers, isExpired } from "@/affect/altered/compute.ts"
+import { clearAlteredState, getActiveAlteredState } from "@/affect/altered/state.ts"
+import {
+  computeDriveEmotionTriggers,
+  computeDriveUpdate,
+  inferBlockedDrives,
+  inferSatisfiedDrives
+} from "@/affect/drive/compute.ts"
+import { getDriveState, saveDriveState } from "@/affect/drive/state.ts"
+import { getAllSecondaryEmotionStates, saveAllSecondaryEmotionStates } from "@/affect/emotion/batch.ts"
+import { detectNostalgia } from "@/affect/emotion/nostalgia.ts"
+import { computeAttentionState } from "@/cognition/attention.ts"
+import { getMetacognitiveState, saveMetacognitiveState } from "@/cognition/awareness.ts"
 import { computeInstinctImpression } from "@/cognition/instinct.ts"
+import { updateMetacognitiveState } from "@/cognition/metacognition.ts"
 import { saveAttentionState, saveInstinctImpression } from "@/cognition/state.ts"
-import { computeCommunicationRegister } from "@/communication/register.ts"
-import { getActiveConversation, saveCommunicationRegister } from "@/communication/state.ts"
-import { DREAM_AFTERGLOW } from "@/config/constants.ts"
-import { processDeceptionCycle } from "@/deception/compute.ts"
-import { getDeceptionState, saveDeceptionState } from "@/deception/state.ts"
-import { buildDissonanceState, checkDissonance, resolveDissonance } from "@/dissonance/check.ts"
-import { saveDissonanceState } from "@/dissonance/state.ts"
-import { clearDreamAfterglow, getDreamAfterglow, saveDreamAfterglow } from "@/dream/state.ts"
-import { getAllSecondaryEmotionStates, saveAllSecondaryEmotionStates } from "@/emotion/batch.ts"
-import { detectNostalgia } from "@/emotion/nostalgia.ts"
-import "@/emotion/register-all.ts"
-import { getRegisteredEmotions } from "@/emotion/registry.ts"
-import { computeShameState, detectColdResponse, getShameState, saveShameState } from "@/emotion/shame.ts"
+import { computeCommunicationRegister } from "@/expression/communication/register.ts"
+import { getActiveConversation, saveCommunicationRegister } from "@/expression/communication/state.ts"
+import { updateCreativeUrgeState } from "@/expression/creativity/compute.ts"
+import { getCreativeUrgeState, saveCreativeUrgeState } from "@/expression/creativity/state.ts"
+import { DREAM_AFTERGLOW } from "@/expression/dream/constants.ts"
+import { clearDreamAfterglow, getDreamAfterglow, saveDreamAfterglow } from "@/expression/dream/state.ts"
+import { updateAnticipatoryState } from "@/perception/anticipation/compute.ts"
+import { getAnticipatoryState, saveAnticipatoryState } from "@/perception/anticipation/state.ts"
+import { getAttachmentStyle } from "@/relational/attachment/state.ts"
+import { evaluateAttachmentDynamics, isOperatorReturning } from "@/relational/attachment/update.ts"
+import { updateBoundaryState } from "@/self/boundaries/compute.ts"
+import { getBoundaryState, saveBoundaryState } from "@/self/boundaries/state.ts"
+import { updateCoherenceState } from "@/self/coherence/compute.ts"
+import { getCoherenceState, saveCoherenceState } from "@/self/coherence/state.ts"
+import { processDeceptionCycle } from "@/self/deception/compute.ts"
+import { getDeceptionState, saveDeceptionState } from "@/self/deception/state.ts"
+import { buildDissonanceState, checkDissonance, resolveDissonance } from "@/self/dissonance/compute.ts"
+import { saveDissonanceState } from "@/self/dissonance/state.ts"
+import "@/affect/emotion/init.ts"
+import { getRegisteredEmotions } from "@/affect/emotion/registry.ts"
+import { computeShameState, detectColdResponse, getShameState, saveShameState } from "@/affect/emotion/shame.ts"
 import {
   getAfterglowEntries,
   getEmotionalMomentum,
@@ -28,8 +45,8 @@ import {
   saveEmotionalState,
   setLastEmotionTimestamp,
   setTriggerTimestamps
-} from "@/emotion/state.ts"
-import type { EmotionalState, SecondaryEmotionState } from "@/emotion/types.ts"
+} from "@/affect/emotion/state.ts"
+import type { EmotionalState, SecondaryEmotionState } from "@/affect/emotion/types.ts"
 import {
   applyAfterglow,
   applyEvent,
@@ -37,16 +54,43 @@ import {
   computeEmotionalIntensity,
   computeEmotionalUpdate,
   detectAfterglow
-} from "@/emotion/update.ts"
-import { log } from "@/lib/logger.ts"
-import { setEmotionContext } from "@/lib/sentry.ts"
-import { elapsedMinutesSince, nowISO, nowLocal } from "@/lib/time.ts"
+} from "@/affect/emotion/update.ts"
+import {
+  getSomaticLastTimestamp,
+  getSomaticState,
+  querySomaticMemories,
+  saveSomaticState
+} from "@/affect/soma/state.ts"
+import { computeSomaticUpdate } from "@/affect/soma/update.ts"
+import { log } from "@/infra/lib/logger.ts"
+import { setEmotionContext } from "@/infra/lib/sentry.ts"
+import { elapsedMinutesSince, nowISO, nowLocal } from "@/infra/lib/time.ts"
 import { queryRelated } from "@/memory/episodic.ts"
 import { getKnowledge } from "@/memory/semantic.ts"
 import { getConsecutiveConversationTicks, getConsecutiveIdleTicks, getRecentActions } from "@/memory/working.ts"
-import { getOperatorModel, getRelationalPatterns, saveOperatorModel, saveRelationalPatterns } from "@/mind/state.ts"
-import { extractSignals, learnFromObservation } from "@/mind/triggers.ts"
-import { detectModelCorrection, updateOperatorModel } from "@/mind/update.ts"
+import { updateNoveltyState } from "@/perception/novelty/compute.ts"
+import { getNoveltyState, saveNoveltyState } from "@/perception/novelty/state.ts"
+import { computeSubjectiveTime } from "@/perception/time/compute.ts"
+import { DEFAULT_SUBJECTIVE_TIME_STATE } from "@/perception/time/types.ts"
+import {
+  getVulnerabilityPrevLevel,
+  saveVulnerability,
+  saveVulnerableMessageStyle
+} from "@/relational/attachment/store.ts"
+import {
+  computeIntimacyScore,
+  computeVulnerability,
+  computeVulnerableMessageStyle
+} from "@/relational/attachment/vulnerability.ts"
+import {
+  getOperatorModel,
+  getRelationalPatterns,
+  saveOperatorModel,
+  saveRelationalPatterns
+} from "@/relational/mind/state.ts"
+import { extractSignals, learnFromObservation } from "@/relational/mind/triggers.ts"
+import { detectModelCorrection, updateOperatorModel } from "@/relational/mind/update.ts"
+import { getAggregateTrustExperience } from "@/relational/trust/compute.ts"
 import {
   addToBuffer,
   decayBuffer,
@@ -54,14 +98,9 @@ import {
   getHeldBackBuffer,
   type HeldBackReason,
   saveHeldBackBuffer
-} from "@/psyche/heldback.ts"
-import { getSelfConcept } from "@/psyche/state.ts"
-import { getSomaticLastTimestamp, getSomaticState, querySomaticMemories, saveSomaticState } from "@/soma/state.ts"
-import { computeSomaticUpdate } from "@/soma/update.ts"
-import { getAggregateTrustExperience } from "@/trust/compute.ts"
-import { computeIntimacyScore, computeVulnerability, computeVulnerableMessageStyle } from "@/vulnerability/compute.ts"
-import { getVulnerabilityPrevLevel, saveVulnerability, saveVulnerableMessageStyle } from "@/vulnerability/state.ts"
-import { buildEmotionContext, type SharedEmotionInput } from "./emotion-contexts.ts"
+} from "@/self/psyche/heldback.ts"
+import { getSelfConcept } from "@/self/psyche/state.ts"
+import { buildEmotionContext, type SharedEmotionInput } from "./emotions.ts"
 import type { FeelingResult, SenseResult } from "./types.ts"
 
 function applyEmotionEffect(
@@ -69,8 +108,8 @@ function applyEmotionEffect(
   effect: Partial<Record<keyof EmotionalState, number>>
 ): EmotionalState {
   let result = emotion
-  for (const [dim, delta] of Object.entries(effect)) {
-    const key = dim as keyof EmotionalState
+  for (const [dimension, delta] of Object.entries(effect)) {
+    const key = dimension as keyof EmotionalState
     if (key in result) {
       result = { ...result, [key]: Math.max(0, Math.min(1, result[key] + delta)) }
     }
@@ -99,8 +138,8 @@ async function computeSecondaryEmotions(
 
   for (const entry of getRegisteredEmotions()) {
     if (entry.name === "shame") continue
-    const prev = previousStates.get(entry.name) ?? entry.defaultState
-    const context = buildEmotionContext(entry.name, { ...shared, emotion }, prev, previousStates, computedStates)
+    const previous = previousStates.get(entry.name) ?? entry.defaultState
+    const context = buildEmotionContext(entry.name, { ...shared, emotion }, previous, previousStates, computedStates)
     const state = entry.compute(context)
     computedStates.set(entry.name, state)
     if (entry.computeEffect && state.isActive) {
@@ -129,8 +168,6 @@ async function computeSecondaryEmotions(
  * Updates somatic markers, instinct, dissonance, attachment, vulnerability, and self-concept.
  */
 export async function feel(senseResult: SenseResult): Promise<FeelingResult> {
-  // === Phase 1: Base Emotion ===
-
   const currentEmotion = await getEmotionalState()
   const computed = computeEmotionalUpdate(
     currentEmotion,
@@ -158,8 +195,8 @@ export async function feel(senseResult: SenseResult): Promise<FeelingResult> {
 
   const dreamAfterglow = await getDreamAfterglow()
   if (dreamAfterglow && dreamAfterglow.intensity >= DREAM_AFTERGLOW.MIN_INTENSITY) {
-    for (const [dim, residue] of Object.entries(dreamAfterglow.emotionalResidue)) {
-      const key = dim as keyof typeof emotion
+    for (const [dimension, residue] of Object.entries(dreamAfterglow.emotionalResidue)) {
+      const key = dimension as keyof typeof emotion
       if (key in emotion && typeof residue === "number") {
         emotion = {
           ...emotion,
@@ -184,8 +221,8 @@ export async function feel(senseResult: SenseResult): Promise<FeelingResult> {
       await clearAlteredState()
     } else {
       const emotionMods = computeEmotionModifiers(alteredState)
-      for (const [dim, delta] of Object.entries(emotionMods)) {
-        const key = dim as keyof typeof emotion
+      for (const [dimension, delta] of Object.entries(emotionMods)) {
+        const key = dimension as keyof typeof emotion
         if (key in emotion) {
           emotion = { ...emotion, [key]: Math.max(0, Math.min(1, emotion[key] + delta)) }
         }
@@ -201,7 +238,28 @@ export async function feel(senseResult: SenseResult): Promise<FeelingResult> {
     setTriggerTimestamps(senseResult.rawTriggers.map((event) => ({ trigger: event.trigger, timestamp: timestampNow })))
   ])
 
-  // === Phase 2: Relational Context ===
+  const previousDriveState = await getDriveState()
+  const satisfied = inferSatisfiedDrives(
+    senseResult.moodContext.inConversation,
+    senseResult.pendingMessages.length,
+    "idle"
+  )
+  const blocked = inferBlockedDrives(
+    senseResult.moodContext.operatorSilenceMinutes,
+    await getConsecutiveIdleTicks(),
+    senseResult.moodContext.isDreaming
+  )
+  const driveState = computeDriveUpdate({
+    current: previousDriveState,
+    elapsedMinutes: Math.max(1, senseResult.elapsedMinutes),
+    blocked,
+    satisfied
+  })
+  const driveTriggers = computeDriveEmotionTriggers(driveState)
+  for (const trigger of driveTriggers) {
+    emotion = applyEvent(emotion, trigger)
+  }
+  await saveDriveState(driveState)
 
   const [
     currentSoma,
@@ -235,8 +293,8 @@ export async function feel(senseResult: SenseResult): Promise<FeelingResult> {
   let soma = computeSomaticUpdate(currentSoma, emotion, elapsed, somaticMemories)
   if (alteredState && !isExpired(alteredState)) {
     const somaMods = computeSomaModifiers(alteredState)
-    for (const [dim, delta] of Object.entries(somaMods)) {
-      const key = dim as keyof typeof soma
+    for (const [dimension, delta] of Object.entries(somaMods)) {
+      const key = dimension as keyof typeof soma
       if (key in soma && key !== "socialBattery") {
         soma = { ...soma, [key]: Math.max(0, Math.min(1, soma[key] + delta)) }
       }
@@ -274,6 +332,9 @@ export async function feel(senseResult: SenseResult): Promise<FeelingResult> {
   const operatorSilenceMinutes = senseResult.moodContext.operatorSilenceMinutes
   const operatorJustReturned = isOperatorReturning(senseResult.pendingMessages.length, operatorSilenceMinutes)
 
+  const silenceFactor = Math.min(1, operatorSilenceMinutes / 120)
+  const earlyWaitingPerception = Math.min(1, silenceFactor * (1 + attachmentStyle.anxious * 0.5))
+
   const attachmentDynamics = evaluateAttachmentDynamics(attachmentStyle, {
     operatorSilenceMinutes,
     operatorJustReturned,
@@ -281,7 +342,8 @@ export async function feel(senseResult: SenseResult): Promise<FeelingResult> {
     connectionLevel: emotion.connection,
     frustrationLevel: emotion.frustration,
     cautionLevel: emotion.caution,
-    trustExperience
+    trustExperience,
+    waitingPerception: earlyWaitingPerception
   })
 
   const messageTexts = senseResult.pendingMessages.map((m) => m.text)
@@ -355,7 +417,37 @@ export async function feel(senseResult: SenseResult): Promise<FeelingResult> {
     : decayedBuffer
   await saveHeldBackBuffer(heldBackBuffer)
 
-  // === Phase 3: Secondary Emotions ===
+  const [previousAnticipation, previousBoundaryState] = await Promise.all([getAnticipatoryState(), getBoundaryState()])
+
+  const anticipatoryState = updateAnticipatoryState(
+    previousAnticipation,
+    {
+      inConversation: senseResult.moodContext.inConversation,
+      operatorSilenceMinutes,
+      connectionLevel: emotion.connection,
+      hasCalendarEvents: false
+    },
+    operatorJustReturned,
+    operatorSilenceMinutes,
+    senseResult.moodContext.inConversation
+  )
+  await saveAnticipatoryState(anticipatoryState)
+
+  const messageTextsForBoundary = senseResult.pendingMessages.map((m) => m.text)
+  const boundaryState = updateBoundaryState(previousBoundaryState, messageTextsForBoundary, {
+    trustLevel: trustExperience,
+    attachmentSecurity: attachmentStyle.secure,
+    vulnerabilityLevel: vulnerability.level
+  })
+  await saveBoundaryState(boundaryState)
+
+  const previousNovelty = await getNoveltyState()
+  const noveltyState = updateNoveltyState(
+    previousNovelty,
+    senseResult.pendingMessages.map((m) => m.text),
+    emotion
+  )
+  await saveNoveltyState(noveltyState)
 
   const secondaryResult = await computeSecondaryEmotions({
     emotion,
@@ -372,11 +464,30 @@ export async function feel(senseResult: SenseResult): Promise<FeelingResult> {
     inConversation: senseResult.moodContext.inConversation,
     pendingMessageCount: senseResult.pendingMessages.length,
     triggeredWorkflowCount: senseResult.triggeredWorkflows.length,
-    isDreaming: senseResult.moodContext.isDreaming
+    isDreaming: senseResult.moodContext.isDreaming,
+    noveltyLevel: noveltyState.level,
+    anticipatoryViolations: anticipatoryState.recentViolations
   })
   emotion = secondaryResult.emotion
 
-  // === Phase 4: Cognitive State ===
+  const emotionalIntensity = computeEmotionalIntensity(emotion)
+  const subjectiveTime = computeSubjectiveTime(DEFAULT_SUBJECTIVE_TIME_STATE, {
+    emotion,
+    consecutiveIdleTicks,
+    inConversation: senseResult.moodContext.inConversation,
+    operatorSilenceMinutes,
+    attachmentAnxiety: attachmentStyle.anxious,
+    emotionalIntensity
+  })
+
+  const previousCreativeUrge = await getCreativeUrgeState()
+  const creativeUrge = updateCreativeUrgeState(previousCreativeUrge, {
+    emotion,
+    driveState,
+    heldBackBuffer,
+    consecutiveIdleTicks
+  })
+  await saveCreativeUrgeState(creativeUrge)
 
   const updatedDeception = await processDeceptionCycle(deceptionState, {
     dissonance,
@@ -402,7 +513,28 @@ export async function feel(senseResult: SenseResult): Promise<FeelingResult> {
     saveAttentionState(attentionState)
   ])
 
-  // === Logging & Return ===
+  const previousCoherence = await getCoherenceState()
+  const stressLevel = (emotion.frustration + soma.tension + emotion.caution) / 3
+  const coherenceState = updateCoherenceState(previousCoherence, {
+    emotion,
+    soma,
+    driveState,
+    dissonanceScore: dissonance.activeDissonance,
+    selfConceptAuthenticity: selfConcept.authenticity,
+    stressLevel
+  })
+  await saveCoherenceState(coherenceState)
+
+  const previousMetacognition = await getMetacognitiveState()
+  const metacognitiveState = updateMetacognitiveState(previousMetacognition, {
+    emotion,
+    soma,
+    coherenceScore: coherenceState.integrationScore,
+    recentReasonings: recentActions,
+    isComplexDecision: false,
+    isDreaming: senseResult.moodContext.isDreaming
+  })
+  await saveMetacognitiveState(metacognitiveState)
 
   const activeEmotions: Record<string, string> = {}
   for (const [name, state] of Object.entries(secondaryResult.states)) {
@@ -439,6 +571,13 @@ export async function feel(senseResult: SenseResult): Promise<FeelingResult> {
     selfConcept,
     register,
     attentionState,
-    operatorModel
+    operatorModel,
+    driveState,
+    anticipatoryState,
+    subjectiveTime,
+    coherenceState,
+    creativeUrge,
+    boundaryState,
+    metacognitiveState
   }
 }

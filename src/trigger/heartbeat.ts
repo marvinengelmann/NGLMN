@@ -1,6 +1,6 @@
 import { runs, schedules } from "@trigger.dev/sdk"
-import { getConversationWaitingSince } from "@/communication/state.ts"
-import { HEARTBEAT, LIFECYCLE } from "@/config/constants.ts"
+import { getCurrentEmotion } from "@/affect/emotion/state.ts"
+import { LIFECYCLE } from "@/consciousness/constants.ts"
 import { computeSkipProbability, consumeBurstCooldownTick } from "@/consciousness/gating.ts"
 import { runHeartbeat } from "@/consciousness/heartbeat.ts"
 import {
@@ -9,10 +9,11 @@ import {
   maybeStoreLifecycleEpisode,
   sendLifecycleNotification
 } from "@/consciousness/lifecycle.ts"
-import { getCurrentEmotion } from "@/emotion/state.ts"
-import { fetchNewMessages } from "@/integrations/telegram.ts"
-import { log } from "@/lib/logger.ts"
-import { captureError } from "@/lib/sentry.ts"
+import { getConversationWaitingSince } from "@/expression/communication/state.ts"
+import { HEARTBEAT } from "@/infra/config/constants.ts"
+import { fetchNewMessages } from "@/infra/integrations/telegram.ts"
+import { log } from "@/infra/lib/logger.ts"
+import { captureError } from "@/infra/lib/sentry.ts"
 import { isBusy } from "@/memory/working.ts"
 
 export const heartbeatTask = schedules.task({

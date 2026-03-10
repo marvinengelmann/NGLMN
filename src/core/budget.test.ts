@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest"
-import { BUDGET } from "@/config/constants.ts"
+import { BUDGET } from "@/infra/config/constants.ts"
 
-vi.mock("@/integrations/redis.ts", () => ({
+vi.mock("@/infra/integrations/redis.ts", () => ({
   redis: {
     get: vi.fn(),
     incrbyfloat: vi.fn(),
@@ -9,7 +9,7 @@ vi.mock("@/integrations/redis.ts", () => ({
   }
 }))
 
-import { redis } from "@/integrations/redis.ts"
+import { redis } from "@/infra/integrations/redis.ts"
 import { estimateCallCost, getBudgetState, trackApiCost } from "./budget.ts"
 
 const mockedRedis = vi.mocked(redis)

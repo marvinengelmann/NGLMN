@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest"
-import type { EmotionalState } from "@/emotion/types.ts"
+import type { EmotionalState } from "@/affect/emotion/types.ts"
 import { generateBoredomImpulse } from "./boredom.ts"
 
 const baseEmotion: EmotionalState = {

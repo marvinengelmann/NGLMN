@@ -1,7 +1,7 @@
 import { err, ok } from "neverthrow"
 import { describe, expect, it, vi } from "vitest"
 
-vi.mock("@/integrations/redis.ts", () => ({
+vi.mock("@/infra/integrations/redis.ts", () => ({
   redis: {
     get: vi.fn().mockResolvedValue(null),
     set: vi.fn().mockResolvedValue("OK"),
@@ -10,11 +10,11 @@ vi.mock("@/integrations/redis.ts", () => ({
   getValidatedRedis: vi.fn().mockResolvedValue(null)
 }))
 
-vi.mock("@/lib/logger.ts", () => ({
+vi.mock("@/infra/lib/logger.ts", () => ({
   log: { info: vi.fn(), debug: vi.fn(), warn: vi.fn(), error: vi.fn() }
 }))
 
-vi.mock("@/config/env.ts", () => ({
+vi.mock("@/infra/config/env.ts", () => ({
   env: () => ({ OPERATOR_PREFERRED_LANGUAGE: "German" })
 }))
 
@@ -22,19 +22,19 @@ vi.mock("@/core/intelligence.ts", () => ({
   callIntelligence: vi.fn().mockResolvedValue(ok({ text: "bin kurz weg~" }))
 }))
 
-vi.mock("@/emotion/state.ts", () => ({
+vi.mock("@/affect/emotion/state.ts", () => ({
   getEmotionalState: vi.fn().mockResolvedValue({ valence: 0.6, arousal: 0.4, dominance: 0.5 })
 }))
 
-vi.mock("@/integrations/telegram.ts", () => ({
+vi.mock("@/infra/integrations/telegram.ts", () => ({
   sendToOperator: vi.fn().mockResolvedValue(42)
 }))
 
-vi.mock("@/dream/state.ts", () => ({
+vi.mock("@/expression/dream/state.ts", () => ({
   getDreamLastRun: vi.fn().mockResolvedValue(null)
 }))
 
-vi.mock("@/communication/state.ts", () => ({
+vi.mock("@/expression/communication/state.ts", () => ({
   pushToActiveConversation: vi.fn().mockResolvedValue(undefined)
 }))
 
@@ -42,7 +42,7 @@ vi.mock("@/memory/episodic.ts", () => ({
   storeEpisode: vi.fn().mockResolvedValue("episode-id")
 }))
 
-vi.mock("@/lib/sentry.ts", () => ({
+vi.mock("@/infra/lib/sentry.ts", () => ({
   captureError: vi.fn()
 }))
 
@@ -50,14 +50,14 @@ vi.mock("@/prompts/personality.ts", () => ({
   getPersonalityPrompt: vi.fn().mockResolvedValue("Test personality prompt")
 }))
 
-vi.mock("@/lib/time.ts", () => ({
+vi.mock("@/infra/lib/time.ts", () => ({
   nowLocal: vi.fn().mockReturnValue(new Date(2026, 2, 6, 12, 0, 0))
 }))
 
-import { pushToActiveConversation } from "@/communication/state.ts"
 import { callIntelligence } from "@/core/intelligence.ts"
-import { getValidatedRedis, redis } from "@/integrations/redis.ts"
-import { sendToOperator } from "@/integrations/telegram.ts"
+import { pushToActiveConversation } from "@/expression/communication/state.ts"
+import { getValidatedRedis, redis } from "@/infra/integrations/redis.ts"
+import { sendToOperator } from "@/infra/integrations/telegram.ts"
 import { storeEpisode } from "@/memory/episodic.ts"
 import {
   getActiveLifeEvent,

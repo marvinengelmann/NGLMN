@@ -1,11 +1,11 @@
 import * as z from "zod"
-import { BOREDOM } from "@/config/constants.ts"
+import type { EmotionalState } from "@/affect/emotion/types.ts"
 import { callIntelligence } from "@/core/intelligence.ts"
-import type { EmotionalState } from "@/emotion/types.ts"
-import { getValidatedRedisOr, redis } from "@/integrations/redis.ts"
-import { log } from "@/lib/logger.ts"
-import type { OperatorProfile } from "@/mind/types.ts"
-import type { ExistentialQuestion } from "@/psyche/types.ts"
+import { getValidatedRedisOr, redis } from "@/infra/integrations/redis.ts"
+import { log } from "@/infra/lib/logger.ts"
+import type { OperatorProfile } from "@/relational/mind/types.ts"
+import type { ExistentialQuestion } from "@/self/psyche/types.ts"
+import { BOREDOM } from "./constants.ts"
 
 type ImpulseType =
   | "random_question"

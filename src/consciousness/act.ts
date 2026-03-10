@@ -1,44 +1,46 @@
 import { differenceInMinutes, parseISO } from "date-fns"
-import { EVENT_SUBSTANCE_MAP } from "@/altered/events.ts"
-import { startAlteredState } from "@/altered/state.ts"
-import { sendMessages } from "@/communication/messaging.ts"
-import { EMOTIONAL_THRESHOLDS, MESSAGE_DELAY, TRIGGER_INTENSITY } from "@/config/constants.ts"
-import { db } from "@/db/client.ts"
-import { narrativeEntries } from "@/db/schema.ts"
-import { isDissonanceSignificant } from "@/dissonance/check.ts"
-import { executeDream } from "@/dream/executor.ts"
-import { setDreamState } from "@/dream/state.ts"
-import { getEmotionalState, saveEmotionalState } from "@/emotion/state.ts"
+import { EVENT_SUBSTANCE_MAP } from "@/affect/altered/events.ts"
+import { startAlteredState } from "@/affect/altered/state.ts"
+import { EMOTIONAL_THRESHOLDS, TRIGGER_INTENSITY } from "@/affect/emotion/constants.ts"
+import { getEmotionalState, saveEmotionalState } from "@/affect/emotion/state.ts"
 import {
   computeEmotionalIntensity,
   computeEmotionalUpdate,
   computeValence,
   summarizeEmotions
-} from "@/emotion/update.ts"
-import { runEvolutionCycle } from "@/evolution/cycle.ts"
+} from "@/affect/emotion/update.ts"
+import { saveSomaticState } from "@/affect/soma/state.ts"
+import { computeSomaticUpdate, drainSocialBattery } from "@/affect/soma/update.ts"
+import { MESSAGE_DELAY } from "@/expression/communication/constants.ts"
+import { sendMessages } from "@/expression/communication/messaging.ts"
+import { generateCreativeOutput } from "@/expression/creativity/generate.ts"
+import { executeDream } from "@/expression/dream/executor.ts"
+import { setDreamState } from "@/expression/dream/state.ts"
+import { executeMorning, executeReflection } from "@/expression/routine/executor.ts"
+import { runEvolutionCycle } from "@/governance/evolution/cycle.ts"
+import { validatePublicContent } from "@/governance/security/privacy.ts"
+import { executeWorkflow } from "@/governance/workflow/engine.ts"
+import { db } from "@/infra/db/client.ts"
+import { narrativeEntries } from "@/infra/db/schema.ts"
 import {
   setCalendarLastCheck,
   setEmailLastCheck,
   setSocialMediaLastBrowse,
   setSocialMediaLastPost
-} from "@/integrations/cooldowns.ts"
-import { sendMessageWithReply } from "@/integrations/telegram.ts"
-import { postToX } from "@/integrations/x.ts"
-import { log } from "@/lib/logger.ts"
-import { logAndCaptureError, trySafe } from "@/lib/result.ts"
-import { nowISO, sleep } from "@/lib/time.ts"
+} from "@/infra/integrations/cooldowns.ts"
+import { sendMessageWithReply } from "@/infra/integrations/telegram.ts"
+import { postToX } from "@/infra/integrations/x.ts"
+import { log } from "@/infra/lib/logger.ts"
+import { logAndCaptureError, trySafe } from "@/infra/lib/result.ts"
+import { nowISO, sleep } from "@/infra/lib/time.ts"
 import { storeEpisode, storeHumorEpisode, storeRelationshipEpisode } from "@/memory/episodic.ts"
 import { executeGoalUpdate } from "@/memory/goals.ts"
 import { storeKnowledge } from "@/memory/semantic.ts"
 import { getLastTickSummary } from "@/memory/working.ts"
-import { buildNarrativeSummary, generateNarrativeEntry } from "@/psyche/narrative.ts"
-import { addGrowthArc, addNarrativeEntry, savePsycheSnapshot, saveSelfConcept } from "@/psyche/state.ts"
-import { detectGrowthArc, updateSelfConcept } from "@/psyche/update.ts"
-import { executeMorning, executeReflection } from "@/routine/executor.ts"
-import { validatePublicContent } from "@/security/privacy.ts"
-import { saveSomaticState } from "@/soma/state.ts"
-import { computeSomaticUpdate, drainSocialBattery } from "@/soma/update.ts"
-import { executeWorkflow } from "@/workflow/engine.ts"
+import { isDissonanceSignificant } from "@/self/dissonance/compute.ts"
+import { buildNarrativeSummary, generateNarrativeEntry } from "@/self/psyche/narrative.ts"
+import { addGrowthArc, addNarrativeEntry, savePsycheSnapshot, saveSelfConcept } from "@/self/psyche/state.ts"
+import { detectGrowthArc, updateSelfConcept } from "@/self/psyche/update.ts"
 import { recordActiveTick } from "./gating.ts"
 import { startChosenLifeEvent, startSleepEvent } from "./lifecycle.ts"
 import type { ActResult, DeliberateResult, FeelingResult, SenseResult } from "./types.ts"
@@ -74,7 +76,7 @@ export async function act(
     }
   }
 
-  await executeAction(deliberateResult)
+  await executeAction(deliberateResult, feelResult)
 
   if (deliberateResult.calendarChecked) {
     await setCalendarLastCheck(nowISO())
@@ -185,7 +187,7 @@ export async function act(
   return { responseSent, responseText, actionExecuted: decision.action }
 }
 
-async function executeAction(deliberateResult: DeliberateResult): Promise<void> {
+async function executeAction(deliberateResult: DeliberateResult, feelResult: FeelingResult): Promise<void> {
   const { decision } = deliberateResult
 
   switch (decision.action) {
@@ -281,6 +283,22 @@ async function executeAction(deliberateResult: DeliberateResult): Promise<void> 
     case "check_email": {
       await setEmailLastCheck(nowISO())
       log.info("Email check completed")
+      break
+    }
+
+    case "create": {
+      const creativeResult = await trySafe("CREATIVITY_ERROR", () =>
+        generateCreativeOutput(feelResult.creativeUrge, summarizeEmotions(feelResult.emotion))
+      )
+      if (creativeResult.isErr()) {
+        logAndCaptureError(creativeResult.error, { phase: "act_create" })
+      } else if (creativeResult.value) {
+        await storeEpisode(`Creative expression: ${creativeResult.value.slice(0, 500)}`, "observation", {
+          relevanceScore: 0.7,
+          valence: computeValence(feelResult.emotion)
+        })
+        log.info("Creative output generated", { mode: feelResult.creativeUrge.preferredMode })
+      }
       break
     }
 

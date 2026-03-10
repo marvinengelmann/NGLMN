@@ -1,4 +1,4 @@
-import { getGenesisName } from "@/genesis/state.ts"
+import { getGenesisName } from "@/self/genesis/state.ts"
 
 /**
  * Build the identity prompt with the genesis-chosen name interpolated.
