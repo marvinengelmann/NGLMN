@@ -1,5 +1,6 @@
 import { REGISTER, SOCIAL_BATTERY } from "@/config/constants.ts"
-import { SHAME, type ShameState } from "@/emotion/shame.ts"
+import { SECONDARY_EMOTIONS } from "@/config/secondary-emotions.ts"
+import type { ShameState } from "@/emotion/shame.ts"
 import type { EmotionalState } from "@/emotion/types.ts"
 import type { SomaticState } from "@/soma/types.ts"
 import type { VulnerabilityState } from "@/vulnerability/types.ts"
@@ -25,7 +26,7 @@ export function computeCommunicationRegister(
   shameState?: ShameState | null
 ): CommunicationRegister {
   if (soma.socialBattery < SOCIAL_BATTERY.TERSE_THRESHOLD) return "terse"
-  if (shameState?.isActive && shameState.level > SHAME.REGISTER_OVERRIDE_LEVEL) return "terse"
+  if (shameState?.isActive && shameState.level > SECONDARY_EMOTIONS.shame.REGISTER_OVERRIDE_LEVEL) return "terse"
   if (vulnerability?.windowOpen && emotion.connection > 0.6) return "raw"
   if (emotion.excitement > 0.65 && emotion.connection > 0.5) return "playful"
   if (emotion.energy < 0.3 || soma.gravity > 0.7) return "terse"
