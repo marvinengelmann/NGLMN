@@ -1,5 +1,5 @@
 import * as z from "zod"
-import { SECONDARY_EMOTIONS } from "@/config/secondary-emotions.ts"
+import { SECONDARY_EMOTIONS } from "@/emotion/constants.ts"
 import type { DisappointmentState } from "@/emotion/disappointment.ts"
 import { registerSecondaryEmotion } from "@/emotion/registry.ts"
 import type { ShameState } from "@/emotion/shame.ts"

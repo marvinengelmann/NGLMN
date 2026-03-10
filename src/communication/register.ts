@@ -1,5 +1,5 @@
 import { REGISTER, SOCIAL_BATTERY } from "@/config/constants.ts"
-import { SECONDARY_EMOTIONS } from "@/config/secondary-emotions.ts"
+import { SECONDARY_EMOTIONS } from "@/emotion/constants.ts"
 import type { ShameState } from "@/emotion/shame.ts"
 import type { EmotionalState } from "@/emotion/types.ts"
 import type { SomaticState } from "@/soma/types.ts"

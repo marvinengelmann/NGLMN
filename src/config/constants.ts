@@ -395,8 +395,6 @@ export const IMAGE = {
   MODEL: "xai/grok-imagine-image"
 } as const
 
-export { SECONDARY_EMOTIONS } from "./secondary-emotions.ts"
-
 export const DECEPTION = {
   HIDE_DISSONANCE_THRESHOLD: 0.4,
   HIDE_AUTHENTICITY_THRESHOLD: 0.7,

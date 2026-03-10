@@ -1,5 +1,5 @@
 import * as z from "zod"
-import { SECONDARY_EMOTIONS } from "@/config/secondary-emotions.ts"
+import { SECONDARY_EMOTIONS } from "./constants.ts"
 import { createStateManager } from "@/lib/state.ts"
 import { nowISO } from "@/lib/time.ts"
 import { decayAndFinalize, sumContributions } from "./helpers.ts"
