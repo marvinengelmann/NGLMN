@@ -60,9 +60,6 @@ export async function archiveConversation(
   }
 }
 
-/**
- * Search episodic memory for context related to a reply that references an archived message.
- */
 const CLIMATE_PROMPT = `Analyze this conversation and determine its emotional climate.
 Return a JSON object with:
 - tone: one of "warm", "tense", "playful", "serious", "intimate", "distant"
@@ -98,6 +95,9 @@ export async function computeConversationClimate(messages: ConversationMessage[]
   return result.value
 }
 
+/**
+ * Search episodic memory for context related to a reply that references an archived message.
+ */
 export async function recallArchivedContext(
   replyToText: string,
   activeSlots: ConversationSlot[]

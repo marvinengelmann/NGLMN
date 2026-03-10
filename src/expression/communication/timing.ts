@@ -1,10 +1,6 @@
 import { sleep } from "@/infra/lib/time.ts"
 import { THINKING, TYPING } from "./constants.ts"
 
-/**
- * Compute a realistic typing duration for a given text message.
- * Simulates ~180 WPM with thinking time and random jitter, clamped to 1.5s-15s.
- */
 interface TypingContext {
   confidence?: number
   energy?: number

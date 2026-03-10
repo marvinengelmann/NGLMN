@@ -20,10 +20,6 @@ const CORRECTION_STYLES = [
 ]
 
 /**
- * Maybe introduce a typo into a message based on communication register.
- * Returns the modified text and an optional correction message.
- */
-/**
  * Compute dynamic typo probability based on emotional/somatic context.
  */
 export function computeTypoProbability(
@@ -42,6 +38,10 @@ export function computeTypoProbability(
   return Math.min(1, probability)
 }
 
+/**
+ * Maybe introduce a typo into a message based on communication register.
+ * Returns the modified text and an optional correction message.
+ */
 export function maybeIntroduceTypo(
   text: string,
   register: CommunicationRegister,

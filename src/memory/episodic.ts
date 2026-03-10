@@ -143,10 +143,6 @@ export async function downgradeEpisodes(ids: string[], factor: number = 0.5): Pr
 }
 
 /**
- * Get recent episodes filtered by category.
- * Uses metadata filter + sorts by timestamp descending (via relevance to a generic query).
- */
-/**
  * Summarize old low-relevance episodes into compact summary episodes.
  * Groups by category, summarizes via LLM, stores as new episodes, and downgrades originals.
  */
@@ -277,6 +273,10 @@ export async function queryRelatedWithDistortion(
   return applyDistortions(episodes, emotionIntensity)
 }
 
+/**
+ * Get recent episodes filtered by category.
+ * Uses metadata filter + sorts by timestamp descending (via relevance to a generic query).
+ */
 export async function getRecentByCategory(
   category: EpisodicCategory,
   limit: number = 5

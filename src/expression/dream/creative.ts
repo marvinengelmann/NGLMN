@@ -22,17 +22,14 @@ const DIVERSE_QUERIES = [
 
 const KNOWLEDGE_CATEGORIES: SemanticCategory[] = ["preference", "project", "contact", "knowledge", "insight"]
 
-/**
- * Gather episodic and semantic data for creative connections — pure SENSE helper.
- * Returns formatted input ready for the creative connections LLM prompt.
- */
 export interface CreativeData {
   episodes: { id: string | number; score: number; metadata: Record<string, unknown> | undefined }[]
   knowledge: { category: string; key: string; value: unknown }[]
 }
 
 /**
- * Gather diverse episodic and semantic data for creative dream connections.
+ * Gather episodic and semantic data for creative connections — pure SENSE helper.
+ * Returns formatted input ready for the creative connections LLM prompt.
  */
 export async function gatherCreativeData(): Promise<CreativeData> {
   const episodicResults = await Promise.all(DIVERSE_QUERIES.map((q) => queryRelated(q, 2)))
