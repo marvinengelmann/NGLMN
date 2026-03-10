@@ -8,7 +8,7 @@
 
 import "dotenv/config"
 import { estimateTokenCount } from "tokenx"
-import { buildContext, buildSystemPrompt } from "@/consciousness/context.ts"
+import { buildContext, buildSystemPrompt } from "@/consciousness/context/builder.ts"
 import type { SenseData } from "@/consciousness/types.ts"
 import { getEmotionalState } from "@/emotion/state.ts"
 import { nowISO } from "@/lib/time.ts"

@@ -21,7 +21,7 @@ import { selectActiveVoices, shouldRunDialog } from "@/polyphony/voices.ts"
 import { getStructuredExistentialQuestions } from "@/psyche/questions.ts"
 import { thinkMorning, thinkReflect } from "@/routine/thinking.ts"
 import { generateContextualImpulse } from "./boredom.ts"
-import { buildContext, buildSystemPrompt } from "./context.ts"
+import { buildContext, buildSystemPrompt } from "./context/builder.ts"
 import { AnimaDecision, type DeliberateResult, type FeelingResult, type SenseData, type SenseResult } from "./types.ts"
 
 /**
