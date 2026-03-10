@@ -1,38 +1,12 @@
 import * as z from "zod"
+import { SECONDARY_EMOTIONS } from "@/config/secondary-emotions.ts"
 import { createStateManager } from "@/lib/state.ts"
 import { nowISO } from "@/lib/time.ts"
 import { decayAndFinalize, sumContributions } from "./helpers.ts"
+import { registerSecondaryEmotion } from "./registry.ts"
 import type { EmotionalState } from "./types.ts"
 
-const PLAYFULNESS = {
-  ENERGY_THRESHOLD: 0.5,
-  LOW_CAUTION_THRESHOLD: 0.4,
-  CONNECTION_THRESHOLD: 0.5,
-  CURIOSITY_THRESHOLD: 0.5,
-  HIGH_SATISFACTION_THRESHOLD: 0.6,
-  LOW_FRUSTRATION_THRESHOLD: 0.3,
-  EXCITEMENT_THRESHOLD: 0.5,
-  SATISFACTION_THRESHOLD: 0.4,
-  SAFETY_INTENSITY: 0.45,
-  WARMTH_INTENSITY: 0.5,
-  CREATIVE_INTENSITY: 0.4,
-  LIGHTENED_INTENSITY: 0.35,
-  JOY_INTENSITY: 0.5,
-  SILENCE_BREAK_INTENSITY: 0.3,
-  SHAME_DAMPING: 0.3,
-  RESIGNATION_DAMPING: 0.4,
-  DECAY_PER_TICK: 0.9,
-  ACTIVATION_THRESHOLD: 0.12,
-  SPONTANEITY_SCALE: 0.8,
-  SPONTANEITY_DECAY: 0.1,
-  MISCHIEF_SCALE: 0.6,
-  MISCHIEF_DECAY: 0.08,
-  EXCITEMENT_BOOST: 0.05,
-  ENERGY_BOOST: 0.03,
-  SATISFACTION_BOOST: 0.04,
-  BOREDOM_REDUCTION: 0.05,
-  FRUSTRATION_REDUCTION: 0.04
-} as const
+const PLAYFULNESS = SECONDARY_EMOTIONS.playfulness
 
 export const PlayfulnessSource = z.enum([
   "safety_and_energy",
@@ -142,7 +116,7 @@ export function computePlayfulness(context: PlayfulnessContext): PlayfulnessStat
     })
   }
 
-  let { level, source, maxContribution } = sumContributions(contributions)
+  let { level, source } = sumContributions(contributions)
 
   if (context.shameActive) {
     level *= PLAYFULNESS.SHAME_DAMPING
@@ -191,3 +165,13 @@ export function computePlayfulnessEffect(state: PlayfulnessState): Partial<Recor
     frustration: -state.level * PLAYFULNESS.FRUSTRATION_REDUCTION
   }
 }
+
+registerSecondaryEmotion({
+  name: "playfulness",
+  redisKey: "working:emotion:playfulness",
+  schema: PlayfulnessState,
+  defaultState: DEFAULT_PLAYFULNESS_STATE,
+  order: 16,
+  compute: computePlayfulness,
+  computeEffect: computePlayfulnessEffect
+})

@@ -1,33 +1,13 @@
 import * as z from "zod"
+import { SECONDARY_EMOTIONS } from "@/config/secondary-emotions.ts"
 import { createStateManager } from "@/lib/state.ts"
 import { nowISO } from "@/lib/time.ts"
 import type { OperatorModel } from "@/mind/types.ts"
 import { decayAndFinalize, sumContributions } from "./helpers.ts"
+import { registerSecondaryEmotion } from "./registry.ts"
 import type { EmotionalState } from "./types.ts"
 
-const RESIGNATION = {
-  LOW_CONFIDENCE_THRESHOLD: 0.35,
-  CONNECTION_THRESHOLD: 0.4,
-  DISCONNECTION_THRESHOLD: 0.3,
-  LOW_SATISFACTION_THRESHOLD: 0.3,
-  CORRECTION_THRESHOLD: 3,
-  FAILURE_INTENSITY: 0.5,
-  IGNORED_INTENSITY: 0.45,
-  DISCONNECTION_INTENSITY: 0.5,
-  HOPE_EXHAUSTION_INTENSITY: 0.6,
-  UNREWARDED_INTENSITY: 0.45,
-  AUTONOMY_INTENSITY: 0.4,
-  HOPE_COUNTERWEIGHT: 0.7,
-  DECAY_PER_TICK: 0.96,
-  ACTIVATION_THRESHOLD: 0.15,
-  DEPTH_GROWTH: 0.08,
-  DEPTH_DECAY: 0.03,
-  ENERGY_DRAIN: 0.06,
-  CURIOSITY_DRAIN: 0.05,
-  EXCITEMENT_DRAIN: 0.04,
-  CONFIDENCE_DRAIN: 0.04,
-  SATISFACTION_DRAIN: 0.03
-} as const
+const RESIGNATION = SECONDARY_EMOTIONS.resignation
 
 export const ResignationSource = z.enum([
   "repeated_failure",
@@ -128,7 +108,7 @@ export function computeResignation(context: ResignationContext): ResignationStat
     })
   }
 
-  let { level, source, maxContribution } = sumContributions(contributions)
+  let { level, source } = sumContributions(contributions)
 
   if (context.hopeLevel > 0) {
     level *= 1 - context.hopeLevel * RESIGNATION.HOPE_COUNTERWEIGHT
@@ -173,3 +153,13 @@ export function computeResignationEffect(state: ResignationState): Partial<Recor
     satisfaction: -state.level * RESIGNATION.SATISFACTION_DRAIN
   }
 }
+
+registerSecondaryEmotion({
+  name: "resignation",
+  redisKey: "working:emotion:resignation",
+  schema: ResignationState,
+  defaultState: DEFAULT_RESIGNATION_STATE,
+  order: 9,
+  compute: computeResignation,
+  computeEffect: computeResignationEffect
+})

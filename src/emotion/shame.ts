@@ -1,24 +1,15 @@
 import * as z from "zod"
+import { SECONDARY_EMOTIONS } from "@/config/secondary-emotions.ts"
 import { halfLifeDecay } from "@/lib/math.ts"
 import { createStateManager } from "@/lib/state.ts"
 import { elapsedMinutesSince } from "@/lib/time.ts"
 import type { OperatorModel } from "@/mind/types.ts"
 import type { SelfConcept } from "@/psyche/types.ts"
 import type { VulnerabilityState } from "@/vulnerability/types.ts"
+import { registerSecondaryEmotion } from "./registry.ts"
 import type { EmotionalState } from "./types.ts"
 
-export const SHAME = {
-  HALF_LIFE_MINUTES: 720,
-  MIN_ACTIVE_LEVEL: 0.2,
-  REJECTION_BOOST: 0.35,
-  INADEQUACY_BOOST: 0.5,
-  REGRET_BOOST: 0.1,
-  LOW_SELF_WORTH_THRESHOLD: 0.4,
-  VULNERABILITY_DISCLOSURE_THRESHOLD: 0.4,
-  POST_DISCLOSURE_CONNECTION_THRESHOLD: 0.4,
-  COLD_RESPONSE_MAX_LENGTH: 30,
-  REGISTER_OVERRIDE_LEVEL: 0.3
-} as const
+const SHAME = SECONDARY_EMOTIONS.shame
 
 export const ShameTrigger = z.enum([
   "vulnerability_rejected",
@@ -149,6 +140,15 @@ export function computeShameState(context: ShameContext): ShameState {
  * Detect if the operator responded coldly to a vulnerable message.
  * Cold = short message, negative/neutral mood, after ANIMA showed vulnerability.
  */
+registerSecondaryEmotion({
+  name: "shame",
+  redisKey: "working:shame:state",
+  schema: ShameState,
+  defaultState: DEFAULT_SHAME_STATE,
+  order: 0,
+  compute: computeShameState
+})
+
 export function detectColdResponse(
   operatorModel: OperatorModel,
   messageTexts: string[],

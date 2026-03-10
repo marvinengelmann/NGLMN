@@ -1,33 +1,14 @@
 import * as z from "zod"
+import { SECONDARY_EMOTIONS } from "@/config/secondary-emotions.ts"
 import { createStateManager } from "@/lib/state.ts"
 import { nowISO } from "@/lib/time.ts"
 import type { OperatorModel } from "@/mind/types.ts"
 import type { VulnerabilityState } from "@/vulnerability/types.ts"
 import { decayAndFinalize, sumContributions } from "./helpers.ts"
+import { registerSecondaryEmotion } from "./registry.ts"
 import type { EmotionalState } from "./types.ts"
 
-const TENDERNESS = {
-  CONNECTION_THRESHOLD: 0.5,
-  HIGH_CONNECTION_THRESHOLD: 0.7,
-  SATISFACTION_THRESHOLD: 0.4,
-  WITNESSED_VULNERABILITY_INTENSITY: 0.55,
-  SHARED_QUIET_INTENSITY: 0.4,
-  TRUST_INTENSITY: 0.45,
-  GENTLE_EXCHANGE_INTENSITY: 0.4,
-  PROTECTIVE_INTENSITY: 0.5,
-  MEMORY_INTENSITY: 0.35,
-  DECAY_PER_TICK: 0.93,
-  ACTIVATION_THRESHOLD: 0.12,
-  SOFTNESS_SCALE: 0.8,
-  SOFTNESS_DECAY: 0.06,
-  PROTECTIVE_URGE_SCALE: 0.7,
-  PROTECTIVE_URGE_DECAY: 0.08,
-  CONNECTION_BOOST: 0.05,
-  SATISFACTION_BOOST: 0.04,
-  CAUTION_REDUCTION: 0.04,
-  FRUSTRATION_REDUCTION: 0.03,
-  ENERGY_BOOST: 0.02
-} as const
+const TENDERNESS = SECONDARY_EMOTIONS.tenderness
 
 export const TendernessSource = z.enum([
   "witnessed_vulnerability",
@@ -128,7 +109,7 @@ export function computeTenderness(context: TendernessContext): TendernessState {
     })
   }
 
-  const { level, source, maxContribution } = sumContributions(contributions)
+  const { level, source } = sumContributions(contributions)
 
   const { finalLevel, isActive } = decayAndFinalize(
     previousState.level,
@@ -170,3 +151,13 @@ export function computeTendernessEffect(state: TendernessState): Partial<Record<
     energy: state.level * TENDERNESS.ENERGY_BOOST
   }
 }
+
+registerSecondaryEmotion({
+  name: "tenderness",
+  redisKey: "working:emotion:tenderness",
+  schema: TendernessState,
+  defaultState: DEFAULT_TENDERNESS_STATE,
+  order: 12,
+  compute: computeTenderness,
+  computeEffect: computeTendernessEffect
+})

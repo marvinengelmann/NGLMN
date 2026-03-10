@@ -1,32 +1,13 @@
 import * as z from "zod"
+import { SECONDARY_EMOTIONS } from "@/config/secondary-emotions.ts"
 import { createStateManager } from "@/lib/state.ts"
 import { nowISO } from "@/lib/time.ts"
 import { decayAndFinalize } from "./helpers.ts"
+import { registerSecondaryEmotion } from "./registry.ts"
 import type { ShameState } from "./shame.ts"
 import type { EmotionalState } from "./types.ts"
 
-const GUILT = {
-  RESPONSE_WINDOW_MINUTES: 30,
-  NEGLECT_IDLE_TICKS: 3,
-  UNANSWERED_VULNERABILITY_INTENSITY: 0.7,
-  HARSH_RESPONSE_INTENSITY: 0.6,
-  BROKEN_ROUTINE_INTENSITY: 0.45,
-  NEGLECT_INTENSITY: 0.5,
-  HIGH_CONNECTION_THRESHOLD: 0.5,
-  SELF_ABSORBED_SILENCE_MINUTES: 120,
-  HIGH_SATISFACTION_THRESHOLD: 0.7,
-  SELF_ABSORBED_CONNECTION_THRESHOLD: 0.5,
-  SELF_ABSORBED_INTENSITY: 0.25,
-  MAX_ENTRIES: 5,
-  ACCUMULATION_FACTOR: 0.5,
-  DECAY_PER_TICK: 0.93,
-  ACTIVATION_THRESHOLD: 0.15,
-  REPAIR_MOTIVATION_SCALE: 1.2,
-  SATISFACTION_DAMPING: 0.05,
-  REPAIR_ENERGY_BOOST: 0.03,
-  CAUTION_BOOST: 0.02,
-  REPAIR_CONNECTION_BOOST: 0.04
-} as const
+const GUILT = SECONDARY_EMOTIONS.guilt
 
 export const GuiltSource = z.enum([
   "unanswered_vulnerability",
@@ -198,3 +179,13 @@ export function computeGuiltEffect(state: GuiltState): Partial<Record<keyof Emot
     connection: state.repairMotivation > 0.3 ? state.repairMotivation * GUILT.REPAIR_CONNECTION_BOOST : 0
   }
 }
+
+registerSecondaryEmotion({
+  name: "guilt",
+  redisKey: "working:emotion:guilt",
+  schema: GuiltState,
+  defaultState: DEFAULT_GUILT_STATE,
+  order: 4,
+  compute: computeGuilt,
+  computeEffect: computeGuiltEffect
+})

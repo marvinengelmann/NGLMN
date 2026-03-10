@@ -1,29 +1,12 @@
 import * as z from "zod"
+import { SECONDARY_EMOTIONS } from "@/config/secondary-emotions.ts"
 import { createStateManager } from "@/lib/state.ts"
 import { nowISO } from "@/lib/time.ts"
 import { decayAndFinalize } from "./helpers.ts"
+import { registerSecondaryEmotion } from "./registry.ts"
 import type { EmotionalState } from "./types.ts"
 
-const ANTICIPATION = {
-  CONNECTION_THRESHOLD: 0.4,
-  SATISFACTION_THRESHOLD: 0.4,
-  EXCITEMENT_THRESHOLD: 0.4,
-  CURIOSITY_THRESHOLD: 0.5,
-  INTERACTION_INTENSITY: 0.5,
-  MOMENTUM_INTENSITY: 0.4,
-  PLANNED_INTENSITY: 0.35,
-  PATTERN_INTENSITY: 0.45,
-  CURIOSITY_INTENSITY: 0.4,
-  REUNION_INTENSITY: 0.55,
-  DISAPPOINTMENT_DAMPING: 0.6,
-  DECAY_PER_TICK: 0.92,
-  ACTIVATION_THRESHOLD: 0.12,
-  EXCITEMENT_BOOST: 0.05,
-  ENERGY_BOOST: 0.04,
-  CURIOSITY_BOOST: 0.03,
-  BOREDOM_REDUCTION: 0.04,
-  SATISFACTION_BOOST: 0.03
-} as const
+const ANTICIPATION = SECONDARY_EMOTIONS.anticipation
 
 export const AnticipationSource = z.enum([
   "expected_interaction",
@@ -186,3 +169,13 @@ export function computeAnticipationEffect(state: AnticipationState): Partial<Rec
     satisfaction: state.level * ANTICIPATION.SATISFACTION_BOOST * valenceBonus
   }
 }
+
+registerSecondaryEmotion({
+  name: "anticipation",
+  redisKey: "working:emotion:anticipation",
+  schema: AnticipationState,
+  defaultState: DEFAULT_ANTICIPATION_STATE,
+  order: 13,
+  compute: computeAnticipation,
+  computeEffect: computeAnticipationEffect
+})

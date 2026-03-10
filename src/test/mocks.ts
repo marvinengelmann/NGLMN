@@ -5,6 +5,11 @@ export function mockRedis() {
     get: vi.fn().mockResolvedValue(null),
     set: vi.fn().mockResolvedValue("OK"),
     del: vi.fn().mockResolvedValue(1),
+    mget: vi.fn().mockImplementation((..._keys: string[]) => Promise.resolve(_keys.map(() => null))),
+    pipeline: vi.fn().mockReturnValue({
+      set: vi.fn().mockReturnThis(),
+      exec: vi.fn().mockResolvedValue([])
+    }),
     incrbyfloat: vi.fn().mockResolvedValue("0"),
     expire: vi.fn().mockResolvedValue(1),
     lpush: vi.fn().mockResolvedValue(1),

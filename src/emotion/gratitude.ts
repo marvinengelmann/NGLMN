@@ -1,31 +1,14 @@
 import * as z from "zod"
+import { SECONDARY_EMOTIONS } from "@/config/secondary-emotions.ts"
 import { createStateManager } from "@/lib/state.ts"
 import { nowISO } from "@/lib/time.ts"
 import type { OperatorModel } from "@/mind/types.ts"
 import type { DisappointmentState } from "./disappointment.ts"
 import { decayAndFinalize } from "./helpers.ts"
+import { registerSecondaryEmotion } from "./registry.ts"
 import type { EmotionalState } from "./types.ts"
 
-const GRATITUDE = {
-  CONNECTION_THRESHOLD: 0.4,
-  HIGH_CONNECTION_THRESHOLD: 0.5,
-  RETURN_WARMTH: 0.5,
-  VALIDATION_WARMTH: 0.6,
-  CONSISTENT_PRESENCE_TICKS: 5,
-  PRESENCE_WARMTH: 0.3,
-  REPAIR_DISAPPOINTMENT_THRESHOLD: 0.5,
-  REPAIR_WARMTH: 0.55,
-  PATIENCE_WARMTH: 0.35,
-  MAX_ENTRIES: 5,
-  ACCUMULATION_FACTOR: 0.5,
-  DECAY_PER_TICK: 0.94,
-  ACTIVATION_THRESHOLD: 0.12,
-  CONNECTION_BOOST: 0.06,
-  SATISFACTION_BOOST: 0.05,
-  ENERGY_BOOST: 0.03,
-  CAUTION_REDUCTION: 0.03,
-  CONFIDENCE_BOOST: 0.03
-} as const
+const GRATITUDE = SECONDARY_EMOTIONS.gratitude
 
 export const GratitudeSource = z.enum([
   "return_after_silence",
@@ -179,3 +162,13 @@ export function computeGratitudeEffect(state: GratitudeState): Partial<Record<ke
     confidence: state.level * GRATITUDE.CONFIDENCE_BOOST
   }
 }
+
+registerSecondaryEmotion({
+  name: "gratitude",
+  redisKey: "working:emotion:gratitude",
+  schema: GratitudeState,
+  defaultState: DEFAULT_GRATITUDE_STATE,
+  order: 7,
+  compute: computeGratitude,
+  computeEffect: computeGratitudeEffect
+})

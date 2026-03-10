@@ -13,9 +13,9 @@ vi.mock("@/lib/sentry.ts", () => ({
   captureError: vi.fn()
 }))
 
+import * as z from "zod"
 import { log } from "@/lib/logger.ts"
 import { captureError } from "@/lib/sentry.ts"
-import * as z from "zod"
 import { animaError, fromCatch, logAndCaptureError, trySafe, zodParse } from "./result.ts"
 
 const mockedLog = vi.mocked(log)

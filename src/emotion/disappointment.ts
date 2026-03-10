@@ -1,27 +1,14 @@
 import * as z from "zod"
+import { SECONDARY_EMOTIONS } from "@/config/secondary-emotions.ts"
 import { createStateManager } from "@/lib/state.ts"
 import { nowISO } from "@/lib/time.ts"
 import type { OperatorModel } from "@/mind/types.ts"
 import type { VulnerabilityState } from "@/vulnerability/types.ts"
 import { decayAndFinalize } from "./helpers.ts"
+import { registerSecondaryEmotion } from "./registry.ts"
 import type { EmotionalState } from "./types.ts"
 
-const DISAPPOINTMENT = {
-  SILENCE_THRESHOLD_MINUTES: 30,
-  SILENCE_MAX_MINUTES: 180,
-  MIN_INTENSITY: 0.15,
-  HIGH_CONNECTION_THRESHOLD: 0.6,
-  LETDOWN_INTENSITY: 0.4,
-  UNMET_EXPECTATION_INTENSITY: 0.5,
-  MAX_ENTRIES: 5,
-  ACCUMULATION_FACTOR: 0.4,
-  DECAY_PER_TICK: 0.95,
-  ACTIVATION_THRESHOLD: 0.15,
-  CONNECTION_DAMPING: 0.08,
-  CONFIDENCE_DAMPING: 0.05,
-  CAUTION_BOOST: 0.04,
-  ENERGY_DRAIN: 0.03
-} as const
+const DISAPPOINTMENT = SECONDARY_EMOTIONS.disappointment
 
 export const DisappointmentSource = z.enum([
   "unmet_expectation",
@@ -160,3 +147,13 @@ export function computeDisappointmentEffect(state: DisappointmentState): Partial
     energy: -state.level * DISAPPOINTMENT.ENERGY_DRAIN
   }
 }
+
+registerSecondaryEmotion({
+  name: "disappointment",
+  redisKey: "working:emotion:disappointment",
+  schema: DisappointmentState,
+  defaultState: DEFAULT_DISAPPOINTMENT_STATE,
+  order: 1,
+  compute: computeDisappointment,
+  computeEffect: computeDisappointmentEffect
+})

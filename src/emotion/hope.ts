@@ -1,34 +1,13 @@
 import * as z from "zod"
+import { SECONDARY_EMOTIONS } from "@/config/secondary-emotions.ts"
 import { createStateManager } from "@/lib/state.ts"
 import { nowISO } from "@/lib/time.ts"
 import type { OperatorModel } from "@/mind/types.ts"
 import { decayAndFinalize, sumContributions } from "./helpers.ts"
+import { registerSecondaryEmotion } from "./registry.ts"
 import type { EmotionalState } from "./types.ts"
 
-const HOPE = {
-  SATISFACTION_THRESHOLD: 0.4,
-  CONNECTION_THRESHOLD: 0.5,
-  EXCITEMENT_THRESHOLD: 0.5,
-  CURIOSITY_THRESHOLD: 0.4,
-  PROGRESS_INTENSITY: 0.5,
-  CONNECTION_INTENSITY: 0.45,
-  REPAIR_INTENSITY: 0.55,
-  VULNERABILITY_REWARD_INTENSITY: 0.6,
-  PATTERN_BREAK_INTENSITY: 0.5,
-  POSSIBILITY_INTENSITY: 0.4,
-  DISAPPOINTMENT_DAMPING: 0.6,
-  RESIGNATION_DAMPING: 0.8,
-  DECAY_PER_TICK: 0.94,
-  ACTIVATION_THRESHOLD: 0.12,
-  FRAGILITY_GROWTH: 0.1,
-  FRAGILITY_DECAY: 0.05,
-  SUSTAINED_BONUS_SCALE: 0.05,
-  ENERGY_BOOST: 0.05,
-  CONFIDENCE_BOOST: 0.04,
-  SATISFACTION_BOOST: 0.03,
-  CURIOSITY_BOOST: 0.03,
-  CAUTION_REDUCTION: 0.03
-} as const
+const HOPE = SECONDARY_EMOTIONS.hope
 
 export const HopeSource = z.enum([
   "progress_made",
@@ -129,7 +108,7 @@ export function computeHope(context: HopeContext): HopeState {
     })
   }
 
-  let { level, source, maxContribution } = sumContributions(contributions)
+  let { level, source } = sumContributions(contributions)
 
   if (context.disappointmentActive) {
     level *= HOPE.DISAPPOINTMENT_DAMPING
@@ -179,3 +158,13 @@ export function computeHopeEffect(state: HopeState): Partial<Record<keyof Emotio
     caution: -state.level * HOPE.CAUTION_REDUCTION
   }
 }
+
+registerSecondaryEmotion({
+  name: "hope",
+  redisKey: "working:emotion:hope",
+  schema: HopeState,
+  defaultState: DEFAULT_HOPE_STATE,
+  order: 8,
+  compute: computeHope,
+  computeEffect: computeHopeEffect
+})

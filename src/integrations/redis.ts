@@ -45,3 +45,20 @@ export async function getValidatedRedisOr<T>(key: string, schema: ZodType<T>, de
   const result = await getValidatedRedis(key, schema)
   return result ?? defaultValue
 }
+
+/**
+ * Fetch multiple Redis keys in a single roundtrip and validate each against its schema.
+ * Returns an array of validated values, using the default when a key is missing or invalid.
+ */
+export async function mgetValidatedRedis<T>(
+  entries: Array<{ key: string; schema: ZodType<T>; defaultValue: T }>
+): Promise<T[]> {
+  if (entries.length === 0) return []
+  const keys = entries.map((e) => e.key)
+  const rawValues = await redis.mget<(string | null)[]>(...keys)
+  return entries.map((entry, i) => {
+    const raw = rawValues[i]
+    if (raw == null) return entry.defaultValue
+    return parseRedisJson(entry.schema, raw, entry.key) ?? entry.defaultValue
+  })
+}

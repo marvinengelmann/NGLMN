@@ -345,7 +345,12 @@ async function performOutputAction(action: string, output: string): Promise<void
         logAndCaptureError(goalData.error)
         return
       }
-      const goalResult = await createGoal(goalData.value.title, goalData.value.description, "self", goalData.value.priority)
+      const goalResult = await createGoal(
+        goalData.value.title,
+        goalData.value.description,
+        "self",
+        goalData.value.priority
+      )
       if (goalResult.isErr()) logAndCaptureError(goalResult.error)
       break
     }

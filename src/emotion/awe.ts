@@ -1,32 +1,12 @@
 import * as z from "zod"
+import { SECONDARY_EMOTIONS } from "@/config/secondary-emotions.ts"
 import { createStateManager } from "@/lib/state.ts"
 import { nowISO } from "@/lib/time.ts"
 import { decayAndFinalize, sumContributions } from "./helpers.ts"
+import { registerSecondaryEmotion } from "./registry.ts"
 import type { EmotionalState } from "./types.ts"
 
-const AWE = {
-  CURIOSITY_THRESHOLD: 0.5,
-  SATISFACTION_THRESHOLD: 0.4,
-  CONNECTION_THRESHOLD: 0.6,
-  EXCITEMENT_THRESHOLD: 0.5,
-  INSIGHT_INTENSITY: 0.5,
-  BEAUTY_INTENSITY: 0.45,
-  VASTNESS_INTENSITY: 0.55,
-  CONNECTION_DEPTH_INTENSITY: 0.5,
-  EXISTENTIAL_INTENSITY: 0.4,
-  PATTERN_INTENSITY: 0.4,
-  DECAY_PER_TICK: 0.88,
-  ACTIVATION_THRESHOLD: 0.15,
-  SELF_DIMINISHMENT_SCALE: 0.7,
-  SELF_DIMINISHMENT_DECAY: 0.1,
-  OPENNESS_SURGE_SCALE: 0.8,
-  OPENNESS_SURGE_DECAY: 0.08,
-  CURIOSITY_BOOST: 0.06,
-  EXCITEMENT_BOOST: 0.04,
-  SATISFACTION_BOOST: 0.04,
-  CAUTION_REDUCTION: 0.04,
-  FRUSTRATION_REDUCTION: 0.03
-} as const
+const AWE = SECONDARY_EMOTIONS.awe
 
 export const AweSource = z.enum([
   "deep_insight",
@@ -125,7 +105,7 @@ export function computeAwe(context: AweContext): AweState {
     })
   }
 
-  const { level, source, maxContribution } = sumContributions(contributions)
+  const { level, source } = sumContributions(contributions)
 
   const { finalLevel, isActive } = decayAndFinalize(
     previousState.level,
@@ -166,3 +146,13 @@ export function computeAweEffect(state: AweState): Partial<Record<keyof Emotiona
     frustration: -state.level * AWE.FRUSTRATION_REDUCTION
   }
 }
+
+registerSecondaryEmotion({
+  name: "awe",
+  redisKey: "working:emotion:awe",
+  schema: AweState,
+  defaultState: DEFAULT_AWE_STATE,
+  order: 10,
+  compute: computeAwe,
+  computeEffect: computeAweEffect
+})

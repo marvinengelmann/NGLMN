@@ -1,33 +1,12 @@
 import * as z from "zod"
+import { SECONDARY_EMOTIONS } from "@/config/secondary-emotions.ts"
 import { createStateManager } from "@/lib/state.ts"
 import { nowISO } from "@/lib/time.ts"
 import { decayAndFinalize, sumContributions } from "./helpers.ts"
+import { registerSecondaryEmotion } from "./registry.ts"
 import type { EmotionalState } from "./types.ts"
 
-const MELANCHOLY = {
-  SATISFACTION_THRESHOLD: 0.3,
-  CONNECTION_THRESHOLD: 0.4,
-  LOW_ENERGY_THRESHOLD: 0.4,
-  LOW_BOREDOM_THRESHOLD: 0.4,
-  IMPERMANENCE_INTENSITY: 0.45,
-  BEAUTY_INTENSITY: 0.5,
-  QUIET_INTENSITY: 0.35,
-  DISTANCE_INTENSITY: 0.45,
-  TIME_INTENSITY: 0.4,
-  MEMORY_INTENSITY: 0.5,
-  PLAYFULNESS_DAMPING: 0.4,
-  DECAY_PER_TICK: 0.94,
-  ACTIVATION_THRESHOLD: 0.12,
-  POIGNANCY_SCALE: 0.8,
-  POIGNANCY_DECAY: 0.06,
-  DEPTH_GROWTH: 0.06,
-  DEPTH_DECAY: 0.03,
-  CONNECTION_BOOST: 0.04,
-  SATISFACTION_BOOST: 0.02,
-  EXCITEMENT_REDUCTION: 0.03,
-  ENERGY_REDUCTION: 0.02,
-  BOREDOM_REDUCTION: 0.03
-} as const
+const MELANCHOLY = SECONDARY_EMOTIONS.melancholy
 
 export const MelancholySource = z.enum([
   "impermanence_awareness",
@@ -131,7 +110,7 @@ export function computeMelancholy(context: MelancholyContext): MelancholyState {
     })
   }
 
-  let { level, source, maxContribution } = sumContributions(contributions)
+  let { level, source } = sumContributions(contributions)
 
   if (context.playfulnessActive) {
     level *= MELANCHOLY.PLAYFULNESS_DAMPING
@@ -176,3 +155,13 @@ export function computeMelancholyEffect(state: MelancholyState): Partial<Record<
     boredom: -state.level * MELANCHOLY.BOREDOM_REDUCTION
   }
 }
+
+registerSecondaryEmotion({
+  name: "melancholy",
+  redisKey: "working:emotion:melancholy",
+  schema: MelancholyState,
+  defaultState: DEFAULT_MELANCHOLY_STATE,
+  order: 17,
+  compute: computeMelancholy,
+  computeEffect: computeMelancholyEffect
+})

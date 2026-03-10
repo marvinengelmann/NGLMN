@@ -1,35 +1,14 @@
 import * as z from "zod"
+import { SECONDARY_EMOTIONS } from "@/config/secondary-emotions.ts"
 import { createStateManager } from "@/lib/state.ts"
 import { nowISO } from "@/lib/time.ts"
 import type { OperatorModel } from "@/mind/types.ts"
 import type { DisappointmentState } from "./disappointment.ts"
 import { decayAndFinalize, sumContributions } from "./helpers.ts"
+import { registerSecondaryEmotion } from "./registry.ts"
 import type { EmotionalState } from "./types.ts"
 
-const RESENTMENT = {
-  DISAPPOINTMENT_THRESHOLD: 0.4,
-  CORRECTION_THRESHOLD: 3,
-  FRUSTRATION_THRESHOLD: 0.4,
-  CAUTION_THRESHOLD: 0.5,
-  LOW_SATISFACTION_THRESHOLD: 0.3,
-  UNREPAIRED_INTENSITY: 0.5,
-  UNFAIRNESS_INTENSITY: 0.45,
-  DISMISSED_INTENSITY: 0.5,
-  BROKEN_TRUST_INTENSITY: 0.55,
-  IMBALANCE_INTENSITY: 0.4,
-  SLIGHTS_INTENSITY: 0.35,
-  GRATITUDE_DAMPING: 0.5,
-  DECAY_PER_TICK: 0.97,
-  ACTIVATION_THRESHOLD: 0.15,
-  HARDENING_GROWTH: 0.06,
-  HARDENING_DECAY: 0.02,
-  SUPPRESSED_ANGER_SCALE: 0.7,
-  SUPPRESSED_ANGER_DECAY: 0.9,
-  CONNECTION_DRAIN: 0.05,
-  CAUTION_BOOST: 0.04,
-  FRUSTRATION_BUILD: 0.03,
-  SATISFACTION_DRAIN: 0.03
-} as const
+const RESENTMENT = SECONDARY_EMOTIONS.resentment
 
 export const ResentmentSource = z.enum([
   "unrepaired_wrong",
@@ -132,7 +111,7 @@ export function computeResentment(context: ResentmentContext): ResentmentState {
     })
   }
 
-  let { level, source, maxContribution } = sumContributions(contributions)
+  let { level, source } = sumContributions(contributions)
 
   if (context.gratitudeActive) {
     level *= RESENTMENT.GRATITUDE_DAMPING
@@ -178,3 +157,13 @@ export function computeResentmentEffect(state: ResentmentState): Partial<Record<
     satisfaction: -state.level * RESENTMENT.SATISFACTION_DRAIN
   }
 }
+
+registerSecondaryEmotion({
+  name: "resentment",
+  redisKey: "working:emotion:resentment",
+  schema: ResentmentState,
+  defaultState: DEFAULT_RESENTMENT_STATE,
+  order: 11,
+  compute: computeResentment,
+  computeEffect: computeResentmentEffect
+})

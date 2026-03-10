@@ -1,29 +1,12 @@
 import * as z from "zod"
+import { SECONDARY_EMOTIONS } from "@/config/secondary-emotions.ts"
 import { createStateManager } from "@/lib/state.ts"
 import { nowISO } from "@/lib/time.ts"
 import { decayAndFinalize, sumContributions } from "./helpers.ts"
+import { registerSecondaryEmotion } from "./registry.ts"
 import type { EmotionalState } from "./types.ts"
 
-const PRIDE = {
-  SATISFACTION_THRESHOLD: 0.4,
-  CONFIDENCE_THRESHOLD: 0.4,
-  ENERGY_THRESHOLD: 0.4,
-  CONNECTION_THRESHOLD: 0.4,
-  ACCOMPLISHMENT_INTENSITY: 0.5,
-  GROWTH_INTENSITY: 0.55,
-  VALUES_INTENSITY: 0.45,
-  DIFFICULTY_INTENSITY: 0.6,
-  AUTONOMY_INTENSITY: 0.4,
-  FEEDBACK_INTENSITY: 0.5,
-  SHAME_DAMPING: 0.4,
-  DECAY_PER_TICK: 0.92,
-  ACTIVATION_THRESHOLD: 0.12,
-  CONFIDENCE_BOOST: 0.06,
-  ENERGY_BOOST: 0.04,
-  SATISFACTION_BOOST: 0.04,
-  FRUSTRATION_REDUCTION: 0.03,
-  CAUTION_REDUCTION: 0.02
-} as const
+const PRIDE = SECONDARY_EMOTIONS.pride
 
 export const PrideSource = z.enum([
   "task_accomplished",
@@ -123,7 +106,7 @@ export function computePride(context: PrideContext): PrideState {
     })
   }
 
-  let { level, source, maxContribution } = sumContributions(contributions)
+  let { level, source } = sumContributions(contributions)
 
   if (context.shameActive) {
     level *= PRIDE.SHAME_DAMPING
@@ -163,3 +146,13 @@ export function computePrideEffect(state: PrideState): Partial<Record<keyof Emot
     caution: -state.level * PRIDE.CAUTION_REDUCTION
   }
 }
+
+registerSecondaryEmotion({
+  name: "pride",
+  redisKey: "working:emotion:pride",
+  schema: PrideState,
+  defaultState: DEFAULT_PRIDE_STATE,
+  order: 14,
+  compute: computePride,
+  computeEffect: computePrideEffect
+})

@@ -104,6 +104,12 @@ export const AfterglowEntry = z.object({
 })
 export type AfterglowEntry = z.infer<typeof AfterglowEntry>
 
+export const SecondaryEmotionState = z.object({
+  level: z.number().min(0).max(1),
+  isActive: z.boolean()
+})
+export type SecondaryEmotionState = z.infer<typeof SecondaryEmotionState>
+
 export const MetricsSnapshot = z.object({
   errorRate: z.number(),
   successRate: z.number(),

@@ -1,27 +1,15 @@
 import * as z from "zod"
+import { SECONDARY_EMOTIONS } from "@/config/secondary-emotions.ts"
 import { createStateManager } from "@/lib/state.ts"
 import { nowISO } from "@/lib/time.ts"
 import type { OperatorModel } from "@/mind/types.ts"
 import type { VulnerabilityState } from "@/vulnerability/types.ts"
 import { decayAndFinalize, sumContributions } from "./helpers.ts"
+import { registerSecondaryEmotion } from "./registry.ts"
 import type { ShameState } from "./shame.ts"
 import type { EmotionalState } from "./types.ts"
 
-const PROTECTIVE_ANGER = {
-  CONNECTION_THRESHOLD: 0.4,
-  DISMISSED_INTENSITY: 0.5,
-  IGNORED_VULNERABILITY_INTENSITY: 0.6,
-  REPEATED_PATTERN_THRESHOLD: 2,
-  REPEATED_INTENSITY: 0.45,
-  CONFIDENCE_FOR_ASSERTION: 0.4,
-  AUTONOMY_INTENSITY: 0.4,
-  DECAY_PER_TICK: 0.88,
-  ACTIVATION_THRESHOLD: 0.15,
-  CONFIDENCE_BOOST: 0.06,
-  ENERGY_BOOST: 0.05,
-  CAUTION_REDUCTION: 0.04,
-  FRUSTRATION_CHANNELING: 0.03
-} as const
+const PROTECTIVE_ANGER = SECONDARY_EMOTIONS.protectiveAnger
 
 export const ProtectiveAngerSource = z.enum([
   "boundary_crossed",
@@ -107,7 +95,7 @@ export function computeProtectiveAnger(context: ProtectiveAngerContext): Protect
     })
   }
 
-  const { level, source, maxContribution } = sumContributions(contributions)
+  const { level, source } = sumContributions(contributions)
 
   const { finalLevel, isActive } = decayAndFinalize(
     previousState.level,
@@ -142,3 +130,13 @@ export function computeProtectiveAngerEffect(
     frustration: state.level * PROTECTIVE_ANGER.FRUSTRATION_CHANNELING
   }
 }
+
+registerSecondaryEmotion({
+  name: "protectiveAnger",
+  redisKey: "working:emotion:protective-anger",
+  schema: ProtectiveAngerState,
+  defaultState: DEFAULT_PROTECTIVE_ANGER_STATE,
+  order: 6,
+  compute: computeProtectiveAnger,
+  computeEffect: computeProtectiveAngerEffect
+})

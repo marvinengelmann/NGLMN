@@ -1,28 +1,11 @@
 import * as z from "zod"
 import { AttachmentDynamics } from "@/attachment/types.ts"
-import { ProcrastinationState } from "@/cognition/procrastination.ts"
 import { AttentionState, CognitiveConflict, InstinctImpression } from "@/cognition/types.ts"
 import { CommunicationRegister } from "@/communication/types.ts"
 import { DissonanceState } from "@/dissonance/types.ts"
 import { DreamThinkResult } from "@/dream/types.ts"
-import { AmbivalenceState } from "@/emotion/ambivalence.ts"
-import { ProtectiveAngerState } from "@/emotion/anger.ts"
-import { AnticipationState } from "@/emotion/anticipation.ts"
-import { AweState } from "@/emotion/awe.ts"
-import { DisappointmentState } from "@/emotion/disappointment.ts"
-import { EnvyState } from "@/emotion/envy.ts"
-import { GratitudeState } from "@/emotion/gratitude.ts"
-import { GuiltState } from "@/emotion/guilt.ts"
-import { HopeState } from "@/emotion/hope.ts"
-import { LongingState } from "@/emotion/longing.ts"
-import { MelancholyState } from "@/emotion/melancholy.ts"
-import { PlayfulnessState } from "@/emotion/playfulness.ts"
-import { PrideState } from "@/emotion/pride.ts"
-import { ResentmentState } from "@/emotion/resentment.ts"
-import { ResignationState } from "@/emotion/resignation.ts"
 import { ShameState } from "@/emotion/shame.ts"
-import { TendernessState } from "@/emotion/tenderness.ts"
-import { EmotionalState, EmotionUpdateEvent, MoodContext } from "@/emotion/types.ts"
+import { EmotionalState, EmotionUpdateEvent, MoodContext, type SecondaryEmotionState } from "@/emotion/types.ts"
 import { HealthCheckResult } from "@/health/types.ts"
 import { PendingMessage, WeatherData } from "@/integrations/types.ts"
 import type { EnrichedTweet } from "@/integrations/x.ts"
@@ -172,23 +155,7 @@ export const FeelingResult = z.object({
   vulnerability: VulnerabilityState,
   shameState: ShameState,
   heldBackBuffer: HeldBackBuffer,
-  disappointmentState: DisappointmentState,
-  procrastinationState: ProcrastinationState,
-  ambivalenceState: AmbivalenceState,
-  guiltState: GuiltState,
-  longingState: LongingState,
-  protectiveAngerState: ProtectiveAngerState,
-  gratitudeState: GratitudeState,
-  hopeState: HopeState,
-  resignationState: ResignationState,
-  aweState: AweState,
-  resentmentState: ResentmentState,
-  tendernessState: TendernessState,
-  anticipationState: AnticipationState,
-  prideState: PrideState,
-  envyState: EnvyState,
-  playfulnessState: PlayfulnessState,
-  melancholyState: MelancholyState,
+  secondaryEmotions: z.record(z.string(), z.unknown()),
   attachmentDynamics: AttachmentDynamics,
   selfConcept: SelfConcept,
   register: CommunicationRegister,
@@ -196,6 +163,10 @@ export const FeelingResult = z.object({
   operatorModel: OperatorModel
 })
 export type FeelingResult = z.infer<typeof FeelingResult>
+
+export function getSecondaryEmotion<T extends SecondaryEmotionState>(result: FeelingResult, name: string): T {
+  return result.secondaryEmotions[name] as T
+}
 
 export const DeliberateResult = z.object({
   decision: AnimaDecision,
