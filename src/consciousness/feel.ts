@@ -43,7 +43,7 @@ import { setEmotionContext } from "@/lib/sentry.ts"
 import { elapsedMinutesSince, nowISO, nowLocal } from "@/lib/time.ts"
 import { queryRelated } from "@/memory/episodic.ts"
 import { getKnowledge } from "@/memory/semantic.ts"
-import { getConsecutiveIdleTicks, getRecentActions } from "@/memory/working.ts"
+import { getConsecutiveConversationTicks, getConsecutiveIdleTicks, getRecentActions } from "@/memory/working.ts"
 import { getOperatorModel, getRelationalPatterns, saveOperatorModel, saveRelationalPatterns } from "@/mind/state.ts"
 import { extractSignals, learnFromObservation } from "@/mind/triggers.ts"
 import { detectModelCorrection, updateOperatorModel } from "@/mind/update.ts"
@@ -212,7 +212,8 @@ export async function feel(senseResult: SenseResult): Promise<FeelingResult> {
     previousOperatorModel,
     deceptionState,
     activeConversation,
-    consecutiveIdleTicks
+    consecutiveIdleTicks,
+    consecutiveConversationTicks
   ] = await Promise.all([
     getSomaticState(),
     getSomaticLastTimestamp(),
@@ -222,7 +223,8 @@ export async function feel(senseResult: SenseResult): Promise<FeelingResult> {
     getOperatorModel(),
     getDeceptionState(),
     getActiveConversation(),
-    getConsecutiveIdleTicks()
+    getConsecutiveIdleTicks(),
+    getConsecutiveConversationTicks()
   ])
 
   const elapsed = elapsedMinutesSince(lastSomaTs)
@@ -365,6 +367,7 @@ export async function feel(senseResult: SenseResult): Promise<FeelingResult> {
     selfDisclosureDepth: vulnerableStyle.selfDisclosureDepth,
     operatorJustReturned,
     consecutiveIdleTicks,
+    consecutiveConversationTicks,
     episodicHitCount: episodicHits.length,
     inConversation: senseResult.moodContext.inConversation,
     pendingMessageCount: senseResult.pendingMessages.length,

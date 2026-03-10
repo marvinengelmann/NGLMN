@@ -27,7 +27,13 @@ import { clampState } from "@/emotion/update.ts"
 import { log } from "@/lib/logger.ts"
 import { logAndCaptureError } from "@/lib/result.ts"
 import { applyOpinionDrift } from "@/memory/semantic.ts"
-import { getLastTickSummary, incrementConsecutiveIdleTicks, resetConsecutiveIdleTicks } from "@/memory/working.ts"
+import {
+  getLastTickSummary,
+  incrementConsecutiveConversationTicks,
+  incrementConsecutiveIdleTicks,
+  resetConsecutiveConversationTicks,
+  resetConsecutiveIdleTicks
+} from "@/memory/working.ts"
 import { handleDriftCheck } from "@/security/guardian.ts"
 import { getSomaticState, saveSomaticState } from "@/soma/state.ts"
 import { rechargeSocialBattery } from "@/soma/update.ts"
@@ -99,7 +105,7 @@ export async function maintain(
     (input.decision.action === "idle" || input.decision.action === "dream") && !input.actResult.responseSent
 
   if (isRestingAction) {
-    await incrementConsecutiveIdleTicks()
+    await Promise.all([incrementConsecutiveIdleTicks(), resetConsecutiveConversationTicks()])
 
     const currentSoma = await getSomaticState()
     const isDreaming = input.senseResult.moodContext.isDreaming || input.decision.action === "dream"
@@ -108,7 +114,11 @@ export async function maintain(
       await saveSomaticState(rechargedSoma, "social_battery_recharge")
     }
   } else {
-    await resetConsecutiveIdleTicks()
+    const inConversation = input.senseResult.moodContext.inConversation
+    await Promise.all([
+      resetConsecutiveIdleTicks(),
+      inConversation ? incrementConsecutiveConversationTicks() : resetConsecutiveConversationTicks()
+    ])
   }
 
   const oldBaseline = await getMoodBaseline()

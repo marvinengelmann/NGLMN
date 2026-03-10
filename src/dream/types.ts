@@ -11,7 +11,8 @@ export const ConsolidationOutput = z.object({
   ),
   connections: z.array(
     z.object({
-      episodeIds: z.array(z.string()),
+      sourceEntryIndex: z.number().int().min(0),
+      targetEntryIndex: z.number().int().min(0),
       connectionType: z.string(),
       description: z.string()
     })

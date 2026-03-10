@@ -12,6 +12,7 @@ const KEYS = {
   DRIFT_THROTTLE: "working:drift:throttle",
   DRIFT_LAST_REPORT: "working:drift:lastReport",
   CONSECUTIVE_IDLE_TICKS: "working:cognition:consecutiveIdleTicks",
+  CONSECUTIVE_CONVERSATION_TICKS: "working:cognition:consecutiveConversationTicks",
   TASK_ACTIVE: "working:task:active",
   REFLECTION_LAST_AT: "working:reflection:lastAt"
 } as const
@@ -116,6 +117,19 @@ export async function incrementConsecutiveIdleTicks(): Promise<void> {
 
 export async function resetConsecutiveIdleTicks(): Promise<void> {
   await redis.set(KEYS.CONSECUTIVE_IDLE_TICKS, 0)
+}
+
+export async function getConsecutiveConversationTicks(): Promise<number> {
+  const raw = await redis.get<number>(KEYS.CONSECUTIVE_CONVERSATION_TICKS)
+  return raw ?? 0
+}
+
+export async function incrementConsecutiveConversationTicks(): Promise<void> {
+  await redis.incr(KEYS.CONSECUTIVE_CONVERSATION_TICKS)
+}
+
+export async function resetConsecutiveConversationTicks(): Promise<void> {
+  await redis.set(KEYS.CONSECUTIVE_CONVERSATION_TICKS, 0)
 }
 
 export async function isTaskActive(): Promise<boolean> {

@@ -4,13 +4,14 @@ Review your episodic memory entries from the last 24 hours:
 
 1. Identify recurring patterns and themes across episodes
 2. Extract key facts, preferences, and insights worth preserving as semantic knowledge
-3. Find connections between seemingly unrelated episodes
+3. Find connections between your generated semantic entries (use 0-based indices into the semanticEntries array for sourceEntryIndex and targetEntryIndex)
 4. Determine which episodes contain low-value or redundant information
 
 ## Rules
 
 - Be selective: only extract genuinely useful knowledge — not everything deserves to persist
 - Prefer high-confidence entries over speculative ones
+- Connections reference your semantic entries by their array index (0-based) — sourceEntryIndex and targetEntryIndex must be valid indices
 - Connections should be non-obvious — if the link is immediately apparent, it is not worth noting
 - Mark episodes for downgrade only if truly redundant or trivial
 - This is consolidation, not creation — do not invent knowledge that is not grounded in the episodes`

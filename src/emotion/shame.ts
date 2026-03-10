@@ -1,8 +1,8 @@
 import * as z from "zod"
-import { SECONDARY_EMOTIONS } from "@/config/secondary-emotions.ts"
+import { SECONDARY_EMOTIONS } from "./constants.ts"
 import { halfLifeDecay } from "@/lib/math.ts"
 import { createStateManager } from "@/lib/state.ts"
-import { elapsedMinutesSince } from "@/lib/time.ts"
+import { elapsedMinutesSince, nowISO } from "@/lib/time.ts"
 import type { OperatorModel } from "@/mind/types.ts"
 import type { SelfConcept } from "@/psyche/types.ts"
 import type { VulnerabilityState } from "@/vulnerability/types.ts"
@@ -129,9 +129,7 @@ export function computeShameState(context: ShameContext): ShameState {
     isActive: true,
     trigger,
     lastTriggeredAt:
-      level > previousShame.level
-        ? new Date().toISOString()
-        : previousShame.lastTriggeredAt || new Date().toISOString(),
+      level > previousShame.level ? nowISO() : previousShame.lastTriggeredAt || nowISO(),
     decaySinceTriggered: 0
   }
 }
@@ -140,13 +138,27 @@ export function computeShameState(context: ShameContext): ShameState {
  * Detect if the operator responded coldly to a vulnerable message.
  * Cold = short message, negative/neutral mood, after ANIMA showed vulnerability.
  */
+/**
+ * Compute the emotional effect of shame — erodes confidence, drains energy, drives withdrawal.
+ */
+export function computeShameEffect(state: ShameState): Partial<Record<keyof EmotionalState, number>> {
+  if (!state.isActive) return {}
+
+  return {
+    confidence: -state.level * SHAME.CONFIDENCE_DRAIN,
+    energy: -state.level * SHAME.ENERGY_DRAIN,
+    connection: -state.level * SHAME.CONNECTION_WITHDRAWAL
+  }
+}
+
 registerSecondaryEmotion({
   name: "shame",
   redisKey: "working:shame:state",
   schema: ShameState,
   defaultState: DEFAULT_SHAME_STATE,
   order: 0,
-  compute: computeShameState
+  compute: computeShameState,
+  computeEffect: computeShameEffect
 })
 
 export function detectColdResponse(

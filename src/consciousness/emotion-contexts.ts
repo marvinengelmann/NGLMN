@@ -14,6 +14,7 @@ export interface SharedEmotionInput {
   selfDisclosureDepth: number
   operatorJustReturned: boolean
   consecutiveIdleTicks: number
+  consecutiveConversationTicks: number
   episodicHitCount: number
   inConversation: boolean
   pendingMessageCount: number
@@ -115,7 +116,7 @@ export function buildEmotionContext(
           selfDisclosureDepth > 0.4 && operatorModel.estimatedMood === "happy" && pendingMessageCount > 0,
         operatorShowedPatience: operatorModel.estimatedMood === "neutral" && operatorSilenceMinutes < 5,
         inConversation,
-        consecutiveConversationTicks: inConversation ? consecutiveIdleTicks : 0
+        consecutiveConversationTicks: shared.consecutiveConversationTicks
       }
 
     case "hope": {

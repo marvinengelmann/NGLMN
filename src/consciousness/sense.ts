@@ -164,7 +164,7 @@ export async function sense(): Promise<SenseResult> {
   const elapsedMinutes = lastEmotionTs ? differenceInMinutes(new Date(), parseISO(lastEmotionTs)) : 1
 
   const moodContext: MoodContext = {
-    operatorSilenceMinutes: telegramActivity.lastMessageAge > 0 ? telegramActivity.lastMessageAge / 60 : 0,
+    operatorSilenceMinutes: telegramActivity.lastMessageAge > 0 ? telegramActivity.lastMessageAge / 60 : 60,
     inConversation: waitingSince != null,
     systemHealthy: ownState.healthStatus === "healthy",
     budgetOk: ownState.budgetPercent < 80,
@@ -216,7 +216,6 @@ export async function sense(): Promise<SenseResult> {
   if (activeWorkflows.length > 0) {
     const recentTicks = await getRecentTickSummaries(50)
     const recentActions = recentTicks.map((t) => t.action)
-    const currentEmotion = await getEmotionalState()
     triggeredWorkflows = await checkWorkflowTriggers(activeWorkflows, currentEmotion, perception, recentActions)
   } else {
     triggeredWorkflows = []
