@@ -15,8 +15,7 @@ const defaultContext = {
   soma: makeSomaticState(),
   driveState: DEFAULT_DRIVE_STATE,
   dissonanceScore: 0.1,
-  selfConceptAuthenticity: 0.7,
-  stressLevel: 0.2
+  selfConceptAuthenticity: 0.7
 }
 
 describe("detectFragmentation", () => {

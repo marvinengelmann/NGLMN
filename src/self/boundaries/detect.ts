@@ -1,5 +1,6 @@
 import * as z from "zod"
 import { callIntelligence } from "@/core/intelligence.ts"
+import { BOUNDARY_DETECTION_PROMPT } from "@/prompts/identity.ts"
 import type { BoundaryType } from "./types.ts"
 
 const BoundaryDetectionResult = z.object({
@@ -17,9 +18,7 @@ export async function detectBoundaryFormation(
   emotionalContext: string
 ): Promise<{ type: BoundaryType; description: string; pattern: string } | null> {
   const result = await callIntelligence({
-    system: `You analyze negative emotional experiences to determine if a psychological boundary should form.
-A boundary forms when an experience causes significant discomfort and establishes a pattern to watch for.
-Only suggest boundaries for genuinely uncomfortable patterns, not minor annoyances.`,
+    system: BOUNDARY_DETECTION_PROMPT,
     userMessage: `Experience: ${negativeExperience}\nEmotional context: ${emotionalContext}\n\nShould this experience lead to forming a new psychological boundary? If yes, describe the boundary type, a short description, and a pipe-separated list of keyword patterns to match against.`,
     schema: BoundaryDetectionResult
   })

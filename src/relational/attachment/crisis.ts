@@ -1,18 +1,9 @@
-import * as z from "zod"
 import type { EmotionalState } from "@/affect/emotion/types.ts"
 import { getValidatedRedis, redis } from "@/infra/integrations/redis.ts"
 import { CRISIS } from "./constants.ts"
-import type { AttachmentDynamics } from "./types.ts"
+import { AttachmentCrisisState, type AttachmentDynamics } from "./types.ts"
 
 export type CrisisType = "trust_rupture" | "deep_vulnerability" | "prolonged_separation" | "deep_connection"
-
-export const AttachmentCrisisState = z.object({
-  active: z.boolean(),
-  type: z.string().nullable(),
-  multiplier: z.number(),
-  expiresAt: z.string().nullable()
-})
-export type AttachmentCrisisState = z.infer<typeof AttachmentCrisisState>
 
 export const DEFAULT_CRISIS_STATE: AttachmentCrisisState = {
   active: false,

@@ -1,14 +1,14 @@
 import { runs, schedules } from "@trigger.dev/sdk"
 import { getCurrentEmotion } from "@/affect/emotion/state.ts"
-import { LIFECYCLE } from "@/consciousness/constants.ts"
 import { computeSkipProbability, consumeBurstCooldownTick } from "@/consciousness/gating.ts"
 import { runHeartbeat } from "@/consciousness/heartbeat.ts"
+import { LIFECYCLE } from "@/self/constants.ts"
 import {
   getActiveLifeEvent,
   isLifeEventActive,
   maybeStoreLifecycleEpisode,
   sendLifecycleNotification
-} from "@/consciousness/lifecycle.ts"
+} from "@/self/lifecycle.ts"
 import { getConversationWaitingSince } from "@/expression/communication/state.ts"
 import { HEARTBEAT } from "@/infra/config/constants.ts"
 import { fetchNewMessages } from "@/infra/integrations/telegram.ts"

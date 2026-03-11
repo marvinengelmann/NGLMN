@@ -6,6 +6,7 @@ import { db } from "@/infra/db/client.ts"
 import { conversationArcs } from "@/infra/db/schema.ts"
 import { redis } from "@/infra/integrations/redis.ts"
 import { log } from "@/infra/lib/logger.ts"
+import { CONVERSATION_PATTERN_ANALYSIS_PROMPT } from "@/prompts/social.ts"
 
 const REDIS_KEY = "working:conversation:patterns"
 
@@ -48,11 +49,7 @@ export async function analyzeConversationPatterns(days = 14): Promise<Conversati
   })
 
   const result = await callIntelligence({
-    system: `Analyze these conversation summaries and identify:
-1. Recurring patterns (theme→emotion correlations, engagement trends, repeated dynamics). Max 5 patterns.
-2. Recurring unresolved topics that keep appearing across conversations. Max 3 topics.
-
-Be concise — each pattern/topic should be one sentence.`,
+    system: CONVERSATION_PATTERN_ANALYSIS_PROMPT,
     userMessage: summaryLines.join("\n"),
     schema: PatternAnalysis,
     maxTokens: 512,

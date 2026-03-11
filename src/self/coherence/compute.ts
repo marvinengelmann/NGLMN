@@ -1,6 +1,7 @@
 import type { DriveState } from "@/affect/drive/types.ts"
 import type { EmotionalState } from "@/affect/emotion/types.ts"
 import type { SomaticState } from "@/affect/soma/types.ts"
+import { clamp01 } from "@/infra/lib/math.ts"
 import { COHERENCE } from "./constants.ts"
 import type { CoherenceState, FragmentationSource } from "./types.ts"
 
@@ -10,7 +11,13 @@ interface CoherenceContext {
   driveState: DriveState
   dissonanceScore: number
   selfConceptAuthenticity: number
-  stressLevel: number
+}
+
+/**
+ * Compute composite stress level from emotional and somatic indicators.
+ */
+function computeStressLevel(emotion: EmotionalState, soma: SomaticState): number {
+  return (emotion.frustration + soma.tension + emotion.caution) / 3
 }
 
 /**
@@ -57,7 +64,7 @@ export function computeCoherence(context: CoherenceContext, previous: CoherenceS
   score -= fragmentationPenalty
   score += COHERENCE.RECOVERY_RATE
 
-  return Math.max(0, Math.min(1, score))
+  return clamp01(score)
 }
 
 /**
@@ -90,7 +97,8 @@ export function computeCoherenceEffect(state: CoherenceState): {
 export function updateCoherenceState(previous: CoherenceState, context: CoherenceContext): CoherenceState {
   const fragmentationSources = detectFragmentation(context)
   const integrationScore = computeCoherence(context, previous)
-  const regressing = shouldRegress(integrationScore, context.stressLevel)
+  const stressLevel = computeStressLevel(context.emotion, context.soma)
+  const regressing = shouldRegress(integrationScore, stressLevel)
 
   let regressionDepth = previous.regressionDepth
   if (regressing) {

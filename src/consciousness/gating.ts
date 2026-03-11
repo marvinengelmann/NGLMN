@@ -4,8 +4,9 @@ import { redis } from "@/infra/integrations/redis.ts"
 import { clamp01 } from "@/infra/lib/math.ts"
 import { nowLocal } from "@/infra/lib/time.ts"
 import { getDriftThrottle } from "@/memory/working.ts"
-import { HEARTBEAT_GATING, LIFECYCLE } from "./constants.ts"
-import { isDreamDue } from "./lifecycle.ts"
+import { LIFECYCLE } from "@/self/constants.ts"
+import { isDreamDue } from "@/self/lifecycle.ts"
+import { HEARTBEAT_GATING } from "./constants.ts"
 
 const BURST_COOLDOWN_KEY = "working:gating:burstCooldown"
 const SECONDS_PER_TICK = 90

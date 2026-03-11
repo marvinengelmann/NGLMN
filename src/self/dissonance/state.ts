@@ -1,31 +1,6 @@
 import { db } from "@/infra/db/client.ts"
 import { dissonanceLog } from "@/infra/db/schema.ts"
-import { getValidatedRedisOr, redis } from "@/infra/integrations/redis.ts"
-import { type DissonanceEvent, DissonanceState } from "./types.ts"
-
-const KEYS = {
-  ACTIVE: "working:dissonance:active",
-  SCORE: "working:dissonance:score"
-} as const
-
-/**
- * Get current dissonance state from Redis.
- */
-export async function getDissonanceState(): Promise<DissonanceState> {
-  return getValidatedRedisOr(KEYS.ACTIVE, DissonanceState, {
-    activeDissonance: 0,
-    recentEvents: [],
-    cumulativeUnresolved: 0
-  })
-}
-
-/**
- * Save dissonance state to Redis.
- */
-export async function saveDissonanceState(state: DissonanceState): Promise<void> {
-  await redis.set(KEYS.ACTIVE, state)
-  await redis.set(KEYS.SCORE, state.activeDissonance.toString())
-}
+import type { DissonanceEvent } from "./types.ts"
 
 /**
  * Log a dissonance event to DB.

@@ -1,7 +1,7 @@
 import { getValidatedRedis, redis } from "@/infra/integrations/redis.ts"
 import { OperatorLocation, WeatherData } from "@/infra/integrations/types.ts"
 import { PERCEPTION } from "./constants.ts"
-import { PerceptionSummary } from "./types.ts"
+import type { PerceptionSummary } from "./types.ts"
 
 const KEYS = {
   PERCEPTION_LATEST: "working:perception:latest",
@@ -11,10 +11,6 @@ const KEYS = {
 } as const
 
 const WEATHER_TTL_SECONDS = 1800
-
-export async function getPerceptionSummary(): Promise<PerceptionSummary | null> {
-  return getValidatedRedis(KEYS.PERCEPTION_LATEST, PerceptionSummary)
-}
 
 export async function setPerceptionSummary(summary: PerceptionSummary): Promise<void> {
   await redis.set(KEYS.PERCEPTION_LATEST, summary)

@@ -2,9 +2,8 @@ import { differenceInHours, formatISO, getDay, getHours, getMinutes } from "date
 import { count, desc, eq, sql } from "drizzle-orm"
 import { getEmotionHistory } from "@/affect/emotion/state.ts"
 import { EmotionalState } from "@/affect/emotion/types.ts"
-import { AnimaAction, type TickSummary } from "@/consciousness/types.ts"
 import { callIntelligence } from "@/core/intelligence.ts"
-import { BooleanOutput, TextOutput } from "@/core/types.ts"
+import { AnimaAction, BooleanOutput, TextOutput, type TickSummary } from "@/core/types.ts"
 import { db } from "@/infra/db/client.ts"
 import { tickLog, workflows } from "@/infra/db/schema.ts"
 import { sendToOperator } from "@/infra/integrations/telegram.ts"
@@ -186,10 +185,10 @@ async function evaluatePerceptionTrigger(
 ): Promise<boolean> {
   if (!perception) return false
 
-  const userMessage = `${PERCEPTION_TRIGGER_EVAL_PROMPT}\n\nCondition: ${trigger.condition}\n\nPerception data:\n${JSON.stringify(perception)}`
+  const userMessage = `Condition: ${trigger.condition}\n\nPerception data:\n${JSON.stringify(perception)}`
 
   const callResult = await callIntelligence({
-    system: "Evaluate whether the perception data matches the given condition.",
+    system: PERCEPTION_TRIGGER_EVAL_PROMPT,
     userMessage,
     schema: BooleanOutput,
     maxTokens: 10,

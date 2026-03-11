@@ -1,4 +1,4 @@
-export function sumContributions<T extends string>(
+function sumContributions<T extends string>(
   contributions: { source: T; value: number }[]
 ): { level: number; source: T | null; maxContribution: number } {
   return contributions.reduce(

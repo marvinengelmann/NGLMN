@@ -17,6 +17,7 @@ import {
 import { querySomaticMemories } from "@/affect/soma/state.ts"
 import { computeSomaticUpdate } from "@/affect/soma/update.ts"
 import { DREAM_AFTERGLOW } from "@/expression/dream/constants.ts"
+import { applyClampedDeltas } from "@/infra/lib/math.ts"
 import { setEmotionContext } from "@/infra/lib/sentry.ts"
 import { elapsedMinutesSince, nowISO } from "@/infra/lib/time.ts"
 import { queryRelated } from "@/memory/episodic.ts"
@@ -48,16 +49,13 @@ export async function runEmotionChain(sense: SenseResult, prefetch: FeelPrefetch
 
   let dreamAfterglowDecayed: EmotionChainResult["dreamAfterglowDecayed"] = null
   if (prefetch.dreamAfterglow && prefetch.dreamAfterglow.intensity >= DREAM_AFTERGLOW.MIN_INTENSITY) {
-    emotion = Object.entries(prefetch.dreamAfterglow.emotionalResidue).reduce((acc, [dimension, residue]) => {
-      const key = dimension as keyof typeof acc
-      if (key in acc && typeof residue === "number") {
-        return {
-          ...acc,
-          [key]: Math.max(0, Math.min(1, acc[key] + residue * prefetch.dreamAfterglow!.intensity * DREAM_AFTERGLOW.BLEND_WEIGHT))
-        }
-      }
-      return acc
-    }, emotion)
+    const afterglow = prefetch.dreamAfterglow
+    const scaledResidue = Object.fromEntries(
+      Object.entries(afterglow.emotionalResidue)
+        .filter(([, v]) => typeof v === "number")
+        .map(([k, v]) => [k, (v as number) * afterglow.intensity * DREAM_AFTERGLOW.BLEND_WEIGHT])
+    )
+    emotion = applyClampedDeltas(emotion, scaledResidue)
     const decayed = {
       ...prefetch.dreamAfterglow,
       intensity: prefetch.dreamAfterglow.intensity * DREAM_AFTERGLOW.DECAY_PER_TICK
@@ -72,21 +70,15 @@ export async function runEmotionChain(sense: SenseResult, prefetch: FeelPrefetch
       alteredStateCleared = true
     } else {
       const emotionMods = computeEmotionModifiers(alteredState)
-      emotion = Object.entries(emotionMods).reduce((acc, [dimension, delta]) => {
-        const key = dimension as keyof typeof acc
-        if (key in acc) {
-          return { ...acc, [key]: Math.max(0, Math.min(1, acc[key] + delta)) }
-        }
-        return acc
-      }, emotion)
+      emotion = applyClampedDeltas(emotion, emotionMods)
     }
   }
 
   const timestampNow = nowISO()
-  const mergedTimestamps = sense.rawTriggers.reduce(
-    (acc, event) => ({ ...acc, [event.trigger]: timestampNow }),
-    { ...prefetch.triggerTimestamps }
-  )
+  const mergedTimestamps: Record<string, string> = { ...prefetch.triggerTimestamps }
+  for (const event of sense.rawTriggers) {
+    mergedTimestamps[event.trigger] = timestampNow
+  }
 
   const lastAction = prefetch.recentActions[0] ?? "idle"
   const satisfied = inferSatisfiedDrives(
@@ -117,13 +109,7 @@ export async function runEmotionChain(sense: SenseResult, prefetch: FeelPrefetch
   let soma = computeSomaticUpdate(prefetch.currentSoma, emotion, elapsed, somaticMemories)
   if (alteredState && !isExpired(alteredState)) {
     const somaMods = computeSomaModifiers(alteredState)
-    soma = Object.entries(somaMods).reduce((acc, [dimension, delta]) => {
-      const key = dimension as keyof typeof acc
-      if (key in acc && key !== "socialBattery") {
-        return { ...acc, [key]: Math.max(0, Math.min(1, acc[key] + delta)) }
-      }
-      return acc
-    }, soma)
+    soma = applyClampedDeltas(soma, somaMods, new Set(["socialBattery"]))
   }
 
   const episodicHits = messageText ? await queryRelated(messageText, 5) : []

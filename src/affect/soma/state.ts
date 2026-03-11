@@ -51,21 +51,10 @@ export async function getSomaticLastTimestamp(): Promise<string | null> {
 }
 
 /**
- * Get recent somatic history from DB.
- */
-export async function getSomaticHistory(limit = 10): Promise<SomaticState[]> {
-  const rows = await db.select().from(somaticHistory).orderBy(desc(somaticHistory.createdAt)).limit(limit)
-  return rows
-    .map((r) => SomaticState.safeParse(r.state))
-    .filter((r) => r.success)
-    .map((r) => r.data)
-}
-
-/**
  * Get somatic states recorded near the given timestamps (±5 min window).
  * Used to retrieve body states from episodically similar past situations.
  */
-export async function getSomaticStatesNear(timestamps: string[], limit: number): Promise<SomaticState[]> {
+async function getSomaticStatesNear(timestamps: string[], limit: number): Promise<SomaticState[]> {
   if (timestamps.length === 0) return []
 
   const WINDOW_MS = 5 * 60 * 1000

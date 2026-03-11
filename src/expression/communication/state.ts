@@ -16,13 +16,6 @@ export async function getCommunicationRegister(): Promise<CommunicationRegister 
   return getValidatedRedis(KEYS.REGISTER, CommunicationRegister)
 }
 
-/**
- * Save the current communication register to Redis.
- */
-export async function saveCommunicationRegister(register: CommunicationRegister): Promise<void> {
-  await redis.set(KEYS.REGISTER, register)
-}
-
 const CONV_KEYS = {
   CONVERSATION_BUFFER: "working:conversation:buffer",
   CONVERSATION_WAITING_SINCE: "working:conversation:waitingSince"
@@ -32,7 +25,7 @@ export async function getConversationBuffer(): Promise<ConversationSlot[]> {
   return getValidatedRedisOr(CONV_KEYS.CONVERSATION_BUFFER, z.array(ConversationSlot), [])
 }
 
-export async function setConversationBuffer(slots: ConversationSlot[]): Promise<void> {
+async function setConversationBuffer(slots: ConversationSlot[]): Promise<void> {
   await redis.set(CONV_KEYS.CONVERSATION_BUFFER, JSON.stringify(slots))
 }
 
@@ -67,15 +60,6 @@ export async function startNewConversation(): Promise<ConversationSlot | null> {
   buffer.push({ id: crypto.randomUUID(), messages: [], startedAt: now, lastActivityAt: now })
   await setConversationBuffer(buffer)
   return evicted
-}
-
-export async function getAllConversationMessages(): Promise<ConversationMessage[]> {
-  const buffer = await getConversationBuffer()
-  return buffer.flatMap((slot) => slot.messages)
-}
-
-export async function clearConversationBuffer(): Promise<void> {
-  await redis.del(CONV_KEYS.CONVERSATION_BUFFER)
 }
 
 export async function getConversationWaitingSince(): Promise<string | null> {

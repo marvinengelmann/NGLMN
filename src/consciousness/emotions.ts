@@ -23,6 +23,7 @@ export interface SharedEmotionInput {
   isDreaming: boolean
   noveltyLevel: number
   anticipatoryViolations: ExpectationViolation[]
+  previousSecondaryEmotionStates: Map<string, SecondaryEmotionState>
 }
 
 export function buildEmotionContext(

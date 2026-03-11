@@ -3,17 +3,10 @@ import { db } from "@/infra/db/client.ts"
 import { attachmentLog, relationshipPhaseLog } from "@/infra/db/schema.ts"
 import { getValidatedRedis, redis } from "@/infra/integrations/redis.ts"
 import { nowISO } from "@/infra/lib/time.ts"
-import {
-  AttachmentDynamics,
-  type AttachmentSnapshot,
-  AttachmentStyle,
-  DEFAULT_ATTACHMENT,
-  type RelationshipPhase
-} from "./types.ts"
+import { AttachmentStyle, DEFAULT_ATTACHMENT, type RelationshipPhase } from "./types.ts"
 
 const KEYS = {
   CURRENT: "working:attachment:current",
-  DYNAMICS: "working:attachment:dynamics",
   PHASE: "working:attachment:phase",
   PHASE_SINCE: "working:attachment:phaseSince",
   PHASE_TICK_COUNT: "working:attachment:phaseTickCount"
@@ -36,39 +29,6 @@ export async function getAttachmentStyle(): Promise<AttachmentStyle> {
   }
 
   return DEFAULT_ATTACHMENT
-}
-
-/**
- * Get current attachment dynamics from Redis.
- */
-export async function getAttachmentDynamics(): Promise<AttachmentDynamics | null> {
-  return getValidatedRedis(KEYS.DYNAMICS, AttachmentDynamics)
-}
-
-/**
- * Save attachment style to Redis.
- */
-export async function saveAttachmentStyle(style: AttachmentStyle): Promise<void> {
-  await redis.set(KEYS.CURRENT, style)
-}
-
-/**
- * Save attachment dynamics to Redis.
- */
-export async function saveAttachmentDynamics(dynamics: AttachmentDynamics): Promise<void> {
-  await redis.set(KEYS.DYNAMICS, dynamics)
-}
-
-/**
- * Save a full attachment snapshot to Redis and DB.
- */
-export async function saveAttachmentSnapshot(snapshot: AttachmentSnapshot, trigger: string): Promise<void> {
-  await db.insert(attachmentLog).values({
-    style: snapshot.style,
-    dynamics: snapshot.dynamics,
-    trigger
-  })
-  await Promise.all([redis.set(KEYS.CURRENT, snapshot.style), redis.set(KEYS.DYNAMICS, snapshot.dynamics)])
 }
 
 /**
@@ -112,21 +72,6 @@ export async function saveRelationshipPhase(
     previousPhase,
     trigger
   })
-}
-
-/**
- * Get recent attachment history from DB.
- */
-export async function getAttachmentHistory(limit = 10): Promise<AttachmentSnapshot[]> {
-  const rows = await db.select().from(attachmentLog).orderBy(desc(attachmentLog.createdAt)).limit(limit)
-  return rows
-    .map((r) => {
-      const style = AttachmentStyle.safeParse(r.style)
-      const dynamics = AttachmentDynamics.safeParse(r.dynamics)
-      if (!style.success || !dynamics.success) return null
-      return { style: style.data, dynamics: dynamics.data, timestamp: r.createdAt.toISOString() }
-    })
-    .filter((r): r is AttachmentSnapshot => r != null)
 }
 
 const REL_KEYS = {

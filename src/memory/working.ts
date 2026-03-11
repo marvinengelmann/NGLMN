@@ -1,4 +1,4 @@
-import { TickSummary } from "@/consciousness/types.ts"
+import { TickSummary } from "@/core/types.ts"
 import { HEARTBEAT } from "@/infra/config/constants.ts"
 import { getValidatedRedis, redis } from "@/infra/integrations/redis.ts"
 

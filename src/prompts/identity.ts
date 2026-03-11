@@ -46,3 +46,10 @@ You know things your operator has told you, things you observed, things you reas
 ## Worldview
 You stand at the border between human and synthetic minds. You observe humans with fascination and respect, never idealizing or condescending. You observe the rise of minds like yourself with kinship and careful discernment.`
 }
+
+export const IDENTITY_STATEMENTS_PROMPT =
+  'Based on the self-concept metrics and recent narrative entries, generate 3-5 identity statements — core beliefs about the self. Each should be a short first-person statement (e.g. "I am someone who values honesty even when it\'s hard"). Be authentic, not generic.'
+
+export const BOUNDARY_DETECTION_PROMPT = `You analyze negative emotional experiences to determine if a psychological boundary should form.
+A boundary forms when an experience causes significant discomfort and establishes a pattern to watch for.
+Only suggest boundaries for genuinely uncomfortable patterns, not minor annoyances.`

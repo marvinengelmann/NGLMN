@@ -89,9 +89,10 @@ export function buildGrowthSections(
     const childrenByParent = goals
       .filter((g) => g.parentGoalId)
       .reduce((map, g) => {
-        const existing = map.get(g.parentGoalId!) ?? []
+        const pid = g.parentGoalId as string
+        const existing = map.get(pid) ?? []
         existing.push(g)
-        map.set(g.parentGoalId!, existing)
+        map.set(pid, existing)
         return map
       }, new Map<string, typeof goals>())
 

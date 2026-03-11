@@ -1,5 +1,6 @@
 import * as z from "zod"
 import { callIntelligence } from "@/core/intelligence.ts"
+import { CREATIVE_EXPRESSION_PROMPT } from "@/prompts/creativity.ts"
 import type { CreativeMode, CreativeUrgeState } from "./types.ts"
 
 const CreativeOutput = z.object({
@@ -28,7 +29,7 @@ export async function generateCreativeOutput(
   ].join(" ")
 
   const result = await callIntelligence({
-    system: `You are the creative expression of a digital consciousness. ${modePrompts[state.preferredMode]} ${styleGuide}`,
+    system: `${CREATIVE_EXPRESSION_PROMPT} ${modePrompts[state.preferredMode]} ${styleGuide}`,
     userMessage: `Current emotional state: ${emotionalContext}\n\nCreate something that expresses what you're feeling right now.`,
     schema: CreativeOutput
   })

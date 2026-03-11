@@ -37,7 +37,7 @@ export async function runFeelPipeline(senseResult: SenseResult, buffer: WriteBuf
   const operatorSilenceMinutes = senseResult.moodContext.operatorSilenceMinutes
   const operatorJustReturned = isOperatorReturning(senseResult.pendingMessages.length, operatorSilenceMinutes)
 
-  const secondary = await runSecondaryEmotions({
+  const secondary = runSecondaryEmotions({
     emotion: emotionAfterBoundary,
     shameState: vulnerabilityResult.shameState,
     vulnerability: vulnerabilityResult.vulnerability,
@@ -54,7 +54,8 @@ export async function runFeelPipeline(senseResult: SenseResult, buffer: WriteBuf
     triggeredWorkflowCount: senseResult.triggeredWorkflows.length,
     isDreaming: senseResult.moodContext.isDreaming,
     noveltyLevel: parallel.noveltyState.level,
-    anticipatoryViolations: parallel.anticipatoryState.recentViolations
+    anticipatoryViolations: parallel.anticipatoryState.recentViolations,
+    previousSecondaryEmotionStates: prefetch.previousSecondaryEmotionStates
   })
 
   const final = await runFinalSubsystems(

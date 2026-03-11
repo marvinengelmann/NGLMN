@@ -129,12 +129,14 @@ export async function buildMemorySections(
 
     const topEntries = sliced.sort((a, b) => (b.confidence ?? 0) - (a.confidence ?? 0)).slice(0, 5)
     const relatedResults = await Promise.all(topEntries.map((entry) => getRelatedEntities(entry.id)))
-    const relationLines = relatedResults.flatMap((result, i) => {
-      if (result.isErr()) return []
-      const entry = topEntries[i]
-      if (!entry) return []
-      return result.value.slice(0, 2).map((rel) => `- "${entry.key}" → "${rel.key}"`)
-    }).slice(0, 10)
+    const relationLines = relatedResults
+      .flatMap((result, i) => {
+        if (result.isErr()) return []
+        const entry = topEntries[i]
+        if (!entry) return []
+        return result.value.slice(0, 2).map((rel) => `- "${entry.key}" → "${rel.key}"`)
+      })
+      .slice(0, 10)
     if (relationLines.length > 0) {
       sections.push(["# Knowledge Connections", ...relationLines].join("\n"))
     }

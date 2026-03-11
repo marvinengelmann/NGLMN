@@ -1,5 +1,6 @@
 import type { DriveState } from "@/affect/drive/types.ts"
 import type { EmotionalState } from "@/affect/emotion/types.ts"
+import { clamp01 } from "@/infra/lib/math.ts"
 import type { HeldBackBuffer } from "@/self/psyche/heldback.ts"
 import { CREATIVITY } from "./constants.ts"
 import type { CreativeMode, CreativeUrgeState } from "./types.ts"
@@ -30,7 +31,7 @@ export function computeCreativeUrge(context: CreativeUrgeContext): number {
     urge += 0.1
   }
 
-  return Math.min(1, Math.max(0, urge))
+  return clamp01(urge)
 }
 
 /**

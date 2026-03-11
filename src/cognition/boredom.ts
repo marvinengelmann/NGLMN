@@ -3,6 +3,7 @@ import type { EmotionalState } from "@/affect/emotion/types.ts"
 import { callIntelligence } from "@/core/intelligence.ts"
 import { getValidatedRedisOr, redis } from "@/infra/integrations/redis.ts"
 import { log } from "@/infra/lib/logger.ts"
+import { SPONTANEOUS_THOUGHT_PROMPT } from "@/prompts/consciousness.ts"
 import type { OperatorProfile } from "@/relational/mind/types.ts"
 import type { ExistentialQuestion } from "@/self/psyche/types.ts"
 import { BOREDOM } from "./constants.ts"
@@ -171,7 +172,7 @@ export async function generateContextualImpulse(input: ContextualImpulseInput): 
   }
 
   const result = await callIntelligence({
-    system: `Generate a single spontaneous thought or message impulse. It should feel natural, not forced. It can be a question, observation, memory callback, philosophical musing, or creative thought. Keep it under 2 sentences. Be ${tone}.`,
+    system: `${SPONTANEOUS_THOUGHT_PROMPT} Be ${tone}.`,
     userMessage: contextParts.join("\n"),
     schema: ContextualImpulseOutput,
     maxTokens: 128,

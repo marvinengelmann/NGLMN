@@ -1,5 +1,6 @@
 import { getActiveAlteredState } from "@/affect/altered/state.ts"
 import { getDriveState } from "@/affect/drive/state.ts"
+import { getAllSecondaryEmotionStates } from "@/affect/emotion/batch.ts"
 import { getShameState } from "@/affect/emotion/shame.ts"
 import {
   getAfterglowEntries,
@@ -12,16 +13,18 @@ import { getMetacognitiveState } from "@/cognition/awareness.ts"
 import { getActiveConversation } from "@/expression/communication/state.ts"
 import { getCreativeUrgeState } from "@/expression/creativity/state.ts"
 import { getDreamAfterglow } from "@/expression/dream/state.ts"
+import { getKnowledge } from "@/memory/semantic.ts"
 import { getConsecutiveConversationTicks, getConsecutiveIdleTicks, getRecentActions } from "@/memory/working.ts"
 import { getAnticipatoryState } from "@/perception/anticipation/state.ts"
 import { getNoveltyState } from "@/perception/novelty/state.ts"
 import { getAttachmentStyle } from "@/relational/attachment/state.ts"
 import { getVulnerabilityPrevLevel } from "@/relational/attachment/store.ts"
-import { getOperatorModel } from "@/relational/mind/state.ts"
+import { getOperatorModel, getRelationalPatterns } from "@/relational/mind/state.ts"
 import { getAggregateTrustExperience } from "@/relational/trust/compute.ts"
 import { getBoundaryState } from "@/self/boundaries/state.ts"
 import { getCoherenceState } from "@/self/coherence/state.ts"
 import { getDeceptionState } from "@/self/deception/state.ts"
+import { getHeldBackBuffer } from "@/self/psyche/heldback.ts"
 import { getGrowthArcs, getSelfConcept } from "@/self/psyche/state.ts"
 import type { FeelPrefetch } from "./types.ts"
 
@@ -53,7 +56,11 @@ export async function prefetchFeelState(): Promise<FeelPrefetch> {
     vulnerabilityPrevLevel,
     triggerTimestamps,
     recentActions,
-    recentGrowthArcs
+    recentGrowthArcs,
+    heldBackBuffer,
+    previousSecondaryEmotionStates,
+    selfInsightsResult,
+    relationalPatterns
   ] = await Promise.all([
     getEmotionalState(),
     getEmotionalMomentum(),
@@ -81,7 +88,11 @@ export async function prefetchFeelState(): Promise<FeelPrefetch> {
     getVulnerabilityPrevLevel(),
     getRawTriggerTimestamps(),
     getRecentActions(),
-    getGrowthArcs()
+    getGrowthArcs(),
+    getHeldBackBuffer(),
+    getAllSecondaryEmotionStates(),
+    getKnowledge({ category: "insight", scope: "self" }),
+    getRelationalPatterns()
   ])
 
   return {
@@ -111,6 +122,10 @@ export async function prefetchFeelState(): Promise<FeelPrefetch> {
     vulnerabilityPrevLevel,
     triggerTimestamps,
     recentActions,
-    recentGrowthArcs
+    recentGrowthArcs,
+    heldBackBuffer,
+    previousSecondaryEmotionStates,
+    selfInsights: selfInsightsResult.unwrapOr([]),
+    relationalPatterns
   }
 }

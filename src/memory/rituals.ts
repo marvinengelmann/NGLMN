@@ -2,7 +2,7 @@ import { getDay, getHours, parseISO } from "date-fns"
 import type { ConversationSlot } from "@/expression/communication/types.ts"
 import { nowISO } from "@/infra/lib/time.ts"
 import { RELATIONAL_MEMORY } from "./constants.ts"
-import type { RelationalRitual } from "./relational.ts"
+import type { RelationalRitual } from "./types.ts"
 
 interface DetectedRitual {
   type: "temporal" | "phrase" | "behavioral"

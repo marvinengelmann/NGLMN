@@ -45,7 +45,9 @@ export function matchRelationalPatterns(
   if (library.patterns.length === 0 || signals.messageCount === 0) return []
 
   return library.patterns
-    .filter((pattern) => pattern.confidence >= RELATIONAL_TRIGGERS.MIN_MATCH_CONFIDENCE && checkPatternMatch(signals, pattern))
+    .filter(
+      (pattern) => pattern.confidence >= RELATIONAL_TRIGGERS.MIN_MATCH_CONFIDENCE && checkPatternMatch(signals, pattern)
+    )
     .map((pattern) => ({
       trigger: "relational_pattern_match" as const,
       intensity: Math.min(

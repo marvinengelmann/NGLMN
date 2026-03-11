@@ -1,6 +1,6 @@
 import { getRegisteredEmotions } from "@/affect/emotion/registry.ts"
 import { DREAM_AFTERGLOW } from "@/expression/dream/constants.ts"
-import { operatorModelLog, somaticHistory } from "@/infra/db/schema.ts"
+import { boundaryLog, coherenceLog, heldBackLog, operatorModelLog, somaticHistory } from "@/infra/db/schema.ts"
 import type { WriteBuffer } from "../persistence.ts"
 import type {
   EmotionChainResult,
@@ -42,7 +42,7 @@ const REDIS = {
   METACOGNITION_STATE: "working:metacognition:state"
 } as const
 
-export function stageEmotionChainWrites(buffer: WriteBuffer, chain: EmotionChainResult): void {
+function stageEmotionChainWrites(buffer: WriteBuffer, chain: EmotionChainResult): void {
   buffer.stage(REDIS.EMOTION_CURRENT, chain.emotion)
   buffer.stage(REDIS.EMOTION_MOMENTUM, chain.momentum)
   buffer.stage(REDIS.EMOTION_AFTERGLOW, chain.afterglowEntries)
@@ -68,7 +68,7 @@ export function stageEmotionChainWrites(buffer: WriteBuffer, chain: EmotionChain
   })
 }
 
-export function stageParallelWrites(buffer: WriteBuffer, parallel: ParallelFanResult): void {
+function stageParallelWrites(buffer: WriteBuffer, parallel: ParallelFanResult): void {
   buffer.stage(REDIS.INSTINCT, parallel.instinct)
   buffer.stage(REDIS.DISSONANCE_ACTIVE, parallel.dissonance)
   buffer.stage(REDIS.DISSONANCE_SCORE, parallel.dissonance.activeDissonance.toString())
@@ -85,17 +85,36 @@ export function stageParallelWrites(buffer: WriteBuffer, parallel: ParallelFanRe
     model: parallel.operatorModel,
     trigger: parallel.operatorModelTrigger
   })
+
+  parallel.newBoundaryViolations.forEach((violation) => {
+    buffer.stagePostgres(boundaryLog, {
+      boundaryId: violation.boundaryId,
+      event: violation.description,
+      strength: violation.severity
+    })
+  })
 }
 
-export function stageVulnerabilityWrites(buffer: WriteBuffer, result: VulnerabilityChainResult): void {
+function stageVulnerabilityWrites(buffer: WriteBuffer, result: VulnerabilityChainResult): void {
   buffer.stage(REDIS.VULNERABILITY_CURRENT, result.vulnerability)
   buffer.stage(REDIS.VULNERABILITY_PREV_LEVEL, result.vulnerability.level)
   buffer.stage(REDIS.VULNERABILITY_MESSAGE_STYLE, result.vulnerableMessageStyle)
   buffer.stage(REDIS.SHAME_STATE, result.shameState)
   buffer.stage(REDIS.HELD_BACK_BUFFER, result.heldBackBuffer)
+
+  if (result.suppressionDetected) {
+    const newest = result.heldBackBuffer.entries.at(-1)
+    if (newest) {
+      buffer.stagePostgres(heldBackLog, {
+        content: newest.content,
+        reason: newest.reason,
+        emotionalCharge: newest.emotionalCharge
+      })
+    }
+  }
 }
 
-export function stageSecondaryWrites(buffer: WriteBuffer, result: SecondaryResult): void {
+function stageSecondaryWrites(buffer: WriteBuffer, result: SecondaryResult): void {
   const emotions = getRegisteredEmotions()
   emotions.forEach((entry) => {
     const state = result.secondaryEmotionStates.get(entry.name)
@@ -109,13 +128,19 @@ export function stageSecondaryWrites(buffer: WriteBuffer, result: SecondaryResul
   }
 }
 
-export function stageFinalWrites(buffer: WriteBuffer, final: FinalFanResult): void {
+function stageFinalWrites(buffer: WriteBuffer, final: FinalFanResult): void {
   buffer.stage(REDIS.DECEPTION_CURRENT, final.deceptionState)
   buffer.stage(REDIS.COMMUNICATION_REGISTER, final.register)
   buffer.stage(REDIS.ATTENTION_STATE, final.attentionState)
   buffer.stage(REDIS.CREATIVE_URGE, final.creativeUrge)
   buffer.stage(REDIS.COHERENCE_STATE, final.coherenceState)
   buffer.stage(REDIS.METACOGNITION_STATE, final.metacognitiveState)
+
+  buffer.stagePostgres(coherenceLog, {
+    integrationScore: final.coherenceState.integrationScore,
+    fragmentationSources: final.coherenceState.fragmentationSources,
+    regressionActive: final.coherenceState.regressionActive
+  })
 }
 
 export function stageAllFeelWrites(

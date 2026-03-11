@@ -91,24 +91,12 @@ export async function getEmotionalMomentum(): Promise<EmotionalMomentum> {
   return getValidatedRedisOr(MOMENTUM_KEYS.MOMENTUM, EmotionalMomentum, DEFAULT_EMOTIONAL_MOMENTUM)
 }
 
-export async function saveEmotionalMomentum(momentum: EmotionalMomentum): Promise<void> {
-  await redis.set(MOMENTUM_KEYS.MOMENTUM, momentum)
-}
-
 export async function getAfterglowEntries(): Promise<AfterglowEntry[]> {
   return getValidatedRedisOr(MOMENTUM_KEYS.AFTERGLOW, z.array(AfterglowEntry), [])
 }
 
-export async function saveAfterglowEntries(entries: AfterglowEntry[]): Promise<void> {
-  await redis.set(MOMENTUM_KEYS.AFTERGLOW, entries)
-}
-
 export async function getMoodBaseline(): Promise<EmotionalState> {
   return getValidatedRedisOr(MOMENTUM_KEYS.MOOD_BASELINE, EmotionalState, DEFAULT_EMOTIONAL_STATE)
-}
-
-export async function saveMoodBaseline(baseline: EmotionalState): Promise<void> {
-  await redis.set(MOMENTUM_KEYS.MOOD_BASELINE, baseline)
 }
 
 const WORKING_KEYS = {
@@ -140,30 +128,6 @@ export async function getTriggerTimestamps(): Promise<Record<string, number>> {
   )
 }
 
-export async function setTriggerTimestamp(trigger: string, isoTimestamp: string): Promise<void> {
-  const raw = await redis.get<Record<string, string>>(WORKING_KEYS.EMOTION_TRIGGER_TIMESTAMPS)
-  const timestamps = raw ?? {}
-  timestamps[trigger] = isoTimestamp
-  await redis.set(WORKING_KEYS.EMOTION_TRIGGER_TIMESTAMPS, timestamps)
-}
-
-/**
- * Batch-set multiple trigger timestamps in a single Redis read+write.
- */
-export async function setTriggerTimestamps(entries: Array<{ trigger: string; timestamp: string }>): Promise<void> {
-  if (entries.length === 0) return
-  const raw = await redis.get<Record<string, string>>(WORKING_KEYS.EMOTION_TRIGGER_TIMESTAMPS)
-  const timestamps = raw ?? {}
-  entries.forEach(({ trigger, timestamp }) => {
-    timestamps[trigger] = timestamp
-  })
-  await redis.set(WORKING_KEYS.EMOTION_TRIGGER_TIMESTAMPS, timestamps)
-}
-
 export async function getLastEmotionTimestamp(): Promise<string | null> {
   return redis.get<string>(WORKING_KEYS.EMOTION_LAST_TIMESTAMP)
-}
-
-export async function setLastEmotionTimestamp(isoTimestamp: string): Promise<void> {
-  await redis.set(WORKING_KEYS.EMOTION_LAST_TIMESTAMP, isoTimestamp)
 }

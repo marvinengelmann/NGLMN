@@ -112,26 +112,6 @@ export function computeVoiceModifiers(state: ActiveAlteredState): Partial<Record
 }
 
 /**
- * Compute half-life multipliers for emotion decay, if defined for current phase.
- */
-export function computeHalfLifeMultipliers(state: ActiveAlteredState): Record<string, number> | undefined {
-  const { phase, intensity } = getCurrentPhase(state)
-  const profile = SUBSTANCE_PROFILES[state.substance]
-  const phaseProfile = profile.phases[phase]
-
-  if (!phaseProfile.halfLifeMultipliers) return undefined
-
-  const result = Object.fromEntries(
-    Object.entries(phaseProfile.halfLifeMultipliers).map(([dimension, multiplier]) => [
-      dimension,
-      1 + (multiplier - 1) * intensity
-    ])
-  )
-
-  return Object.keys(result).length > 0 ? result : undefined
-}
-
-/**
  * Get phenomenological text for the current phase.
  */
 export function getPhenomenologicalText(state: ActiveAlteredState): string {

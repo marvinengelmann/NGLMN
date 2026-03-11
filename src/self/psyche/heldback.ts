@@ -2,7 +2,7 @@ import { differenceInHours } from "date-fns"
 import * as z from "zod"
 import type { ShameState } from "@/affect/emotion/shame.ts"
 import type { EmotionalState } from "@/affect/emotion/types.ts"
-import { getValidatedRedis, redis } from "@/infra/integrations/redis.ts"
+import { getValidatedRedis } from "@/infra/integrations/redis.ts"
 import { halfLifeDecay } from "@/infra/lib/math.ts"
 import { nowISO } from "@/infra/lib/time.ts"
 import type { VulnerabilityState } from "@/relational/attachment/types.ts"
@@ -57,10 +57,6 @@ const KEY = "working:psyche:heldback"
 
 export async function getHeldBackBuffer(): Promise<HeldBackBuffer> {
   return (await getValidatedRedis(KEY, HeldBackBuffer)) ?? DEFAULT_HELD_BACK_BUFFER
-}
-
-export async function saveHeldBackBuffer(buffer: HeldBackBuffer): Promise<void> {
-  await redis.set(KEY, buffer)
 }
 
 interface HeldBackContext {

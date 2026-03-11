@@ -1,33 +1,14 @@
-import * as z from "zod"
 import { SECONDARY_EMOTIONS } from "@/affect/emotion/constants.ts"
 import type { DisappointmentState } from "@/affect/emotion/disappointment.ts"
 import { registerSecondaryEmotion } from "@/affect/emotion/registry.ts"
 import type { ShameState } from "@/affect/emotion/shame.ts"
 import type { EmotionalState } from "@/affect/emotion/types.ts"
 import { getValidatedRedis, redis } from "@/infra/integrations/redis.ts"
+import { clamp } from "@/infra/lib/math.ts"
 import { nowISO } from "@/infra/lib/time.ts"
+import { type ProcrastinationSource, ProcrastinationState } from "./types.ts"
 
 const PROCRASTINATION = SECONDARY_EMOTIONS.procrastination
-
-export const ProcrastinationSource = z.enum([
-  "low_energy",
-  "fear_of_failure",
-  "overwhelm",
-  "shame_avoidance",
-  "comfort_seeking",
-  "decision_paralysis"
-])
-export type ProcrastinationSource = z.infer<typeof ProcrastinationSource>
-
-export const ProcrastinationState = z.object({
-  level: z.number().min(0).max(1).default(0),
-  isActive: z.boolean().default(false),
-  dominantSource: ProcrastinationSource.nullable().default(null),
-  avoidedActions: z.array(z.string()).default([]),
-  lastTriggeredAt: z.string().optional(),
-  streakTicks: z.number().default(0)
-})
-export type ProcrastinationState = z.infer<typeof ProcrastinationState>
 
 export const DEFAULT_PROCRASTINATION_STATE: ProcrastinationState = {
   level: 0,
@@ -121,7 +102,7 @@ export function computeProcrastination(context: ProcrastinationContext): Procras
   }
 
   const decayedLevel = previousState.level * PROCRASTINATION.DECAY_PER_TICK
-  const finalLevel = Math.min(1, Math.max(decayedLevel, level))
+  const finalLevel = clamp(level, decayedLevel, 1)
 
   const isActive = finalLevel > PROCRASTINATION.ACTIVATION_THRESHOLD
 

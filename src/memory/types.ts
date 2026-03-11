@@ -52,3 +52,34 @@ export const EpisodeMetadata = z.object({
   sourceLabel: z.string().optional()
 })
 export type EpisodeMetadata = z.infer<typeof EpisodeMetadata>
+
+export const RelationalRitual = z.object({
+  type: z.enum(["temporal", "phrase", "behavioral"]).default("phrase"),
+  pattern: z.string(),
+  variants: z.array(z.string()).optional(),
+  timeWindow: z
+    .object({
+      hour: z.number(),
+      dayOfWeek: z.number().optional()
+    })
+    .optional(),
+  frequency: z.number().min(0),
+  lastOccurredAt: z.string(),
+  emotionalSignificance: z.number().min(0).max(1),
+  firstObservedAt: z.string(),
+  confidence: z.number().min(0).max(1).default(0.5)
+})
+export type RelationalRitual = z.infer<typeof RelationalRitual>
+
+export const RelationalMemoryState = z.object({
+  rituals: z.array(RelationalRitual),
+  sharedNarrative: z.string().nullable(),
+  keyMoments: z.array(
+    z.object({
+      description: z.string(),
+      timestamp: z.string(),
+      emotionalWeight: z.number().min(0).max(1)
+    })
+  )
+})
+export type RelationalMemoryState = z.infer<typeof RelationalMemoryState>

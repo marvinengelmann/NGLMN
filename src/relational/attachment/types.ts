@@ -60,3 +60,11 @@ export const DEFAULT_VULNERABLE_MESSAGE_STYLE: VulnerableMessageStyle = {
   hesitationLevel: 0.3,
   intimacyReveal: 0.1
 }
+
+export const AttachmentCrisisState = z.object({
+  active: z.boolean(),
+  type: z.string().nullable(),
+  multiplier: z.number(),
+  expiresAt: z.string().nullable()
+})
+export type AttachmentCrisisState = z.infer<typeof AttachmentCrisisState>

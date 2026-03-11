@@ -1,6 +1,7 @@
 import type { EmotionalState } from "@/affect/emotion/types.ts"
 import type { SomaticState } from "@/affect/soma/types.ts"
 import { METACOGNITION } from "@/cognition/constants.ts"
+import { clamp01 } from "@/infra/lib/math.ts"
 import type { MetacognitiveState } from "./types.ts"
 
 interface ClarityContext {
@@ -83,7 +84,7 @@ export function computeCognitiveFatigue(
     fatigue = Math.max(0, fatigue - METACOGNITION.FATIGUE_SLEEP_RESET)
   }
 
-  return Math.min(1, Math.max(0, fatigue))
+  return clamp01(fatigue)
 }
 
 /**

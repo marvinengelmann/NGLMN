@@ -5,6 +5,7 @@ import {
   setConversationWaitingSince
 } from "@/expression/communication/state.ts"
 import { HEARTBEAT } from "@/infra/config/constants.ts"
+import { distortionLog } from "@/infra/db/schema.ts"
 import { log } from "@/infra/lib/logger.ts"
 import { setTickContext } from "@/infra/lib/sentry.ts"
 import { nowISO } from "@/infra/lib/time.ts"
@@ -63,6 +64,16 @@ export async function runHeartbeat() {
       }
 
       const preloaded = await preloadContextState(senseData, feelResult.emotion)
+
+      preloaded.episodes
+        .flatMap((ep) => ep.distortions)
+        .forEach((d) => {
+          buffer.stagePostgres(distortionLog, {
+            type: d.type,
+            originalEpisodeId: d.originalEpisodeId,
+            alteredField: d.alteredField
+          })
+        })
 
       const tickState: TickState = {
         tickId,

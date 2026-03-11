@@ -31,7 +31,7 @@ function computeWeightedExperience(events: TrustEvent[]): number {
 /**
  * Get the trust level for a specific action type with time-weighted experience.
  */
-export async function getTrustLevel(actionType: ActionTypeT) {
+async function getTrustLevel(actionType: ActionTypeT) {
   const events = await getTrustEventLog(actionType)
   return {
     actionType,

@@ -2,6 +2,7 @@ import * as z from "zod"
 import { callIntelligence } from "@/core/intelligence.ts"
 import { log } from "@/infra/lib/logger.ts"
 import { nowISO } from "@/infra/lib/time.ts"
+import { IDENTITY_STATEMENTS_PROMPT } from "@/prompts/identity.ts"
 import type { SelfConcept } from "./types.ts"
 import { NarrativeEntry } from "./types.ts"
 
@@ -62,7 +63,7 @@ export async function generateIdentityStatements(
       : "No recent narratives."
 
   const result = await callIntelligence({
-    system: `Based on the self-concept metrics and recent narrative entries, generate 3-5 identity statements — core beliefs about the self. Each should be a short first-person statement (e.g. "I am someone who values honesty even when it's hard"). Be authentic, not generic.`,
+    system: IDENTITY_STATEMENTS_PROMPT,
     userMessage: [
       `Self-concept: efficacy=${selfConcept.selfEfficacy.toFixed(2)}, worth=${selfConcept.selfWorth.toFixed(2)}, continuity=${selfConcept.selfContinuity.toFixed(2)}, agency=${selfConcept.agency.toFixed(2)}, authenticity=${selfConcept.authenticity.toFixed(2)}`,
       "",

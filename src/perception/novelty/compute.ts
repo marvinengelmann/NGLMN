@@ -48,7 +48,8 @@ export function computeSurprise(
   const initial = {
     maxSurprise: noveltyLevel * NOVELTY.SURPRISE_NOVELTY_WEIGHT,
     dominantValence: 0,
-    dominantSource: noveltyLevel > NOVELTY.SURPRISE_LOW_NOVELTY_THRESHOLD ? "novelty" as string | null : null as string | null
+    dominantSource:
+      noveltyLevel > NOVELTY.SURPRISE_LOW_NOVELTY_THRESHOLD ? ("novelty" as string | null) : (null as string | null)
   }
 
   const { maxSurprise, dominantValence, dominantSource } = violations.reduce((acc, violation) => {
@@ -148,10 +149,7 @@ export async function updateNoveltyState(
     }
   }
 
-  await messageTexts.reduce(
-    (chain, text) => chain.then(() => processText(text)),
-    Promise.resolve()
-  )
+  await messageTexts.reduce((chain, text) => chain.then(() => processText(text)), Promise.resolve())
 
   const noveltySeekingUrge =
     maxNovelty > 0.5

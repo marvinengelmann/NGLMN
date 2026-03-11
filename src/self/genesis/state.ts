@@ -78,10 +78,3 @@ export async function getGenesisDNA(): Promise<GenesisDNA | null> {
 export function cacheGenesisRecord(record: GenesisRecord): void {
   memoryCache = record
 }
-
-/**
- * Reset the memory cache (for testing).
- */
-export function resetGenesisCache(): void {
-  memoryCache = undefined
-}

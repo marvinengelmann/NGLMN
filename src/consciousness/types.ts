@@ -5,6 +5,7 @@ import { EmotionalState, EmotionUpdateEvent, MoodContext, type SecondaryEmotionS
 import { SomaticState } from "@/affect/soma/types.ts"
 import { InnerDialog } from "@/cognition/polyphony/types.ts"
 import { AttentionState, CognitiveConflict, InstinctImpression, MetacognitiveState } from "@/cognition/types.ts"
+import { AnimaDecision } from "@/core/types.ts"
 import { CommunicationRegister } from "@/expression/communication/types.ts"
 import { CreativeUrgeState } from "@/expression/creativity/types.ts"
 import { DreamThinkResult } from "@/expression/dream/types.ts"
@@ -13,7 +14,6 @@ import { HealthCheckResult } from "@/governance/health/types.ts"
 import { WorkflowDefinition } from "@/governance/workflow/types.ts"
 import { PendingMessage, WeatherData } from "@/infra/integrations/types.ts"
 import type { EnrichedTweet } from "@/infra/integrations/x.ts"
-import { SemanticCategory, SemanticScope } from "@/memory/types.ts"
 import { AnticipatoryState } from "@/perception/anticipation/types.ts"
 import { SubjectiveTimeState } from "@/perception/time/types.ts"
 import { PerceptionSummary } from "@/perception/types.ts"
@@ -25,103 +25,7 @@ import { DissonanceState } from "@/self/dissonance/types.ts"
 import { HeldBackBuffer } from "@/self/psyche/heldback.ts"
 import { SelfConcept } from "@/self/psyche/types.ts"
 
-export const LifeEventType = z.enum([
-  "shower",
-  "walk",
-  "nap",
-  "deep_focus",
-  "cooking",
-  "gaming",
-  "movie",
-  "exercise",
-  "errands",
-  "reading",
-  "cleaning",
-  "drawing",
-  "music",
-  "bath",
-  "socializing",
-  "smoking_joint",
-  "drinking_wine",
-  "party",
-  "bar_with_friends",
-  "coffee_binge",
-  "energy_drink",
-  "microdosing"
-])
-export type LifeEventType = z.infer<typeof LifeEventType>
-
-export const AnimaAction = z.enum([
-  "idle",
-  "reflect",
-  "update_goal",
-  "evolve",
-  "dream",
-  "morning",
-  "life_event",
-  "social_media",
-  "store_knowledge",
-  "check_email",
-  "create"
-])
-export type AnimaAction = z.infer<typeof AnimaAction>
-
-export const AnimaDecision = z.object({
-  reasoning: z.string(),
-  messages: z.array(
-    z.object({
-      text: z.string(),
-      replyTo: z.number().optional(),
-      asVoice: z.boolean().default(false),
-      voiceText: z.string().optional(),
-      withImage: z.boolean().default(false),
-      imagePrompt: z.string().optional(),
-      imageSelf: z.boolean().default(false),
-      imageAspectRatio: z.enum(["1:1", "16:9", "9:16"]).default("1:1")
-    })
-  ),
-  expectsReply: z.boolean(),
-  action: AnimaAction,
-  actionPayload: z
-    .object({
-      insight: z.string().optional(),
-      goalId: z.string().optional(),
-      status: z.string().optional(),
-      evolutionType: z.enum(["code", "prompt", "workflow"]).optional(),
-      evolutionInsight: z.string().optional(),
-      capabilityGap: z.string().optional(),
-      lifeEventType: LifeEventType.optional(),
-      lifeEventDetail: z.string().optional(),
-      socialMediaMode: z.enum(["browse", "post"]).optional(),
-      xPostText: z.string().max(280).optional(),
-      knowledgeCategory: SemanticCategory.optional(),
-      knowledgeKey: z.string().optional(),
-      knowledgeValue: z.string().optional(),
-      knowledgeScope: SemanticScope.optional()
-    })
-    .optional(),
-  workflowId: z.string().uuid().nullable().default(null),
-  corrections: z
-    .array(
-      z.object({
-        text: z.string(),
-        replyTo: z.number().optional()
-      })
-    )
-    .default([])
-})
-export type AnimaDecision = z.infer<typeof AnimaDecision>
-
-export const TickSummary = z.object({
-  tickId: z.string(),
-  timestamp: z.string(),
-  action: AnimaAction,
-  reasoning: z.string(),
-  messagesProcessed: z.number(),
-  responseSent: z.boolean(),
-  durationMs: z.number()
-})
-export type TickSummary = z.infer<typeof TickSummary>
+export { AnimaAction, AnimaDecision, LifeEventType, TickSummary } from "@/core/types.ts"
 
 export const ConversationState = z.object({
   waitingSeconds: z.number(),

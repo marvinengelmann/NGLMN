@@ -109,7 +109,7 @@ export function computeMoodBaseline(context: MoodContext): EmotionalState {
  * Apply time-based drift towards the dynamic baseline using dimension-specific half-lives.
  * Formula: newValue = baseline + (current - baseline) * 2^(-elapsed / halfLife)
  */
-export function applyDrift(state: EmotionalState, baseline: EmotionalState, elapsedMinutes: number): EmotionalState {
+function applyDrift(state: EmotionalState, baseline: EmotionalState, elapsedMinutes: number): EmotionalState {
   const drifted = Object.fromEntries(
     (Object.keys(EMOTION.HALF_LIVES) as (keyof typeof EMOTION.HALF_LIVES)[]).map((dimension) => {
       const halfLife = EMOTION.HALF_LIVES[dimension]
@@ -124,7 +124,7 @@ export function applyDrift(state: EmotionalState, baseline: EmotionalState, elap
  * Scale a trigger's base delta by time since last similar trigger (novelty).
  * First message after 48h → ~2.2x, after 5min → ~1.05x.
  */
-export function scaleByNovelty(baseDelta: number, minutesSinceLastSimilar: number): number {
+function scaleByNovelty(baseDelta: number, minutesSinceLastSimilar: number): number {
   const hours = minutesSinceLastSimilar / 60
   const multiplier = Math.min(EMOTION.NOVELTY_MAX_MULTIPLIER, 1 + Math.log2(1 + hours) * EMOTION.NOVELTY_SCALE)
   return baseDelta * multiplier
@@ -358,6 +358,27 @@ const EMOTION_DIMENSIONS: (keyof EmotionalState)[] = [
   "confidence",
   "energy"
 ]
+
+/**
+ * Dampen emotions towards neutral (0.5) by a given factor.
+ * Energy is excluded since it represents a resource, not an emotion.
+ */
+export function applyEmotionalDamping(emotion: EmotionalState, damping: number): EmotionalState {
+  if (damping <= 0) return emotion
+  const factor = 1 - damping
+  return clampState({
+    ...emotion,
+    curiosity: 0.5 + (emotion.curiosity - 0.5) * factor,
+    satisfaction: 0.5 + (emotion.satisfaction - 0.5) * factor,
+    frustration: 0.5 + (emotion.frustration - 0.5) * factor,
+    boredom: 0.5 + (emotion.boredom - 0.5) * factor,
+    excitement: 0.5 + (emotion.excitement - 0.5) * factor,
+    caution: 0.5 + (emotion.caution - 0.5) * factor,
+    connection: 0.5 + (emotion.connection - 0.5) * factor,
+    confidence: 0.5 + (emotion.confidence - 0.5) * factor,
+    energy: emotion.energy
+  })
+}
 
 /**
  * Blend computed emotions with previous state via momentum for emotional continuity.

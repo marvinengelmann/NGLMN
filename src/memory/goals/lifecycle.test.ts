@@ -29,10 +29,7 @@ describe("Goal Priority Decay Math", () => {
   })
 
   it("should take ~1440 ticks to decay 0.01 for self goals", () => {
-    const priority = Array.from({ length: 1440 }).reduce<number>(
-      (p) => decayPriority(p, false),
-      0.5
-    )
+    const priority = Array.from({ length: 1440 }).reduce<number>((p) => decayPriority(p, false), 0.5)
     expect(priority).toBeCloseTo(0.49, 2)
   })
 })

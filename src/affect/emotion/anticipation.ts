@@ -44,7 +44,6 @@ export function compute(context: Context): AnticipationState {
 
   let level = 0
   let source: AnticipationSource | null = null
-  let maxContribution = 0
   let valenceSum = 0
   let valenceCount = 0
 
@@ -110,7 +109,6 @@ export function compute(context: Context): AnticipationState {
   )
   level = accumulated.level
   source = accumulated.source
-  maxContribution = accumulated.maxContribution
   valenceSum = accumulated.valenceSum
   valenceCount = accumulated.valenceCount
 

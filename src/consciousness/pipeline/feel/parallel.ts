@@ -1,12 +1,13 @@
 import type { EmotionalState, EmotionUpdateEvent } from "@/affect/emotion/types.ts"
 import type { SomaticState } from "@/affect/soma/types.ts"
 import { computeInstinctImpression } from "@/cognition/instinct.ts"
-import { getKnowledge } from "@/memory/semantic.ts"
-import { getRecentActions } from "@/memory/working.ts"
 import { updateAnticipatoryState } from "@/perception/anticipation/compute.ts"
 import { updateNoveltyState } from "@/perception/novelty/compute.ts"
-import { evaluateAttachmentDynamics, isOperatorReturning } from "@/relational/attachment/update.ts"
-import { getRelationalPatterns } from "@/relational/mind/state.ts"
+import {
+  computeWaitingPerception,
+  evaluateAttachmentDynamics,
+  isOperatorReturning
+} from "@/relational/attachment/update.ts"
 import { extractSignals, learnFromObservation } from "@/relational/mind/triggers.ts"
 import { detectModelCorrection, updateOperatorModel } from "@/relational/mind/update.ts"
 import { updateBoundaryState } from "@/self/boundaries/compute.ts"
@@ -42,7 +43,7 @@ export async function runParallelSubsystems(
     runBoundary(sense, prefetch)
   ])
 
-  const boundaryEmotionEvents: EmotionUpdateEvent[] = boundaryResult.recentViolations.map((violation) => ({
+  const boundaryEmotionEvents: EmotionUpdateEvent[] = boundaryResult.newViolations.map((violation) => ({
     trigger: "boundary_violated" as const,
     intensity: violation.severity,
     detail: violation.description
@@ -57,7 +58,8 @@ export async function runParallelSubsystems(
     attachmentDynamics: attachmentResult,
     anticipatoryState: anticipationResult,
     noveltyState: noveltyResult,
-    boundaryState: boundaryResult,
+    boundaryState: boundaryResult.state,
+    newBoundaryViolations: boundaryResult.newViolations,
     boundaryEmotionEvents
   }
 }
@@ -67,14 +69,9 @@ async function runInstinct(sense: SenseResult, emotion: EmotionalState, soma: So
 }
 
 async function runDissonance(emotion: EmotionalState, prefetch: FeelPrefetch) {
-  const [knowledgeResult, recentActions] = await Promise.all([
-    getKnowledge({ category: "insight", scope: "self" }),
-    getRecentActions()
-  ])
+  const selfKnowledge = prefetch.selfInsights.map((k) => ({ key: k.key, value: k.value }))
 
-  const selfKnowledge = knowledgeResult.isOk() ? knowledgeResult.value.map((k) => ({ key: k.key, value: k.value })) : []
-
-  let dissonanceEvents = await checkDissonance(recentActions, prefetch.selfConcept, emotion, selfKnowledge)
+  let dissonanceEvents = await checkDissonance(prefetch.recentActions, prefetch.selfConcept, emotion, selfKnowledge)
   dissonanceEvents = dissonanceEvents.map((event) => ({
     ...event,
     resolution: resolveDissonance(event, emotion)
@@ -105,9 +102,8 @@ async function runOperatorModel(
   let updatedPatterns = null
   if (messageTexts.length > 0) {
     const signals = extractSignals(messageTexts)
-    const currentPatterns = await getRelationalPatterns()
-    const learned = learnFromObservation(signals, operatorModel, currentPatterns)
-    if (learned !== currentPatterns) {
+    const learned = learnFromObservation(signals, operatorModel, prefetch.relationalPatterns)
+    if (learned !== prefetch.relationalPatterns) {
       updatedPatterns = learned
     }
   }
@@ -122,8 +118,7 @@ function runAttachment(
   prefetch: FeelPrefetch
 ) {
   const operatorJustReturned = isOperatorReturning(sense.pendingMessages.length, operatorSilenceMinutes)
-  const silenceFactor = Math.min(1, operatorSilenceMinutes / 120)
-  const earlyWaitingPerception = Math.min(1, silenceFactor * (1 + prefetch.attachmentStyle.anxious * 0.5))
+  const waitingPerception = computeWaitingPerception(operatorSilenceMinutes, prefetch.attachmentStyle.anxious)
 
   return evaluateAttachmentDynamics(prefetch.attachmentStyle, {
     operatorSilenceMinutes,
@@ -133,7 +128,7 @@ function runAttachment(
     frustrationLevel: emotion.frustration,
     cautionLevel: emotion.caution,
     trustExperience: prefetch.trustExperience,
-    waitingPerception: earlyWaitingPerception
+    waitingPerception
   })
 }
 

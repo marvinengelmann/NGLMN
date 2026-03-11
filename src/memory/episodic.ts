@@ -118,8 +118,8 @@ export async function downgradeEpisodes(ids: string[], factor: number = 0.5): Pr
   const existing = await vectorIndex.fetch(ids, { includeMetadata: true })
   const currentScores = new Map<string, number>(
     existing.filter(Boolean).map((entry) => {
-      const meta = entry!.metadata as EpisodeMetadata | undefined
-      return [entry!.id as string, meta?.relevanceScore ?? 0.5]
+      const meta = entry?.metadata as EpisodeMetadata | undefined
+      return [entry?.id as string, meta?.relevanceScore ?? 0.5]
     })
   )
 

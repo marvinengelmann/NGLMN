@@ -1,4 +1,5 @@
 import type { EmotionUpdateEvent } from "@/affect/emotion/types.ts"
+import { halfLifeDecay } from "@/infra/lib/math.ts"
 import { nowISO } from "@/infra/lib/time.ts"
 import { DRIVES } from "./constants.ts"
 import { type DriveLevel, type DriveState, DriveType } from "./types.ts"
@@ -7,7 +8,7 @@ const DRIVE_NAMES = DriveType.options
 
 function decaySatiation(level: DriveLevel, driveType: DriveType, elapsedMinutes: number): number {
   const halfLife = DRIVES.HALF_LIVES[driveType]
-  const decayFactor = 0.5 ** (elapsedMinutes / halfLife)
+  const decayFactor = halfLifeDecay(elapsedMinutes, halfLife)
   return Math.max(0, level.satiation * decayFactor)
 }
 

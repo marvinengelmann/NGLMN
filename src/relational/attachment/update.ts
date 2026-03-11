@@ -32,6 +32,14 @@ export function hasStyleChanged(current: AttachmentStyle, updated: AttachmentSty
   return (Object.keys(current) as (keyof AttachmentStyle)[]).some((k) => Math.abs(current[k] - updated[k]) > 0.0001)
 }
 
+/**
+ * Compute subjective waiting perception scaled by attachment anxiety.
+ */
+export function computeWaitingPerception(operatorSilenceMinutes: number, anxiousAttachment: number): number {
+  const silenceFactor = Math.min(1, operatorSilenceMinutes / 120)
+  return Math.min(1, silenceFactor * (1 + anxiousAttachment * 0.5))
+}
+
 interface AttachmentContext {
   operatorSilenceMinutes: number
   operatorJustReturned: boolean

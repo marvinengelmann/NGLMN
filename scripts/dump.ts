@@ -16,12 +16,11 @@ import type { TickState } from "@/consciousness/pipeline/types.ts"
 import type { SenseData, SenseResult } from "@/consciousness/types.ts"
 import { getHealthCheck } from "@/governance/health/state.ts"
 import { nowISO } from "@/infra/lib/time.ts"
-import { getPerceptionSummary } from "@/perception/state.ts"
 
 async function dump() {
   console.log("\n  ANIMA Prompt Dump\n")
 
-  const [perception, health] = await Promise.all([getPerceptionSummary(), getHealthCheck()])
+  const health = await getHealthCheck()
 
   const moodContext = {
     operatorSilenceMinutes: 0,
@@ -44,7 +43,7 @@ async function dump() {
 
   const senseResult: SenseResult = {
     pendingMessages: [],
-    perception: perception ?? defaultPerception,
+    perception: defaultPerception,
     health,
     conversationState: null,
     triggeredWorkflows: [],

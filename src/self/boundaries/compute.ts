@@ -1,4 +1,5 @@
 import type { EmotionalState } from "@/affect/emotion/types.ts"
+import { clamp01 } from "@/infra/lib/math.ts"
 import { nowISO } from "@/infra/lib/time.ts"
 import { BOUNDARIES } from "./constants.ts"
 import type { Boundary, BoundaryState, BoundaryType, BoundaryViolation } from "./types.ts"
@@ -20,7 +21,7 @@ export function computeBoundaryPermeability(context: PermeabilityContext): numbe
     attachmentSecurity * BOUNDARIES.PERMEABILITY_SECURITY_WEIGHT +
     vulnerabilityLevel * BOUNDARIES.PERMEABILITY_VULNERABILITY_WEIGHT
 
-  return Math.max(0, Math.min(1, permeability))
+  return clamp01(permeability)
 }
 
 /**
@@ -122,11 +123,19 @@ export function maybeFormNegativeBoundary(
 /**
  * Update the full boundary state after checking messages.
  */
+export interface BoundaryUpdateResult {
+  state: BoundaryState
+  newViolations: BoundaryViolation[]
+}
+
+/**
+ * Update the full boundary state after checking messages.
+ */
 export function updateBoundaryState(
   current: BoundaryState,
   messageTexts: string[],
   permeabilityContext: PermeabilityContext
-): BoundaryState {
+): BoundaryUpdateResult {
   let boundaries = [...current.boundaries]
   const newViolations: BoundaryViolation[] = []
 
@@ -149,5 +158,8 @@ export function updateBoundaryState(
 
   const overallPermeability = computeBoundaryPermeability(permeabilityContext)
 
-  return { boundaries, recentViolations, overallPermeability }
+  return {
+    state: { boundaries, recentViolations, overallPermeability },
+    newViolations
+  }
 }

@@ -1,6 +1,6 @@
 import type { EmotionalState } from "@/affect/emotion/types.ts"
 import type { SomaticState } from "@/affect/soma/types.ts"
-import type { AnimaDecision } from "@/consciousness/types.ts"
+import type { AnimaDecision } from "@/core/types.ts"
 import { pushToActiveConversation } from "@/expression/communication/state.ts"
 import {
   computeInterParagraphPause,
@@ -100,7 +100,9 @@ export async function sendMessages(decision: AnimaDecision, context?: MessagingC
       const { text: possiblyTypoed, correction } = maybeIntroduceTypo(
         message.text,
         register,
-        context ? { emotion: context.emotion, soma: context.soma, vulnerabilityOpen: context.vulnerabilityOpen } : undefined
+        context
+          ? { emotion: context.emotion, soma: context.soma, vulnerabilityOpen: context.vulnerabilityOpen }
+          : undefined
       )
 
       const paragraphs = splitIntoParagraphs(possiblyTypoed)

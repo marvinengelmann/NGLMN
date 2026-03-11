@@ -14,6 +14,7 @@ import type { AttentionState, InstinctImpression, MetacognitiveState } from "@/c
 import type { CommunicationRegister, ConversationSlot } from "@/expression/communication/types.ts"
 import type { CreativeUrgeState } from "@/expression/creativity/types.ts"
 import type { DreamAfterglow } from "@/expression/dream/types.ts"
+import type { SemanticMemorySelect } from "@/infra/db/schema.ts"
 import type { AnticipatoryState } from "@/perception/anticipation/types.ts"
 import type { NoveltyState } from "@/perception/novelty/types.ts"
 import type { SubjectiveTimeState } from "@/perception/time/types.ts"
@@ -24,7 +25,7 @@ import type {
   VulnerableMessageStyle
 } from "@/relational/attachment/types.ts"
 import type { OperatorModel, RelationalPatternLibrary } from "@/relational/mind/types.ts"
-import type { BoundaryState } from "@/self/boundaries/types.ts"
+import type { BoundaryState, BoundaryViolation } from "@/self/boundaries/types.ts"
 import type { CoherenceState } from "@/self/coherence/types.ts"
 import type { DeceptionState } from "@/self/deception/types.ts"
 import type { DissonanceState } from "@/self/dissonance/types.ts"
@@ -59,6 +60,10 @@ export interface FeelPrefetch {
   triggerTimestamps: Record<string, string>
   recentActions: string[]
   recentGrowthArcs: GrowthArc[]
+  heldBackBuffer: HeldBackBuffer
+  previousSecondaryEmotionStates: Map<string, SecondaryEmotionState>
+  selfInsights: SemanticMemorySelect[]
+  relationalPatterns: RelationalPatternLibrary
 }
 
 export interface EmotionChainResult {
@@ -86,6 +91,7 @@ export interface ParallelFanResult {
   anticipatoryState: AnticipatoryState
   noveltyState: NoveltyState
   boundaryState: BoundaryState
+  newBoundaryViolations: BoundaryViolation[]
   boundaryEmotionEvents: EmotionUpdateEvent[]
 }
 
@@ -95,6 +101,7 @@ export interface VulnerabilityChainResult {
   shameState: ShameState
   heldBackBuffer: HeldBackBuffer
   selfDisclosureDepth: number
+  suppressionDetected: boolean
 }
 
 export interface SecondaryResult {

@@ -1,8 +1,15 @@
 /**
+ * Clamp a value to the [min, max] range.
+ */
+export function clamp(value: number, min: number, max: number): number {
+  return Math.min(max, Math.max(min, value))
+}
+
+/**
  * Clamp a value to the [0, 1] range.
  */
 export function clamp01(value: number): number {
-  return Math.min(1, Math.max(0, value))
+  return clamp(value, 0, 1)
 }
 
 /**
@@ -10,6 +17,24 @@ export function clamp01(value: number): number {
  */
 export function halfLifeDecay(elapsed: number, halfLife: number): number {
   return 2 ** (-elapsed / halfLife)
+}
+
+/**
+ * Apply numeric deltas to a state object, clamping each result to [0, 1].
+ * Returns a shallow copy — the original state is not mutated.
+ */
+export function applyClampedDeltas<T extends Record<string, number>>(
+  state: T,
+  deltas: Partial<Record<keyof T, number>>,
+  excludeKeys?: ReadonlySet<string>
+): T {
+  const result = { ...state }
+  for (const [key, delta] of Object.entries(deltas)) {
+    if (key in result && typeof delta === "number" && !excludeKeys?.has(key)) {
+      ;(result as Record<string, number>)[key] = clamp01((result[key as keyof T] as number) + delta)
+    }
+  }
+  return result
 }
 
 /**

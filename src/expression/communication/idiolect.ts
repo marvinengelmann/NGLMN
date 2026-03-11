@@ -1,6 +1,6 @@
 import * as z from "zod"
 import type { EmotionalState } from "@/affect/emotion/types.ts"
-import { getValidatedRedis, redis } from "@/infra/integrations/redis.ts"
+import { getValidatedRedis } from "@/infra/integrations/redis.ts"
 import { nowISO } from "@/infra/lib/time.ts"
 
 const IDIOLECT = {
@@ -80,10 +80,6 @@ const KEY = "working:communication:idiolect"
 
 export async function getIdiolectState(): Promise<IdiolectState> {
   return (await getValidatedRedis(KEY, IdiolectState)) ?? DEFAULT_IDIOLECT_STATE
-}
-
-export async function saveIdiolectState(state: IdiolectState): Promise<void> {
-  await redis.set(KEY, state)
 }
 
 /**

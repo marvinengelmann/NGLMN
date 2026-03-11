@@ -1,6 +1,6 @@
 import { db } from "@/infra/db/client.ts"
 import { deceptionLog } from "@/infra/db/schema.ts"
-import { getValidatedRedisOr, redis } from "@/infra/integrations/redis.ts"
+import { getValidatedRedisOr } from "@/infra/integrations/redis.ts"
 import { DEFAULT_DECEPTION_STATE, DeceptionState, type HiddenDriver } from "./types.ts"
 
 const KEY = "working:deception:current"
@@ -10,13 +10,6 @@ const KEY = "working:deception:current"
  */
 export async function getDeceptionState(): Promise<DeceptionState> {
   return getValidatedRedisOr(KEY, DeceptionState, DEFAULT_DECEPTION_STATE)
-}
-
-/**
- * Save the deception state to Redis.
- */
-export async function saveDeceptionState(state: DeceptionState): Promise<void> {
-  await redis.set(KEY, state)
 }
 
 /**

@@ -3,6 +3,7 @@ import type { ShameState } from "@/affect/emotion/shame.ts"
 import type { EmotionalState } from "@/affect/emotion/types.ts"
 import { SOCIAL_BATTERY } from "@/affect/soma/constants.ts"
 import type { SomaticState } from "@/affect/soma/types.ts"
+import { clamp01 } from "@/infra/lib/math.ts"
 import type { VulnerabilityState } from "@/relational/attachment/types.ts"
 import type { CoherenceState } from "@/self/coherence/types.ts"
 import { REGISTER } from "./constants.ts"
@@ -60,7 +61,7 @@ function computeRegisterScore(
   if (emotion.energy < 0.3 || soma.gravity > 0.7) score -= 0.3
   if (soma.socialBattery < SOCIAL_BATTERY.TERSE_THRESHOLD) score -= 0.5
 
-  return Math.max(0, Math.min(1, score))
+  return clamp01(score)
 }
 
 /**

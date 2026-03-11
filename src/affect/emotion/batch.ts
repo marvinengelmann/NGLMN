@@ -1,4 +1,4 @@
-import { mgetValidatedRedis, redis } from "@/infra/integrations/redis.ts"
+import { mgetValidatedRedis } from "@/infra/integrations/redis.ts"
 import { getRegisteredEmotions } from "./registry.ts"
 import type { SecondaryEmotionState } from "./types.ts"
 
@@ -25,23 +25,4 @@ export async function getAllSecondaryEmotionStates(): Promise<Map<string, Second
     }
     return result
   }, new Map<string, SecondaryEmotionState>())
-}
-
-/**
- * Save all secondary emotion states in a single Redis pipeline roundtrip.
- */
-export async function saveAllSecondaryEmotionStates(states: Map<string, SecondaryEmotionState>): Promise<void> {
-  if (states.size === 0) return
-
-  const emotions = getRegisteredEmotions()
-  const pipe = redis.pipeline()
-
-  emotions.forEach((entry) => {
-    const state = states.get(entry.name)
-    if (state) {
-      pipe.set(entry.redisKey, state)
-    }
-  })
-
-  await pipe.exec()
 }

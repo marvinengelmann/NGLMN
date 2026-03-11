@@ -250,9 +250,9 @@ async function resolveFileRequests(
   const expandedPaths = expandWithTestFiles(validPaths, context.tree)
 
   const newFailedPaths = new Set(failedPaths)
-  requestedPaths
-    .filter((p) => !context.tree.includes(p))
-    .forEach((p) => newFailedPaths.add(p))
+  for (const p of requestedPaths.filter((p) => !context.tree.includes(p))) {
+    newFailedPaths.add(p)
+  }
 
   log.info("Evolution LLM requested additional files", {
     round,

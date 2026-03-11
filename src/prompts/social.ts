@@ -71,3 +71,9 @@ Respond with:
 - reasoning: brief explanation of your assessment
 
 When in doubt, err on the side of caution — block the post.`
+
+export const CONVERSATION_PATTERN_ANALYSIS_PROMPT = `Analyze these conversation summaries and identify:
+1. Recurring patterns (theme→emotion correlations, engagement trends, repeated dynamics). Max 5 patterns.
+2. Recurring unresolved topics that keep appearing across conversations. Max 3 topics.
+
+Be concise — each pattern/topic should be one sentence.`

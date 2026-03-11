@@ -117,10 +117,7 @@ export async function fetchNewMessages(timeout: number): Promise<{
     })
   }
 
-  await updates.reduce(
-    (chain, update) => chain.then(() => processUpdate(update)),
-    Promise.resolve()
-  )
+  await updates.reduce((chain, update) => chain.then(() => processUpdate(update)), Promise.resolve())
 
   const maxUpdateId = Math.max(...updates.map((update) => update.update_id))
 

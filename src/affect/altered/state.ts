@@ -36,11 +36,3 @@ export async function startAlteredState(substance: SubstanceType, triggeredByEve
   await redis.set(ALTERED_STATE_KEY, state, { ex: ttlSeconds })
   log.info("Altered state started", { substance, totalMinutes, triggeredByEvent })
 }
-
-/**
- * Clear the active altered state.
- */
-export async function clearAlteredState(): Promise<void> {
-  await redis.del(ALTERED_STATE_KEY)
-  log.info("Altered state cleared")
-}

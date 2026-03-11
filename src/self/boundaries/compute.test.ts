@@ -116,8 +116,9 @@ describe("updateBoundaryState", () => {
       vulnerabilityLevel: 0.3
     })
 
-    expect(result.recentViolations.length).toBe(1)
-    expect(result.boundaries[0]?.strength).toBeGreaterThan(0.5)
+    expect(result.state.recentViolations.length).toBe(1)
+    expect(result.newViolations.length).toBe(1)
+    expect(result.state.boundaries[0]?.strength).toBeGreaterThan(0.5)
   })
 
   it("should handle no violations gracefully", () => {
@@ -133,6 +134,7 @@ describe("updateBoundaryState", () => {
       vulnerabilityLevel: 0.4
     })
 
-    expect(result.recentViolations.length).toBe(0)
+    expect(result.state.recentViolations.length).toBe(0)
+    expect(result.newViolations.length).toBe(0)
   })
 })

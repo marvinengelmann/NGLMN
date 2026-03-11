@@ -1,14 +1,13 @@
 import type { DriveState } from "@/affect/drive/types.ts"
 import type { ShameState } from "@/affect/emotion/shame.ts"
 import type { EmotionalState } from "@/affect/emotion/types.ts"
-import { clampState, computeEmotionalIntensity } from "@/affect/emotion/update.ts"
+import { applyEmotionalDamping, computeEmotionalIntensity } from "@/affect/emotion/update.ts"
 import type { SomaticState } from "@/affect/soma/types.ts"
 import { computeAttentionState } from "@/cognition/attention.ts"
 import { computeMetacognitiveModifiers, updateMetacognitiveState } from "@/cognition/metacognition.ts"
 import { computeCommunicationRegister } from "@/expression/communication/register.ts"
 import { updateCreativeUrgeState } from "@/expression/creativity/compute.ts"
 import { clamp01 } from "@/infra/lib/math.ts"
-import { getRecentActions } from "@/memory/working.ts"
 import { computeSubjectiveTime } from "@/perception/time/compute.ts"
 import { DEFAULT_SUBJECTIVE_TIME_STATE } from "@/perception/time/types.ts"
 import type { VulnerabilityState } from "@/relational/attachment/types.ts"
@@ -58,40 +57,22 @@ export async function runFinalSubsystems(
     isReflecting: false
   })
 
-  const stressLevel = (emotion.frustration + soma.tension + emotion.caution) / 3
   const coherenceState = updateCoherenceState(prefetch.previousCoherence, {
     emotion,
     soma,
     driveState,
     dissonanceScore: dissonance.activeDissonance,
-    selfConceptAuthenticity: selfConceptWithMomentum.authenticity,
-    stressLevel
+    selfConceptAuthenticity: selfConceptWithMomentum.authenticity
   })
 
   const coherenceEffect = computeCoherenceEffect(coherenceState)
-  let dampedEmotion = emotion
-  if (coherenceEffect.emotionalDamping > 0) {
-    const factor = 1 - coherenceEffect.emotionalDamping
-    dampedEmotion = clampState({
-      ...emotion,
-      curiosity: 0.5 + (emotion.curiosity - 0.5) * factor,
-      satisfaction: 0.5 + (emotion.satisfaction - 0.5) * factor,
-      frustration: 0.5 + (emotion.frustration - 0.5) * factor,
-      boredom: 0.5 + (emotion.boredom - 0.5) * factor,
-      excitement: 0.5 + (emotion.excitement - 0.5) * factor,
-      caution: 0.5 + (emotion.caution - 0.5) * factor,
-      connection: 0.5 + (emotion.connection - 0.5) * factor,
-      confidence: 0.5 + (emotion.confidence - 0.5) * factor,
-      energy: emotion.energy
-    })
-  }
+  let dampedEmotion = applyEmotionalDamping(emotion, coherenceEffect.emotionalDamping)
 
-  const recentActions = await getRecentActions()
   const metacognitiveState = updateMetacognitiveState(prefetch.previousMetacognition, {
     emotion: dampedEmotion,
     soma,
     coherenceScore: coherenceState.integrationScore,
-    recentReasonings: recentActions,
+    recentReasonings: prefetch.recentActions,
     isComplexDecision: false,
     isDreaming: sense.moodContext.isDreaming
   })

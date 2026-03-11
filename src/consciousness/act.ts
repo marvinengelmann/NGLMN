@@ -44,8 +44,8 @@ import { isDissonanceSignificant } from "@/self/dissonance/compute.ts"
 import { buildNarrativeSummary, generateNarrativeEntry } from "@/self/psyche/narrative.ts"
 import { addGrowthArc, addNarrativeEntry, savePsycheSnapshot, saveSelfConcept } from "@/self/psyche/state.ts"
 import { detectGrowthArc, updateSelfConcept } from "@/self/psyche/update.ts"
+import { startChosenLifeEvent, startSleepEvent } from "@/self/lifecycle.ts"
 import { recordActiveTick } from "./gating.ts"
-import { startChosenLifeEvent, startSleepEvent } from "./lifecycle.ts"
 import type { ActResult, DeliberateResult, FeelingResult, SenseResult } from "./types.ts"
 
 /**

@@ -1,6 +1,6 @@
 import { eq } from "drizzle-orm"
-import type { TickSummary } from "@/consciousness/types.ts"
 import { callIntelligence } from "@/core/intelligence.ts"
+import type { TickSummary } from "@/core/types.ts"
 import { WorkflowProposalOutput } from "@/governance/evolution/types.ts"
 import { validateOutput } from "@/governance/security/guardian.ts"
 import { getActiveWorkflowCount, getActiveWorkflows, MAX_ACTIVE_WORKFLOWS } from "@/governance/workflow/engine.ts"

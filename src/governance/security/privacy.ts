@@ -54,9 +54,7 @@ function buildDynamicPatterns(
   profile.knownPreferences
     .filter(
       (pref) =>
-        pref.toLowerCase().includes("name") ||
-        pref.toLowerCase().includes("job") ||
-        pref.toLowerCase().includes("work")
+        pref.toLowerCase().includes("name") || pref.toLowerCase().includes("job") || pref.toLowerCase().includes("work")
     )
     .forEach((pref) => {
       pref

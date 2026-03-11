@@ -1,4 +1,5 @@
 import * as z from "zod"
+import { clamp, clamp01 } from "@/infra/lib/math.ts"
 
 export const InteractionStrategy = z.object({
   register: z.string(),
@@ -32,9 +33,9 @@ export function computeOutcomeScore(reaction: OperatorReaction): number {
   if (reaction.sentiment === "positive") score += 0.3
   else if (reaction.sentiment === "mixed") score += 0.15
 
-  score += Math.max(-0.2, Math.min(0.2, reaction.engagementDelta * 0.2))
+  score += clamp(reaction.engagementDelta * 0.2, -0.2, 0.2)
 
   if (reaction.conversationContinued) score += 0.2
 
-  return Math.max(0, Math.min(1, score))
+  return clamp01(score)
 }
