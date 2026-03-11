@@ -7,6 +7,7 @@ import { getSomaticState } from "@/affect/soma/state.ts"
 import { rechargeSocialBattery } from "@/affect/soma/update.ts"
 import { updateHabitState } from "@/cognition/habit.ts"
 import { getHabitState } from "@/cognition/habits.ts"
+import { maybeRunAnalysis, reinforceFromLatestOutcome } from "@/cognition/learning/lessons.ts"
 import {
   applyIdiolectDrift,
   computeIdiolectModifiers,
@@ -26,6 +27,7 @@ import { redis } from "@/infra/integrations/redis.ts"
 import { vectorIndex } from "@/infra/integrations/vector.ts"
 import { log } from "@/infra/lib/logger.ts"
 import { logAndCaptureError } from "@/infra/lib/result.ts"
+import { maybeConsolidate } from "@/memory/autobiography.ts"
 import { EPISODIC_LIFECYCLE } from "@/memory/constants.ts"
 import {
   applyGoalPriorityDecay,
@@ -62,6 +64,7 @@ import {
   saveRelationshipPhase
 } from "@/relational/attachment/state.ts"
 import { detectConflict, hasStyleChanged, updateAttachmentStyle } from "@/relational/attachment/update.ts"
+import { maybeUpdateProfile } from "@/relational/mind/profiling.ts"
 import { formBoundary, maybeFormNegativeBoundary } from "@/self/boundaries/compute.ts"
 import { detectBoundaryFormation } from "@/self/boundaries/detect.ts"
 import { getBoundaryState } from "@/self/boundaries/state.ts"
@@ -72,6 +75,8 @@ const OPINION_DRIFT_PROBABILITY = 0.05
 const IDIOLECT_DRIFT_PROBABILITY = 0.05
 const CONVERSATION_PATTERN_PROBABILITY = 0.1
 const CURIOSITY_EXPLORE_PROBABILITY = 0.03
+const STRATEGY_ANALYSIS_PROBABILITY = 0.02
+const DEEP_PROFILE_UPDATE_PROBABILITY = 0.05
 
 const REDIS = {
   ATTACHMENT_STYLE: "working:attachment:style",
@@ -337,6 +342,36 @@ export async function maintain(
     }
   } catch (e) {
     log.debug("Memory pressure check skipped", { error: String(e) })
+  }
+
+  if (input.actResult.responseSent) {
+    try {
+      await reinforceFromLatestOutcome()
+    } catch (e) {
+      log.debug("Lesson reinforcement skipped", { error: String(e) })
+    }
+  }
+
+  if (Math.random() < STRATEGY_ANALYSIS_PROBABILITY) {
+    try {
+      await maybeRunAnalysis()
+    } catch (e) {
+      log.debug("Strategy analysis skipped", { error: String(e) })
+    }
+  }
+
+  try {
+    await maybeConsolidate()
+  } catch (e) {
+    log.debug("Memory consolidation skipped", { error: String(e) })
+  }
+
+  if (Math.random() < DEEP_PROFILE_UPDATE_PROBABILITY) {
+    try {
+      await maybeUpdateProfile(feelResult.operatorModel.moodHistory)
+    } catch (e) {
+      log.debug("Deep profile update skipped", { error: String(e) })
+    }
   }
 
   const durationMs = Date.now() - input.startTime

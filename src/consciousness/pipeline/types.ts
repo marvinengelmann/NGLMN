@@ -1,4 +1,5 @@
 import type { ActiveAlteredState } from "@/affect/altered/types.ts"
+import type { Lesson } from "@/cognition/learning/types.ts"
 import type { InnerDialog } from "@/cognition/polyphony/types.ts"
 import type { IdiolectState } from "@/expression/communication/idiolect.ts"
 import type { ConversationSlot } from "@/expression/communication/types.ts"
@@ -6,9 +7,11 @@ import type { DreamAfterglow, DreamState } from "@/expression/dream/types.ts"
 import type { CodeProposal, EvolutionCycleResult } from "@/governance/evolution/types.ts"
 import type { EmotionHistorySelect, EvolutionLogSelect, GoalSelect } from "@/infra/db/schema.ts"
 import type { AnimaResult } from "@/infra/lib/result.ts"
+import type { Autobiography } from "@/memory/autobiography.ts"
 import type { EpisodeMetadata, RelationalMemoryState } from "@/memory/types.ts"
 import type { DistortedMemory } from "@/perception/distortion/types.ts"
 import type { AttachmentStyle, RelationshipPhase } from "@/relational/attachment/types.ts"
+import type { DeepOperatorProfile } from "@/relational/mind/types.ts"
 import type { ActionType } from "@/relational/trust/types.ts"
 import type { GrowthArc, NarrativeEntry, SelfConcept } from "@/self/psyche/types.ts"
 import type { FeelingResult, SenseResult, TickSummary } from "../types.ts"
@@ -66,4 +69,7 @@ export interface PreloadedState {
   recentCounterfactuals: string[]
   conversationPatterns: string[]
   recurringUnresolved: string[]
+  lessons: Lesson[]
+  autobiography: Autobiography | null
+  deepOperatorProfile: DeepOperatorProfile
 }

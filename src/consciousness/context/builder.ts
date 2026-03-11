@@ -8,6 +8,7 @@ import { recallArchivedContext } from "@/expression/communication/conversation.t
 import type { CreativeUrgeState } from "@/expression/creativity/types.ts"
 import type { CalendarEvent, EmailPreview } from "@/infra/integrations/types.ts"
 import type { EnrichedTweet } from "@/infra/integrations/x.ts"
+import { buildAutobiographySection } from "@/memory/autobiography.ts"
 import type { RelationalMemoryState } from "@/memory/types.ts"
 import type { AnticipatoryState } from "@/perception/anticipation/types.ts"
 import { computeTimePerception } from "@/perception/pace.ts"
@@ -21,6 +22,7 @@ import {
 } from "@/prompts/consciousness.ts"
 import { getIdentityPrompt } from "@/prompts/identity.ts"
 import { getPersonalityPrompt } from "@/prompts/personality.ts"
+import { translateDeepProfileToFelt } from "@/relational/mind/profiling.ts"
 import type { BoundaryState } from "@/self/boundaries/types.ts"
 import { getDeceptionState } from "@/self/deception/state.ts"
 import type { TickState } from "../pipeline/types.ts"
@@ -126,9 +128,19 @@ export async function buildContext(
       preloaded.growthArcs,
       preloaded.recentNarratives,
       preloaded.dreamAfterglow,
-      preloaded.recentCounterfactuals
+      preloaded.recentCounterfactuals,
+      preloaded.lessons
     )
   ]
+
+  if (preloaded.autobiography) {
+    sections.push(buildAutobiographySection(preloaded.autobiography))
+  }
+
+  const deepProfileSection = translateDeepProfileToFelt(preloaded.deepOperatorProfile)
+  if (deepProfileSection) {
+    sections.push(`# Operator Patterns\n${deepProfileSection}`)
+  }
 
   if (senseData.pendingMessages.length > 0) {
     const firstMessage = senseData.pendingMessages[0]

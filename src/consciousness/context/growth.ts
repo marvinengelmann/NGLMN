@@ -1,3 +1,4 @@
+import type { Lesson } from "@/cognition/learning/types.ts"
 import type { DreamAfterglow, DreamState } from "@/expression/dream/types.ts"
 import type { getRecentChangelog } from "@/governance/evolution/changelog.ts"
 import type { CodeProposal, EvolutionCycleResult } from "@/governance/evolution/types.ts"
@@ -17,7 +18,8 @@ export function buildGrowthSections(
   growthArcs: GrowthArc[],
   recentNarratives: NarrativeEntry[],
   dreamAfterglow: DreamAfterglow | null,
-  recentCounterfactuals?: string[]
+  recentCounterfactuals?: string[],
+  lessons?: Lesson[]
 ): string[] {
   const sections: string[] = []
 
@@ -151,6 +153,24 @@ export function buildGrowthSections(
         "# Lessons from Past Decisions",
         "You've reflected on alternative paths you could have taken:",
         ...recentCounterfactuals.slice(-3).map((c) => `  - ${c}`)
+      ].join("\n")
+    )
+  }
+
+  if (lessons && lessons.length > 0) {
+    const lessonLines = lessons.map((l) => {
+      const contextParts: string[] = []
+      if (l.context.register) contextParts.push(`register: ${l.context.register}`)
+      if (l.context.timeOfDay) contextParts.push(`time: ${l.context.timeOfDay}`)
+      if (l.context.dominantDrive) contextParts.push(`drive: ${l.context.dominantDrive}`)
+      const contextStr = contextParts.length > 0 ? ` (${contextParts.join(", ")})` : ""
+      return `  - ${l.insight}${contextStr}`
+    })
+    sections.push(
+      [
+        "# Interaction Wisdom",
+        "Patterns you've learned from past interactions — what works and what doesn't:",
+        ...lessonLines
       ].join("\n")
     )
   }

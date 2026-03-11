@@ -2,6 +2,7 @@ import { getActiveAlteredState } from "@/affect/altered/state.ts"
 import { getEmotionHistory } from "@/affect/emotion/state.ts"
 import type { EmotionalState } from "@/affect/emotion/types.ts"
 import { computeEmotionalIntensity } from "@/affect/emotion/update.ts"
+import { getRelevantLessons } from "@/cognition/learning/lessons.ts"
 import { getLastInnerDialog } from "@/cognition/polyphony/state.ts"
 import { getIdiolectState } from "@/expression/communication/idiolect.ts"
 import { getConversationBuffer } from "@/expression/communication/state.ts"
@@ -10,6 +11,7 @@ import { getRecentChangelog } from "@/governance/evolution/changelog.ts"
 import { getEvolutionCycleResult, getPendingEvolutionProposal } from "@/governance/evolution/state.ts"
 import { CONTEXT_LIMITS } from "@/infra/config/constants.ts"
 import { redis } from "@/infra/integrations/redis.ts"
+import { getAutobiography } from "@/memory/autobiography.ts"
 import { queryRelatedWithDistortion, queryRelationshipHistory } from "@/memory/episodic.ts"
 import { getGoalsByPriority } from "@/memory/goals.ts"
 import { getRelationalMemoryState } from "@/memory/relational.ts"
@@ -21,6 +23,7 @@ import {
   getReflectionLastAt
 } from "@/memory/working.ts"
 import { getAttachmentStyle, getRelationshipPhase } from "@/relational/attachment/state.ts"
+import { getDeepOperatorProfile } from "@/relational/mind/profiling.ts"
 import { getAllTrustLevels } from "@/relational/trust/compute.ts"
 import { getExistentialQuestions } from "@/self/psyche/questions.ts"
 import { getGrowthArcs, getIdentityStatements, getRecentNarratives, getSelfConcept } from "@/self/psyche/state.ts"
@@ -96,11 +99,24 @@ export async function preloadContextState(senseData: SenseData, emotion: Emotion
     getRelationalMemoryState()
   ])
 
-  const [recentTickDurations, consecutiveIdleTicks, cachedPatterns] = await Promise.all([
-    getRecentTickDurations(),
-    getConsecutiveIdleTicks(),
-    redis.get<{ patterns: string[]; recurringUnresolved: string[] }>("working:conversation:patterns")
-  ])
+  const [recentTickDurations, consecutiveIdleTicks, cachedPatterns, lessons, autobiography, deepOperatorProfile] =
+    await Promise.all([
+      getRecentTickDurations(),
+      getConsecutiveIdleTicks(),
+      redis.get<{ patterns: string[]; recurringUnresolved: string[] }>("working:conversation:patterns"),
+      getRelevantLessons({
+        timeOfDay:
+          new Date().getHours() < 6
+            ? "night"
+            : new Date().getHours() < 12
+              ? "morning"
+              : new Date().getHours() < 18
+                ? "afternoon"
+                : "evening"
+      }),
+      getAutobiography(),
+      getDeepOperatorProfile()
+    ])
 
   const knowledgeItems = knowledge.unwrapOr([])
   const recentCounterfactuals = knowledgeItems
@@ -141,6 +157,9 @@ export async function preloadContextState(senseData: SenseData, emotion: Emotion
     consecutiveIdleTicks,
     recentCounterfactuals,
     conversationPatterns: cachedPatterns?.patterns ?? [],
-    recurringUnresolved: cachedPatterns?.recurringUnresolved ?? []
+    recurringUnresolved: cachedPatterns?.recurringUnresolved ?? [],
+    lessons,
+    autobiography,
+    deepOperatorProfile
   }
 }
