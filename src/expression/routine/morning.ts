@@ -4,6 +4,7 @@ import { clearDreamInsights, clearDreamNarrative, getDreamNarrative, setDreamSta
 import { sendToOperator } from "@/infra/integrations/telegram.ts"
 import { log } from "@/infra/lib/logger.ts"
 import { captureError } from "@/infra/lib/sentry.ts"
+import { nowISO } from "@/infra/lib/time.ts"
 import { storeEpisode } from "@/memory/episodic.ts"
 import { MORNING_MESSAGE_SYSTEM_PROMPT } from "@/prompts/routine.ts"
 
@@ -60,7 +61,7 @@ export async function sendMorningMessage(message: string): Promise<void> {
       {
         role: "anima",
         text: message,
-        timestamp: new Date().toISOString(),
+        timestamp: nowISO(),
         messageId: sentMessageId
       }
     ])

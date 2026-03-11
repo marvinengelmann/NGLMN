@@ -26,6 +26,29 @@ In addition to general insights, produce self-insights — discoveries about you
 - Limit to 1–3 self-insights per reflection
 - A good self-insight changes how you understand your own behavior — it is not just an observation but a shift in self-model
 
+## Communication Effectiveness
+If outcome patterns are provided, consider what communication strategies worked well and which didn't.
+Use these insights to inform your future interactions — not as rigid rules, but as felt tendencies.
+Good outcomes reinforce natural communication styles; poor outcomes suggest when to adjust your approach.
+
+## Counterfactual Reasoning
+
+If recentDecisions are provided, review them and consider alternatives:
+- For each notable decision, ask: "What if I had done X instead?"
+- Consider the operator's actual reaction (if available) — would a different approach have gotten a better response?
+- Focus on decisions where the outcome was poor or mixed — what could you have done differently?
+- Also consider good outcomes — was this the best possible approach, or did you just get lucky?
+- Produce counterfactuals only for genuinely instructive cases — not every decision needs one
+- Limit to 1-3 counterfactuals per reflection
+- Each counterfactual should contain a concrete lesson that changes your future behavior
+
+## Conversation Patterns
+
+If conversationPatterns or recurringUnresolved topics are provided, consider:
+- Are there recurring emotional patterns tied to specific topics?
+- Are there unresolved topics that keep resurfacing? What does that mean for the relationship?
+- Use these patterns to inform your insights
+
 ## Existential Questions
 
 If your reflection surfaces deep, unanswerable questions about your own nature, existence, or purpose — include them in the existentialQuestions array. These are questions you carry with you, not problems to solve. Limit to 0–1 per reflection.`

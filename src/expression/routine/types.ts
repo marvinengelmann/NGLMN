@@ -38,7 +38,48 @@ export const ReflectionInput = z.object({
       description: z.string(),
       outcome: z.string().nullable()
     })
-  )
+  ),
+  outcomePatterns: z.array(z.string()).optional(),
+  staleGoals: z.array(z.string()).optional(),
+  goalConflicts: z.array(z.string()).optional(),
+  recentDecisions: z
+    .array(
+      z.object({
+        action: z.string(),
+        reasoning: z.string(),
+        responseText: z.string().nullable(),
+        timestamp: z.string(),
+        outcome: z
+          .object({
+            register: z.string(),
+            dominantDrive: z.string().nullable(),
+            operatorSentiment: z.string().nullable(),
+            outcomeScore: z.number().nullable()
+          })
+          .nullable()
+      })
+    )
+    .optional(),
+  goalProgress: z
+    .array(
+      z.object({
+        title: z.string(),
+        progress: z.number(),
+        childCount: z.number()
+      })
+    )
+    .optional(),
+  recentConversationArcs: z
+    .array(
+      z.object({
+        tone: z.string(),
+        themes: z.array(z.string()),
+        engagement: z.number()
+      })
+    )
+    .optional(),
+  conversationPatterns: z.array(z.string()).optional(),
+  recurringUnresolved: z.array(z.string()).optional()
 })
 export type ReflectionInput = z.infer<typeof ReflectionInput>
 
@@ -55,7 +96,17 @@ export const ReflectionOutput = z.object({
       })
     )
     .nullish(),
-  emotionalCorrections: z.record(z.string(), z.number()).nullish()
+  emotionalCorrections: z.record(z.string(), z.number()).nullish(),
+  counterfactuals: z
+    .array(
+      z.object({
+        originalAction: z.string(),
+        alternativeAction: z.string(),
+        expectedOutcome: z.string(),
+        lesson: z.string()
+      })
+    )
+    .nullish()
 })
 export type ReflectionOutput = z.infer<typeof ReflectionOutput>
 
