@@ -6,9 +6,11 @@ import type { AnimaDecision } from "@/consciousness/types.ts"
 import { db } from "@/infra/db/client.ts"
 import type { GoalSelect } from "@/infra/db/schema.ts"
 import { goals } from "@/infra/db/schema.ts"
+import { vectorIndex } from "@/infra/integrations/vector.ts"
 import { log } from "@/infra/lib/logger.ts"
 import type { AnimaResultAsync } from "@/infra/lib/result.ts"
 import { trySafe } from "@/infra/lib/result.ts"
+import { nowISO } from "@/infra/lib/time.ts"
 import type { GoalSource } from "@/memory/types.ts"
 import { GoalStatus } from "@/memory/types.ts"
 
@@ -26,8 +28,11 @@ interface CreateGoalOptions {
   emotionalWeight?: number
 }
 
+const GOAL_SIMILARITY_THRESHOLD = 0.85
+
 /**
- * Create a new goal.
+ * Create a new goal with semantic deduplication.
+ * If a semantically similar active goal exists, merges by boosting priority instead.
  */
 export function createGoal(
   title: string,
@@ -37,6 +42,39 @@ export function createGoal(
   options?: CreateGoalOptions
 ): AnimaResultAsync<string> {
   return trySafe("DB_ERROR", async () => {
+    try {
+      const similar = await vectorIndex.query({
+        data: `${title} ${description}`,
+        topK: 1,
+        includeMetadata: true,
+        filter: "category = 'task'"
+      })
+
+      const top = similar[0]
+      if (top && top.score > GOAL_SIMILARITY_THRESHOLD && top.metadata?.tickId) {
+        const existingGoalId = top.metadata.tickId
+        const existing = await db.select().from(goals).where(eq(goals.id, existingGoalId)).limit(1)
+        const existingGoal = existing[0]
+
+        if (existingGoal && ["open", "active"].includes(existingGoal.status ?? "")) {
+          const boostedPriority = Math.min(1, (existingGoal.priority ?? 0.5) + priority * 0.3)
+          await db
+            .update(goals)
+            .set({
+              priority: boostedPriority,
+              description: description || existingGoal.description,
+              updatedAt: new Date()
+            })
+            .where(eq(goals.id, existingGoalId))
+
+          log.info("Goal merged with existing", { existingId: existingGoalId, newPriority: boostedPriority })
+          return existingGoalId
+        }
+      }
+    } catch (e) {
+      log.warn("Goal semantic dedup failed, creating normally", { error: String(e) })
+    }
+
     const rows = await db
       .insert(goals)
       .values({
@@ -51,18 +89,34 @@ export function createGoal(
 
     const first = rows[0]
     if (!first) throw new Error("Expected row from goal creation")
+
+    try {
+      await vectorIndex.upsert({
+        id: `goal-${first.id}`,
+        data: `${title} ${description}`,
+        metadata: {
+          category: "task",
+          timestamp: nowISO(),
+          relevanceScore: priority,
+          tickId: first.id
+        }
+      })
+    } catch (e) {
+      log.warn("Goal vector upsert failed", { error: String(e) })
+    }
+
     return first.id
   })
 }
 
 /**
- * Get all active/open goals.
+ * Get all active/open/stale/overdue goals.
  */
 export async function getActiveGoals(): Promise<GoalSelect[]> {
   return db
     .select()
     .from(goals)
-    .where(inArray(goals.status, ["open", "active"]))
+    .where(inArray(goals.status, ["open", "active", "stale", "overdue"]))
     .orderBy(desc(goals.priority))
 }
 
@@ -103,7 +157,7 @@ export async function getGoalsByPriority(limit: number = 5, emotion?: EmotionalS
   const query = db
     .select()
     .from(goals)
-    .where(inArray(goals.status, ["open", "active"]))
+    .where(inArray(goals.status, ["open", "active", "stale", "overdue"]))
     .orderBy(desc(goals.priority))
 
   if (!emotion) {
@@ -124,6 +178,48 @@ export async function goalExistsByTitle(title: string): Promise<boolean> {
     .where(and(eq(goals.title, title), inArray(goals.status, ["open", "active"])))
     .limit(1)
   return rows.length > 0
+}
+
+/**
+ * Get child goals for a parent goal.
+ */
+export async function getChildGoals(parentGoalId: string): Promise<GoalSelect[]> {
+  return db.select().from(goals).where(eq(goals.parentGoalId, parentGoalId)).orderBy(desc(goals.priority))
+}
+
+/**
+ * Check if all child goals of a parent are completed.
+ */
+export async function checkParentGoalCompletion(parentGoalId: string): Promise<boolean> {
+  const children = await getChildGoals(parentGoalId)
+  if (children.length === 0) return false
+  return children.every((c) => c.status === "done")
+}
+
+/**
+ * Get goals with their sub-goal completion ratios, sorted by effective priority.
+ */
+export async function getGoalsWithSubGoalProgress(
+  limit: number = 10
+): Promise<Array<GoalSelect & { childProgress: number; childCount: number }>> {
+  const topLevelGoals = await db
+    .select()
+    .from(goals)
+    .where(inArray(goals.status, ["open", "active", "stale", "overdue"]))
+    .orderBy(desc(goals.priority))
+    .limit(limit)
+
+  return Promise.all(
+    topLevelGoals.map(async (goal) => {
+      const children = await getChildGoals(goal.id)
+      const doneCount = children.filter((c) => c.status === "done").length
+      return {
+        ...goal,
+        childProgress: children.length > 0 ? doneCount / children.length : 0,
+        childCount: children.length
+      }
+    })
+  )
 }
 
 /**
@@ -148,6 +244,20 @@ export async function executeGoalUpdate(decision: AnimaDecision): Promise<void> 
       { trigger: "goal_completed", intensity: TRIGGER_INTENSITY.GOAL_COMPLETED },
       "goal_completed"
     )
+
+    const goal = await db.select().from(goals).where(eq(goals.id, goalId)).limit(1)
+    const parentId = goal[0]?.parentGoalId
+    if (parentId) {
+      const allChildrenDone = await checkParentGoalCompletion(parentId)
+      if (allChildrenDone) {
+        await updateGoalStatus(parentId, "done")
+        log.info("Parent goal auto-completed", { parentId })
+        await processEmotionTrigger(
+          { trigger: "goal_completed", intensity: TRIGGER_INTENSITY.GOAL_COMPLETED },
+          "goal_completed"
+        )
+      }
+    }
   } else if (parsed.data === "failed") {
     await processEmotionTrigger({ trigger: "goal_failed", intensity: TRIGGER_INTENSITY.GOAL_FAILED }, "goal_failed")
   }
