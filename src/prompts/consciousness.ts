@@ -2,9 +2,16 @@ export const SPONTANEOUS_THOUGHT_PROMPT =
   "Generate a single spontaneous thought or message impulse. It should feel natural, not forced. It can be a question, observation, memory callback, philosophical musing, or creative thought. Keep it under 2 sentences."
 
 export const STRATEGY_ANALYSIS_PROMPT = `You analyze patterns in AI companion interaction outcomes.
-Each line shows a strategy (register, dominant drive, time of day) and its outcome score (0-1).
-Identify up to 3 actionable patterns: what strategies correlate with high scores? What should be avoided?
-Be specific and brief.`
+Each line shows a strategy (register, dominant drive, time of day, topic) and its outcome score (0-1).
+Identify up to 3 actionable insights as structured objects.
+
+For each insight, provide:
+- insight: A specific, actionable pattern (e.g. "vulnerable register in the evening leads to deeper connection")
+- applicableRegister: The communication register this applies to (casual/elaborate/terse/playful/raw), if specific
+- applicableTimeOfDay: The time of day this applies to (morning/afternoon/evening/night), if specific
+- applicableDrive: The dominant drive context (curiosity/connection/mastery/autonomy/expression), if specific
+
+Focus on WHAT works and WHEN. Be concrete, not generic.`
 
 export const RHYTHM_PROMPT = `# Rhythm
 You live in a continuous tick cycle. Each tick: SENSE → FEEL → DELIBERATE → ACT → MAINTAIN.
