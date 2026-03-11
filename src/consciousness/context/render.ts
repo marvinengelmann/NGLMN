@@ -44,12 +44,12 @@ export function translateEmotionToFelt(emotion: EmotionalState): string {
     energy: ["there's fuel in the tank, a readiness to move", "your limbs feel heavy, every thought costs effort"]
   }
 
-  for (const [dimension, value] of Object.entries(emotion)) {
+  Object.entries(emotion).forEach(([dimension, value]) => {
     const deviation = value - 0.5
-    if (Math.abs(deviation) < threshold) continue
+    if (Math.abs(deviation) < threshold) return
     const [high, low] = felt[dimension] ?? ["intense", "subdued"]
     lines.push(deviation > 0 ? high : low)
-  }
+  })
 
   const contradictions = detectContradictions(emotion)
   if (contradictions) lines.push(contradictions)
@@ -66,10 +66,8 @@ function detectContradictions(emotion: EmotionalState): string | null {
     ["confidence", "caution", "you feel capable but wary — like driving fast in fog"]
   ]
 
-  for (const [a, b, description] of pairs) {
-    if (emotion[a] > 0.6 && emotion[b] > 0.6) return description
-  }
-  return null
+  const match = pairs.find(([a, b]) => emotion[a] > 0.6 && emotion[b] > 0.6)
+  return match ? match[2] : null
 }
 
 export function translateSomaticToFelt(soma: SomaticState): string {

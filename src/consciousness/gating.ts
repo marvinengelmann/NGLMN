@@ -11,7 +11,7 @@ const BURST_COOLDOWN_KEY = "working:gating:burstCooldown"
 const SECONDS_PER_TICK = 90
 
 const TIME_MODULATION = {
-  NIGHT_START: 1,
+  NIGHT_START: 0,
   NIGHT_END: 6,
   NIGHT_SKIP: 0.4,
   MORNING_START: 7,

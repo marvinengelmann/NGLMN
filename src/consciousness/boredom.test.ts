@@ -44,15 +44,15 @@ describe("generateBoredomImpulse", () => {
     const results: string[] = []
     vi.spyOn(Math, "random").mockReturnValue(0)
 
-    for (const _ of Array.from({ length: 20 })) {
+    Array.from({ length: 20 }).forEach(() => {
       const result = generateBoredomImpulse({ ...baseEmotion, boredom: 0.9 }, 10)
       if (result) results.push(result)
-    }
+    })
 
     vi.restoreAllMocks()
     expect(results.length).toBeGreaterThan(0)
-    for (const r of results) {
+    results.forEach((r) => {
       expect(r.length).toBeGreaterThan(5)
-    }
+    })
   })
 })

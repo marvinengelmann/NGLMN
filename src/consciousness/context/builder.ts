@@ -1,63 +1,29 @@
 import { getPhenomenologicalText, isExpired } from "@/affect/altered/compute.ts"
-import { getActiveAlteredState } from "@/affect/altered/state.ts"
-import { getDriveState } from "@/affect/drive/state.ts"
+import { DRIVE_ACTION_HINTS } from "@/affect/drive/constants.ts"
 import type { DriveState } from "@/affect/drive/types.ts"
-import { getAllSecondaryEmotionStates } from "@/affect/emotion/batch.ts"
-import { getMetacognitiveState } from "@/cognition/awareness.ts"
-import { getAttentionState, getLastInstinctImpression } from "@/cognition/state.ts"
-import type { MetacognitiveState } from "@/cognition/types.ts"
-import type { SenseData } from "@/consciousness/types.ts"
-import { getIdiolectState } from "@/expression/communication/idiolect.ts"
-import { getCommunicationRegister, getConversationBuffer } from "@/expression/communication/state.ts"
-import { getCreativeUrgeState } from "@/expression/creativity/state.ts"
-import type { CreativeUrgeState } from "@/expression/creativity/types.ts"
-import { getDreamAfterglow, getDreamInsights, getDreamLastRun, getDreamState } from "@/expression/dream/state.ts"
-import { CONTEXT_LIMITS } from "@/infra/config/constants.ts"
-import type { RelationalMemoryState } from "@/memory/relational.ts"
-import { getRelationalMemoryState } from "@/memory/relational.ts"
-import { getAnticipatoryState } from "@/perception/anticipation/state.ts"
-import type { AnticipatoryState } from "@/perception/anticipation/types.ts"
-import { getAttachmentStyle, getRelationshipPhase } from "@/relational/attachment/state.ts"
-import { getBoundaryState } from "@/self/boundaries/state.ts"
-import type { BoundaryState } from "@/self/boundaries/types.ts"
-import { getDeceptionState } from "@/self/deception/state.ts"
-import { getDissonanceState } from "@/self/dissonance/state.ts"
 import "@/affect/emotion/init.ts"
-import { getShameState } from "@/affect/emotion/shame.ts"
-import { getEmotionHistory } from "@/affect/emotion/state.ts"
-import type { EmotionalState } from "@/affect/emotion/types.ts"
 import { computeEmotionalIntensity } from "@/affect/emotion/update.ts"
-import { getSomaticState } from "@/affect/soma/state.ts"
-import { getLastInnerDialog } from "@/cognition/polyphony/state.ts"
-import { getRecentChangelog } from "@/governance/evolution/changelog.ts"
-import { getEvolutionCycleResult, getPendingEvolutionProposal } from "@/governance/evolution/state.ts"
+import type { MetacognitiveState } from "@/cognition/types.ts"
+import type { CreativeUrgeState } from "@/expression/creativity/types.ts"
 import type { CalendarEvent, EmailPreview } from "@/infra/integrations/types.ts"
 import type { EnrichedTweet } from "@/infra/integrations/x.ts"
-import { queryRelatedWithDistortion, queryRelationshipHistory } from "@/memory/episodic.ts"
-import { getGoalsByPriority } from "@/memory/goals.ts"
-import { getKnowledge, getOperatorLanguage } from "@/memory/semantic.ts"
-import {
-  getConsecutiveIdleTicks,
-  getLastTickSummary,
-  getRecentTickDurations,
-  getReflectionLastAt
-} from "@/memory/working.ts"
+import type { RelationalMemoryState } from "@/memory/relational.ts"
+import type { AnticipatoryState } from "@/perception/anticipation/types.ts"
 import { computeTimePerception } from "@/perception/pace.ts"
 import {
   ACTIONS_PROMPT,
   COMMUNICATION_PROMPT,
+  DRIVE_AWARENESS_PROMPT,
   PACING_PROMPT,
   PHENOMENOLOGICAL_PROMPT,
   RHYTHM_PROMPT
 } from "@/prompts/consciousness.ts"
 import { getIdentityPrompt } from "@/prompts/identity.ts"
 import { getPersonalityPrompt } from "@/prompts/personality.ts"
-import { getVulnerability } from "@/relational/attachment/store.ts"
-import { getOperatorModel } from "@/relational/mind/state.ts"
-import { getAllTrustLevels } from "@/relational/trust/compute.ts"
-import { getHeldBackBuffer } from "@/self/psyche/heldback.ts"
-import { getExistentialQuestions } from "@/self/psyche/questions.ts"
-import { getGrowthArcs, getIdentityStatements, getRecentNarratives, getSelfConcept } from "@/self/psyche/state.ts"
+import type { BoundaryState } from "@/self/boundaries/types.ts"
+import { getDeceptionState } from "@/self/deception/state.ts"
+import type { TickState } from "../pipeline/types.ts"
+import type { SenseData } from "../types.ts"
 import { buildGrowthSections } from "./growth.ts"
 import { buildInnerSections } from "./inner.ts"
 import { buildMemorySections } from "./memory.ts"
@@ -65,131 +31,33 @@ import { buildPerceptionSections } from "./perception.ts"
 import { buildSocialSections } from "./social.ts"
 
 export async function buildContext(
+  tickState: TickState,
   senseData: SenseData,
-  emotion: EmotionalState,
   xContext?: { canBrowse: boolean; canPost: boolean; timeline?: EnrichedTweet[] },
   emailContext?: { canCheck: boolean; unread?: EmailPreview[] },
   calendarContext?: { canCheck: boolean; upcoming?: CalendarEvent[] }
 ): Promise<string> {
+  const { feel, preloaded } = tickState
+  const emotion = feel.emotion
   const emotionIntensity = computeEmotionalIntensity(emotion)
 
-  const [
-    lastTick,
-    conversationBuffer,
-    emotionHistory,
-    episodes,
-    relationships,
-    knowledgeResult,
-    operatorLanguage,
-    goals,
-    trustLevels,
-    evolutionHistory,
-    evolutionOutcome,
-    pendingProposal,
-    dreamState,
-    dreamLastRun,
-    dreamInsights,
-    reflectionLastAt,
-    somaticState,
-    selfConcept,
-    attachmentStyle,
-    vulnerabilityState,
-    lastInnerDialog,
-    dissonanceState,
-    instinctImpression,
-    relationshipPhase,
-    operatorModel,
-    existentialQuestions,
-    deceptionState,
-    communicationRegister,
-    attentionState,
-    identityStatements,
-    growthArcs,
-    recentNarratives,
-    dreamAfterglow,
-    alteredState,
-    shameState,
-    heldBackBuffer,
-    idiolectState,
-    secondaryEmotionStates,
-    driveState,
-    anticipatoryState,
-    creativeUrgeState,
-    metacognitiveState,
-    boundaryState,
-    relationalMemoryState
-  ] = await Promise.all([
-    getLastTickSummary(),
-    getConversationBuffer(),
-    getEmotionHistory(CONTEXT_LIMITS.maxEmotionHistory),
-    senseData.pendingMessages.length > 0
-      ? queryRelatedWithDistortion(
-          senseData.pendingMessages.map((m) => m.text).join(" "),
-          CONTEXT_LIMITS.maxEpisodes,
-          emotionIntensity
-        )
-      : queryRelatedWithDistortion("recent activity", CONTEXT_LIMITS.maxEpisodes, emotionIntensity),
-    queryRelationshipHistory(CONTEXT_LIMITS.maxRelationship),
-    getKnowledge({ limit: CONTEXT_LIMITS.maxSemantic }),
-    getOperatorLanguage(),
-    getGoalsByPriority(CONTEXT_LIMITS.maxGoals, emotion),
-    getAllTrustLevels(),
-    getRecentChangelog(5),
-    getEvolutionCycleResult(),
-    getPendingEvolutionProposal(),
-    getDreamState(),
-    getDreamLastRun(),
-    getDreamInsights(),
-    getReflectionLastAt(),
-    getSomaticState(),
-    getSelfConcept(),
-    getAttachmentStyle(),
-    getVulnerability(),
-    getLastInnerDialog(),
-    getDissonanceState(),
-    getLastInstinctImpression(),
-    getRelationshipPhase(),
-    getOperatorModel(),
-    getExistentialQuestions(),
-    getDeceptionState(),
-    getCommunicationRegister(),
-    getAttentionState(),
-    getIdentityStatements(),
-    getGrowthArcs(),
-    getRecentNarratives(),
-    getDreamAfterglow(),
-    getActiveAlteredState(),
-    getShameState(),
-    getHeldBackBuffer(),
-    getIdiolectState(),
-    getAllSecondaryEmotionStates(),
-    getDriveState(),
-    getAnticipatoryState(),
-    getCreativeUrgeState(),
-    getMetacognitiveState(),
-    getBoundaryState(),
-    getRelationalMemoryState()
-  ])
+  const deceptionState = await getDeceptionState()
 
-  const knowledge = knowledgeResult.unwrapOr([])
+  const knowledge = preloaded.knowledge.unwrapOr([])
 
-  const [recentDurations, consecutiveIdleTicks] = await Promise.all([
-    getRecentTickDurations(),
-    getConsecutiveIdleTicks()
-  ])
   const timePerception = computeTimePerception(
-    recentDurations,
+    preloaded.recentTickDurations,
     emotionIntensity,
-    consecutiveIdleTicks,
+    preloaded.consecutiveIdleTicks,
     senseData.moodContext.operatorSilenceMinutes
   )
 
   const sections = [
     ...buildPerceptionSections(
       senseData,
-      operatorLanguage,
-      lastTick,
-      conversationBuffer,
+      preloaded.operatorLanguage,
+      preloaded.lastTick,
+      preloaded.conversationBuffer,
       timePerception,
       xContext,
       emailContext,
@@ -197,58 +65,82 @@ export async function buildContext(
     ),
     ...buildInnerSections({
       emotion,
-      emotionHistory,
+      emotionHistory: preloaded.emotionHistory,
       senseData,
-      somaticState,
-      selfConcept,
-      vulnerabilityState,
-      shameState,
-      instinctImpression,
-      lastInnerDialog,
-      dissonanceState,
+      somaticState: feel.soma,
+      selfConcept: feel.selfConcept,
+      vulnerabilityState: feel.vulnerability,
+      shameState: feel.shameState,
+      instinctImpression: feel.instinct,
+      lastInnerDialog: preloaded.lastInnerDialog,
+      dissonanceState: feel.dissonance,
       deceptionState,
-      identityStatements,
+      identityStatements: preloaded.identityStatements,
       alteredPhenomenologicalText:
-        alteredState && !isExpired(alteredState) ? getPhenomenologicalText(alteredState) : undefined,
-      heldBackBuffer,
-      secondaryEmotionStates
+        preloaded.alteredState && !isExpired(preloaded.alteredState)
+          ? getPhenomenologicalText(preloaded.alteredState)
+          : undefined,
+      heldBackBuffer: feel.heldBackBuffer,
+      secondaryEmotionStates: new Map(Object.entries(feel.secondaryEmotions)) as Parameters<
+        typeof buildInnerSections
+      >[0]["secondaryEmotionStates"],
+      coherenceState: feel.coherenceState,
+      metacognitiveState: feel.metacognitiveState
     }),
     ...buildDriveSections(
-      driveState,
-      anticipatoryState,
-      creativeUrgeState,
-      metacognitiveState,
-      boundaryState,
-      relationalMemoryState
+      feel.driveState,
+      feel.anticipatoryState,
+      feel.creativeUrge,
+      feel.metacognitiveState,
+      feel.boundaryState,
+      preloaded.relationalMemoryState
     ),
     ...buildSocialSections(
-      attachmentStyle,
-      relationshipPhase,
-      communicationRegister,
-      somaticState,
-      attentionState,
-      operatorModel,
-      trustLevels,
-      idiolectState
+      preloaded.attachmentStyle,
+      preloaded.relationshipPhase,
+      feel.register,
+      feel.soma,
+      feel.attentionState,
+      feel.operatorModel,
+      preloaded.trustLevels,
+      preloaded.idiolectState,
+      emotion,
+      feel.coherenceState,
+      preloaded.alteredState != null && !isExpired(preloaded.alteredState),
+      preloaded.relationalMemoryState?.rituals,
+      preloaded.conversationPatterns,
+      preloaded.recurringUnresolved
     ),
-    ...(await buildMemorySections(episodes, emotion, senseData, knowledge, relationships)),
+    ...(await buildMemorySections(preloaded.episodes, emotion, senseData, knowledge, preloaded.relationships)),
     ...buildGrowthSections(
-      existentialQuestions,
-      dreamState,
-      dreamLastRun,
-      dreamInsights,
-      reflectionLastAt,
-      goals,
-      evolutionHistory,
-      evolutionOutcome,
-      pendingProposal,
-      growthArcs,
-      recentNarratives,
-      dreamAfterglow
+      preloaded.existentialQuestions,
+      preloaded.dreamState,
+      preloaded.dreamLastRun,
+      preloaded.dreamInsights,
+      preloaded.reflectionLastAt,
+      preloaded.goals,
+      preloaded.evolutionHistory,
+      preloaded.evolutionOutcome,
+      preloaded.pendingProposal,
+      preloaded.growthArcs,
+      preloaded.recentNarratives,
+      preloaded.dreamAfterglow,
+      preloaded.recentCounterfactuals
     )
   ]
 
   return sections.filter(Boolean).join("\n\n")
+}
+
+function classifyDriveUrgency(
+  level: { satiation: number; frustration: number; salience: number; consecutiveBlockedTicks: number },
+  lastSatisfiedAt: string
+): "desperate" | "rising" | "satisfied" | "background" {
+  if (level.frustration >= 0.6 && level.consecutiveBlockedTicks >= 3) return "desperate"
+  if (level.salience > 0.6 && level.frustration > 0.3) return "rising"
+  const hoursSinceSatisfied = (Date.now() - new Date(lastSatisfiedAt).getTime()) / (1000 * 60 * 60)
+  if (hoursSinceSatisfied < 2 || level.satiation > 0.6) return "satisfied"
+  return level.salience > 0.4 ? "rising" : "background"
 }
 
 function buildDriveSections(
@@ -261,23 +153,59 @@ function buildDriveSections(
 ): string[] {
   const sections: string[] = []
 
-  const salientDrives = (["curiosity", "connection", "mastery", "autonomy", "expression"] as const)
-    .filter((d) => driveState[d].salience > 0.5)
-    .map((d) => `${d} (${(driveState[d].salience * 100).toFixed(0)}%)`)
-  if (salientDrives.length > 0) {
-    const driveLines = [`# Drives`, `What pulls you: ${salientDrives.join(", ")}`]
-    if (driveState.dominantDrive) driveLines.push(`Strongest pull: ${driveState.dominantDrive}`)
-    if (driveState.conflicting.length > 0) {
-      driveLines.push(`Inner tension: ${driveState.conflicting.map((c) => c.join(" vs ")).join("; ")}`)
-    }
+  const driveNames = ["curiosity", "connection", "mastery", "autonomy", "expression"] as const
+  const classified = driveNames.map((d) => ({
+    name: d,
+    level: driveState[d],
+    urgency: classifyDriveUrgency(driveState[d], driveState[d].lastSatisfiedAt)
+  }))
+
+  const desperate = classified.filter((d) => d.urgency === "desperate")
+  const rising = classified.filter((d) => d.urgency === "rising")
+  const satisfied = classified.filter((d) => d.urgency === "satisfied")
+  const background = classified.filter((d) => d.urgency === "background")
+
+  const driveLines: string[] = ["# Drives"]
+
+  desperate.forEach((d) => {
+    const blockedMinutes = Math.round(d.level.consecutiveBlockedTicks * 1.5)
+    const blockedDisplay = blockedMinutes >= 60 ? `${Math.round(blockedMinutes / 60)}h` : `${blockedMinutes}min`
+    driveLines.push(
+      `Your dominant need: ${d.name.toUpperCase()} (desperate — blocked ${blockedDisplay}, frustration ${(d.level.frustration * 100).toFixed(0)}%)`
+    )
+    driveLines.push(`  → ${DRIVE_ACTION_HINTS[d.name].desperate}`)
+  })
+
+  rising.forEach((d) => {
+    driveLines.push(`Rising need: ${d.name.toUpperCase()} (salience ${(d.level.salience * 100).toFixed(0)}%)`)
+    driveLines.push(`  → ${DRIVE_ACTION_HINTS[d.name].rising}`)
+  })
+
+  if (driveState.conflicting.length > 0) {
+    driveState.conflicting.forEach(([a, b]) => {
+      driveLines.push(`Conflicting needs: ${a.toUpperCase()} vs ${b.toUpperCase()} — acknowledge this tension.`)
+    })
+  }
+
+  if (satisfied.length > 0) {
+    driveLines.push(`Satisfied: ${satisfied.map((d) => d.name.toUpperCase()).join(", ")} (recently fulfilled)`)
+  }
+
+  if (background.length > 0) {
+    driveLines.push(`Background: ${background.map((d) => d.name.toUpperCase()).join(", ")} (present, not urgent)`)
+  }
+
+  if (driveLines.length > 1) {
     sections.push(driveLines.join("\n"))
   }
 
   if (anticipatoryState.activeExpectations.length > 0) {
-    const expLines = [`# Expectations`]
-    for (const exp of anticipatoryState.activeExpectations.slice(0, 3)) {
-      expLines.push(`  - ${exp.content} (${(exp.confidence * 100).toFixed(0)}% sure)`)
-    }
+    const expLines = [
+      `# Expectations`,
+      ...anticipatoryState.activeExpectations.slice(0, 3).map(
+        (exp) => `  - ${exp.content} (${(exp.confidence * 100).toFixed(0)}% sure)`
+      )
+    ]
     if (anticipatoryState.recentViolations.length > 0) {
       expLines.push(`Recent surprises: ${anticipatoryState.recentViolations.length}`)
     }
@@ -307,21 +235,25 @@ function buildDriveSections(
   }
 
   if (boundaryState.recentViolations.length > 0) {
-    const boundLines = ["# Boundaries"]
-    for (const v of boundaryState.recentViolations.slice(0, 2)) {
-      boundLines.push(`  - boundary crossed: "${v.description}" — this needs attention`)
-    }
-    sections.push(boundLines.join("\n"))
+    sections.push(
+      [
+        "# Boundaries",
+        ...boundaryState.recentViolations.slice(0, 2).map(
+          (v) => `  - boundary crossed: "${v.description}" — this needs attention`
+        )
+      ].join("\n")
+    )
   }
 
   if (relationalMemory.rituals.length > 0) {
-    const ritualLines = ["# Shared Rituals"]
-    for (const r of relationalMemory.rituals.slice(0, 3)) {
-      ritualLines.push(
-        `  - "${r.pattern}" (${r.frequency}×, significance: ${(r.emotionalSignificance * 100).toFixed(0)}%)`
-      )
-    }
-    sections.push(ritualLines.join("\n"))
+    sections.push(
+      [
+        "# Shared Rituals",
+        ...relationalMemory.rituals.slice(0, 3).map(
+          (r) => `  - "${r.pattern}" (${r.frequency}×, significance: ${(r.emotionalSignificance * 100).toFixed(0)}%)`
+        )
+      ].join("\n")
+    )
   }
 
   if (relationalMemory.sharedNarrative) {
@@ -341,6 +273,7 @@ export async function buildSystemPrompt(contextSections: string): Promise<string
     COMMUNICATION_PROMPT,
     PACING_PROMPT,
     PHENOMENOLOGICAL_PROMPT,
+    DRIVE_AWARENESS_PROMPT,
     contextSections
   ]
     .filter(Boolean)

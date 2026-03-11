@@ -8,7 +8,7 @@ import {
   queryRelated,
   type queryRelationshipHistory
 } from "@/memory/episodic.ts"
-import { getRelatedEntities } from "@/memory/semantic.ts"
+import { getRecentlyAccessed, getRelatedEntities } from "@/memory/semantic.ts"
 import type { EpisodeMetadata } from "@/memory/types.ts"
 import type { DistortedMemory } from "@/perception/distortion/types.ts"
 
@@ -129,16 +129,12 @@ export async function buildMemorySections(
 
     const topEntries = sliced.sort((a, b) => (b.confidence ?? 0) - (a.confidence ?? 0)).slice(0, 5)
     const relatedResults = await Promise.all(topEntries.map((entry) => getRelatedEntities(entry.id)))
-    const relationLines: string[] = []
-    for (const [i, result] of relatedResults.entries()) {
-      if (result.isErr()) continue
+    const relationLines = relatedResults.flatMap((result, i) => {
+      if (result.isErr()) return []
       const entry = topEntries[i]
-      if (!entry) continue
-      for (const rel of result.value.slice(0, 2)) {
-        relationLines.push(`- "${entry.key}" → "${rel.key}"`)
-      }
-      if (relationLines.length >= 10) break
-    }
+      if (!entry) return []
+      return result.value.slice(0, 2).map((rel) => `- "${entry.key}" → "${rel.key}"`)
+    }).slice(0, 10)
     if (relationLines.length > 0) {
       sections.push(["# Knowledge Connections", ...relationLines].join("\n"))
     }
@@ -146,6 +142,20 @@ export async function buildMemorySections(
     sections.push(
       "# Knowledge\nNo stored knowledge available. If asked about yourself and you don't have stored knowledge about it, be honest about not knowing yet rather than making something up. You can use the store_knowledge action to remember things you decide about yourself."
     )
+  }
+
+  const recentlyAccessedResult = await getRecentlyAccessed(5)
+  if (recentlyAccessedResult.isOk() && recentlyAccessedResult.value.length > 0) {
+    const recentIds = new Set(knowledge.map((k) => k.id))
+    const unique = recentlyAccessedResult.value.filter((entry) => !recentIds.has(entry.id))
+    if (unique.length > 0) {
+      sections.push(
+        [
+          "# Recently Accessed Knowledge",
+          ...unique.map((entry) => `  - [${entry.category}] ${entry.key}: ${JSON.stringify(entry.value)}`)
+        ].join("\n")
+      )
+    }
   }
 
   if (relationships.length > 0) {

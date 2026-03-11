@@ -1,11 +1,14 @@
+import type { EmotionalState } from "@/affect/emotion/types.ts"
 import { SOCIAL_BATTERY } from "@/affect/soma/constants.ts"
 import type { SomaticState } from "@/affect/soma/types.ts"
 import type { AttentionState } from "@/cognition/types.ts"
 import { buildIdiolectSection, type IdiolectState } from "@/expression/communication/idiolect.ts"
 import type { CommunicationRegister } from "@/expression/communication/types.ts"
+import type { RelationalRitual } from "@/memory/relational.ts"
 import type { AttachmentStyle } from "@/relational/attachment/types.ts"
 import type { OperatorModel } from "@/relational/mind/types.ts"
 import type { getAllTrustLevels } from "@/relational/trust/compute.ts"
+import type { CoherenceState } from "@/self/coherence/types.ts"
 import { translateAttachmentToFelt, translateOperatorModelToFelt } from "./render.ts"
 
 export function buildSocialSections(
@@ -16,7 +19,13 @@ export function buildSocialSections(
   attentionState: AttentionState | null,
   operatorModel: OperatorModel,
   trustLevels: Awaited<ReturnType<typeof getAllTrustLevels>>,
-  idiolectState: IdiolectState | null
+  idiolectState: IdiolectState | null,
+  emotion?: EmotionalState,
+  coherenceState?: CoherenceState,
+  isAltered?: boolean,
+  rituals?: RelationalRitual[],
+  conversationPatterns?: string[],
+  recurringUnresolved?: string[]
 ): string[] {
   const sections: string[] = []
 
@@ -45,7 +54,8 @@ export function buildSocialSections(
   }
 
   if (idiolectState) {
-    const idiolectSection = buildIdiolectSection(idiolectState)
+    const emotionContext = emotion ? { emotion, coherenceState, isAltered } : undefined
+    const idiolectSection = buildIdiolectSection(idiolectState, emotionContext)
     if (idiolectSection) sections.push(idiolectSection)
   }
 
@@ -74,6 +84,31 @@ export function buildSocialSections(
                     : "burnt — too many failures"
           return `  - ${t.actionType}: ${trustFeel}`
         })
+      ].join("\n")
+    )
+  }
+
+  if (rituals && rituals.length > 0) {
+    const highConfidence = rituals.filter((r) => r.confidence > 0.3)
+    if (highConfidence.length > 0) {
+      const ritualLines = highConfidence.slice(0, 5).map((r) => {
+        const typeLabel = r.type === "temporal" ? "timing" : r.type === "phrase" ? "phrase" : "behavior"
+        return `  - ${r.pattern} (${typeLabel}, confidence: ${r.confidence.toFixed(2)})`
+      })
+      sections.push(["# Rituals", "Patterns you've noticed in interactions:", ...ritualLines].join("\n"))
+    }
+  }
+
+  if (conversationPatterns && conversationPatterns.length > 0) {
+    sections.push(["# Conversation Patterns", ...conversationPatterns.map((p) => `  - ${p}`)].join("\n"))
+  }
+
+  if (recurringUnresolved && recurringUnresolved.length > 0) {
+    sections.push(
+      [
+        "# Unresolved Threads",
+        "Topics that keep coming up without resolution:",
+        ...recurringUnresolved.map((t) => `  - ${t}`)
       ].join("\n")
     )
   }

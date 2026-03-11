@@ -70,12 +70,16 @@ const IMPULSE_TEMPLATES: Record<ImpulseType, string[]> = {
 
 function selectWeighted(weights: { type: ImpulseType; weight: number }[]): ImpulseType {
   const total = weights.reduce((sum, w) => sum + w.weight, 0)
-  let roll = Math.random() * total
-  for (const w of weights) {
-    roll -= w.weight
-    if (roll <= 0) return w.type
-  }
-  return weights[weights.length - 1]?.type ?? "random_question"
+  const roll = Math.random() * total
+  const found = weights.reduce(
+    (acc, w) => {
+      if (acc.found) return acc
+      const remaining = acc.remaining - w.weight
+      return remaining <= 0 ? { found: w.type, remaining } : { found: null, remaining }
+    },
+    { found: null as ImpulseType | null, remaining: roll }
+  )
+  return found.found ?? weights[weights.length - 1]?.type ?? "random_question"
 }
 
 /**

@@ -192,12 +192,12 @@ export function buildPerceptionSections(
 
     if (xContext.timeline && xContext.timeline.length > 0) {
       xLines.push(`\nTimeline (${xContext.timeline.length} posts):`)
-      for (const post of xContext.timeline) {
+      xContext.timeline.forEach((post) => {
         const author = post.authorUsername ? `@${post.authorUsername}` : post.authorId
         const text = post.text.length > 200 ? `${post.text.slice(0, 200)}...` : post.text
         xLines.push(`  - [${author}]: ${text}`)
         xLines.push(`    ${post.url} | ❤ ${post.likeCount} 🔁 ${post.retweetCount}`)
-      }
+      })
     }
 
     sections.push(xLines.join("\n"))
@@ -208,14 +208,14 @@ export function buildPerceptionSections(
     emailLines.push(`Status: check: ${emailContext.canCheck ? "available" : "cooldown"}`)
     if (emailContext.unread && emailContext.unread.length > 0) {
       emailLines.push(`Unread (${emailContext.unread.length}):`)
-      for (const mail of emailContext.unread) {
+      emailContext.unread.forEach((mail) => {
         const dateStr = format(new Date(mail.date), "HH:mm")
         emailLines.push(`  - [${mail.from}]: ${mail.subject} — ${dateStr}`)
         if (mail.snippet) {
           const truncated = mail.snippet.length > 150 ? `${mail.snippet.slice(0, 150)}...` : mail.snippet
           emailLines.push(`    ${truncated}`)
         }
-      }
+      })
     } else if (emailContext.canCheck) {
       emailLines.push("No unread emails.")
     }
@@ -229,7 +229,7 @@ export function buildPerceptionSections(
       calLines.push(`Upcoming events (next 24h):`)
       const now = new Date()
       const reminderWindow = CALENDAR.REMINDER_WINDOW_MINUTES * 60 * 1000
-      for (const event of calendarContext.upcoming) {
+      calendarContext.upcoming.forEach((event) => {
         const startDate = new Date(event.start)
         const endDate = new Date(event.end)
         const timeUntil = startDate.getTime() - now.getTime()
@@ -249,7 +249,7 @@ export function buildPerceptionSections(
         const imminentPrefix = isImminent ? `⚡ ` : ""
         const imminentSuffix = isImminent ? ` (in ${Math.round(timeUntil / 60000)} min!)` : ""
         calLines.push(`  - ${imminentPrefix}${timeStr}: ${event.summary}${locationStr}${imminentSuffix}`)
-      }
+      })
     } else if (calendarContext.canCheck) {
       calLines.push("No upcoming events.")
     }

@@ -58,7 +58,7 @@ export function buildEmotionContext(
         disappointmentState: dependency("disappointment"),
         previousState: previous,
         consecutiveIdleTicks,
-        hasPendingGoals: true
+        hasPendingGoals: shared.senseResult.moodContext.hasActiveGoals
       }
 
     case "ambivalence":

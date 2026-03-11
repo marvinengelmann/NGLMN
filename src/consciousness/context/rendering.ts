@@ -30,9 +30,9 @@ export function renderSecondaryEmotion(name: string, state: SecondaryEmotionStat
     case "ambivalence": {
       const lines: string[] = ["# Ambivalence"]
       if (s.activePairs?.length > 0) {
-        for (const pair of s.activePairs.slice(0, 2)) {
+        s.activePairs.slice(0, 2).forEach((pair: { wanting: string; fearing: string }) => {
           lines.push(`you want ${pair.wanting} — but you also fear ${pair.fearing}`)
-        }
+        })
       }
       if (s.paralysisRisk > 0.4) {
         lines.push("the pull in both directions is making it hard to move at all — frozen between wanting and fearing")

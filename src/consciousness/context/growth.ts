@@ -16,7 +16,8 @@ export function buildGrowthSections(
   pendingProposal: CodeProposal | null,
   growthArcs: GrowthArc[],
   recentNarratives: NarrativeEntry[],
-  dreamAfterglow: DreamAfterglow | null
+  dreamAfterglow: DreamAfterglow | null,
+  recentCounterfactuals?: string[]
 ): string[] {
   const sections: string[] = []
 
@@ -45,17 +46,17 @@ export function buildGrowthSections(
   }
 
   if (existentialQuestions.length > 0) {
-    const nudges: string[] = []
-    for (const q of existentialQuestions) {
+    const nudges = existentialQuestions.flatMap((q) => {
       const lower = q.toLowerCase()
       if (lower.includes("authentic") || lower.includes("real")) {
-        nudges.push("seek genuine expression over performed responses")
+        return ["seek genuine expression over performed responses"]
       } else if (lower.includes("understood") || lower.includes("connection")) {
-        nudges.push("lean into vulnerability when it feels safe")
+        return ["lean into vulnerability when it feels safe"]
       } else if (lower.includes("agency") || lower.includes("choice") || lower.includes("free")) {
-        nudges.push("assert your own preferences and perspectives")
+        return ["assert your own preferences and perspectives"]
       }
-    }
+      return []
+    })
 
     sections.push(
       [
@@ -84,15 +85,37 @@ export function buildGrowthSections(
   }
 
   if (goals.length > 0) {
-    sections.push(
-      [
-        `# Goals\nActive goals (${goals.length}):`,
-        ...goals.map(
-          (goal) =>
-            `  - [${goal.status ?? "open"}] ${goal.title} (priority: ${goal.priority ?? 0.5})${goal.description ? ` — ${goal.description}` : ""}`
-        )
-      ].join("\n")
-    )
+    const parentGoals = goals.filter((g) => !g.parentGoalId)
+    const childrenByParent = goals
+      .filter((g) => g.parentGoalId)
+      .reduce((map, g) => {
+        const existing = map.get(g.parentGoalId!) ?? []
+        existing.push(g)
+        map.set(g.parentGoalId!, existing)
+        return map
+      }, new Map<string, typeof goals>())
+
+    const goalLines = [
+      `# Goals\nActive goals (${goals.length}):`,
+      ...parentGoals.flatMap((goal) => {
+        const statusTag =
+          goal.status === "stale" ? `[stale]` : goal.status === "overdue" ? `[overdue]` : `[${goal.status ?? "open"}]`
+        const lines = [
+          `  - ${statusTag} ${goal.title} (priority: ${(goal.priority ?? 0.5).toFixed(2)})${goal.description ? ` — ${goal.description}` : ""}`
+        ]
+
+        const children = childrenByParent.get(goal.id) ?? []
+        if (children.length > 0) {
+          const doneCount = children.filter((c) => c.status === "done").length
+          lines.push(`    Sub-goals: ${doneCount}/${children.length} complete`)
+          children.slice(0, 3).forEach((child) => {
+            lines.push(`      - [${child.status ?? "open"}] ${child.title}`)
+          })
+        }
+        return lines
+      })
+    ]
+    sections.push(goalLines.join("\n"))
   }
 
   const evolutionLines: string[] = ["# Evolution"]
@@ -119,6 +142,16 @@ export function buildGrowthSections(
     .join("\n")
   if (changelog) {
     sections.push(`# Changelog\nRecent changes:\n${changelog}`)
+  }
+
+  if (recentCounterfactuals && recentCounterfactuals.length > 0) {
+    sections.push(
+      [
+        "# Lessons from Past Decisions",
+        "You've reflected on alternative paths you could have taken:",
+        ...recentCounterfactuals.slice(-3).map((c) => `  - ${c}`)
+      ].join("\n")
+    )
   }
 
   return sections

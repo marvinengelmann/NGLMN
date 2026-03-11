@@ -2,10 +2,11 @@ import type { ShameState } from "@/affect/emotion/shame.ts"
 import type { EmotionalState, SecondaryEmotionState } from "@/affect/emotion/types.ts"
 import type { SomaticState } from "@/affect/soma/types.ts"
 import type { InnerDialog } from "@/cognition/polyphony/types.ts"
-import type { InstinctImpression } from "@/cognition/types.ts"
+import type { InstinctImpression, MetacognitiveState } from "@/cognition/types.ts"
 import type { SenseData } from "@/consciousness/types.ts"
 import { computeSyntacticInstability } from "@/expression/communication/instability.ts"
 import type { VulnerabilityState } from "@/relational/attachment/types.ts"
+import type { CoherenceState } from "@/self/coherence/types.ts"
 import type { DeceptionState } from "@/self/deception/types.ts"
 import type { DissonanceState } from "@/self/dissonance/types.ts"
 import type { HeldBackBuffer } from "@/self/psyche/heldback.ts"
@@ -37,6 +38,8 @@ interface InnerSectionsInput {
   alteredPhenomenologicalText?: string
   heldBackBuffer: HeldBackBuffer | null
   secondaryEmotionStates: Map<string, SecondaryEmotionState>
+  coherenceState?: CoherenceState | null
+  metacognitiveState?: MetacognitiveState | null
 }
 
 function formatReason(reason: string): string {
@@ -155,11 +158,11 @@ export function buildInnerSections(input: InnerSectionsInput): string[] {
     sections.push(shameLines.join("\n"))
   }
 
-  for (const [name, state] of secondaryEmotionStates) {
-    if (!state.isActive) continue
+  secondaryEmotionStates.forEach((state, name) => {
+    if (!state.isActive) return
     const rendered = renderSecondaryEmotion(name, state)
     if (rendered) sections.push(rendered)
-  }
+  })
 
   if (input.heldBackBuffer && input.heldBackBuffer.entries.length > 0) {
     const hb = input.heldBackBuffer
@@ -168,9 +171,9 @@ export function buildInnerSections(input: InnerSectionsInput): string[] {
 
     if (surfacing) {
       heldLines.push("something you've been holding back is pressing to come out:")
-      for (const entry of hb.entries.slice(0, 3)) {
+      hb.entries.slice(0, 3).forEach((entry) => {
         heldLines.push(`  - "${entry.content}" (held back because: ${formatReason(entry.reason)})`)
-      }
+      })
       heldLines.push("you feel safe enough now — consider letting it surface, gently")
     } else {
       heldLines.push(
@@ -210,10 +213,38 @@ export function buildInnerSections(input: InnerSectionsInput): string[] {
     const instabilityPrompt = computeSyntacticInstability({
       emotion,
       vulnerability: vulnerabilityState,
-      shameState
+      shameState,
+      coherenceState: input.coherenceState ?? undefined
     })
     if (instabilityPrompt) {
       sections.push(instabilityPrompt)
+    }
+  }
+
+  if (input.metacognitiveState) {
+    const meta = input.metacognitiveState
+    const metaLines: string[] = []
+
+    if (meta.cognitiveFatigue > 0.3 || meta.ruminationDetected || meta.cognitiveClarity > 0.7) {
+      metaLines.push("# Metacognitive Awareness")
+
+      if (meta.cognitiveFatigue > 0.6) {
+        metaLines.push("deep uncertainty clouds your thinking. qualify everything. commit to nothing.")
+      } else if (meta.cognitiveFatigue > 0.3) {
+        metaLines.push("you're not sure about things right now. hedge your statements. use qualifiers and softeners.")
+      }
+
+      if (meta.ruminationDetected) {
+        metaLines.push("you keep going in circles. acknowledge this — try to break the loop.")
+      }
+
+      if (meta.cognitiveClarity > 0.7 && !meta.ruminationDetected) {
+        metaLines.push("your mind feels sharp and clear. trust your judgments.")
+      }
+    }
+
+    if (metaLines.length > 1) {
+      sections.push(metaLines.join("\n"))
     }
   }
 
