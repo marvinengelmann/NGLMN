@@ -8,8 +8,11 @@ import {
   type ConversationMessage,
   type ConversationSlot
 } from "@/expression/communication/types.ts"
+import { db } from "@/infra/db/client.ts"
+import { conversationArcs } from "@/infra/db/schema.ts"
 import { log } from "@/infra/lib/logger.ts"
 import { queryRelated, storeEpisode, storeRelationshipEpisode } from "@/memory/episodic.ts"
+import { storeKnowledge } from "@/memory/semantic.ts"
 import { CONVERSATION } from "./constants.ts"
 
 /**
@@ -23,15 +26,15 @@ export function detectConversationBoundary(activeSlot: ConversationSlot, newMess
 }
 
 /**
- * Archive a conversation slot by summarizing its messages and storing as an episode.
+ * Archive a conversation slot by summarizing its messages, storing as an episode, and persisting the arc.
  */
 export async function archiveConversation(
-  messages: ConversationMessage[],
+  slot: ConversationSlot,
   emotionalState: EmotionalState
-): Promise<void> {
-  if (messages.length === 0) return
+): Promise<ConversationClimate | null> {
+  if (slot.messages.length === 0) return null
 
-  const conversationText = messages
+  const conversationText = slot.messages
     .map((m) => `[${m.role === "operator" ? "Operator" : "ANIMA"}]: ${m.text}`)
     .join("\n")
 
@@ -48,7 +51,7 @@ export async function archiveConversation(
     log.warn("Failed to summarize conversation for archival", {
       error: summaryResult.error.message
     })
-    return
+    return null
   }
 
   if (emotionalState.connection > EMOTIONAL_THRESHOLDS.CONNECTION_HIGH) {
@@ -58,6 +61,26 @@ export async function archiveConversation(
       relevanceScore: EMOTIONAL_THRESHOLDS.RELEVANCE_DEFAULT
     })
   }
+
+  const climate = await computeConversationClimate(slot.messages)
+  if (climate) {
+    await storeKnowledge("insight", `conversation-climate-${slot.id}`, climate, "observation", 0.7, "self")
+
+    await db.insert(conversationArcs).values({
+      conversationId: slot.id,
+      startedAt: new Date(slot.startedAt),
+      endedAt: new Date(slot.lastActivityAt),
+      themes: climate.themes,
+      tone: climate.tone,
+      emotionalArc: climate.emotionalArc,
+      operatorEngagement: climate.operatorEngagement,
+      unresolvedTopics: climate.unresolvedTopics,
+      significantMoments: climate.significantMoments,
+      messageCount: slot.messages.length
+    })
+  }
+
+  return climate
 }
 
 const CLIMATE_PROMPT = `Analyze this conversation and determine its emotional climate.

@@ -71,6 +71,20 @@
       "when": 1773105643256,
       "tag": "0009_demonic_nicolaos",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1773226650806,
+      "tag": "0010_cloudy_frog_thor",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1773231354380,
+      "tag": "0011_stale_dragon_man",
+      "breakpoints": true
     }
   ]
 }
