@@ -63,9 +63,8 @@ export class WriteBuffer {
   async flushPostgres(): Promise<void> {
     if (this.postgresWrites.length === 0) return
 
-    await db.transaction(async (tx) => {
-      await Promise.all(this.postgresWrites.map(({ table, values }) => tx.insert(table).values(values)))
-    })
+    const queries = this.postgresWrites.map(({ table, values }) => db.insert(table).values(values))
+    await db.batch(queries as [typeof queries[0], ...typeof queries])
     log.debug("WriteBuffer: flushed Postgres", { rows: this.postgresWrites.length })
     this.postgresWrites = []
   }
