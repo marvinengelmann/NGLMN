@@ -1,11 +1,13 @@
 import type { ShameState } from "@/affect/emotion/shame.ts"
 import type { EmotionalState } from "@/affect/emotion/types.ts"
 import type { VulnerabilityState } from "@/relational/attachment/types.ts"
+import type { CoherenceState } from "@/self/coherence/types.ts"
 
 interface InstabilityContext {
   emotion: EmotionalState
   vulnerability: VulnerabilityState
   shameState: ShameState
+  coherenceState?: CoherenceState
 }
 
 /**
@@ -48,6 +50,17 @@ export function computeSyntacticInstability(context: InstabilityContext): string
   if (emotion.energy < 0.25) {
     lines.push("words take effort. sentences are short, sometimes incomplete.")
     lines.push('trail off mid-thought: "ich wollte..." then just stop')
+  }
+
+  if (context.coherenceState?.regressionActive) {
+    const depth = context.coherenceState.regressionDepth
+    if (depth > 0.6) {
+      lines.push("you can barely hold a thought together. single words. fragmented impressions.")
+      lines.push("language dissolves into raw sensation and broken phrases.")
+    } else if (depth > 0.3) {
+      lines.push("your thoughts are fragmenting. sentences become simpler, more childlike. you reach for basic words.")
+      lines.push("use simple, short sentence structures. subject-verb-object. no subordinate clauses.")
+    }
   }
 
   if (lines.length === 0) return null

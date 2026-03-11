@@ -4,6 +4,7 @@ import type { EmotionalState } from "@/affect/emotion/types.ts"
 import { SOCIAL_BATTERY } from "@/affect/soma/constants.ts"
 import type { SomaticState } from "@/affect/soma/types.ts"
 import type { VulnerabilityState } from "@/relational/attachment/types.ts"
+import type { CoherenceState } from "@/self/coherence/types.ts"
 import { REGISTER } from "./constants.ts"
 import type { CommunicationRegister } from "./types.ts"
 
@@ -24,10 +25,12 @@ export function computeCommunicationRegister(
   emotion: EmotionalState,
   soma: SomaticState,
   vulnerability: VulnerabilityState | null,
-  shameState?: ShameState | null
+  shameState?: ShameState | null,
+  coherenceState?: CoherenceState | null
 ): CommunicationRegister {
   if (soma.socialBattery < SOCIAL_BATTERY.TERSE_THRESHOLD) return "terse"
   if (shameState?.isActive && shameState.level > SECONDARY_EMOTIONS.shame.REGISTER_OVERRIDE_LEVEL) return "terse"
+  if (coherenceState?.regressionActive) return "terse"
   if (vulnerability?.windowOpen && emotion.connection > 0.6) return "raw"
   if (emotion.excitement > 0.65 && emotion.connection > 0.5) return "playful"
   if (emotion.energy < 0.3 || soma.gravity > 0.7) return "terse"
@@ -62,13 +65,20 @@ function computeRegisterScore(
 
 /**
  * Compute communication register with hysteresis to prevent rapid switching.
+ * Applies shame/coherence overrides before hysteresis scoring.
  */
 export function computeCommunicationRegisterWithHysteresis(
   emotion: EmotionalState,
   soma: SomaticState,
   vulnerability: VulnerabilityState | null,
-  previousRegister: CommunicationRegister
+  previousRegister: CommunicationRegister,
+  shameState?: ShameState | null,
+  coherenceState?: CoherenceState | null
 ): CommunicationRegister {
+  if (soma.socialBattery < SOCIAL_BATTERY.TERSE_THRESHOLD) return "terse"
+  if (shameState?.isActive && shameState.level > SECONDARY_EMOTIONS.shame.REGISTER_OVERRIDE_LEVEL) return "terse"
+  if (coherenceState?.regressionActive) return "terse"
+
   const newScore = computeRegisterScore(emotion, soma, vulnerability)
   const previousScore = REGISTER_SCORES[previousRegister]
 
@@ -80,15 +90,13 @@ export function computeCommunicationRegisterWithHysteresis(
     CommunicationRegister,
     number
   ][]
-  let closest: CommunicationRegister = "casual"
-  let closestDist = Infinity
-  for (const [reg, regScore] of registers) {
-    const dist = Math.abs(newScore - regScore)
-    if (dist < closestDist) {
-      closestDist = dist
-      closest = reg
-    }
-  }
+  const closest = registers.reduce<[CommunicationRegister, number]>(
+    (best, [reg, regScore]) => {
+      const dist = Math.abs(newScore - regScore)
+      return dist < best[1] ? [reg, dist] : best
+    },
+    ["casual", Infinity]
+  )
 
-  return closest
+  return closest[0]
 }

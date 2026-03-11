@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest"
 import { SOCIAL_BATTERY } from "@/affect/soma/constants.ts"
-import { makeEmotionalState, makeSomaticState, makeVulnerabilityState } from "@/test/factories.ts"
+import { makeCoherenceState, makeEmotionalState, makeSomaticState, makeVulnerabilityState } from "@/test/factories.ts"
 import { computeCommunicationRegister, isWithdrawn } from "./register.ts"
 
 describe("isWithdrawn", () => {
@@ -58,5 +58,20 @@ describe("computeCommunicationRegister", () => {
     const emotion = makeEmotionalState({ curiosity: 0.4, energy: 0.5, excitement: 0.3, connection: 0.3 })
     const soma = makeSomaticState({ socialBattery: 0.8, gravity: 0.3 })
     expect(computeCommunicationRegister(emotion, soma, null)).toBe("casual")
+  })
+
+  it("returns terse when coherence regression is active", () => {
+    const emotion = makeEmotionalState({ curiosity: 0.7, energy: 0.8, excitement: 0.8, connection: 0.8 })
+    const soma = makeSomaticState({ socialBattery: 0.9 })
+    const vulnerability = makeVulnerabilityState({ windowOpen: true })
+    const coherence = makeCoherenceState({ regressionActive: true, regressionDepth: 0.5 })
+    expect(computeCommunicationRegister(emotion, soma, vulnerability, null, coherence)).toBe("terse")
+  })
+
+  it("does not force terse when regression is inactive", () => {
+    const emotion = makeEmotionalState({ curiosity: 0.7, energy: 0.6 })
+    const soma = makeSomaticState({ socialBattery: 0.8, gravity: 0.3 })
+    const coherence = makeCoherenceState({ regressionActive: false })
+    expect(computeCommunicationRegister(emotion, soma, null, null, coherence)).toBe("elaborate")
   })
 })

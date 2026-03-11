@@ -38,6 +38,12 @@ export function computeTypoProbability(
   return Math.min(1, probability)
 }
 
+interface TypoContext {
+  emotion?: EmotionalState
+  soma?: SomaticState
+  vulnerabilityOpen?: boolean
+}
+
 /**
  * Maybe introduce a typo into a message based on communication register.
  * Returns the modified text and an optional correction message.
@@ -45,14 +51,21 @@ export function computeTypoProbability(
 export function maybeIntroduceTypo(
   text: string,
   register: CommunicationRegister,
-  vulnerabilityOpen?: boolean
+  context?: TypoContext | boolean
 ): { text: string; correction: string | null } {
   if (text.length < TYPOS.MIN_TEXT_LENGTH) return { text, correction: null }
 
-  let probability = TYPO_PROBABILITY[register] ?? TYPOS.CASUAL_PROBABILITY
-  if (vulnerabilityOpen) {
-    probability *= 1 + TYPOS.VULNERABILITY_BOOST
-  }
+  const ctx: TypoContext = typeof context === "boolean" ? { vulnerabilityOpen: context } : (context ?? {})
+
+  const probability =
+    ctx.emotion && ctx.soma
+      ? computeTypoProbability(register, ctx.emotion, ctx.soma, ctx.vulnerabilityOpen ?? false)
+      : (() => {
+          let p = TYPO_PROBABILITY[register] ?? TYPOS.CASUAL_PROBABILITY
+          if (ctx.vulnerabilityOpen) p *= 1 + TYPOS.VULNERABILITY_BOOST
+          return p
+        })()
+
   if (Math.random() >= probability) return { text, correction: null }
 
   const words = text.split(" ")

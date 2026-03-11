@@ -38,3 +38,21 @@ export const ConversationSlot = z.object({
   climate: ConversationClimate.optional()
 })
 export type ConversationSlot = z.infer<typeof ConversationSlot>
+
+export const ConversationArc = z.object({
+  conversationId: z.string(),
+  startedAt: z.string(),
+  endedAt: z.string(),
+  themes: z.array(z.string()),
+  tone: ConversationTone,
+  emotionalArc: z.object({
+    start: z.number().min(-1).max(1),
+    peak: z.number().min(-1).max(1),
+    end: z.number().min(-1).max(1)
+  }),
+  operatorEngagement: z.number().min(0).max(1),
+  unresolvedTopics: z.array(z.string()),
+  significantMoments: z.array(z.string()),
+  messageCount: z.number()
+})
+export type ConversationArc = z.infer<typeof ConversationArc>

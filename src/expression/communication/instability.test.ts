@@ -94,4 +94,38 @@ describe("computeSyntacticInstability", () => {
     })
     expect(result).toContain("# Speech Pattern")
   })
+
+  it("generates deep regression instability when regressionDepth > 0.6", () => {
+    const result = computeSyntacticInstability({
+      emotion: makeEmotionalState(),
+      vulnerability: baseVulnerability,
+      shameState: { ...defaultState },
+      coherenceState: { integrationScore: 0.3, fragmentationSources: [], regressionActive: true, regressionDepth: 0.7 }
+    })
+    expect(result).not.toBeNull()
+    expect(result).toContain("barely hold a thought")
+    expect(result).toContain("raw sensation")
+  })
+
+  it("generates mild regression instability when regressionDepth > 0.3", () => {
+    const result = computeSyntacticInstability({
+      emotion: makeEmotionalState(),
+      vulnerability: baseVulnerability,
+      shameState: { ...defaultState },
+      coherenceState: { integrationScore: 0.5, fragmentationSources: [], regressionActive: true, regressionDepth: 0.4 }
+    })
+    expect(result).not.toBeNull()
+    expect(result).toContain("fragmenting")
+    expect(result).toContain("simpler")
+  })
+
+  it("does not generate regression instability when regression is inactive", () => {
+    const result = computeSyntacticInstability({
+      emotion: makeEmotionalState(),
+      vulnerability: baseVulnerability,
+      shameState: { ...defaultState },
+      coherenceState: { integrationScore: 0.8, fragmentationSources: [], regressionActive: false, regressionDepth: 0 }
+    })
+    expect(result).toBeNull()
+  })
 })
