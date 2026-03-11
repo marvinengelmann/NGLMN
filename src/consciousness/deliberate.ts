@@ -1,11 +1,10 @@
 import { computeVoiceModifiers } from "@/affect/altered/compute.ts"
-import { getActiveAlteredState } from "@/affect/altered/state.ts"
 import { ATTENTION } from "@/cognition/constants.ts"
 import { findAutomaticHabit } from "@/cognition/habit.ts"
 import { getHabitState } from "@/cognition/habits.ts"
 import { detectCognitiveConflict, shouldInstinctOverride } from "@/cognition/override.ts"
 import { generateInnerDialog } from "@/cognition/polyphony/dialog.ts"
-import { selectActiveVoices, shouldRunDialog } from "@/cognition/polyphony/voices.ts"
+import { getVoiceDominanceBoost, selectActiveVoices, shouldRunDialog } from "@/cognition/polyphony/voices.ts"
 import { callIntelligence } from "@/core/intelligence.ts"
 import { thinkDream } from "@/expression/dream/thinking.ts"
 import { thinkMorning, thinkReflect } from "@/expression/routine/thinking.ts"
@@ -19,19 +18,21 @@ import { log } from "@/infra/lib/logger.ts"
 import { captureError } from "@/infra/lib/sentry.ts"
 import { queryRelated } from "@/memory/episodic.ts"
 import { getGoalsByPriority } from "@/memory/goals.ts"
-import { getConsecutiveIdleTicks } from "@/memory/working.ts"
 import { getOperatorProfile } from "@/relational/mind/profile.ts"
 import { getGenesisPersonalityType } from "@/self/genesis/state.ts"
 import { getStructuredExistentialQuestions } from "@/self/psyche/questions.ts"
 import { generateContextualImpulse } from "./boredom.ts"
 import { buildContext, buildSystemPrompt } from "./context/builder.ts"
-import { AnimaDecision, type DeliberateResult, type FeelingResult, type SenseData, type SenseResult } from "./types.ts"
+import type { TickState } from "./pipeline/types.ts"
+import { AnimaDecision, type DeliberateResult } from "./types.ts"
 
 /**
  * DELIBERATE phase — main LLM decision with polyphony and instinct integration.
  */
-export async function deliberate(senseResult: SenseResult, feelResult: FeelingResult): Promise<DeliberateResult> {
-  const senseData: SenseData = {
+export async function deliberate(tickState: TickState): Promise<DeliberateResult> {
+  const { sense: senseResult, feel: feelResult, preloaded } = tickState
+
+  const senseData = {
     pendingMessages: senseResult.pendingMessages,
     perception: senseResult.perception,
     health: senseResult.health,
@@ -40,6 +41,7 @@ export async function deliberate(senseResult: SenseResult, feelResult: FeelingRe
     triggeredWorkflows: senseResult.triggeredWorkflows,
     moodContext: senseResult.moodContext
   }
+
   let xContext: { canBrowse: boolean; canPost: boolean; timeline?: EnrichedTweet[] } | undefined
   if (isXEnabled()) {
     const socialStatus = await canPerformSocialMedia()
@@ -86,11 +88,15 @@ export async function deliberate(senseResult: SenseResult, feelResult: FeelingRe
     }
   }
 
-  const contextString = await buildContext(senseData, feelResult.emotion, xContext, emailContext, calendarContext)
+  const contextString = await buildContext(tickState, senseData, xContext, emailContext, calendarContext)
   const systemPrompt = await buildSystemPrompt(contextString)
 
-  const alteredState = await getActiveAlteredState()
+  const alteredState = preloaded.alteredState
   const alteredVoiceModifiers = alteredState ? computeVoiceModifiers(alteredState) : undefined
+  const dominanceBoost = await getVoiceDominanceBoost()
+
+  const mergedModifiers: Partial<Record<string, number>> = { ...dominanceBoost, ...alteredVoiceModifiers }
+  const hasModifiers = Object.keys(mergedModifiers).length > 0
 
   const activeVoices = selectActiveVoices(
     feelResult.emotion,
@@ -100,7 +106,7 @@ export async function deliberate(senseResult: SenseResult, feelResult: FeelingRe
       action: "pending",
       hasMessages: senseResult.pendingMessages.length > 0
     },
-    alteredVoiceModifiers
+    hasModifiers ? mergedModifiers : undefined
   )
 
   let innerDialog: DeliberateResult["innerDialog"]
@@ -198,7 +204,7 @@ export async function deliberate(senseResult: SenseResult, feelResult: FeelingRe
     }
   }
 
-  const consecutiveIdle = await getConsecutiveIdleTicks()
+  const consecutiveIdle = preloaded.consecutiveIdleTicks
   const [operatorProfile, activeGoals, existentialQuestions, recentEpisodes] = await Promise.all([
     getOperatorProfile(),
     getGoalsByPriority().then((goals) => goals.map((g) => g.description).filter((d): d is string => d != null)),

@@ -1,32 +1,48 @@
 import { differenceInDays, differenceInMinutes, parseISO } from "date-fns"
-import { MOMENTUM } from "@/affect/emotion/constants.ts"
-import { getMoodBaseline, saveMoodBaseline } from "@/affect/emotion/state.ts"
-import { clampState } from "@/affect/emotion/update.ts"
-import { getSomaticState, saveSomaticState } from "@/affect/soma/state.ts"
+import { getEmotionalState, getMoodBaseline } from "@/affect/emotion/state.ts"
+import { blendMoodBaseline } from "@/affect/emotion/update.ts"
+import { getSomaticState } from "@/affect/soma/state.ts"
 import { rechargeSocialBattery } from "@/affect/soma/update.ts"
 import { updateHabitState } from "@/cognition/habit.ts"
-import { getHabitState, saveHabitState } from "@/cognition/habits.ts"
+import { getHabitState } from "@/cognition/habits.ts"
 import {
   applyIdiolectDrift,
+  computeIdiolectModifiers,
   detectOperatorAdoption,
   extractPatterns,
   getIdiolectState,
-  mergePatterns,
-  saveIdiolectState
+  mergePatterns
 } from "@/expression/communication/idiolect.ts"
+import { analyzeConversationPatterns } from "@/expression/communication/patterns.ts"
+import { getConversationBuffer } from "@/expression/communication/state.ts"
 import { handleDriftCheck } from "@/governance/security/guardian.ts"
+import { emotionHistory, routineLog, somaticHistory, tickLog } from "@/infra/db/schema.ts"
+import { redis } from "@/infra/integrations/redis.ts"
+import { vectorIndex } from "@/infra/integrations/vector.ts"
 import { log } from "@/infra/lib/logger.ts"
 import { logAndCaptureError } from "@/infra/lib/result.ts"
-import { addKeyMoment, getRelationalMemoryState, saveRelationalMemoryState } from "@/memory/relational.ts"
+import { EPISODIC_LIFECYCLE } from "@/memory/constants.ts"
+import {
+  applyGoalPriorityDecay,
+  detectOverdueGoals,
+  detectStaleGoals,
+  markGoalOverdue,
+  markGoalStale
+} from "@/memory/goals/lifecycle.ts"
+import { addKeyMoment, getRelationalMemoryState } from "@/memory/relational.ts"
+import { detectRituals } from "@/memory/rituals.ts"
 import { applyOpinionDrift } from "@/memory/semantic.ts"
 import {
   getLastTickSummary,
   getRecentActions,
   incrementConsecutiveConversationTicks,
   incrementConsecutiveIdleTicks,
+  pushRecentAction,
+  pushRecentTickDuration,
   resetConsecutiveConversationTicks,
   resetConsecutiveIdleTicks
 } from "@/memory/working.ts"
+import { evaluateAttachmentCrisis, getCrisisState, saveCrisisState } from "@/relational/attachment/crisis.ts"
 import { computeRelationshipPhase, shouldTransitionPhase } from "@/relational/attachment/phases.ts"
 import {
   getAttachmentStyle,
@@ -37,18 +53,30 @@ import {
   getTotalInteractions,
   incrementConflictCount,
   incrementPhaseTickCount,
-  saveAttachmentStyle,
   saveRelationshipPhase
 } from "@/relational/attachment/state.ts"
 import { detectConflict, hasStyleChanged, updateAttachmentStyle } from "@/relational/attachment/update.ts"
-import { formBoundary } from "@/self/boundaries/compute.ts"
-import { BOUNDARIES } from "@/self/boundaries/constants.ts"
-import { getBoundaryState, saveBoundaryState } from "@/self/boundaries/state.ts"
-import { logActionResult, logTick } from "./recorder.ts"
+import { maybeFormNegativeBoundary } from "@/self/boundaries/compute.ts"
+import { getBoundaryState } from "@/self/boundaries/state.ts"
+import type { WriteBuffer } from "./pipeline/persistence.ts"
 import type { DeliberateResult, FeelingResult, MaintainInput, TickSummary } from "./types.ts"
 
 const OPINION_DRIFT_PROBABILITY = 0.05
 const IDIOLECT_DRIFT_PROBABILITY = 0.05
+const CONVERSATION_PATTERN_PROBABILITY = 0.1
+
+const REDIS = {
+  ATTACHMENT_STYLE: "working:attachment:style",
+  MOOD_BASELINE: "working:emotion:moodBaseline",
+  IDIOLECT: "working:communication:idiolect",
+  HABIT_STATE: "working:cognition:habitState",
+  RELATIONAL_MEMORY: "working:relational:memory",
+  BOUNDARY_STATE: "working:boundaries:state",
+  TICK_LAST: "working:tick:last",
+  SOMA_CURRENT: "working:soma:current",
+  SOMA_LAST_TIMESTAMP: "working:soma:lastTimestamp",
+  EMOTION_CURRENT: "working:emotion:current"
+} as const
 
 /**
  * MAINTAIN phase — persist state, detect drift, update attachment, track phases and idle ticks.
@@ -56,17 +84,39 @@ const IDIOLECT_DRIFT_PROBABILITY = 0.05
 export async function maintain(
   input: MaintainInput,
   deliberateResult: DeliberateResult,
-  feelResult: FeelingResult
+  feelResult: FeelingResult,
+  buffer: WriteBuffer
 ): Promise<TickSummary> {
   await handleDriftCheck()
 
   const currentStyle = await getAttachmentStyle()
   const lastTick = await getLastTickSummary()
   const elapsedHours = lastTick ? differenceInMinutes(new Date(), parseISO(lastTick.timestamp)) / 60 : 1 / 60
-  const updatedStyle = updateAttachmentStyle(currentStyle, feelResult.attachmentDynamics, elapsedHours)
+
+  const previousCrisis = await getCrisisState()
+  const crisisResult = evaluateAttachmentCrisis(previousCrisis, {
+    dynamics: feelResult.attachmentDynamics,
+    emotion: feelResult.emotion,
+    trustDelta: 0,
+    vulnerabilityOpen: feelResult.vulnerability.windowOpen
+  })
+  if (crisisResult.active !== previousCrisis.active || crisisResult.type !== previousCrisis.type) {
+    await saveCrisisState(crisisResult)
+    if (crisisResult.active) {
+      log.info("Attachment crisis detected", { type: crisisResult.type, multiplier: crisisResult.multiplier })
+    }
+  }
+
+  const crisisMultiplier = crisisResult.active ? crisisResult.multiplier : 1
+  const updatedStyle = updateAttachmentStyle(
+    currentStyle,
+    feelResult.attachmentDynamics,
+    elapsedHours,
+    crisisMultiplier
+  )
 
   if (hasStyleChanged(currentStyle, updatedStyle)) {
-    await saveAttachmentStyle(updatedStyle)
+    buffer.stage(REDIS.ATTACHMENT_STYLE, updatedStyle)
   }
 
   const [currentPhase, phaseTickCount, conflictCount, firstInteractionAt, totalInteractions] = await Promise.all([
@@ -118,7 +168,12 @@ export async function maintain(
     const isDreaming = input.senseResult.moodContext.isDreaming || input.decision.action === "dream"
     const rechargedSoma = rechargeSocialBattery(currentSoma, isDreaming)
     if (rechargedSoma.socialBattery !== currentSoma.socialBattery) {
-      await saveSomaticState(rechargedSoma, "social_battery_recharge")
+      buffer.stage(REDIS.SOMA_CURRENT, rechargedSoma)
+      buffer.stage(REDIS.SOMA_LAST_TIMESTAMP, new Date().toISOString())
+      buffer.stagePostgres(somaticHistory, {
+        state: rechargedSoma,
+        trigger: "social_battery_recharge"
+      })
     }
   } else {
     const inConversation = input.senseResult.moodContext.inConversation
@@ -127,21 +182,6 @@ export async function maintain(
       inConversation ? incrementConsecutiveConversationTicks() : resetConsecutiveConversationTicks()
     ])
   }
-
-  const oldBaseline = await getMoodBaseline()
-  const alpha = MOMENTUM.MOOD_BASELINE_ALPHA
-  const newBaseline = clampState({
-    curiosity: alpha * feelResult.emotion.curiosity + (1 - alpha) * oldBaseline.curiosity,
-    satisfaction: alpha * feelResult.emotion.satisfaction + (1 - alpha) * oldBaseline.satisfaction,
-    frustration: alpha * feelResult.emotion.frustration + (1 - alpha) * oldBaseline.frustration,
-    boredom: alpha * feelResult.emotion.boredom + (1 - alpha) * oldBaseline.boredom,
-    excitement: alpha * feelResult.emotion.excitement + (1 - alpha) * oldBaseline.excitement,
-    caution: alpha * feelResult.emotion.caution + (1 - alpha) * oldBaseline.caution,
-    connection: alpha * feelResult.emotion.connection + (1 - alpha) * oldBaseline.connection,
-    confidence: alpha * feelResult.emotion.confidence + (1 - alpha) * oldBaseline.confidence,
-    energy: alpha * feelResult.emotion.energy + (1 - alpha) * oldBaseline.energy
-  })
-  await saveMoodBaseline(newBaseline)
 
   if (Math.random() < OPINION_DRIFT_PROBABILITY) {
     const driftResult = await applyOpinionDrift()
@@ -156,67 +196,167 @@ export async function maintain(
   const adoptedPatterns = operatorTexts.length > 0 ? detectOperatorAdoption(operatorTexts, idiolectState) : []
   const allNewPatterns = [...selfPatterns, ...adoptedPatterns]
 
+  const { mergeModifier, driftModifier } = computeIdiolectModifiers(feelResult.emotion)
+
   if (allNewPatterns.length > 0) {
-    const merged = mergePatterns(idiolectState, allNewPatterns)
-    await saveIdiolectState(merged)
+    buffer.stage(REDIS.IDIOLECT, mergePatterns(idiolectState, allNewPatterns, mergeModifier))
   } else if (Math.random() < IDIOLECT_DRIFT_PROBABILITY) {
-    const drifted = applyIdiolectDrift(idiolectState)
-    await saveIdiolectState(drifted)
+    buffer.stage(REDIS.IDIOLECT, applyIdiolectDrift(idiolectState, driftModifier))
+  }
+
+  if (Math.random() < CONVERSATION_PATTERN_PROBABILITY) {
+    const patterns = await analyzeConversationPatterns()
+    buffer.stageWithExpiry("working:conversation:patterns", patterns, 3600)
   }
 
   const previousHabitState = await getHabitState()
   const recentActionsForHabit = await getRecentActions()
   const habitState = updateHabitState(previousHabitState, recentActionsForHabit, input.decision.action)
-  await saveHabitState(habitState)
+  buffer.stage(REDIS.HABIT_STATE, habitState)
 
   if (input.actResult.responseSent && input.senseResult.pendingMessages.length > 0) {
-    const relationalState = await getRelationalMemoryState()
+    let relationalState = await getRelationalMemoryState()
 
     if (feelResult.emotion.connection > 0.7) {
-      const updated = addKeyMoment(
+      relationalState = addKeyMoment(
         relationalState,
         `${input.decision.action}: ${input.decision.reasoning.slice(0, 100)}`,
         feelResult.emotion.connection
       )
-      await saveRelationalMemoryState(updated)
+      buffer.stage(REDIS.RELATIONAL_MEMORY, relationalState)
+    }
+
+    const conversationSlots = await getConversationBuffer()
+    if (conversationSlots.length >= 3) {
+      const updatedRituals = detectRituals(conversationSlots, relationalState.rituals)
+      if (JSON.stringify(updatedRituals) !== JSON.stringify(relationalState.rituals)) {
+        buffer.stage(REDIS.RELATIONAL_MEMORY, { ...relationalState, rituals: updatedRituals })
+      }
     }
   }
 
-  const negativeEmotionalPressure = (feelResult.emotion.frustration + feelResult.emotion.caution) / 2
-  if (
-    negativeEmotionalPressure > BOUNDARIES.FORMATION_NEGATIVE_THRESHOLD &&
-    input.senseResult.pendingMessages.length > 0
-  ) {
+  if (input.senseResult.pendingMessages.length > 0) {
     const boundaryState = await getBoundaryState()
-    if (boundaryState.boundaries.length < BOUNDARIES.MAX_BOUNDARIES) {
-      const triggerText = input.senseResult.pendingMessages
-        .map((m) => m.text)
-        .join(" ")
-        .slice(0, 100)
-      const newBoundary = formBoundary(
-        "emotional",
-        `negative pattern: high frustration/caution during interaction`,
-        triggerText
-          .toLowerCase()
-          .split(/\s+/)
-          .filter((w) => w.length > 4)
-          .slice(0, 3)
-          .join("|"),
-        `maintain_phase: frustration=${feelResult.emotion.frustration.toFixed(2)} caution=${feelResult.emotion.caution.toFixed(2)}`
-      )
-      await saveBoundaryState({
-        ...boundaryState,
-        boundaries: [...boundaryState.boundaries, newBoundary]
-      })
-      log.info("Boundary formed from negative pattern", { boundaryId: newBoundary.id })
+    const messageTexts = input.senseResult.pendingMessages.map((m) => m.text || "")
+    const updatedBoundaryState = maybeFormNegativeBoundary(feelResult.emotion, boundaryState, messageTexts)
+    if (updatedBoundaryState) {
+      buffer.stage(REDIS.BOUNDARY_STATE, updatedBoundaryState)
+      log.info("Boundary formed from negative pattern")
     }
+  }
+
+  const staleGoals = await detectStaleGoals()
+  await Promise.all(staleGoals.map((goal) => markGoalStale(goal.id)))
+
+  const overdueGoals = await detectOverdueGoals()
+  await Promise.all(overdueGoals.map((goal) => markGoalOverdue(goal.id)))
+
+  await applyGoalPriorityDecay()
+
+  try {
+    const infoResult = await vectorIndex.info()
+    const episodeCount = infoResult.vectorCount ?? 0
+    if (episodeCount > EPISODIC_LIFECYCLE.EPISODE_PRESSURE_THRESHOLD) {
+      await redis.set("working:memory:pressure", true)
+      log.info("Memory pressure flag set", { episodeCount })
+    }
+  } catch (e) {
+    log.debug("Memory pressure check skipped", { error: String(e) })
   }
 
   const durationMs = Date.now() - input.startTime
-  const tickSummary = await logTick(input, durationMs, feelResult.emotion)
-  await logActionResult(input.decision, deliberateResult)
+
+  await pushRecentTickDuration(durationMs)
+  await pushRecentAction(input.decision.action)
+
+  const primaryTrigger = input.senseResult.perception.emotionalTriggers[0]?.trigger ?? "message_received"
+  const currentEmotion = input.actResult.responseSent
+    ? ((await getEmotionalState()) ?? feelResult.emotion)
+    : feelResult.emotion
+  buffer.stage(REDIS.EMOTION_CURRENT, currentEmotion)
+  buffer.stagePostgres(emotionHistory, {
+    state: currentEmotion,
+    trigger: primaryTrigger,
+    tickId: input.tickId
+  })
+
+  const oldBaseline = await getMoodBaseline()
+  buffer.stage(REDIS.MOOD_BASELINE, blendMoodBaseline(currentEmotion, oldBaseline))
+
+  const tickSummary: TickSummary = {
+    tickId: input.tickId,
+    timestamp: input.timestamp,
+    action: input.decision.action,
+    reasoning: input.decision.reasoning,
+    messagesProcessed: input.senseResult.pendingMessages.length,
+    responseSent: input.actResult.responseSent,
+    durationMs
+  }
+
+  buffer.stage(REDIS.TICK_LAST, tickSummary)
+
+  buffer.stagePostgres(tickLog, {
+    tickId: input.tickId,
+    timestamp: new Date(input.startTime),
+    action: input.decision.action,
+    reasoning: input.decision.reasoning,
+    messagesProcessed: input.senseResult.pendingMessages.length,
+    responseSent: input.actResult.responseSent,
+    responseText: input.actResult.responseText ?? null,
+    durationMs
+  })
+
+  stageActionResult(buffer, input.decision, deliberateResult)
 
   log.info("Tick complete", tickSummary)
 
   return tickSummary
+}
+
+function stageActionResult(
+  buffer: WriteBuffer,
+  decision: MaintainInput["decision"],
+  deliberateResult: DeliberateResult
+): void {
+  switch (decision.action) {
+    case "dream": {
+      if (!deliberateResult.dreamResult) break
+      const dreamResult = deliberateResult.dreamResult
+      buffer.stagePostgres(routineLog, {
+        phase: "dream",
+        summary: `Dream: ${dreamResult.consolidation ? "consolidation" : "no-consolidation"}, ${dreamResult.creative ? "creative" : "no-creative"}, ${dreamResult.insights.length} insights`,
+        insights: {
+          consolidationEntries: dreamResult.consolidation?.semanticEntries.length ?? 0,
+          creativeConnections: dreamResult.creative?.connections.length ?? 0,
+          insights: dreamResult.insights
+        }
+      })
+      break
+    }
+
+    case "morning": {
+      if (!deliberateResult.morningResult) break
+      const morningResult = deliberateResult.morningResult
+      buffer.stagePostgres(routineLog, {
+        phase: "morning",
+        summary: `Morning: ${morningResult.reflection.insights.length} reflection insights, message ${morningResult.morningMessage ? "sent" : "empty"}`,
+        insights: {
+          reflectionInsights: morningResult.reflection.insights,
+          morningMessageLength: morningResult.morningMessage.length
+        },
+        emotionAfter: morningResult.recalibratedEmotion
+      })
+      break
+    }
+
+    case "reflect": {
+      if (!deliberateResult.reflectionResult) break
+      buffer.stagePostgres(routineLog, {
+        phase: "reflection",
+        summary: `Reflection: ${deliberateResult.reflectionResult.insights.length} insights`,
+        insights: deliberateResult.reflectionResult
+      })
+      break
+    }
+  }
 }

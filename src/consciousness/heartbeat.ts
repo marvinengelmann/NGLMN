@@ -13,7 +13,11 @@ import { act } from "./act.ts"
 import { deliberate } from "./deliberate.ts"
 import { feel } from "./feel.ts"
 import { maintain } from "./maintain.ts"
+import { WriteBuffer } from "./pipeline/persistence.ts"
+import { preloadContextState } from "./pipeline/preload.ts"
+import type { TickState } from "./pipeline/types.ts"
 import { sense } from "./sense.ts"
+import type { SenseData } from "./types.ts"
 
 /**
  * Run the heartbeat loop: SENSE → FEEL → DELIBERATE → ACT, repeat while in conversation.
@@ -21,9 +25,9 @@ import { sense } from "./sense.ts"
  */
 export async function runHeartbeat() {
   log.info("Heartbeat starting")
-  const tickId = `tick-${Date.now()}`
-  const startTime = Date.now()
-  const timestamp = nowISO()
+  let tickId = `tick-${Date.now()}`
+  let startTime = Date.now()
+  let timestamp = nowISO()
   setTickContext({ tickId })
 
   const acquired = await tryAcquireBusy(tickId)
@@ -32,22 +36,49 @@ export async function runHeartbeat() {
     return
   }
 
+  const buffer = new WriteBuffer()
+
   try {
+    let lastTickState: TickState | null = null
     let lastDecision: Awaited<ReturnType<typeof deliberate>> | null = null
     let lastActResult: Awaited<ReturnType<typeof act>> | null = null
-    let lastSenseResult: Awaited<ReturnType<typeof sense>> | null = null
-    let lastFeelResult: Awaited<ReturnType<typeof feel>> | null = null
 
     while (true) {
-      const senseResult = await sense()
-      const feelResult = await feel(senseResult)
-      const deliberateResult = await deliberate(senseResult, feelResult)
-      const actResult = await act(deliberateResult, senseResult, feelResult)
+      tickId = `tick-${Date.now()}`
+      startTime = Date.now()
+      timestamp = nowISO()
+      setTickContext({ tickId })
 
+      const senseResult = await sense()
+      const feelResult = await feel(senseResult, buffer)
+
+      const senseData: SenseData = {
+        pendingMessages: senseResult.pendingMessages,
+        perception: senseResult.perception,
+        health: senseResult.health,
+        weather: senseResult.perception.weatherData ?? null,
+        conversationState: senseResult.conversationState,
+        triggeredWorkflows: senseResult.triggeredWorkflows,
+        moodContext: senseResult.moodContext
+      }
+
+      const preloaded = await preloadContextState(senseData, feelResult.emotion)
+
+      const tickState: TickState = {
+        tickId,
+        startTime,
+        timestamp,
+        sense: senseResult,
+        feel: feelResult,
+        preloaded
+      }
+
+      const deliberateResult = await deliberate(tickState)
+      const actResult = await act(deliberateResult, senseResult, feelResult, tickId)
+
+      lastTickState = tickState
       lastDecision = deliberateResult
       lastActResult = actResult
-      lastSenseResult = senseResult
-      lastFeelResult = feelResult
 
       if (!deliberateResult.decision.expectsReply) break
 
@@ -63,20 +94,29 @@ export async function runHeartbeat() {
       }
     }
 
-    if (lastDecision && lastActResult && lastSenseResult && lastFeelResult) {
-      return await maintain(
+    if (lastTickState && lastDecision && lastActResult) {
+      await maintain(
         {
           tickId,
           startTime,
           timestamp,
           decision: lastDecision.decision,
           actResult: lastActResult,
-          senseResult: lastSenseResult
+          senseResult: lastTickState.sense
         },
         lastDecision,
-        lastFeelResult
+        lastTickState.feel,
+        buffer
       )
     }
+
+    const stagedRedis = buffer.stagedRedisCount
+    const stagedPostgres = buffer.stagedPostgresCount
+    await buffer.flush()
+    log.info("WriteBuffer flushed", { redisKeys: stagedRedis, postgresRows: stagedPostgres })
+  } catch (error) {
+    buffer.discard()
+    throw error
   } finally {
     await clearConversationWaitingSince()
     await clearBusy(tickId)

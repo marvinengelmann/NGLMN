@@ -11,7 +11,7 @@ import { getValidatedRedis, redis } from "@/infra/integrations/redis.ts"
 import { sendToOperator } from "@/infra/integrations/telegram.ts"
 import { log } from "@/infra/lib/logger.ts"
 import { captureError } from "@/infra/lib/sentry.ts"
-import { nowLocal } from "@/infra/lib/time.ts"
+import { nowISO, nowLocal } from "@/infra/lib/time.ts"
 import { storeEpisode } from "@/memory/episodic.ts"
 import { LIFECYCLE_MID_EVENT_PROMPT, LIFECYCLE_START_PROMPT } from "@/prompts/lifecycle.ts"
 import { getPersonalityPrompt } from "@/prompts/personality.ts"
@@ -207,7 +207,7 @@ export async function sendLifecycleNotification(eventType: string, context: "sta
       {
         role: "anima",
         text: message,
-        timestamp: new Date().toISOString(),
+        timestamp: nowISO(),
         messageId: sentMessageId
       }
     ])
@@ -226,7 +226,7 @@ async function storeEventMeta(event: EventType, detail: string, durationHours: n
   const meta: EventMetaData = {
     type: event.type,
     detail,
-    startedAt: new Date().toISOString(),
+    startedAt: nowISO(),
     durationHours
   }
   await redis.set(LIFECYCLE_EVENT_META_KEY, meta)

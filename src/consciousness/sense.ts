@@ -1,9 +1,11 @@
-import { differenceInMinutes, differenceInSeconds, parseISO } from "date-fns"
+import { differenceInMinutes, differenceInSeconds, formatISO, fromUnixTime, parseISO } from "date-fns"
 import { analyzeMessageSentiment } from "@/affect/emotion/analyze.ts"
 import { TRIGGER_INTENSITY } from "@/affect/emotion/constants.ts"
 import { getEmotionalState, getLastEmotionTimestamp, getTriggerTimestamps } from "@/affect/emotion/state.ts"
 import type { EmotionUpdateEvent, MoodContext } from "@/affect/emotion/types.ts"
-import { detectConversationBoundary } from "@/expression/communication/conversation.ts"
+import { getUnresolvedOutcome, resolveOutcome } from "@/cognition/learning/outcomes.ts"
+import type { OperatorReaction } from "@/cognition/learning/types.ts"
+import { archiveConversation, detectConversationBoundary } from "@/expression/communication/conversation.ts"
 import {
   getActiveConversation,
   getConversationWaitingSince,
@@ -18,6 +20,7 @@ import { checkWorkflowTriggers, getActiveWorkflows, getRecentTickSummaries } fro
 import { HEALTH_CHECK_INTERVAL, HEARTBEAT } from "@/infra/config/constants.ts"
 import { fetchNewMessages } from "@/infra/integrations/telegram.ts"
 import { log } from "@/infra/lib/logger.ts"
+import { trySafe } from "@/infra/lib/result.ts"
 import { nowISO } from "@/infra/lib/time.ts"
 import { getActiveGoals } from "@/memory/goals.ts"
 import { setLastUpdateId } from "@/memory/working.ts"
@@ -64,8 +67,12 @@ export async function sense(): Promise<SenseResult> {
     if (activeSlot) {
       const firstMsg = newMessages[0]
       if (firstMsg) {
-        const isNew = detectConversationBoundary(activeSlot, new Date(firstMsg.date * 1000).toISOString())
+        const isNew = detectConversationBoundary(activeSlot, formatISO(fromUnixTime(firstMsg.date)))
         if (isNew) {
+          if (activeSlot.messages.length > 0) {
+            const emotionForArchive = await getEmotionalState()
+            await trySafe("ARCHIVE_ERROR", () => archiveConversation(activeSlot, emotionForArchive))
+          }
           await startNewConversation()
         }
       }
@@ -77,7 +84,7 @@ export async function sense(): Promise<SenseResult> {
       newMessages.map((m) => ({
         role: "operator" as const,
         text: m.text || (m.image ? "[Photo]" : ""),
-        timestamp: new Date(m.date * 1000).toISOString(),
+        timestamp: formatISO(fromUnixTime(m.date)),
         messageId: m.messageId ?? 0,
         isVoice: m.isVoice || undefined,
         hasImage: m.image ? true : undefined
@@ -102,6 +109,8 @@ export async function sense(): Promise<SenseResult> {
     }
   }
 
+  let lastSentiment: "positive" | "negative" | "neutral" | "mixed" = "neutral"
+
   const allTriggers: EmotionUpdateEvent[] = [
     ...ownState.triggers,
     ...telegramActivity.triggers,
@@ -110,7 +119,10 @@ export async function sense(): Promise<SenseResult> {
     ...(newMessages.length > 0
       ? await (async () => {
           const sentimentResult = await analyzeMessageSentiment(newMessages)
-          if (sentimentResult.isOk()) return sentimentResult.value
+          if (sentimentResult.isOk()) {
+            lastSentiment = sentimentResult.value.dominantSentiment
+            return sentimentResult.value.triggers
+          }
           return [
             {
               trigger: "message_received" as const,
@@ -121,6 +133,25 @@ export async function sense(): Promise<SenseResult> {
         })()
       : [])
   ]
+
+  if (newMessages.length > 0) {
+    const unresolvedOutcome = await getUnresolvedOutcome()
+    if (unresolvedOutcome) {
+      const minutesSinceOutcome = differenceInMinutes(new Date(), new Date(unresolvedOutcome.createdAt))
+      const avgMessageLength = newMessages.reduce((sum, m) => sum + (m.text?.length ?? 0), 0) / newMessages.length
+      const baselineLength = 40
+      const engagementDelta = Math.max(-1, Math.min(1, (avgMessageLength - baselineLength) / baselineLength))
+
+      const reaction: OperatorReaction = {
+        repliedWithinMinutes: minutesSinceOutcome,
+        sentiment: lastSentiment,
+        engagementDelta,
+        conversationContinued: newMessages.length > 1
+      }
+
+      await resolveOutcome(unresolvedOutcome.id, reaction)
+    }
+  }
 
   let shouldClearSilentFlag = false
   if (newMessages.length > 0) {

@@ -1,4 +1,4 @@
-import { differenceInMinutes, parseISO } from "date-fns"
+import { differenceInMinutes, getHours, parseISO } from "date-fns"
 import { EVENT_SUBSTANCE_MAP } from "@/affect/altered/events.ts"
 import { startAlteredState } from "@/affect/altered/state.ts"
 import { EMOTIONAL_THRESHOLDS, TRIGGER_INTENSITY } from "@/affect/emotion/constants.ts"
@@ -11,8 +11,11 @@ import {
 } from "@/affect/emotion/update.ts"
 import { saveSomaticState } from "@/affect/soma/state.ts"
 import { computeSomaticUpdate, drainSocialBattery } from "@/affect/soma/update.ts"
+import { createOutcome } from "@/cognition/learning/outcomes.ts"
+import type { InteractionStrategy } from "@/cognition/learning/types.ts"
 import { MESSAGE_DELAY } from "@/expression/communication/constants.ts"
 import { sendMessages } from "@/expression/communication/messaging.ts"
+import { getActiveConversation } from "@/expression/communication/state.ts"
 import { generateCreativeOutput } from "@/expression/creativity/generate.ts"
 import { executeDream } from "@/expression/dream/executor.ts"
 import { setDreamState } from "@/expression/dream/state.ts"
@@ -32,7 +35,7 @@ import { sendMessageWithReply } from "@/infra/integrations/telegram.ts"
 import { postToX } from "@/infra/integrations/x.ts"
 import { log } from "@/infra/lib/logger.ts"
 import { logAndCaptureError, trySafe } from "@/infra/lib/result.ts"
-import { nowISO, sleep } from "@/infra/lib/time.ts"
+import { nowISO, nowLocal, sleep } from "@/infra/lib/time.ts"
 import { storeEpisode, storeHumorEpisode, storeRelationshipEpisode } from "@/memory/episodic.ts"
 import { executeGoalUpdate } from "@/memory/goals.ts"
 import { storeKnowledge } from "@/memory/semantic.ts"
@@ -52,7 +55,8 @@ import type { ActResult, DeliberateResult, FeelingResult, SenseResult } from "./
 export async function act(
   deliberateResult: DeliberateResult,
   senseResult: SenseResult,
-  feelResult: FeelingResult
+  feelResult: FeelingResult,
+  tickId?: string
 ): Promise<ActResult> {
   const { decision } = deliberateResult
   let responseSent = false
@@ -60,7 +64,13 @@ export async function act(
 
   const routineHandlesMessaging = decision.action === "morning" || decision.action === "dream"
   if (decision.messages.length > 0 && !routineHandlesMessaging) {
-    const messagingResult = await trySafe("TELEGRAM_ERROR", () => sendMessages(decision))
+    const messagingResult = await trySafe("TELEGRAM_ERROR", () =>
+      sendMessages(decision, {
+        emotion: feelResult.emotion,
+        soma: feelResult.soma,
+        vulnerabilityOpen: feelResult.vulnerability.windowOpen
+      })
+    )
     if (messagingResult.isOk()) {
       responseSent = messagingResult.value.responseSent
       responseText = messagingResult.value.responseText
@@ -69,10 +79,11 @@ export async function act(
     }
 
     if (responseSent && decision.corrections.length > 0) {
-      for (const correction of decision.corrections) {
+      await decision.corrections.reduce(async (prev, correction) => {
+        await prev
         await sleep(MESSAGE_DELAY.MIN_BETWEEN_MESSAGES_MS + Math.random() * MESSAGE_DELAY.MAX_JITTER_MS)
         await trySafe("TELEGRAM_ERROR", () => sendMessageWithReply(correction.text, correction.replyTo))
-      }
+      }, Promise.resolve())
     }
   }
 
@@ -114,6 +125,22 @@ export async function act(
     await saveSomaticState(postActionSoma, "post_action")
 
     await recordActiveTick()
+  }
+
+  if (responseSent && responseText && tickId) {
+    const hour = getHours(nowLocal())
+    const timeOfDay = hour < 6 ? "night" : hour < 12 ? "morning" : hour < 18 ? "afternoon" : "evening"
+
+    const strategy: InteractionStrategy = {
+      register: feelResult.register,
+      emotionSummary: summarizeEmotions(feelResult.emotion),
+      dominantDrive: feelResult.driveState.dominantDrive,
+      timeOfDay: timeOfDay as InteractionStrategy["timeOfDay"],
+      topicHint: responseText.slice(0, 50)
+    }
+
+    const activeConv = await getActiveConversation()
+    await trySafe("COGNITION_ERROR", () => createOutcome(tickId, activeConv?.id ?? null, strategy, responseText))
   }
 
   const lastTick = await getLastTickSummary()
