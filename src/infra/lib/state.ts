@@ -1,6 +1,6 @@
 import type * as z from "zod"
 import { getValidatedRedis, redis } from "@/infra/integrations/redis.ts"
-import type { WriteBuffer } from "@/infra/lib/write-buffer.ts"
+import type { WriteBuffer } from "@/infra/lib/buffer.ts"
 
 export function createStateManager<S>(redisKey: string, schema: z.ZodType<S>, defaultState: S) {
   return {
