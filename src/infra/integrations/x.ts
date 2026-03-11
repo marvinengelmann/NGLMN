@@ -21,24 +21,28 @@ export interface EnrichedTweet {
  * Check if X credentials are configured.
  */
 export function isXEnabled(): boolean {
-  return !!(
-    process.env.X_API_KEY &&
-    process.env.X_API_SECRET &&
-    process.env.X_ACCESS_TOKEN &&
-    process.env.X_ACCESS_TOKEN_SECRET
-  )
+  const e = env()
+  return !!(e.X_API_KEY && e.X_API_SECRET && e.X_ACCESS_TOKEN && e.X_ACCESS_TOKEN_SECRET)
+}
+
+function getXConfig() {
+  const e = env()
+  if (!e.X_API_KEY || !e.X_API_SECRET || !e.X_ACCESS_TOKEN || !e.X_ACCESS_TOKEN_SECRET) {
+    throw new Error("X not configured: X_API_KEY, X_API_SECRET, X_ACCESS_TOKEN, X_ACCESS_TOKEN_SECRET required")
+  }
+  return {
+    appKey: e.X_API_KEY,
+    appSecret: e.X_API_SECRET,
+    accessToken: e.X_ACCESS_TOKEN,
+    accessSecret: e.X_ACCESS_TOKEN_SECRET
+  }
 }
 
 /**
  * Get a configured TwitterApi client with OAuth 1.0a user authentication.
  */
 export function getClient(): TwitterApi {
-  return new TwitterApi({
-    appKey: env().X_API_KEY as string,
-    appSecret: env().X_API_SECRET as string,
-    accessToken: env().X_ACCESS_TOKEN as string,
-    accessSecret: env().X_ACCESS_TOKEN_SECRET as string
-  })
+  return new TwitterApi(getXConfig())
 }
 
 /**
@@ -84,10 +88,10 @@ export async function deletePost(id: string): Promise<void> {
  * Enrich raw TweetV2 objects with resolved author info from includes.
  */
 function enrichTweets(tweets: TweetV2[], users: UserV2[]): EnrichedTweet[] {
-  const userMap = new Map<string, UserV2>()
-  for (const user of users) {
-    userMap.set(user.id, user)
-  }
+  const userMap = users.reduce((map, user) => {
+    map.set(user.id, user)
+    return map
+  }, new Map<string, UserV2>())
 
   return tweets.map((tweet) => {
     const author = tweet.author_id ? userMap.get(tweet.author_id) : undefined

@@ -18,15 +18,14 @@ const TRIGGER_LEVEL_MAP = {
  */
 export function flattenAttributes(attrs?: Record<string, unknown>): Record<string, Primitive> | undefined {
   if (!attrs) return undefined
-  const result: Record<string, Primitive> = {}
-  for (const [key, value] of Object.entries(attrs)) {
-    if (typeof value === "string" || typeof value === "number" || typeof value === "boolean") {
-      result[key] = value
-    } else {
-      result[key] = JSON.stringify(value)
-    }
-  }
-  return result
+  return Object.fromEntries(
+    Object.entries(attrs).map(([key, value]) => [
+      key,
+      typeof value === "string" || typeof value === "number" || typeof value === "boolean"
+        ? value
+        : JSON.stringify(value)
+    ])
+  ) as Record<string, Primitive>
 }
 
 function logAtLevel(

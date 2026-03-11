@@ -6,7 +6,16 @@ import { CALENDAR } from "./constants.ts"
 import type { CalendarEvent } from "./types.ts"
 
 export function isCaldavEnabled(): boolean {
-  return !!(process.env.CALDAV_SERVER_URL && process.env.CALDAV_USER && process.env.CALDAV_PASS)
+  const e = env()
+  return !!(e.CALDAV_SERVER_URL && e.CALDAV_USER && e.CALDAV_PASS)
+}
+
+function getCaldavConfig() {
+  const e = env()
+  if (!e.CALDAV_SERVER_URL || !e.CALDAV_USER || !e.CALDAV_PASS) {
+    throw new Error("CalDAV not configured: CALDAV_SERVER_URL, CALDAV_USER, CALDAV_PASS required")
+  }
+  return { serverUrl: e.CALDAV_SERVER_URL, username: e.CALDAV_USER, password: e.CALDAV_PASS }
 }
 
 function parseICalValue(data: string, key: string): string | undefined {
@@ -42,8 +51,8 @@ function parseVEvents(icalData: string): CalendarEvent[] {
   const events: CalendarEvent[] = []
   const vevents = icalData.split("BEGIN:VEVENT")
 
-  for (let i = 1; i < vevents.length; i++) {
-    const block = vevents[i]?.split("END:VEVENT")[0] ?? ""
+  vevents.slice(1).forEach((vevent) => {
+    const block = vevent?.split("END:VEVENT")[0] ?? ""
 
     const uid = parseICalValue(block, "UID")
     const summary = parseICalValue(block, "SUMMARY")
@@ -51,7 +60,7 @@ function parseVEvents(icalData: string): CalendarEvent[] {
     const dtstart = parseICalValue(block, "DTSTART")
     const dtend = parseICalValue(block, "DTEND")
 
-    if (!uid || !summary || !dtstart) continue
+    if (!uid || !summary || !dtstart) return
 
     const start = parseICalDate(dtstart)
     const end = dtend ? parseICalDate(dtend) : { date: addHours(start.date, 1), allDay: start.allDay }
@@ -64,7 +73,7 @@ function parseVEvents(icalData: string): CalendarEvent[] {
       end: end.date.toISOString(),
       allDay: start.allDay
     })
-  }
+  })
 
   return events
 }
@@ -73,9 +82,10 @@ function parseVEvents(icalData: string): CalendarEvent[] {
  * Fetch upcoming calendar events from CalDAV server.
  */
 export async function fetchUpcomingEvents(windowHours: number): Promise<CalendarEvent[]> {
+  const config = getCaldavConfig()
   const client = new DAVClient({
-    serverUrl: env().CALDAV_SERVER_URL as string,
-    credentials: { username: env().CALDAV_USER as string, password: env().CALDAV_PASS as string },
+    serverUrl: config.serverUrl,
+    credentials: { username: config.username, password: config.password },
     authMethod: "Basic",
     defaultAccountType: "caldav"
   })
@@ -87,7 +97,8 @@ export async function fetchUpcomingEvents(windowHours: number): Promise<Calendar
   const end = addHours(now, windowHours)
   const allEvents: CalendarEvent[] = []
 
-  for (const calendar of calendars) {
+  await calendars.reduce(async (chain, calendar) => {
+    await chain
     try {
       const objects = await client.fetchCalendarObjects({
         calendar,
@@ -98,19 +109,19 @@ export async function fetchUpcomingEvents(windowHours: number): Promise<Calendar
         expand: true
       })
 
-      for (const obj of objects) {
+      objects.forEach((obj) => {
         if (obj.data) {
           const parsed = parseVEvents(obj.data)
           allEvents.push(...parsed)
         }
-      }
+      })
     } catch (e) {
       log.warn("Failed to fetch from calendar", {
         calendar: calendar.displayName,
         error: e instanceof Error ? e.message : String(e)
       })
     }
-  }
+  }, Promise.resolve())
 
   return allEvents
     .sort((a, b) => new Date(a.start).getTime() - new Date(b.start).getTime())

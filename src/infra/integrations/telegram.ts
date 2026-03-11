@@ -47,15 +47,14 @@ export async function fetchNewMessages(timeout: number): Promise<{
 
   const messages: PendingMessage[] = []
 
-  for (const update of updates) {
+  const processUpdate = async (update: (typeof updates)[number]): Promise<void> => {
     const telegramMessage = update.message
-    if (!telegramMessage) continue
-
-    if (String(telegramMessage.chat.id) !== operatorChatId) continue
+    if (!telegramMessage) return
+    if (String(telegramMessage.chat.id) !== operatorChatId) return
 
     if (telegramMessage.location) {
       await storeOperatorLocationFromTelegram(telegramMessage.location.latitude, telegramMessage.location.longitude)
-      continue
+      return
     }
 
     if (telegramMessage.voice) {
@@ -77,13 +76,13 @@ export async function fetchNewMessages(timeout: number): Promise<{
         const { captureError } = await import("@/infra/lib/sentry.ts")
         captureError(error, { phase: "voice_transcription" })
       }
-      continue
+      return
     }
 
     if (telegramMessage.photo && telegramMessage.photo.length > 0) {
       try {
         const bestPhoto = telegramMessage.photo.at(-1)
-        if (!bestPhoto) continue
+        if (!bestPhoto) return
         const photoBuffer = await downloadFile(bestPhoto.file_id)
         const base64 = photoBuffer.toString("base64")
         messages.push({
@@ -101,10 +100,10 @@ export async function fetchNewMessages(timeout: number): Promise<{
         const { captureError } = await import("@/infra/lib/sentry.ts")
         captureError(error, { phase: "photo_download" })
       }
-      continue
+      return
     }
 
-    if (!telegramMessage.text) continue
+    if (!telegramMessage.text) return
 
     messages.push({
       updateId: update.update_id,
@@ -117,6 +116,11 @@ export async function fetchNewMessages(timeout: number): Promise<{
       isVoice: false
     })
   }
+
+  await updates.reduce(
+    (chain, update) => chain.then(() => processUpdate(update)),
+    Promise.resolve()
+  )
 
   const maxUpdateId = Math.max(...updates.map((update) => update.update_id))
 

@@ -5,18 +5,25 @@ import { EMAIL } from "./constants.ts"
 import type { EmailPreview } from "./types.ts"
 
 export function isImapEnabled(): boolean {
-  return !!(process.env.IMAP_HOST && process.env.IMAP_USER && process.env.IMAP_PASS)
+  const e = env()
+  return !!(e.IMAP_HOST && e.IMAP_USER && e.IMAP_PASS)
+}
+
+function getImapConfig() {
+  const e = env()
+  if (!e.IMAP_HOST || !e.IMAP_USER || !e.IMAP_PASS) {
+    throw new Error("IMAP not configured: IMAP_HOST, IMAP_USER, IMAP_PASS required")
+  }
+  return { host: e.IMAP_HOST, port: e.IMAP_PORT, user: e.IMAP_USER, pass: e.IMAP_PASS }
 }
 
 function createClient(): ImapFlow {
+  const config = getImapConfig()
   return new ImapFlow({
-    host: env().IMAP_HOST as string,
-    port: env().IMAP_PORT,
+    host: config.host,
+    port: config.port,
     secure: true,
-    auth: {
-      user: env().IMAP_USER as string,
-      pass: env().IMAP_PASS as string
-    },
+    auth: { user: config.user, pass: config.pass },
     logger: false
   })
 }
@@ -28,15 +35,14 @@ function extractTextFromSource(source: Buffer): string {
   if (boundaryMatch?.[1]) {
     const boundary = boundaryMatch[1]
     const parts = raw.split(`--${boundary}`)
-    for (const part of parts) {
-      if (part.includes("Content-Type: text/plain")) {
-        const bodyStart = part.indexOf("\r\n\r\n")
-        if (bodyStart !== -1) {
-          return part
-            .slice(bodyStart + 4)
-            .replace(/--$/, "")
-            .trim()
-        }
+    const textPart = parts.find((part) => part.includes("Content-Type: text/plain"))
+    if (textPart) {
+      const bodyStart = textPart.indexOf("\r\n\r\n")
+      if (bodyStart !== -1) {
+        return textPart
+          .slice(bodyStart + 4)
+          .replace(/--$/, "")
+          .trim()
       }
     }
   }
