@@ -16,13 +16,15 @@ function computeWeight(event: TrustEvent, now: Date): number {
 function computeWeightedExperience(events: TrustEvent[]): number {
   if (events.length === 0) return 0
   const now = new Date()
-  let weightedSuccess = 0
-  let totalWeight = 0
-  for (const event of events) {
-    const weight = computeWeight(event, now)
-    totalWeight += weight
-    if (event.success) weightedSuccess += weight
-  }
+  const { weightedSuccess, totalWeight } = events.reduce(
+    (acc, event) => {
+      const weight = computeWeight(event, now)
+      acc.totalWeight += weight
+      if (event.success) acc.weightedSuccess += weight
+      return acc
+    },
+    { weightedSuccess: 0, totalWeight: 0 }
+  )
   return totalWeight > 0 ? weightedSuccess / totalWeight : 0
 }
 
@@ -52,14 +54,16 @@ export async function getAllTrustLevels() {
  */
 export async function getAggregateTrustExperience(): Promise<number> {
   const levels = await getAllTrustLevels()
-  let totalWeight = 0
-  let totalWeighted = 0
-  for (const level of levels) {
-    if (level.totalAttempts > 0) {
-      totalWeight += level.totalAttempts
-      totalWeighted += level.weightedExperience * level.totalAttempts
-    }
-  }
+  const { totalWeight, totalWeighted } = levels.reduce(
+    (acc, level) => {
+      if (level.totalAttempts > 0) {
+        acc.totalWeight += level.totalAttempts
+        acc.totalWeighted += level.weightedExperience * level.totalAttempts
+      }
+      return acc
+    },
+    { totalWeight: 0, totalWeighted: 0 }
+  )
 
   if (totalWeight === 0) return 0.5
   return Math.min(1, totalWeighted / totalWeight)

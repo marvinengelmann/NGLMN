@@ -57,11 +57,11 @@ export function checkExpectationViolations(
   operatorSilenceMinutes: number,
   inConversation: boolean
 ): ExpectationViolation[] {
-  const violations: ExpectationViolation[] = []
+  const violations = expectations.flatMap((exp): ExpectationViolation[] => {
+    const result: ExpectationViolation[] = []
 
-  for (const exp of expectations) {
     if (exp.source === "conversation" && exp.content.includes("continue engaging") && !inConversation) {
-      violations.push({
+      result.push({
         expectation: exp,
         actualOutcome: "conversation ended unexpectedly",
         surpriseIntensity: exp.confidence * ANTICIPATION_SYSTEM.VIOLATION_SURPRISE_SCALE,
@@ -70,7 +70,7 @@ export function checkExpectationViolations(
     }
 
     if (exp.source === "pattern" && exp.content.includes("return soon") && operatorSilenceMinutes > 240) {
-      violations.push({
+      result.push({
         expectation: exp,
         actualOutcome: "operator silence extended beyond expectation",
         surpriseIntensity: exp.confidence * ANTICIPATION_SYSTEM.VIOLATION_SURPRISE_SCALE * 0.7,
@@ -79,14 +79,16 @@ export function checkExpectationViolations(
     }
 
     if (exp.source === "pattern" && exp.content.includes("return soon") && operatorReturned) {
-      violations.push({
+      result.push({
         expectation: exp,
         actualOutcome: "operator returned as expected",
         surpriseIntensity: 0.1,
         valence: 0.5
       })
     }
-  }
+
+    return result
+  })
 
   return violations.slice(0, ANTICIPATION_SYSTEM.VIOLATION_MEMORY_SIZE)
 }
@@ -117,7 +119,7 @@ export function computeAnticipationEmotionTriggers(state: AnticipatoryState): Em
     })
   }
 
-  for (const violation of state.recentViolations) {
+  state.recentViolations.forEach((violation) => {
     if (violation.valence < 0) {
       triggers.push({
         trigger: "expectation_violated",
@@ -131,7 +133,7 @@ export function computeAnticipationEmotionTriggers(state: AnticipatoryState): Em
         detail: violation.actualOutcome
       })
     }
-  }
+  })
 
   return triggers
 }

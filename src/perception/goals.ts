@@ -29,19 +29,20 @@ export async function detectPerceptionGoals(perception: PerceptionSummary, _emot
   const patterns = detectPatterns(perception)
   let goalsCreated = 0
 
-  for (const pattern of patterns) {
+  await patterns.reduce(async (chain, pattern) => {
+    await chain
     const exists = await goalExistsByTitle(pattern.title)
-    if (exists) continue
+    if (exists) return
 
     const goalResult = await createGoal(pattern.title, pattern.description, "self", pattern.priority, {
       emotionalWeight: pattern.emotionalWeight
     })
     if (goalResult.isErr()) {
       logAndCaptureError(goalResult.error)
-      continue
+      return
     }
     goalsCreated++
-  }
+  }, Promise.resolve())
 
   if (goalsCreated > 0) {
     await processEmotionTrigger(

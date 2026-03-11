@@ -97,9 +97,10 @@ export async function processDeceptionCycle(state: DeceptionState, context: Dece
     return true
   })
 
-  for (const driver of discoveredDrivers) {
-    await logDeceptionEvent(driver)
-  }
+  await discoveredDrivers.reduce(
+    async (chain, driver) => { await chain; await logDeceptionEvent(driver) },
+    Promise.resolve()
+  )
 
   if (updated.activeHiddenDrivers.length < DECEPTION.MAX_ACTIVE_DRIVERS && shouldHideDriver(context)) {
     const toHide = selectDriverToHide(context.dissonance.recentEvents)

@@ -44,27 +44,16 @@ export function matchRelationalPatterns(
 ): EmotionUpdateEvent[] {
   if (library.patterns.length === 0 || signals.messageCount === 0) return []
 
-  const triggers: EmotionUpdateEvent[] = []
-
-  for (const pattern of library.patterns) {
-    if (pattern.confidence < RELATIONAL_TRIGGERS.MIN_MATCH_CONFIDENCE) continue
-
-    const matched = checkPatternMatch(signals, pattern)
-    if (!matched) continue
-
-    const intensity = Math.min(
-      RELATIONAL_TRIGGERS.MAX_TRIGGER_INTENSITY,
-      pattern.confidence * RELATIONAL_TRIGGERS.CONFIDENCE_INTENSITY_SCALE
-    )
-
-    triggers.push({
-      trigger: "relational_pattern_match",
-      intensity,
+  return library.patterns
+    .filter((pattern) => pattern.confidence >= RELATIONAL_TRIGGERS.MIN_MATCH_CONFIDENCE && checkPatternMatch(signals, pattern))
+    .map((pattern) => ({
+      trigger: "relational_pattern_match" as const,
+      intensity: Math.min(
+        RELATIONAL_TRIGGERS.MAX_TRIGGER_INTENSITY,
+        pattern.confidence * RELATIONAL_TRIGGERS.CONFIDENCE_INTENSITY_SCALE
+      ),
       detail: `${pattern.pattern} (${pattern.associatedMood}, confidence: ${pattern.confidence.toFixed(2)})`
-    })
-  }
-
-  return triggers
+    }))
 }
 
 function checkPatternMatch(signals: MessageSignals, pattern: RelationalPattern): boolean {

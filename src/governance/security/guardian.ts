@@ -193,27 +193,19 @@ export async function detectDrift(): Promise<DriftReport> {
 }
 
 const ALLOWED_EVOLUTION_PREFIXES = [
-  "src/communication/",
-  "src/config/",
+  "src/affect/",
+  "src/cognition/",
+  "src/consciousness/",
   "src/core/",
-  "src/dream/",
-  "src/emotion/",
-  "src/evolution/",
-  "src/lib/",
+  "src/expression/",
+  "src/governance/",
   "src/memory/",
   "src/perception/",
   "src/prompts/",
+  "src/relational/",
+  "src/self/",
   "src/test/",
-  "src/trigger/",
-  "src/trust/",
-  "src/consciousness/",
-  "src/soma/",
-  "src/cognition/",
-  "src/polyphony/",
-  "src/attachment/",
-  "src/psyche/",
-  "src/dissonance/",
-  "src/vulnerability/"
+  "src/trigger/"
 ]
 
 const MAX_EVOLUTION_FILE_SIZE = 50 * 1024
@@ -226,7 +218,15 @@ const SECRET_PATTERNS = [
   /X_API_KEY\s*=\s*\S+/,
   /X_API_SECRET\s*=\s*\S+/,
   /X_ACCESS_TOKEN\s*=\s*\S+/,
-  /X_ACCESS_TOKEN_SECRET\s*=\s*\S+/
+  /X_ACCESS_TOKEN_SECRET\s*=\s*\S+/,
+  /SENTRY_DSN\s*=\s*\S+/,
+  /UPSTASH_\w+\s*=\s*\S+/,
+  /DATABASE_URL\s*=\s*\S+/,
+  /DAYTONA_\w+\s*=\s*\S+/,
+  /ELEVENLABS_API_KEY\s*=\s*\S+/,
+  /IMAP_\w+\s*=\s*\S+/,
+  /CALDAV_\w+\s*=\s*\S+/,
+  /Bearer\s+[A-Za-z0-9\-._~+/]+=*/
 ]
 
 /**
@@ -235,7 +235,7 @@ const SECRET_PATTERNS = [
 export function validateEvolution(files: Array<{ path: string; content: string }>): GuardianResult {
   const reasons: string[] = []
 
-  for (const file of files) {
+  files.forEach((file) => {
     const normalized = file.path
       .split("/")
       .reduce<string[]>((parts, segment) => {
@@ -255,12 +255,12 @@ export function validateEvolution(files: Array<{ path: string; content: string }
       )
     }
 
-    for (const pattern of SECRET_PATTERNS) {
+    SECRET_PATTERNS.forEach((pattern) => {
       if (pattern.test(file.content)) {
         reasons.push(`Blocked: potential secret detected in "${file.path}"`)
       }
-    }
-  }
+    })
+  })
 
   return {
     verdict: reasons.length > 0 ? "blocked" : "approved",
@@ -275,11 +275,11 @@ export function validateEvolution(files: Array<{ path: string; content: string }
 export function validateEmotionalState(state: EmotionalState): GuardianResult {
   const reasons: string[] = []
 
-  for (const [key, value] of Object.entries(state)) {
+  Object.entries(state).forEach(([key, value]) => {
     if (typeof value !== "number" || value < 0 || value > 1) {
       reasons.push(`Emotional dimension "${key}" out of bounds: ${value}`)
     }
-  }
+  })
 
   return {
     verdict: reasons.length > 0 ? "blocked" : "approved",

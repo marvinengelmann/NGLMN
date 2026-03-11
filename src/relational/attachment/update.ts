@@ -80,19 +80,20 @@ export function evaluateAttachmentDynamics(style: AttachmentStyle, context: Atta
 export function updateAttachmentStyle(
   current: AttachmentStyle,
   dynamics: AttachmentDynamics,
-  elapsedHours: number
+  elapsedHours: number,
+  crisisMultiplier = 1
 ): AttachmentStyle {
   let { secure, anxious, avoidant, disorganized } = current
 
   if (dynamics.reunionResponse > 0.5 && dynamics.separationDistress < 0.5) {
-    secure += 0.001 * elapsedHours
+    secure += 0.001 * elapsedHours * crisisMultiplier
   }
 
   if (dynamics.separationDistress > 0.7) {
-    anxious += 0.0005 * elapsedHours
+    anxious += 0.0005 * elapsedHours * crisisMultiplier
   }
 
-  secure += 0.0002 * elapsedHours
+  secure += 0.0002 * elapsedHours * crisisMultiplier
 
   const total = secure + anxious + avoidant + disorganized
   if (total > 0) {

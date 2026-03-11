@@ -6,30 +6,27 @@ import type { Habit, HabitState, HabitType } from "./types.ts"
  * Detect habit patterns from recent actions.
  */
 export function detectHabitPatterns(recentActions: string[], existingHabits: Habit[]): Habit | null {
-  const actionCounts = new Map<string, number>()
-  for (const action of recentActions) {
-    actionCounts.set(action, (actionCounts.get(action) ?? 0) + 1)
-  }
+  const actionCounts = recentActions.reduce((map, action) => {
+    map.set(action, (map.get(action) ?? 0) + 1)
+    return map
+  }, new Map<string, number>())
 
-  for (const [pattern, count] of actionCounts) {
-    if (count >= HABIT.DETECTION_MIN_REPETITIONS) {
-      const exists = existingHabits.some((h) => h.pattern === pattern)
-      if (!exists) {
-        const type = inferHabitType(pattern)
-        return {
-          id: `habit_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
-          pattern,
-          type,
-          strength: HABIT.STRENGTH_INCREMENT * count,
-          repetitions: count,
-          lastActivatedAt: nowISO(),
-          isAutomatic: false
-        }
-      }
-    }
-  }
+  const match = [...actionCounts.entries()].find(
+    ([pattern, count]) => count >= HABIT.DETECTION_MIN_REPETITIONS && !existingHabits.some((h) => h.pattern === pattern)
+  )
 
-  return null
+  if (!match) return null
+
+  const [pattern, count] = match
+  return {
+    id: `habit_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+    pattern,
+    type: inferHabitType(pattern),
+    strength: HABIT.STRENGTH_INCREMENT * count,
+    repetitions: count,
+    lastActivatedAt: nowISO(),
+    isAutomatic: false
+  }
 }
 
 function inferHabitType(pattern: string): HabitType {

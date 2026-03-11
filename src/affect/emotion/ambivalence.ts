@@ -111,20 +111,16 @@ export function compute(context: Context): AmbivalenceState {
 }
 
 function deduplicatePairs(pairs: AmbivalencePair[]): AmbivalencePair[] {
-  const seen = new Map<string, AmbivalencePair>()
-  for (const pair of pairs) {
-    const key = `${pair.wanting}|${pair.fearing}`
-    const existing = seen.get(key)
-    if (existing) {
-      seen.set(key, {
-        ...existing,
-        intensity: Math.max(existing.intensity, pair.intensity)
-      })
-    } else {
-      seen.set(key, pair)
-    }
-  }
-  return Array.from(seen.values())
+  return Array.from(
+    pairs
+      .reduce((seen, pair) => {
+        const key = `${pair.wanting}|${pair.fearing}`
+        const existing = seen.get(key)
+        seen.set(key, existing ? { ...existing, intensity: Math.max(existing.intensity, pair.intensity) } : pair)
+        return seen
+      }, new Map<string, AmbivalencePair>())
+      .values()
+  )
 }
 
 export function computeEffect(state: AmbivalenceState): EmotionEffect {

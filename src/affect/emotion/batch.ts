@@ -18,15 +18,13 @@ export async function getAllSecondaryEmotionStates(): Promise<Map<string, Second
 
   const values = await mgetValidatedRedis(entries)
 
-  const result = new Map<string, SecondaryEmotionState>()
-  for (let i = 0; i < emotions.length; i++) {
-    const emotion = emotions[i]
+  return emotions.reduce((result, emotion, i) => {
     const value = values[i]
     if (emotion && value) {
       result.set(emotion.name, value)
     }
-  }
-  return result
+    return result
+  }, new Map<string, SecondaryEmotionState>())
 }
 
 /**
@@ -38,12 +36,12 @@ export async function saveAllSecondaryEmotionStates(states: Map<string, Secondar
   const emotions = getRegisteredEmotions()
   const pipe = redis.pipeline()
 
-  for (const entry of emotions) {
+  emotions.forEach((entry) => {
     const state = states.get(entry.name)
     if (state) {
       pipe.set(entry.redisKey, state)
     }
-  }
+  })
 
   await pipe.exec()
 }

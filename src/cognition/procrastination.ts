@@ -108,13 +108,13 @@ export function computeProcrastination(context: ProcrastinationContext): Procras
     contributions.push({ source: "decision_paralysis", value })
   }
 
-  for (const c of contributions) {
+  contributions.forEach((c) => {
     level += c.value
     if (c.value > maxContribution) {
       maxContribution = c.value
       dominantSource = c.source
     }
-  }
+  })
 
   if (consecutiveIdleTicks >= PROCRASTINATION.IDLE_STREAK_BOOST_TICKS) {
     level += PROCRASTINATION.IDLE_STREAK_BOOST

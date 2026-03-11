@@ -102,7 +102,7 @@ describe("validateOutput", () => {
 
 describe("validateEvolution", () => {
   it("approves files in allowed paths", () => {
-    const result = validateEvolution([{ path: "src/emotion/mood.ts", content: "export const x = 1" }])
+    const result = validateEvolution([{ path: "src/affect/emotion/mood.ts", content: "export const x = 1" }])
     expect(result.verdict).toBe("approved")
   })
 
@@ -113,19 +113,19 @@ describe("validateEvolution", () => {
   })
 
   it("blocks path traversal attempts", () => {
-    const result = validateEvolution([{ path: "src/emotion/../../../etc/passwd", content: "bad" }])
+    const result = validateEvolution([{ path: "src/affect/../../../etc/passwd", content: "bad" }])
     expect(result.verdict).toBe("blocked")
   })
 
   it("blocks files exceeding size limit", () => {
-    const result = validateEvolution([{ path: "src/emotion/big.ts", content: "x".repeat(60_000) }])
+    const result = validateEvolution([{ path: "src/affect/emotion/big.ts", content: "x".repeat(60_000) }])
     expect(result.verdict).toBe("blocked")
     expect(result.reasons[0]).toContain("exceeds size limit")
   })
 
   it("blocks files containing secrets", () => {
     const result = validateEvolution([
-      { path: "src/config/db.ts", content: "const url = 'postgresql://user:pass@host/db'" }
+      { path: "src/core/db.ts", content: "const url = 'postgresql://user:pass@host/db'" }
     ])
     expect(result.verdict).toBe("blocked")
     expect(result.reasons[0]).toContain("secret detected")

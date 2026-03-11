@@ -13,7 +13,7 @@ export const PrivacyCheckResult = z.object({
 })
 export type PrivacyCheckResult = z.infer<typeof PrivacyCheckResult>
 
-export interface GuardianResult {
+export interface PrivacyGuardResult {
   passed: boolean
   issues: string[]
   checkedAt: string
@@ -38,7 +38,7 @@ function buildDynamicPatterns(
 ): Array<{ pattern: RegExp; label: string }> {
   const patterns: Array<{ pattern: RegExp; label: string }> = []
 
-  for (const entry of operatorKnowledge) {
+  operatorKnowledge.forEach((entry) => {
     const value = typeof entry.value === "string" ? entry.value : JSON.stringify(entry.value)
     if (value.length >= 3 && value.length <= 100) {
       try {
@@ -47,31 +47,30 @@ function buildDynamicPatterns(
           pattern: new RegExp(escaped, "i"),
           label: `operator knowledge: ${entry.key}`
         })
-      } catch {
-        // skip invalid regex
-      }
+      } catch {}
     }
-  }
+  })
 
-  for (const pref of profile.knownPreferences) {
-    if (
-      pref.toLowerCase().includes("name") ||
-      pref.toLowerCase().includes("job") ||
-      pref.toLowerCase().includes("work")
-    ) {
-      const words = pref.split(/\s+/).filter((w) => w.length > 3)
-      for (const word of words) {
-        try {
-          patterns.push({
-            pattern: new RegExp(`\\b${word.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`, "i"),
-            label: `operator preference: ${pref}`
-          })
-        } catch {
-          // skip
-        }
-      }
-    }
-  }
+  profile.knownPreferences
+    .filter(
+      (pref) =>
+        pref.toLowerCase().includes("name") ||
+        pref.toLowerCase().includes("job") ||
+        pref.toLowerCase().includes("work")
+    )
+    .forEach((pref) => {
+      pref
+        .split(/\s+/)
+        .filter((w) => w.length > 3)
+        .forEach((word) => {
+          try {
+            patterns.push({
+              pattern: new RegExp(`\\b${word.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`, "i"),
+              label: `operator preference: ${pref}`
+            })
+          } catch {}
+        })
+    })
 
   return patterns
 }
@@ -83,18 +82,18 @@ function runRuleBasedCheck(
 ): string[] {
   const issues: string[] = []
 
-  for (const { pattern, label } of HARDCODED_PATTERNS) {
+  HARDCODED_PATTERNS.forEach(({ pattern, label }) => {
     if (pattern.test(text)) {
       issues.push(`Hardcoded pattern match: ${label}`)
     }
-  }
+  })
 
   const dynamicPatterns = buildDynamicPatterns(profile, operatorKnowledge)
-  for (const { pattern, label } of dynamicPatterns) {
+  dynamicPatterns.forEach(({ pattern, label }) => {
     if (pattern.test(text)) {
       issues.push(`Dynamic pattern match: ${label}`)
     }
-  }
+  })
 
   const operatorRefs = /\b(my operator|my human|my owner|my creator|my user)\b/i
   if (operatorRefs.test(text)) {
@@ -110,7 +109,7 @@ function runRuleBasedCheck(
  * Stage 2: LLM semantic check (fast model).
  * Fail-safe: LLM errors block the post.
  */
-export async function validatePublicContent(text: string): Promise<GuardianResult> {
+export async function validatePublicContent(text: string): Promise<PrivacyGuardResult> {
   const now = nowISO()
 
   const [profile, knowledgeResult] = await Promise.all([

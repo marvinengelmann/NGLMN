@@ -1,7 +1,9 @@
+import { redis } from "@/infra/integrations/redis.ts"
 import { log } from "@/infra/lib/logger.ts"
 import { logAndCaptureError } from "@/infra/lib/result.ts"
-import { downgradeEpisodes, queryRelated, summarizeOldEpisodes } from "@/memory/episodic.ts"
-import { storeKnowledge, storeRelation } from "@/memory/semantic.ts"
+import { storeWithConsistencyCheck } from "@/memory/consistency.ts"
+import { downgradeEpisodes, forgetOldEpisodes, queryRelated, summarizeOldEpisodes } from "@/memory/episodic.ts"
+import { storeRelation } from "@/memory/semantic.ts"
 import {
   type RelationType,
   RelationType as RelationTypeSchema,
@@ -36,18 +38,16 @@ export async function gatherConsolidationData(): Promise<string> {
 
   const queryResults = await Promise.all(QUERY_TEXTS.map((text) => queryRelated(text, 10)))
 
-  for (const results of queryResults) {
-    for (const r of results) {
-      if (!seenIds.has(r.id)) {
-        seenIds.add(r.id)
-        allEpisodes.push({
-          id: r.id,
-          score: r.score,
-          text: JSON.stringify(r.metadata)
-        })
-      }
+  queryResults.flat().forEach((r) => {
+    if (!seenIds.has(r.id)) {
+      seenIds.add(r.id)
+      allEpisodes.push({
+        id: r.id,
+        score: r.score,
+        text: JSON.stringify(r.metadata)
+      })
     }
-  }
+  })
 
   log.info("Consolidation episodes collected", { uniqueEpisodes: allEpisodes.length })
 
@@ -66,7 +66,8 @@ export async function applyConsolidationResult(output: ConsolidationOutput): Pro
     const category = VALID_CATEGORIES.includes(entry.category as SemanticCategory)
       ? (entry.category as SemanticCategory)
       : SemanticCategory.enum.knowledge
-    const entryIdResult = await storeKnowledge(
+
+    const entryId = await storeWithConsistencyCheck(
       category,
       entry.key,
       entry.value,
@@ -74,34 +75,40 @@ export async function applyConsolidationResult(output: ConsolidationOutput): Pro
       entry.confidence,
       SemanticScope.enum.self
     )
-    if (entryIdResult.isErr()) {
-      logAndCaptureError(entryIdResult.error)
-      continue
-    }
-    createdEntryIds.push(entryIdResult.value)
+    if (entryId) createdEntryIds.push(entryId)
   }
 
   const validRelationTypes = RelationTypeSchema.options
   const createdRelations = new Set<string>()
-  for (const conn of output.connections) {
+  await output.connections.reduce(async (previousPromise, conn) => {
+    await previousPromise
+
     const sourceEntryId = createdEntryIds[conn.sourceEntryIndex]
     const targetEntryId = createdEntryIds[conn.targetEntryIndex]
-    if (!sourceEntryId || !targetEntryId || sourceEntryId === targetEntryId) continue
+    if (!sourceEntryId || !targetEntryId || sourceEntryId === targetEntryId) return
     const pairKey = [sourceEntryId, targetEntryId].sort().join(":")
-    if (createdRelations.has(pairKey)) continue
+    if (createdRelations.has(pairKey)) return
     createdRelations.add(pairKey)
     const relType = validRelationTypes.includes(conn.connectionType as RelationType)
       ? (conn.connectionType as RelationType)
       : "related_to"
     const relationResult = await storeRelation(sourceEntryId, targetEntryId, relType, conn.description)
     if (relationResult.isErr()) logAndCaptureError(relationResult.error)
-  }
+  }, Promise.resolve())
 
   if (output.downgradeIds.length > 0) {
     await downgradeEpisodes(output.downgradeIds)
   }
 
-  await summarizeOldEpisodes(7)
+  const memoryPressure = await redis.get("working:memory:pressure")
+  const summarizeDaysThreshold = memoryPressure ? 3 : 7
+  await summarizeOldEpisodes(summarizeDaysThreshold)
+
+  if (memoryPressure) {
+    const forgotten = await forgetOldEpisodes(60, 0.3)
+    log.info("Memory pressure: aggressive forgetting", { forgotten })
+    await redis.del("working:memory:pressure")
+  }
 
   log.info("Consolidation results applied", {
     semanticEntries: output.semanticEntries.length,

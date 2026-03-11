@@ -145,12 +145,12 @@ describe("learnFromObservation", () => {
     let library = { ...DEFAULT_RELATIONAL_PATTERN_LIBRARY }
     const moods = ["sad", "frustrated", "tired", "excited", "happy", "stressed"] as const
 
-    for (let i = 0; i < 20; i++) {
+    Array.from({ length: 20 }).forEach((_, i) => {
       const mood = moods[i % moods.length] ?? "sad"
       const signals = extractSignals(["test... message!!", `word${i}`])
       const model = { ...DEFAULT_OPERATOR_MODEL, estimatedMood: mood, modelConfidence: 0.7 }
       library = learnFromObservation(signals, model, library)
-    }
+    })
 
     expect(library.patterns.length).toBeLessThanOrEqual(15)
   })

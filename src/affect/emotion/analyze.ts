@@ -31,10 +31,15 @@ Available triggers and when to use them:
 For each trigger, set intensity 0.0-1.0 based on emotional weight.
 Return 1-3 triggers that best capture the emotional content.`
 
+export interface SentimentAnalysisResult {
+  triggers: EmotionUpdateEvent[]
+  dominantSentiment: "positive" | "negative" | "neutral" | "mixed"
+}
+
 /**
  * Analyze the emotional content of incoming messages using an LLM.
  */
-export function analyzeMessageSentiment(messages: PendingMessage[]): AnimaResultAsync<EmotionUpdateEvent[]> {
+export function analyzeMessageSentiment(messages: PendingMessage[]): AnimaResultAsync<SentimentAnalysisResult> {
   return trySafe("LLM_ERROR", async () => {
     const messageTexts = messages.map((m) => `[${m.from}]: ${m.text}`).join("\n")
 
@@ -47,13 +52,19 @@ export function analyzeMessageSentiment(messages: PendingMessage[]): AnimaResult
     })
 
     if (result.isErr()) {
-      return [{ trigger: "message_received" as const, intensity: 0.6, detail: "sentiment analysis fallback" }]
+      return {
+        triggers: [{ trigger: "message_received" as const, intensity: 0.6, detail: "sentiment analysis fallback" }],
+        dominantSentiment: "neutral" as const
+      }
     }
 
-    return result.value.triggers.map((t) => ({
-      trigger: t.trigger,
-      intensity: t.intensity,
-      detail: t.detail
-    }))
+    return {
+      triggers: result.value.triggers.map((t) => ({
+        trigger: t.trigger,
+        intensity: t.intensity,
+        detail: t.detail
+      })),
+      dominantSentiment: result.value.dominantSentiment
+    }
   })
 }

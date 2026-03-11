@@ -30,7 +30,7 @@ export async function computeInstinctImpression(
   let approachScore = 0
   let avoidScore = 0
 
-  for (const ep of episodes) {
+  episodes.forEach((ep) => {
     const valence = (ep.metadata as EpisodeMetadata | undefined)?.valence
     if (ep.score > 0.7) {
       if (valence != null && valence < -0.2) avoidScore += 0.25
@@ -39,7 +39,7 @@ export async function computeInstinctImpression(
     } else if (ep.score > 0.4) {
       approachScore += 0.05
     }
-  }
+  })
 
   const emotionalCharge = maxDeviation(emotion)
 

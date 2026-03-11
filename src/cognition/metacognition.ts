@@ -42,25 +42,21 @@ export function detectRumination(
     return { detected: false, topic: null, ticks: 0 }
   }
 
-  const themes = new Map<string, number>()
-  for (const reasoning of recentReasonings) {
-    const words = reasoning
+  const themes = recentReasonings.reduce((map, reasoning) => {
+    reasoning
       .toLowerCase()
       .split(/\s+/)
       .filter((w) => w.length > 5)
-    for (const word of words) {
-      themes.set(word, (themes.get(word) ?? 0) + 1)
-    }
-  }
+      .forEach((word) => {
+        map.set(word, (map.get(word) ?? 0) + 1)
+      })
+    return map
+  }, new Map<string, number>())
 
-  let topTheme: string | null = null
-  let topCount = 0
-  for (const [theme, count] of themes) {
-    if (count > topCount) {
-      topTheme = theme
-      topCount = count
-    }
-  }
+  const { topTheme, topCount } = [...themes.entries()].reduce(
+    (best, [theme, count]) => (count > best.topCount ? { topTheme: theme, topCount: count } : best),
+    { topTheme: null as string | null, topCount: 0 }
+  )
 
   const detected = topCount >= METACOGNITION.RUMINATION_THRESHOLD_TICKS
   const isSameTopic = previousState.ruminationTopic === topTheme

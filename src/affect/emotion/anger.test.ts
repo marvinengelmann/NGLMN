@@ -40,7 +40,19 @@ const baseOperatorModel = {
   lastUpdated: "",
   moodUncertainty: null,
   contradiction: null,
-  moodHistory: []
+  moodHistory: [],
+  predictions: {
+    expectedResponseMinutes: null,
+    expectedMood: null,
+    expectedEngagement: null,
+    confidence: 0.3,
+    madeAt: null
+  },
+  predictionAccuracy: {
+    recentScores: [],
+    runningAverage: 0.5,
+    totalPredictions: 0
+  }
 }
 
 function makeContext(overrides: Record<string, unknown> = {}) {

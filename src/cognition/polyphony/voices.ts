@@ -46,14 +46,14 @@ export function selectActiveVoices(
   if (context.dissonanceScore > 0.3) scores.observer += 0.6
 
   const mbtiWeights = getMbtiWeights(personality)
-  for (const [voice, bonus] of Object.entries(mbtiWeights)) {
+  Object.entries(mbtiWeights).forEach(([voice, bonus]) => {
     scores[voice as InnerVoice] += bonus
-  }
+  })
 
   if (alteredVoiceModifiers) {
-    for (const [voice, bonus] of Object.entries(alteredVoiceModifiers)) {
+    Object.entries(alteredVoiceModifiers).forEach(([voice, bonus]) => {
       scores[voice as InnerVoice] += bonus
-    }
+    })
   }
 
   const sorted = (Object.entries(scores) as [InnerVoice, number][])
@@ -63,10 +63,10 @@ export function selectActiveVoices(
 
   if (sorted.length < 2) {
     const defaults: InnerVoice[] = ["observer", "feeler", "analyst", "explorer"]
-    for (const d of defaults) {
+    defaults.find((d) => {
       if (!sorted.includes(d)) sorted.push(d)
-      if (sorted.length >= 2) break
-    }
+      return sorted.length >= 2
+    })
   }
 
   return sorted.slice(0, 4)
@@ -82,16 +82,16 @@ export async function getVoiceDominanceBoost(): Promise<Partial<Record<InnerVoic
 
   if (history.length === 0) return {}
 
-  const counts: Partial<Record<InnerVoice, number>> = {}
-  for (const voice of history) {
-    counts[voice] = (counts[voice] ?? 0) + 1
-  }
+  const counts = history.reduce<Partial<Record<InnerVoice, number>>>((acc, voice) => {
+    acc[voice] = (acc[voice] ?? 0) + 1
+    return acc
+  }, {})
 
   const maxCount = Math.max(...Object.values(counts))
-  const boost: Partial<Record<InnerVoice, number>> = {}
-  for (const [voice, count] of Object.entries(counts)) {
-    boost[voice as InnerVoice] = (count / maxCount) * DOMINANCE_FREQUENCY_BOOST
-  }
+  const boost = Object.entries(counts).reduce<Partial<Record<InnerVoice, number>>>((acc, [voice, count]) => {
+    acc[voice as InnerVoice] = (count / maxCount) * DOMINANCE_FREQUENCY_BOOST
+    return acc
+  }, {})
 
   return boost
 }

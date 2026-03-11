@@ -1,19 +1,14 @@
 export function sumContributions<T extends string>(
   contributions: { source: T; value: number }[]
 ): { level: number; source: T | null; maxContribution: number } {
-  let level = 0
-  let source: T | null = null
-  let maxContribution = 0
-
-  for (const c of contributions) {
-    level += c.value
-    if (c.value > maxContribution) {
-      maxContribution = c.value
-      source = c.source
-    }
-  }
-
-  return { level, source, maxContribution }
+  return contributions.reduce(
+    (acc, c) => ({
+      level: acc.level + c.value,
+      source: c.value > acc.maxContribution ? c.source : acc.source,
+      maxContribution: Math.max(acc.maxContribution, c.value)
+    }),
+    { level: 0, source: null as T | null, maxContribution: 0 }
+  )
 }
 
 export function decayAndFinalize(

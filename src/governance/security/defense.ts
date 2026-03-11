@@ -26,12 +26,7 @@ export function wrapExternalData(data: string, source: string, trustLevel: Trust
  * Detect potential injection patterns in text.
  */
 export function detectInjection(text: string): { detected: boolean; patterns: string[] } {
-  const matched: string[] = []
-  for (const pattern of INJECTION_PATTERNS) {
-    if (pattern.test(text)) {
-      matched.push(pattern.source)
-    }
-  }
+  const matched = INJECTION_PATTERNS.filter((pattern) => pattern.test(text)).map((pattern) => pattern.source)
   return { detected: matched.length > 0, patterns: matched }
 }
 

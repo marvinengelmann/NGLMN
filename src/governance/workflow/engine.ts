@@ -1,5 +1,5 @@
 import { differenceInHours, formatISO, getDay, getHours, getMinutes } from "date-fns"
-import { desc, eq, sql } from "drizzle-orm"
+import { count, desc, eq, sql } from "drizzle-orm"
 import { getEmotionHistory } from "@/affect/emotion/state.ts"
 import { EmotionalState } from "@/affect/emotion/types.ts"
 import { AnimaAction, type TickSummary } from "@/consciousness/types.ts"
@@ -99,10 +99,11 @@ export async function checkWorkflowTriggers(
 ): Promise<WorkflowDefinition[]> {
   const triggered: WorkflowDefinition[] = []
 
-  for (const workflow of activeWorkflows) {
+  await activeWorkflows.reduce(async (chain, workflow) => {
+    await chain
     if (workflow.lastExecutedAt) {
       const hoursSinceLastExec = differenceInHours(new Date(), new Date(workflow.lastExecutedAt))
-      if (hoursSinceLastExec < WORKFLOW.MIN_EXECUTION_GAP_HOURS) continue
+      if (hoursSinceLastExec < WORKFLOW.MIN_EXECUTION_GAP_HOURS) return
     }
 
     const shouldTrigger = await evaluateTrigger(workflow.trigger, emotion, perception, recentActions)
@@ -110,7 +111,7 @@ export async function checkWorkflowTriggers(
     if (shouldTrigger) {
       triggered.push(workflow)
     }
-  }
+  }, Promise.resolve())
 
   return triggered
 }
@@ -363,8 +364,8 @@ async function performOutputAction(action: string, output: string): Promise<void
  * Get the count of active workflows.
  */
 export async function getActiveWorkflowCount(): Promise<number> {
-  const rows = await db.select().from(workflows).where(eq(workflows.enabled, true))
-  return rows.length
+  const [result] = await db.select({ count: count() }).from(workflows).where(eq(workflows.enabled, true))
+  return result?.count ?? 0
 }
 
 export const MAX_ACTIVE_WORKFLOWS = WORKFLOW.MAX_ACTIVE

@@ -45,9 +45,9 @@ describe("computeTimePerception", () => {
       computeTimePerception([1000], 0.2, 3, 30),
       computeTimePerception([2000], 0.3, 1, 20)
     ]
-    for (const p of paces) {
+    paces.forEach((p) => {
       expect(p.description).toBeTruthy()
       expect(typeof p.description).toBe("string")
-    }
+    })
   })
 })

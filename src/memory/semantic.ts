@@ -182,7 +182,8 @@ export function applyOpinionDrift(): AnimaResultAsync<void> {
     const count = Math.min(preferences.length, 1 + Math.floor(Math.random() * 2))
     const shuffled = shuffle(preferences).slice(0, count)
 
-    for (const pref of shuffled) {
+    await shuffled.reduce(async (prev, pref) => {
+      await prev
       const drift = 0.05 + Math.random() * 0.05
       const newConfidence = Math.max(0.1, (pref.confidence ?? 0.5) - drift)
       await db
@@ -190,6 +191,6 @@ export function applyOpinionDrift(): AnimaResultAsync<void> {
         .set({ confidence: newConfidence, updatedAt: new Date() })
         .where(eq(semanticMemory.id, pref.id))
       log.debug("Opinion drift applied", { key: pref.key, oldConfidence: pref.confidence, newConfidence })
-    }
+    }, Promise.resolve())
   })
 }

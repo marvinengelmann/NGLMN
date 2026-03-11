@@ -98,15 +98,21 @@ export function compute(context: Context): AnticipationState {
     })
   }
 
-  for (const c of items) {
-    level += c.value
-    valenceSum += c.valence * c.value
-    valenceCount += c.value
-    if (c.value > maxContribution) {
-      maxContribution = c.value
-      source = c.source
-    }
-  }
+  const accumulated = items.reduce(
+    (acc, c) => ({
+      level: acc.level + c.value,
+      valenceSum: acc.valenceSum + c.valence * c.value,
+      valenceCount: acc.valenceCount + c.value,
+      maxContribution: Math.max(acc.maxContribution, c.value),
+      source: c.value > acc.maxContribution ? c.source : acc.source
+    }),
+    { level: 0, valenceSum: 0, valenceCount: 0, maxContribution: 0, source: null as AnticipationSource | null }
+  )
+  level = accumulated.level
+  source = accumulated.source
+  maxContribution = accumulated.maxContribution
+  valenceSum = accumulated.valenceSum
+  valenceCount = accumulated.valenceCount
 
   if (context.disappointmentActive) {
     level *= ANTICIPATION.DISAPPOINTMENT_DAMPING

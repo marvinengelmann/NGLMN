@@ -116,13 +116,12 @@ export async function queryRelationshipHistory(topK: number = 5): Promise<
  */
 export async function downgradeEpisodes(ids: string[], factor: number = 0.5): Promise<number> {
   const existing = await vectorIndex.fetch(ids, { includeMetadata: true })
-  const currentScores = new Map<string, number>()
-  for (const entry of existing.filter(Boolean)) {
-    if (entry) {
-      const meta = entry.metadata as EpisodeMetadata | undefined
-      currentScores.set(entry.id as string, meta?.relevanceScore ?? 0.5)
-    }
-  }
+  const currentScores = new Map<string, number>(
+    existing.filter(Boolean).map((entry) => {
+      const meta = entry!.metadata as EpisodeMetadata | undefined
+      return [entry!.id as string, meta?.relevanceScore ?? 0.5]
+    })
+  )
 
   const results = await Promise.allSettled(
     ids.map((id) => {
@@ -134,11 +133,11 @@ export async function downgradeEpisodes(ids: string[], factor: number = 0.5): Pr
       })
     })
   )
-  results
-    .filter((r): r is PromiseRejectedResult => r.status === "rejected")
-    .forEach((r, i) => {
+  results.forEach((r, i) => {
+    if (r.status === "rejected") {
       log.warn("Failed to downgrade episode", { id: ids[i], error: String(r.reason) })
-    })
+    }
+  })
   return results.filter((r) => r.status === "fulfilled").length
 }
 
@@ -157,7 +156,7 @@ export async function summarizeOldEpisodes(
     categories.map(async (category) => {
       const results = await vectorIndex.query({
         data: `old ${category} episodes to summarize`,
-        topK: 20,
+        topK: 200,
         includeMetadata: true,
         includeData: true,
         filter: `category = '${category}'`
@@ -275,7 +274,7 @@ export async function queryRelatedWithDistortion(
 
 /**
  * Get recent episodes filtered by category.
- * Uses metadata filter + sorts by timestamp descending (via relevance to a generic query).
+ * Fetches a larger set with metadata filter, then sorts by timestamp descending client-side.
  */
 export async function getRecentByCategory(
   category: EpisodicCategory,
@@ -288,63 +287,82 @@ export async function getRecentByCategory(
     data: string | undefined
   }>
 > {
+  const fetchSize = Math.max(limit * 3, 20)
   const results = await vectorIndex.query({
-    data: `recent ${category} activity`,
-    topK: limit,
+    data: `${category} activity`,
+    topK: fetchSize,
     includeMetadata: true,
     includeData: true,
     filter: `category = '${category}'`
   })
 
-  return results.map((r) => ({
+  const mapped = results.map((r) => ({
     id: r.id as string,
     score: r.score,
-    metadata: r.metadata,
+    metadata: r.metadata as EpisodeMetadata | undefined,
     data: r.data as string | undefined
   }))
+
+  mapped.sort((a, b) => {
+    const tsA = a.metadata?.timestamp ?? ""
+    const tsB = b.metadata?.timestamp ?? ""
+    return tsB.localeCompare(tsA)
+  })
+
+  return mapped.slice(0, limit)
 }
+
+const FORGET_QUERY_ANCHORS = ["old memories to forget", "forgotten past events", "stale historical records"]
 
 /**
  * Delete old, low-relevance episodes to implement a forgetting curve.
  * Skips relationship and humor categories to preserve meaningful bonds.
+ * Uses multiple query anchors per category to scan more of the vector space.
  */
 export async function forgetOldEpisodes(
   ageThresholdDays: number = 90,
   relevanceThreshold: number = 0.2
 ): Promise<number> {
   const categories: EpisodicCategory[] = ["interaction", "task", "observation", "dream", "evolution", "activity"]
-  const idsToDelete: string[] = []
+  const idsToDelete = new Set<string>()
 
-  for (const category of categories) {
-    const results = await vectorIndex.query({
-      data: `old ${category} memories to forget`,
-      topK: 50,
-      includeMetadata: true,
-      filter: `category = '${category}'`
-    })
-
-    for (const r of results) {
-      const meta = r.metadata as EpisodeMetadata | undefined
-      if (!meta) continue
-      if ((meta.relevanceScore ?? 1) >= relevanceThreshold) continue
-      try {
-        if (differenceInDays(new Date(), parseISO(meta.timestamp)) >= ageThresholdDays) {
-          idsToDelete.push(r.id as string)
-        }
-      } catch (e) {
-        log.warn("Failed to parse episode timestamp during forgetting", {
-          id: r.id,
-          timestamp: meta.timestamp,
-          error: extractErrorMessage(e)
+  await categories.reduce(
+    async (catPromise, category) =>
+      FORGET_QUERY_ANCHORS.reduce(async (anchorPromise, anchor) => {
+        await catPromise
+        await anchorPromise
+        const results = await vectorIndex.query({
+          data: `${anchor} ${category}`,
+          topK: 200,
+          includeMetadata: true,
+          filter: `category = '${category}'`
         })
-      }
-    }
+
+        results.forEach((r) => {
+          const meta = r.metadata as EpisodeMetadata | undefined
+          if (!meta) return
+          if ((meta.relevanceScore ?? 1) >= relevanceThreshold) return
+          try {
+            if (differenceInDays(new Date(), parseISO(meta.timestamp)) >= ageThresholdDays) {
+              idsToDelete.add(r.id as string)
+            }
+          } catch (e) {
+            log.warn("Failed to parse episode timestamp during forgetting", {
+              id: r.id,
+              timestamp: meta.timestamp,
+              error: extractErrorMessage(e)
+            })
+          }
+        })
+      }, Promise.resolve()),
+    Promise.resolve()
+  )
+
+  const deleteIds = [...idsToDelete]
+  if (deleteIds.length > 0) {
+    await vectorIndex.delete(deleteIds)
+    log.info("Forgot old episodes", { count: deleteIds.length })
   }
 
-  if (idsToDelete.length > 0) {
-    await vectorIndex.delete(idsToDelete)
-    log.info("Forgot old episodes", { count: idsToDelete.length })
-  }
-
-  return idsToDelete.length
+  return deleteIds.length
 }

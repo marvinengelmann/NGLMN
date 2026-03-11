@@ -54,12 +54,12 @@ function testPathFor(filePath: string): string | null {
 export function expandWithTestFiles(paths: string[], tree: string[]): string[] {
   const expanded = new Set(paths)
 
-  for (const p of paths) {
+  paths.forEach((p) => {
     const testPath = testPathFor(p)
     if (testPath && tree.includes(testPath)) {
       expanded.add(testPath)
     }
-  }
+  })
 
   if (tree.includes(FACTORIES_PATH)) {
     expanded.add(FACTORIES_PATH)
@@ -80,30 +80,32 @@ export async function loadFileContents(
   const sourceFiles: SourceFileContext[] = [...(existing ?? [])]
   let tokensUsed = sourceFiles.reduce((sum, f) => sum + estimateTokenCount(f.content), 0)
 
-  for (const path of paths) {
-    if (alreadyLoaded.has(path)) continue
-    if (tokensUsed >= tokenBudget) break
+  await paths
+    .filter((path) => !alreadyLoaded.has(path))
+    .reduce(async (chain, path) => {
+      await chain
+      if (tokensUsed >= tokenBudget) return
 
-    try {
-      const { content } = await getFileContent(path)
-      const fileTokens = estimateTokenCount(content)
-      const remainingBudget = tokenBudget - tokensUsed
+      try {
+        const { content } = await getFileContent(path)
+        const fileTokens = estimateTokenCount(content)
+        const remainingBudget = tokenBudget - tokensUsed
 
-      if (fileTokens <= remainingBudget) {
-        sourceFiles.push({ path, content, truncated: false })
-        tokensUsed += fileTokens
-      } else {
-        sourceFiles.push({
-          path,
-          content: `${sliceByTokens(content, 0, remainingBudget)}\n// ... truncated ...`,
-          truncated: true
-        })
-        tokensUsed = tokenBudget
+        if (fileTokens <= remainingBudget) {
+          sourceFiles.push({ path, content, truncated: false })
+          tokensUsed += fileTokens
+        } else {
+          sourceFiles.push({
+            path,
+            content: `${sliceByTokens(content, 0, remainingBudget)}\n// ... truncated ...`,
+            truncated: true
+          })
+          tokensUsed = tokenBudget
+        }
+      } catch (e) {
+        log.warn("Failed to read source file for evolution context", { path, error: String(e) })
       }
-    } catch (e) {
-      log.warn("Failed to read source file for evolution context", { path, error: String(e) })
-    }
-  }
+    }, Promise.resolve())
 
   const truncatedCount = sourceFiles.filter((f) => f.truncated).length
   log.debug("Source files loaded", {
@@ -248,9 +250,9 @@ async function resolveFileRequests(
   const expandedPaths = expandWithTestFiles(validPaths, context.tree)
 
   const newFailedPaths = new Set(failedPaths)
-  for (const p of requestedPaths) {
-    if (!context.tree.includes(p)) newFailedPaths.add(p)
-  }
+  requestedPaths
+    .filter((p) => !context.tree.includes(p))
+    .forEach((p) => newFailedPaths.add(p))
 
   log.info("Evolution LLM requested additional files", {
     round,
@@ -346,7 +348,8 @@ export async function executeCodeEvolution(proposal: CodeProposal): Promise<{
       })
     )
 
-    for (const file of proposal.files) {
+    await proposal.files.reduce(async (chain, file) => {
+      await chain
       await createOrUpdateFile(
         file.path,
         file.content,
@@ -354,7 +357,7 @@ export async function executeCodeEvolution(proposal: CodeProposal): Promise<{
         branchName,
         existingShas.get(file.path)
       )
-    }
+    }, Promise.resolve())
     log.info("Evolution files pushed", { branchName, fileCount: proposal.files.length })
 
     log.info("Starting sandbox validation", { branchName })

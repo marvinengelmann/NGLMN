@@ -3,7 +3,7 @@ import * as z from "zod"
 export const GoalSource = z.enum(["operator", "self", "dream", "curiosity"])
 export type GoalSource = z.infer<typeof GoalSource>
 
-export const GoalStatus = z.enum(["open", "active", "paused", "done", "failed"])
+export const GoalStatus = z.enum(["open", "active", "paused", "done", "failed", "stale", "overdue"])
 export type GoalStatus = z.infer<typeof GoalStatus>
 
 export const SemanticCategory = z.enum(["preference", "project", "contact", "knowledge", "insight"])

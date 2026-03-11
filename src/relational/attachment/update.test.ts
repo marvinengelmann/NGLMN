@@ -68,10 +68,10 @@ describe("evaluateAttachmentDynamics", () => {
       cautionLevel: 1,
       trustExperience: 1
     })
-    for (const value of Object.values(dynamics)) {
+    Object.values(dynamics).forEach((value) => {
       expect(value).toBeGreaterThanOrEqual(0)
       expect(value).toBeLessThanOrEqual(1)
-    }
+    })
   })
 })
 
@@ -101,6 +101,47 @@ describe("updateAttachmentStyle", () => {
       explorationBalance: 1
     }
     const updated = updateAttachmentStyle(DEFAULT_ATTACHMENT, dynamics, 10)
+    const sum = updated.secure + updated.anxious + updated.avoidant + updated.disorganized
+    expect(sum).toBeCloseTo(1, 1)
+  })
+
+  it("changes faster with crisis multiplier", () => {
+    const dynamics = {
+      separationDistress: 0.5,
+      reunionResponse: 0.8,
+      safeHavenSeeking: 0.3,
+      explorationBalance: 0.6
+    }
+    const normalUpdate = updateAttachmentStyle(DEFAULT_ATTACHMENT, dynamics, 1)
+    const crisisUpdate = updateAttachmentStyle(DEFAULT_ATTACHMENT, dynamics, 1, 10)
+
+    const normalChange = Object.keys(DEFAULT_ATTACHMENT).reduce(
+      (sum, key) =>
+        sum +
+        Math.abs(
+          normalUpdate[key as keyof typeof normalUpdate] - DEFAULT_ATTACHMENT[key as keyof typeof DEFAULT_ATTACHMENT]
+        ),
+      0
+    )
+    const crisisChange = Object.keys(DEFAULT_ATTACHMENT).reduce(
+      (sum, key) =>
+        sum +
+        Math.abs(
+          crisisUpdate[key as keyof typeof crisisUpdate] - DEFAULT_ATTACHMENT[key as keyof typeof DEFAULT_ATTACHMENT]
+        ),
+      0
+    )
+    expect(crisisChange).toBeGreaterThan(normalChange)
+  })
+
+  it("still normalizes to sum ~1 with crisis multiplier", () => {
+    const dynamics = {
+      separationDistress: 0.8,
+      reunionResponse: 0.2,
+      safeHavenSeeking: 0.7,
+      explorationBalance: 0.3
+    }
+    const updated = updateAttachmentStyle(DEFAULT_ATTACHMENT, dynamics, 5, 10)
     const sum = updated.secure + updated.anxious + updated.avoidant + updated.disorganized
     expect(sum).toBeCloseTo(1, 1)
   })
