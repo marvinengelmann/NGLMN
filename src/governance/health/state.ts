@@ -3,7 +3,8 @@ import { HealthCheckResult } from "./types.ts"
 
 const KEYS = {
   HEALTH_LAST_CHECK: "working:health:lastCheck",
-  HEALTH_LAST_HEALTHY_COMMIT: "working:health:lastHealthyCommit"
+  HEALTH_LAST_HEALTHY_COMMIT: "working:health:lastHealthyCommit",
+  CONSECUTIVE_CRITICAL: "working:health:consecutiveCritical"
 } as const
 
 export async function setHealthCheck(result: HealthCheckResult): Promise<void> {
@@ -29,4 +30,16 @@ export async function getLastHealthyCommit(): Promise<string | null> {
 
 export async function setLastHealthyCommit(sha: string): Promise<void> {
   await redis.set(KEYS.HEALTH_LAST_HEALTHY_COMMIT, sha)
+}
+
+export async function incrementConsecutiveCritical(): Promise<number> {
+  return redis.incr(KEYS.CONSECUTIVE_CRITICAL)
+}
+
+export async function resetConsecutiveCritical(): Promise<void> {
+  await redis.del(KEYS.CONSECUTIVE_CRITICAL)
+}
+
+export async function getConsecutiveCritical(): Promise<number> {
+  return (await redis.get<number>(KEYS.CONSECUTIVE_CRITICAL)) ?? 0
 }

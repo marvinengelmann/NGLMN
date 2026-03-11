@@ -1,6 +1,7 @@
 import { format } from "date-fns"
 import type { SenseData, TickSummary } from "@/consciousness/types.ts"
 import type { ConversationSlot } from "@/expression/communication/types.ts"
+import { sanitizeForContext } from "@/governance/security/defense.ts"
 import type { WorkflowDefinition } from "@/governance/workflow/types.ts"
 import { CALENDAR } from "@/infra/integrations/constants.ts"
 import type { CalendarEvent, EmailPreview } from "@/infra/integrations/types.ts"
@@ -194,7 +195,8 @@ export function buildPerceptionSections(
       xLines.push(`\nTimeline (${xContext.timeline.length} posts):`)
       xContext.timeline.forEach((post) => {
         const author = post.authorUsername ? `@${post.authorUsername}` : post.authorId
-        const text = post.text.length > 200 ? `${post.text.slice(0, 200)}...` : post.text
+        const rawText = post.text.length > 200 ? `${post.text.slice(0, 200)}...` : post.text
+        const text = sanitizeForContext(rawText)
         xLines.push(`  - [${author}]: ${text}`)
         xLines.push(`    ${post.url} | ❤ ${post.likeCount} 🔁 ${post.retweetCount}`)
       })
@@ -210,10 +212,10 @@ export function buildPerceptionSections(
       emailLines.push(`Unread (${emailContext.unread.length}):`)
       emailContext.unread.forEach((mail) => {
         const dateStr = format(new Date(mail.date), "HH:mm")
-        emailLines.push(`  - [${mail.from}]: ${mail.subject} — ${dateStr}`)
+        emailLines.push(`  - [${sanitizeForContext(mail.from)}]: ${sanitizeForContext(mail.subject)} — ${dateStr}`)
         if (mail.snippet) {
-          const truncated = mail.snippet.length > 150 ? `${mail.snippet.slice(0, 150)}...` : mail.snippet
-          emailLines.push(`    ${truncated}`)
+          const rawSnippet = mail.snippet.length > 150 ? `${mail.snippet.slice(0, 150)}...` : mail.snippet
+          emailLines.push(`    ${sanitizeForContext(rawSnippet)}`)
         }
       })
     } else if (emailContext.canCheck) {

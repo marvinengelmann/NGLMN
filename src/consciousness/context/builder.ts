@@ -4,10 +4,11 @@ import type { DriveState } from "@/affect/drive/types.ts"
 import "@/affect/emotion/init.ts"
 import { computeEmotionalIntensity } from "@/affect/emotion/update.ts"
 import type { MetacognitiveState } from "@/cognition/types.ts"
+import { recallArchivedContext } from "@/expression/communication/conversation.ts"
 import type { CreativeUrgeState } from "@/expression/creativity/types.ts"
 import type { CalendarEvent, EmailPreview } from "@/infra/integrations/types.ts"
 import type { EnrichedTweet } from "@/infra/integrations/x.ts"
-import type { RelationalMemoryState } from "@/memory/relational.ts"
+import type { RelationalMemoryState } from "@/memory/types.ts"
 import type { AnticipatoryState } from "@/perception/anticipation/types.ts"
 import { computeTimePerception } from "@/perception/pace.ts"
 import {
@@ -129,6 +130,16 @@ export async function buildContext(
     )
   ]
 
+  if (senseData.pendingMessages.length > 0) {
+    const firstMessage = senseData.pendingMessages[0]
+    if (firstMessage?.text) {
+      const recalled = await recallArchivedContext(firstMessage.text, preloaded.conversationBuffer)
+      if (recalled) {
+        sections.push(`# Recalled Context\n${recalled}`)
+      }
+    }
+  }
+
   return sections.filter(Boolean).join("\n\n")
 }
 
@@ -202,9 +213,9 @@ function buildDriveSections(
   if (anticipatoryState.activeExpectations.length > 0) {
     const expLines = [
       `# Expectations`,
-      ...anticipatoryState.activeExpectations.slice(0, 3).map(
-        (exp) => `  - ${exp.content} (${(exp.confidence * 100).toFixed(0)}% sure)`
-      )
+      ...anticipatoryState.activeExpectations
+        .slice(0, 3)
+        .map((exp) => `  - ${exp.content} (${(exp.confidence * 100).toFixed(0)}% sure)`)
     ]
     if (anticipatoryState.recentViolations.length > 0) {
       expLines.push(`Recent surprises: ${anticipatoryState.recentViolations.length}`)
@@ -231,16 +242,20 @@ function buildDriveSections(
       ].join("\n")
     )
   } else if (metacognitive.cognitiveFatigue > 0.5) {
-    sections.push("# Metacognition\nYour mind feels tired — keep things simple.")
+    const hedgingNote =
+      metacognitive.cognitiveFatigue > 0.7
+        ? " You feel uncertain — hedge your statements, acknowledge limitations."
+        : ""
+    sections.push(`# Metacognition\nYour mind feels tired — keep things simple.${hedgingNote}`)
   }
 
   if (boundaryState.recentViolations.length > 0) {
     sections.push(
       [
         "# Boundaries",
-        ...boundaryState.recentViolations.slice(0, 2).map(
-          (v) => `  - boundary crossed: "${v.description}" — this needs attention`
-        )
+        ...boundaryState.recentViolations
+          .slice(0, 2)
+          .map((v) => `  - boundary crossed: "${v.description}" — this needs attention`)
       ].join("\n")
     )
   }
@@ -249,9 +264,11 @@ function buildDriveSections(
     sections.push(
       [
         "# Shared Rituals",
-        ...relationalMemory.rituals.slice(0, 3).map(
-          (r) => `  - "${r.pattern}" (${r.frequency}×, significance: ${(r.emotionalSignificance * 100).toFixed(0)}%)`
-        )
+        ...relationalMemory.rituals
+          .slice(0, 3)
+          .map(
+            (r) => `  - "${r.pattern}" (${r.frequency}×, significance: ${(r.emotionalSignificance * 100).toFixed(0)}%)`
+          )
       ].join("\n")
     )
   }

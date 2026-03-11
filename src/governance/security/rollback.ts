@@ -1,8 +1,39 @@
+import type { HealthCheckResult } from "@/governance/health/types.ts"
 import { getRef, listCommits, updateRef } from "@/infra/integrations/github.ts"
 import { extractErrorMessage } from "@/infra/lib/result.ts"
 import { nowISO } from "@/infra/lib/time.ts"
 import { pushRollbackEvent } from "@/memory/working.ts"
 import type { RollbackResult, RollbackTier } from "./types.ts"
+
+const SOFT_ROLLBACK_THRESHOLD = 20
+const HARD_ROLLBACK_THRESHOLD = 40
+const MAX_ROLLBACKS_PER_DAY = 1
+
+/**
+ * Check if health issues are infrastructure-related (not budget or process).
+ */
+function hasCoreServiceFailure(health: HealthCheckResult): boolean {
+  return health.services.redis === "error" || health.services.postgres === "error"
+}
+
+/**
+ * Determine if a rollback should be triggered based on consecutive critical ticks.
+ * Only triggers for core service failures (Redis/Postgres), not budget or process issues.
+ */
+export function shouldTriggerRollback(
+  consecutiveCritical: number,
+  recentRollbackCount: number,
+  health: HealthCheckResult
+): { tier: RollbackTier } | null {
+  if (health.overall !== "critical") return null
+  if (!hasCoreServiceFailure(health)) return null
+  if (recentRollbackCount >= MAX_ROLLBACKS_PER_DAY) return null
+
+  if (consecutiveCritical >= HARD_ROLLBACK_THRESHOLD) return { tier: "hard" }
+  if (consecutiveCritical >= SOFT_ROLLBACK_THRESHOLD) return { tier: "soft" }
+
+  return null
+}
 
 /**
  * Perform a rollback at the specified tier.

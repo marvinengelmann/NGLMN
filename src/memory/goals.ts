@@ -2,7 +2,7 @@ import { and, desc, eq, inArray } from "drizzle-orm"
 import { TRIGGER_INTENSITY } from "@/affect/emotion/constants.ts"
 import { processEmotionTrigger } from "@/affect/emotion/state.ts"
 import type { EmotionalState } from "@/affect/emotion/types.ts"
-import type { AnimaDecision } from "@/consciousness/types.ts"
+import type { AnimaDecision } from "@/core/types.ts"
 import { db } from "@/infra/db/client.ts"
 import type { GoalSelect } from "@/infra/db/schema.ts"
 import { goals } from "@/infra/db/schema.ts"
@@ -11,6 +11,7 @@ import { log } from "@/infra/lib/logger.ts"
 import type { AnimaResultAsync } from "@/infra/lib/result.ts"
 import { trySafe } from "@/infra/lib/result.ts"
 import { nowISO } from "@/infra/lib/time.ts"
+import { refreshGoalPriority } from "@/memory/goals/lifecycle.ts"
 import type { GoalSource } from "@/memory/types.ts"
 import { GoalStatus } from "@/memory/types.ts"
 
@@ -238,6 +239,10 @@ export async function executeGoalUpdate(decision: AnimaDecision): Promise<void> 
 
   await updateGoalStatus(goalId, parsed.data)
   log.info("Goal status updated", { goalId, status })
+
+  if (parsed.data === "active") {
+    await refreshGoalPriority(goalId)
+  }
 
   if (parsed.data === "done") {
     await processEmotionTrigger(

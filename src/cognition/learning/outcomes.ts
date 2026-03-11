@@ -31,7 +31,11 @@ export async function createOutcome(
 /**
  * Resolve an outcome with operator reaction data and computed score.
  */
-export async function resolveOutcome(outcomeId: string, reaction: OperatorReaction): Promise<void> {
+/**
+ * Resolve an outcome with operator reaction data and computed score.
+ * Returns the computed outcome score for downstream reinforcement.
+ */
+export async function resolveOutcome(outcomeId: string, reaction: OperatorReaction): Promise<number> {
   const score = computeOutcomeScore(reaction)
 
   await db
@@ -42,6 +46,8 @@ export async function resolveOutcome(outcomeId: string, reaction: OperatorReacti
       resolvedAt: new Date()
     })
     .where(eq(interactionOutcomes.id, outcomeId))
+
+  return score
 }
 
 /**

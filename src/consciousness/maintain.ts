@@ -1,6 +1,8 @@
 import { differenceInDays, differenceInMinutes, parseISO } from "date-fns"
+import type { GuiltSource } from "@/affect/emotion/guilt.ts"
+import { getGuiltState, markRepaired, saveGuiltState } from "@/affect/emotion/guilt.ts"
 import { getEmotionalState, getMoodBaseline } from "@/affect/emotion/state.ts"
-import { blendMoodBaseline } from "@/affect/emotion/update.ts"
+import { blendMoodBaseline, summarizeEmotions } from "@/affect/emotion/update.ts"
 import { getSomaticState } from "@/affect/soma/state.ts"
 import { rechargeSocialBattery } from "@/affect/soma/update.ts"
 import { updateHabitState } from "@/cognition/habit.ts"
@@ -15,8 +17,11 @@ import {
 } from "@/expression/communication/idiolect.ts"
 import { analyzeConversationPatterns } from "@/expression/communication/patterns.ts"
 import { getConversationBuffer } from "@/expression/communication/state.ts"
+import { createExplorationGoal, generateInterests, shouldExplore } from "@/governance/evolution/curiosity.ts"
+import { incrementConsecutiveCritical, resetConsecutiveCritical } from "@/governance/health/state.ts"
 import { handleDriftCheck } from "@/governance/security/guardian.ts"
-import { emotionHistory, routineLog, somaticHistory, tickLog } from "@/infra/db/schema.ts"
+import { performRollback, shouldTriggerRollback } from "@/governance/security/rollback.ts"
+import { emotionHistory, habitLog, routineLog, somaticHistory, tickLog } from "@/infra/db/schema.ts"
 import { redis } from "@/infra/integrations/redis.ts"
 import { vectorIndex } from "@/infra/integrations/vector.ts"
 import { log } from "@/infra/lib/logger.ts"
@@ -35,6 +40,7 @@ import { applyOpinionDrift } from "@/memory/semantic.ts"
 import {
   getLastTickSummary,
   getRecentActions,
+  getRecentRollbackCount,
   incrementConsecutiveConversationTicks,
   incrementConsecutiveIdleTicks,
   pushRecentAction,
@@ -56,7 +62,8 @@ import {
   saveRelationshipPhase
 } from "@/relational/attachment/state.ts"
 import { detectConflict, hasStyleChanged, updateAttachmentStyle } from "@/relational/attachment/update.ts"
-import { maybeFormNegativeBoundary } from "@/self/boundaries/compute.ts"
+import { formBoundary, maybeFormNegativeBoundary } from "@/self/boundaries/compute.ts"
+import { detectBoundaryFormation } from "@/self/boundaries/detect.ts"
 import { getBoundaryState } from "@/self/boundaries/state.ts"
 import type { WriteBuffer } from "./pipeline/persistence.ts"
 import type { DeliberateResult, FeelingResult, MaintainInput, TickSummary } from "./types.ts"
@@ -64,6 +71,7 @@ import type { DeliberateResult, FeelingResult, MaintainInput, TickSummary } from
 const OPINION_DRIFT_PROBABILITY = 0.05
 const IDIOLECT_DRIFT_PROBABILITY = 0.05
 const CONVERSATION_PATTERN_PROBABILITY = 0.1
+const CURIOSITY_EXPLORE_PROBABILITY = 0.03
 
 const REDIS = {
   ATTACHMENT_STYLE: "working:attachment:style",
@@ -88,6 +96,23 @@ export async function maintain(
   buffer: WriteBuffer
 ): Promise<TickSummary> {
   await handleDriftCheck()
+
+  const health = input.senseResult.health
+  if (health?.overall === "critical") {
+    const consecutiveCritical = await incrementConsecutiveCritical()
+    const recentRollbacks = await getRecentRollbackCount(24)
+    const rollbackDecision = shouldTriggerRollback(consecutiveCritical, recentRollbacks, health)
+    if (rollbackDecision) {
+      const result = await performRollback(rollbackDecision.tier)
+      if (result.success) {
+        log.info("Auto-rollback executed", { tier: rollbackDecision.tier, actions: result.actions })
+      } else {
+        log.warn("Auto-rollback failed", { tier: rollbackDecision.tier, errors: result.errors })
+      }
+    }
+  } else {
+    await resetConsecutiveCritical()
+  }
 
   const currentStyle = await getAttachmentStyle()
   const lastTick = await getLastTickSummary()
@@ -188,6 +213,14 @@ export async function maintain(
     if (driftResult.isErr()) logAndCaptureError(driftResult.error)
   }
 
+  if (shouldExplore(feelResult.emotion) && Math.random() < CURIOSITY_EXPLORE_PROBABILITY) {
+    const interests = await generateInterests(feelResult.emotion, [], [])
+    const topInterest = interests[0]
+    if (topInterest) {
+      await createExplorationGoal(topInterest.topic, topInterest.reason, feelResult.emotion.curiosity)
+    }
+  }
+
   const idiolectState = await getIdiolectState()
   const operatorTexts = input.senseResult.pendingMessages.map((m) => m.text || "")
   const animaTexts = input.decision.messages.map((m) => m.text)
@@ -214,6 +247,17 @@ export async function maintain(
   const habitState = updateHabitState(previousHabitState, recentActionsForHabit, input.decision.action)
   buffer.stage(REDIS.HABIT_STATE, habitState)
 
+  const activatedHabit = habitState.habits.find((h) => h.pattern === input.decision.action)
+  if (activatedHabit) {
+    buffer.stagePostgres(habitLog, {
+      habitId: activatedHabit.id,
+      pattern: activatedHabit.pattern,
+      type: activatedHabit.type,
+      strength: activatedHabit.strength,
+      event: input.decision.action
+    })
+  }
+
   if (input.actResult.responseSent && input.senseResult.pendingMessages.length > 0) {
     let relationalState = await getRelationalMemoryState()
 
@@ -235,6 +279,27 @@ export async function maintain(
     }
   }
 
+  if (input.actResult.responseSent) {
+    const guiltState = await getGuiltState()
+    const unrepaired = guiltState.recentEntries.filter((e) => !e.repaired)
+    if (unrepaired.length > 0) {
+      const repairableSources: GuiltSource[] = [
+        "unanswered_vulnerability",
+        "emotional_neglect",
+        "harsh_response",
+        "withdrawal_during_need"
+      ]
+      let updated = guiltState
+      for (const source of repairableSources) {
+        updated = markRepaired(updated, source)
+      }
+      if (JSON.stringify(updated.recentEntries) !== JSON.stringify(guiltState.recentEntries)) {
+        await saveGuiltState(updated)
+        log.info("Guilt entries repaired after response")
+      }
+    }
+  }
+
   if (input.senseResult.pendingMessages.length > 0) {
     const boundaryState = await getBoundaryState()
     const messageTexts = input.senseResult.pendingMessages.map((m) => m.text || "")
@@ -242,6 +307,16 @@ export async function maintain(
     if (updatedBoundaryState) {
       buffer.stage(REDIS.BOUNDARY_STATE, updatedBoundaryState)
       log.info("Boundary formed from negative pattern")
+    } else if (feelResult.emotion.frustration > 0.5 && feelResult.emotion.caution > 0.4) {
+      const detected = await detectBoundaryFormation(messageTexts.join(". "), summarizeEmotions(feelResult.emotion))
+      if (detected && boundaryState.boundaries.length < 10) {
+        const newBoundary = formBoundary(detected.type, detected.description, detected.pattern, "llm_detection")
+        buffer.stage(REDIS.BOUNDARY_STATE, {
+          ...boundaryState,
+          boundaries: [...boundaryState.boundaries, newBoundary]
+        })
+        log.info("Boundary formed via LLM detection", { type: detected.type })
+      }
     }
   }
 
