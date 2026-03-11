@@ -277,10 +277,7 @@ function deriveCommunicationStyle(bigFive: BigFive, rng: PRNG): CommunicationSty
   ]
 
   const noisedWeights = humorWeights.map((w) => w + rng() * 0.3)
-  let maxIdx = 0
-  for (let i = 1; i < noisedWeights.length; i++) {
-    if ((noisedWeights[i] as number) > (noisedWeights[maxIdx] as number)) maxIdx = i
-  }
+  const maxIdx = noisedWeights.reduce((best, val, i) => ((val as number) > (noisedWeights[best] as number) ? i : best), 0)
 
   return {
     verbosity: clamp01(bigFive.extraversion * 0.4 + bigFive.openness * 0.2 + 0.2 + (rng() - 0.5) * 0.1),

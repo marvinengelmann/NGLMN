@@ -17,9 +17,9 @@ describe("encodeSeed / decodeSeed", () => {
 
   it("roundtrips for many values", () => {
     const values = [0, 1, 42, 1000, 999999, 2 ** 31 - 1]
-    for (const n of values) {
+    values.forEach((n) => {
       expect(decodeSeed(encodeSeed(n))).toBe(n)
-    }
+    })
   })
 
   it("produces correct format", () => {
@@ -70,33 +70,33 @@ describe("generateDNA", () => {
   })
 
   it("keeps Big Five values in [0, 1]", () => {
-    for (const seed of ["000-000", "000-001", "000-002", "abc-def", "zzz-zzz"]) {
+    ;["000-000", "000-001", "000-002", "abc-def", "zzz-zzz"].forEach((seed) => {
       const dna = generateDNA(seed)
-      for (const value of Object.values(dna.bigFive)) {
+      Object.values(dna.bigFive).forEach((value) => {
         expect(value).toBeGreaterThanOrEqual(0)
         expect(value).toBeLessThanOrEqual(1)
-      }
-    }
+      })
+    })
   })
 
   it("keeps emotional baseline values in [0, 1]", () => {
-    for (const seed of ["000-000", "000-001", "abc-def"]) {
+    ;["000-000", "000-001", "abc-def"].forEach((seed) => {
       const dna = generateDNA(seed)
-      for (const value of Object.values(dna.emotionalBaseline)) {
+      Object.values(dna.emotionalBaseline).forEach((value) => {
         expect(value).toBeGreaterThanOrEqual(0)
         expect(value).toBeLessThanOrEqual(1)
-      }
-    }
+      })
+    })
   })
 
   it("keeps self concept values in [0, 1]", () => {
-    for (const seed of ["000-000", "000-001", "abc-def"]) {
+    ;["000-000", "000-001", "abc-def"].forEach((seed) => {
       const dna = generateDNA(seed)
-      for (const value of Object.values(dna.initialSelfConcept)) {
+      Object.values(dna.initialSelfConcept).forEach((value) => {
         expect(value).toBeGreaterThanOrEqual(0)
         expect(value).toBeLessThanOrEqual(1)
-      }
-    }
+      })
+    })
   })
 
   it("produces 7 values in the hierarchy", () => {
@@ -105,11 +105,11 @@ describe("generateDNA", () => {
   })
 
   it("produces 5-8 interest seeds", () => {
-    for (const seed of ["000-000", "000-001", "000-016", "abc-def", "zzz-zzz"]) {
+    ;["000-000", "000-001", "000-016", "abc-def", "zzz-zzz"].forEach((seed) => {
       const dna = generateDNA(seed)
       expect(dna.interestSeeds.length).toBeGreaterThanOrEqual(5)
       expect(dna.interestSeeds.length).toBeLessThanOrEqual(8)
-    }
+    })
   })
 
   it("produces a valid MBTI type", () => {
@@ -131,19 +131,19 @@ describe("generateDNA", () => {
       "ESTP",
       "ESFP"
     ]
-    for (const seed of ["000-000", "000-001", "000-016", "abc-def", "zzz-zzz", "123-456"]) {
+    ;["000-000", "000-001", "000-016", "abc-def", "zzz-zzz", "123-456"].forEach((seed) => {
       const dna = generateDNA(seed)
       expect(validTypes).toContain(dna.personalityType)
-    }
+    })
   })
 
   it("is deterministic across many seeds", () => {
-    for (let i = 0; i < 50; i++) {
+    Array.from({ length: 50 }).forEach((_, i) => {
       const seed = encodeSeed(i)
       const a = generateDNA(seed)
       const b = generateDNA(seed)
       expect(a).toEqual(b)
-    }
+    })
   })
 
   it("keeps communication style values in [0, 1]", () => {

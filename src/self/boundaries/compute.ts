@@ -1,3 +1,4 @@
+import type { EmotionalState } from "@/affect/emotion/types.ts"
 import { nowISO } from "@/infra/lib/time.ts"
 import { BOUNDARIES } from "./constants.ts"
 import type { Boundary, BoundaryState, BoundaryType, BoundaryViolation } from "./types.ts"
@@ -28,23 +29,20 @@ export function computeBoundaryPermeability(context: PermeabilityContext): numbe
 export function checkBoundaryViolation(messageText: string, boundaries: Boundary[]): BoundaryViolation | null {
   const lowerText = messageText.toLowerCase()
 
-  for (const boundary of boundaries) {
-    if (boundary.strength < 0.1) continue
-
+  const matched = boundaries.find((boundary) => {
+    if (boundary.strength < 0.1) return false
     const patterns = boundary.pattern.toLowerCase().split("|")
-    const matched = patterns.some((p) => lowerText.includes(p.trim()))
+    return patterns.some((p) => lowerText.includes(p.trim()))
+  })
 
-    if (matched) {
-      return {
-        boundaryId: boundary.id,
-        description: `boundary "${boundary.description}" touched`,
-        timestamp: nowISO(),
-        severity: boundary.strength
-      }
-    }
+  if (!matched) return null
+
+  return {
+    boundaryId: matched.id,
+    description: `boundary "${matched.description}" touched`,
+    timestamp: nowISO(),
+    severity: matched.strength
   }
-
-  return null
 }
 
 /**
@@ -87,6 +85,41 @@ export function formBoundary(type: BoundaryType, description: string, pattern: s
 }
 
 /**
+ * Evaluate whether negative emotional pressure warrants forming a new boundary.
+ * Returns an updated boundary state if a boundary was formed, or null otherwise.
+ */
+export function maybeFormNegativeBoundary(
+  emotion: EmotionalState,
+  boundaryState: BoundaryState,
+  messageTexts: string[]
+): BoundaryState | null {
+  const negativeEmotionalPressure = (emotion.frustration + emotion.caution) / 2
+  if (negativeEmotionalPressure <= BOUNDARIES.FORMATION_NEGATIVE_THRESHOLD) return null
+  if (messageTexts.length === 0) return null
+  if (boundaryState.boundaries.length >= BOUNDARIES.MAX_BOUNDARIES) return null
+
+  const triggerText = messageTexts.join(" ").slice(0, 100)
+  const pattern = triggerText
+    .toLowerCase()
+    .split(/\s+/)
+    .filter((w) => w.length > 4)
+    .slice(0, 3)
+    .join("|")
+
+  const newBoundary = formBoundary(
+    "emotional",
+    "negative pattern: high frustration/caution during interaction",
+    pattern,
+    `maintain_phase: frustration=${emotion.frustration.toFixed(2)} caution=${emotion.caution.toFixed(2)}`
+  )
+
+  return {
+    ...boundaryState,
+    boundaries: [...boundaryState.boundaries, newBoundary]
+  }
+}
+
+/**
  * Update the full boundary state after checking messages.
  */
 export function updateBoundaryState(
@@ -97,13 +130,13 @@ export function updateBoundaryState(
   let boundaries = [...current.boundaries]
   const newViolations: BoundaryViolation[] = []
 
-  for (const text of messageTexts) {
+  messageTexts.forEach((text) => {
     const violation = checkBoundaryViolation(text, boundaries)
     if (violation) {
       newViolations.push(violation)
       boundaries = boundaries.map((b) => (b.id === violation.boundaryId ? adjustBoundaryAfterViolation(b) : b))
     }
-  }
+  })
 
   boundaries = boundaries.map((b) => softenBoundaryWithTrust(b, permeabilityContext.trustLevel))
 

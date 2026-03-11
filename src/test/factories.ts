@@ -392,11 +392,13 @@ export function makeCoherenceState(overrides?: Partial<CoherenceState>): Coheren
 
 export function makeRelationalRitual(overrides?: Partial<RelationalRitual>): RelationalRitual {
   return {
+    type: "phrase",
     pattern: "morning greeting",
     frequency: 5,
     lastOccurredAt: "2026-03-06T12:00:00Z",
     emotionalSignificance: 0.6,
     firstObservedAt: "2026-03-01T08:00:00Z",
+    confidence: 0.5,
     ...overrides
   }
 }

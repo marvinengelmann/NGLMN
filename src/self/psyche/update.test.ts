@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest"
+import { makeGrowthArc, makeSelfConcept } from "@/test/factories.ts"
 import { DEFAULT_SELF_CONCEPT } from "./types.ts"
-import { updateSelfConcept } from "./update.ts"
+import { applyGrowthArcMomentum, updateSelfConcept } from "./update.ts"
 
 const baseContext = {
   recentTaskSuccess: false,
@@ -66,15 +67,78 @@ describe("updateSelfConcept", () => {
       vulnerabilityOpen: true,
       elapsedHours: 100
     })
-    for (const value of Object.values(result)) {
+    Object.values(result).forEach((value) => {
       expect(value).toBeGreaterThanOrEqual(0)
       expect(value).toBeLessThanOrEqual(1)
-    }
+    })
   })
 
   it("self-continuity caps at 0.95", () => {
     const high = { ...DEFAULT_SELF_CONCEPT, selfContinuity: 0.94 }
     const result = updateSelfConcept(high, { ...baseContext, elapsedHours: 100 })
     expect(result.selfContinuity).toBeLessThanOrEqual(0.95)
+  })
+})
+
+describe("applyGrowthArcMomentum", () => {
+  it("returns unchanged self-concept when no recent arcs", () => {
+    const result = applyGrowthArcMomentum(DEFAULT_SELF_CONCEPT, [])
+    expect(result).toEqual(DEFAULT_SELF_CONCEPT)
+  })
+
+  it("returns unchanged self-concept when arcs are older than 24h", () => {
+    const oldArc = makeGrowthArc({ timestamp: new Date(Date.now() - 25 * 60 * 60 * 1000).toISOString() })
+    const result = applyGrowthArcMomentum(DEFAULT_SELF_CONCEPT, [oldArc])
+    expect(result).toEqual(DEFAULT_SELF_CONCEPT)
+  })
+
+  it("increases selfContinuity for recent arcs", () => {
+    const recentArc = makeGrowthArc({ timestamp: new Date().toISOString() })
+    const result = applyGrowthArcMomentum(DEFAULT_SELF_CONCEPT, [recentArc])
+    expect(result.selfContinuity).toBeGreaterThan(DEFAULT_SELF_CONCEPT.selfContinuity)
+  })
+
+  it("increases selfContinuity proportionally to arc count", () => {
+    const arcs = [
+      makeGrowthArc({ timestamp: new Date().toISOString() }),
+      makeGrowthArc({ timestamp: new Date().toISOString(), observation: "sense of worth shifted upward" })
+    ]
+    const result = applyGrowthArcMomentum(DEFAULT_SELF_CONCEPT, arcs)
+    const firstArc = arcs[0] ?? makeGrowthArc({ timestamp: new Date().toISOString() })
+    const singleResult = applyGrowthArcMomentum(DEFAULT_SELF_CONCEPT, [firstArc])
+    expect(result.selfContinuity).toBeGreaterThan(singleResult.selfContinuity)
+  })
+
+  it("caps at 3 arcs per 24h", () => {
+    const arcs = Array.from({ length: 5 }, () => makeGrowthArc({ timestamp: new Date().toISOString() }))
+    const result3 = applyGrowthArcMomentum(DEFAULT_SELF_CONCEPT, arcs.slice(0, 3))
+    const result5 = applyGrowthArcMomentum(DEFAULT_SELF_CONCEPT, arcs)
+    expect(result5.selfContinuity).toBe(result3.selfContinuity)
+  })
+
+  it("nudges dimension upward when arc observation says upward", () => {
+    const arc = makeGrowthArc({
+      timestamp: new Date().toISOString(),
+      observation: "feeling capable shifted upward by 0.12"
+    })
+    const result = applyGrowthArcMomentum(DEFAULT_SELF_CONCEPT, [arc])
+    expect(result.selfEfficacy).toBeGreaterThan(DEFAULT_SELF_CONCEPT.selfEfficacy)
+  })
+
+  it("nudges dimension downward when arc observation says downward", () => {
+    const concept = makeSelfConcept({ selfEfficacy: 0.6 })
+    const arc = makeGrowthArc({
+      timestamp: new Date().toISOString(),
+      observation: "feeling capable shifted downward by 0.12"
+    })
+    const result = applyGrowthArcMomentum(concept, [arc])
+    expect(result.selfEfficacy).toBeLessThan(concept.selfEfficacy)
+  })
+
+  it("clamps values to [0, 1]", () => {
+    const concept = makeSelfConcept({ selfContinuity: 0.99 })
+    const arcs = Array.from({ length: 3 }, () => makeGrowthArc({ timestamp: new Date().toISOString() }))
+    const result = applyGrowthArcMomentum(concept, arcs)
+    expect(result.selfContinuity).toBeLessThanOrEqual(1)
   })
 })

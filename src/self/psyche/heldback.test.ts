@@ -83,9 +83,9 @@ describe("addToBuffer", () => {
 
   it("respects max entries limit", () => {
     let buffer: HeldBackBuffer = { ...DEFAULT_HELD_BACK_BUFFER }
-    for (let i = 0; i < 7; i++) {
+    Array.from({ length: 7 }).forEach((_, i) => {
       buffer = addToBuffer(buffer, `thought ${i}`, "self_censorship")
-    }
+    })
     expect(buffer.entries.length).toBeLessThanOrEqual(5)
   })
 
