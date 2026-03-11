@@ -1,10 +1,13 @@
 import { describe, expect, it } from "vitest"
+import { makeEmotionalState } from "@/test/factories.ts"
 import {
   applyIdiolectDrift,
   buildIdiolectSection,
   DEFAULT_IDIOLECT_STATE,
   detectOperatorAdoption,
   extractPatterns,
+  filterPatternsForEmotion,
+  type IdiolectPattern,
   type IdiolectState,
   mergePatterns
 } from "./idiolect.ts"
@@ -245,5 +248,194 @@ describe("buildIdiolectSection", () => {
     }
     const result = buildIdiolectSection(state)
     expect(result).toContain("picked up from them")
+  })
+
+  it("filters patterns by emotion context when provided", () => {
+    const state: IdiolectState = {
+      patterns: [
+        { type: "filler_word", phrase: "halt", frequency: 5, confidence: 0.8, adoptedFrom: "self", discoveredAt: "" },
+        {
+          type: "filler_word",
+          phrase: "quasi",
+          frequency: 3,
+          confidence: 0.4,
+          adoptedFrom: "operator",
+          discoveredAt: ""
+        }
+      ],
+      lastDriftAt: undefined
+    }
+    const result = buildIdiolectSection(state, {
+      emotion: makeEmotionalState({ frustration: 0.8 }),
+      coherenceState: { regressionActive: false, regressionDepth: 0 }
+    })
+    expect(result).toContain("halt")
+    expect(result).not.toContain("quasi")
+  })
+
+  it("adds stress hint when under stress", () => {
+    const state: IdiolectState = {
+      patterns: [
+        { type: "filler_word", phrase: "halt", frequency: 5, confidence: 0.8, adoptedFrom: "self", discoveredAt: "" }
+      ],
+      lastDriftAt: undefined
+    }
+    const result = buildIdiolectSection(state, {
+      emotion: makeEmotionalState({ frustration: 0.8 }),
+      coherenceState: { regressionActive: false, regressionDepth: 0 }
+    })
+    expect(result).toContain("core voice")
+  })
+})
+
+describe("filterPatternsForEmotion", () => {
+  const selfPattern: IdiolectPattern = {
+    type: "filler_word",
+    phrase: "halt",
+    frequency: 5,
+    confidence: 0.8,
+    adoptedFrom: "self",
+    discoveredAt: ""
+  }
+  const adoptedPattern: IdiolectPattern = {
+    type: "filler_word",
+    phrase: "quasi",
+    frequency: 3,
+    confidence: 0.4,
+    adoptedFrom: "operator",
+    discoveredAt: ""
+  }
+  const weakSelfPattern: IdiolectPattern = {
+    type: "expression",
+    phrase: "naja",
+    frequency: 2,
+    confidence: 0.25,
+    adoptedFrom: "self",
+    discoveredAt: ""
+  }
+
+  it("under stress: only keeps self patterns with high confidence", () => {
+    const result = filterPatternsForEmotion([selfPattern, adoptedPattern, weakSelfPattern], {
+      emotion: makeEmotionalState({ frustration: 0.7 })
+    })
+    expect(result.filtered).toHaveLength(1)
+    expect(result.filtered[0]?.phrase).toBe("halt")
+    expect(result.hint).toContain("core voice")
+  })
+
+  it("under regression: keeps only top 3 by confidence", () => {
+    const patterns: IdiolectPattern[] = Array.from({ length: 5 }, (_, i) => ({
+      type: "filler_word" as const,
+      phrase: `p${i}`,
+      frequency: 1,
+      confidence: 0.3 + i * 0.1,
+      adoptedFrom: "self" as const,
+      discoveredAt: ""
+    }))
+    const result = filterPatternsForEmotion(patterns, {
+      emotion: makeEmotionalState(),
+      coherenceState: { regressionActive: true, regressionDepth: 0.5 }
+    })
+    expect(result.filtered).toHaveLength(3)
+    expect(result.filtered[0]?.confidence).toBeGreaterThanOrEqual(result.filtered[2]?.confidence ?? 0)
+    expect(result.hint).toContain("regression")
+  })
+
+  it("under joy: shows all patterns with lowered threshold", () => {
+    const result = filterPatternsForEmotion([selfPattern, adoptedPattern, weakSelfPattern], {
+      emotion: makeEmotionalState({ excitement: 0.8 })
+    })
+    expect(result.filtered).toHaveLength(3)
+    expect(result.displayThreshold).toBe(0.2)
+    expect(result.hint).toContain("playful")
+  })
+
+  it("in altered state: randomizes order and lowers threshold", () => {
+    const result = filterPatternsForEmotion([selfPattern, adoptedPattern], {
+      emotion: makeEmotionalState(),
+      isAltered: true
+    })
+    expect(result.filtered).toHaveLength(2)
+    expect(result.displayThreshold).toBe(0.15)
+    expect(result.hint).toBeNull()
+  })
+
+  it("in neutral state: returns all patterns with standard threshold", () => {
+    const result = filterPatternsForEmotion([selfPattern, adoptedPattern], {
+      emotion: makeEmotionalState()
+    })
+    expect(result.filtered).toHaveLength(2)
+    expect(result.displayThreshold).toBe(0.3)
+    expect(result.hint).toBeNull()
+  })
+})
+
+describe("mergePatterns with emotionalModifier", () => {
+  const makeState = (): IdiolectState => ({
+    patterns: [
+      { type: "filler_word", phrase: "halt", frequency: 3, confidence: 0.3, adoptedFrom: "self", discoveredAt: "" }
+    ],
+    lastDriftAt: undefined
+  })
+
+  const makeIncoming = () => ({
+    type: "filler_word" as const,
+    phrase: "halt",
+    frequency: 1,
+    confidence: 0.1,
+    adoptedFrom: "self" as const,
+    discoveredAt: new Date().toISOString()
+  })
+
+  it("increases confidence faster with joy modifier", () => {
+    const normalResult = mergePatterns(makeState(), [makeIncoming()], 1.0)
+    const joyResult = mergePatterns(makeState(), [makeIncoming()], 1.5)
+    expect(joyResult.patterns[0]?.confidence).toBeGreaterThan(normalResult.patterns[0]?.confidence ?? 0)
+  })
+
+  it("increases confidence slower with stress modifier", () => {
+    const normalResult = mergePatterns(makeState(), [makeIncoming()], 1.0)
+    const stressResult = mergePatterns(makeState(), [makeIncoming()], 0.5)
+    expect(stressResult.patterns[0]?.confidence).toBeLessThan(normalResult.patterns[0]?.confidence ?? 0)
+  })
+})
+
+describe("applyIdiolectDrift with emotionalModifier", () => {
+  it("adopted patterns drift faster under stress modifier", () => {
+    const makeState = (): IdiolectState => ({
+      patterns: [
+        {
+          type: "filler_word",
+          phrase: "quasi",
+          frequency: 3,
+          confidence: 0.3,
+          adoptedFrom: "operator",
+          discoveredAt: ""
+        }
+      ],
+      lastDriftAt: undefined
+    })
+    const normalResult = applyIdiolectDrift(makeState(), 1.0)
+    const stressResult = applyIdiolectDrift(makeState(), 2.0)
+    expect(stressResult.patterns[0]?.confidence ?? 0).toBeLessThan(normalResult.patterns[0]?.confidence ?? 0)
+  })
+
+  it("adopted patterns drift slower under joy modifier", () => {
+    const makeState = (): IdiolectState => ({
+      patterns: [
+        {
+          type: "filler_word",
+          phrase: "quasi",
+          frequency: 3,
+          confidence: 0.3,
+          adoptedFrom: "operator",
+          discoveredAt: ""
+        }
+      ],
+      lastDriftAt: undefined
+    })
+    const normalResult = applyIdiolectDrift(makeState(), 1.0)
+    const joyResult = applyIdiolectDrift(makeState(), 0.5)
+    expect(joyResult.patterns[0]?.confidence ?? 0).toBeGreaterThan(normalResult.patterns[0]?.confidence ?? 0)
   })
 })

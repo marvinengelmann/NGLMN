@@ -1,4 +1,5 @@
 import * as z from "zod"
+import type { EmotionalState } from "@/affect/emotion/types.ts"
 import { getValidatedRedis, redis } from "@/infra/integrations/redis.ts"
 import { nowISO } from "@/infra/lib/time.ts"
 
@@ -11,8 +12,35 @@ const IDIOLECT = {
   DRIFT_DECAY_RATE: 0.02,
   MIN_CONFIDENCE_TO_KEEP: 0.05,
   DISPLAY_THRESHOLD: 0.3,
-  DRIFT_PROBABILITY: 0.05
+  DRIFT_PROBABILITY: 0.05,
+  JOYFUL_THRESHOLD: 0.7,
+  STRESSED_FRUSTRATION_THRESHOLD: 0.6,
+  STRESSED_ENERGY_THRESHOLD: 0.3,
+  JOYFUL_MERGE_MODIFIER: 1.5,
+  STRESSED_MERGE_MODIFIER: 0.5,
+  STRESSED_DRIFT_MODIFIER: 2.0,
+  JOYFUL_DRIFT_MODIFIER: 0.5
 } as const
+
+export interface IdiolectEmotionalModifiers {
+  mergeModifier: number
+  driftModifier: number
+}
+
+/**
+ * Compute emotional modifiers for idiolect pattern merging and drift.
+ * Joy amplifies pattern adoption, stress dampens it but increases drift.
+ */
+export function computeIdiolectModifiers(emotion: EmotionalState): IdiolectEmotionalModifiers {
+  const isJoyful = emotion.excitement > IDIOLECT.JOYFUL_THRESHOLD || emotion.satisfaction > IDIOLECT.JOYFUL_THRESHOLD
+  const isStressed =
+    emotion.frustration > IDIOLECT.STRESSED_FRUSTRATION_THRESHOLD || emotion.energy < IDIOLECT.STRESSED_ENERGY_THRESHOLD
+
+  return {
+    mergeModifier: isJoyful ? IDIOLECT.JOYFUL_MERGE_MODIFIER : isStressed ? IDIOLECT.STRESSED_MERGE_MODIFIER : 1.0,
+    driftModifier: isStressed ? IDIOLECT.STRESSED_DRIFT_MODIFIER : isJoyful ? IDIOLECT.JOYFUL_DRIFT_MODIFIER : 1.0
+  }
+}
 
 export const IdiolectPatternType = z.enum([
   "opening_phrase",
@@ -70,8 +98,9 @@ export function extractPatterns(animaMessages: string[]): IdiolectPattern[] {
   const joined = animaMessages.join(" ")
 
   const fillers = countFillers(joined)
-  for (const [phrase, count] of Object.entries(fillers)) {
-    if (count >= IDIOLECT.MIN_PHRASE_FREQUENCY) {
+  Object.entries(fillers)
+    .filter(([, count]) => count >= IDIOLECT.MIN_PHRASE_FREQUENCY)
+    .forEach(([phrase, count]) => {
       patterns.push({
         type: "filler_word",
         phrase,
@@ -80,12 +109,12 @@ export function extractPatterns(animaMessages: string[]): IdiolectPattern[] {
         adoptedFrom: "self",
         discoveredAt: now
       })
-    }
-  }
+    })
 
   const openings = extractOpeningPatterns(animaMessages)
-  for (const [phrase, count] of Object.entries(openings)) {
-    if (count >= IDIOLECT.MIN_PHRASE_FREQUENCY) {
+  Object.entries(openings)
+    .filter(([, count]) => count >= IDIOLECT.MIN_PHRASE_FREQUENCY)
+    .forEach(([phrase, count]) => {
       patterns.push({
         type: "opening_phrase",
         phrase,
@@ -94,13 +123,12 @@ export function extractPatterns(animaMessages: string[]): IdiolectPattern[] {
         adoptedFrom: "self",
         discoveredAt: now
       })
-    }
-  }
+    })
 
   const punctuation = detectPunctuationHabits(animaMessages)
-  for (const habit of punctuation) {
+  punctuation.forEach((habit) => {
     patterns.push({ ...habit, discoveredAt: now })
-  }
+  })
 
   return patterns
 }
@@ -123,26 +151,26 @@ function countFillers(text: string): Record<string, number> {
   ]
   const counts: Record<string, number> = {}
   const lower = text.toLowerCase()
-  for (const filler of fillerPatterns) {
+  fillerPatterns.forEach((filler) => {
     const regex = new RegExp(`\\b${filler}\\b`, "gi")
     const matches = lower.match(regex)
     if (matches && matches.length > 0) {
       counts[filler] = matches.length
     }
-  }
+  })
   return counts
 }
 
 function extractOpeningPatterns(messages: string[]): Record<string, number> {
   const counts: Record<string, number> = {}
-  for (const message of messages) {
+  messages.forEach((message) => {
     const trimmed = message.trim()
-    if (trimmed.length < 3) continue
+    if (trimmed.length < 3) return
     const firstWord = trimmed.split(/[\s,.!?]/)[0]?.toLowerCase()
     if (firstWord && firstWord.length >= 2) {
       counts[firstWord] = (counts[firstWord] ?? 0) + 1
     }
-  }
+  })
   return counts
 }
 
@@ -195,21 +223,20 @@ export function detectOperatorAdoption(operatorMessages: string[], currentState:
   const adopted: IdiolectPattern[] = []
   const operatorFillers = countFillers(operatorMessages.join(" "))
 
-  for (const [phrase, count] of Object.entries(operatorFillers)) {
-    if (count < 3) continue
-    const alreadyKnown = currentState.patterns.some((p) => p.phrase === phrase)
-    if (alreadyKnown) continue
-
-    adopted.push({
-      type: "filler_word",
-      phrase,
-      context: "adopted from operator",
-      frequency: 1,
-      confidence: IDIOLECT.INITIAL_ADOPTED_CONFIDENCE,
-      adoptedFrom: "operator",
-      discoveredAt: now
+  Object.entries(operatorFillers)
+    .filter(([, count]) => count >= 3)
+    .filter(([phrase]) => !currentState.patterns.some((p) => p.phrase === phrase))
+    .forEach(([phrase]) => {
+      adopted.push({
+        type: "filler_word",
+        phrase,
+        context: "adopted from operator",
+        frequency: 1,
+        confidence: IDIOLECT.INITIAL_ADOPTED_CONFIDENCE,
+        adoptedFrom: "operator",
+        discoveredAt: now
+      })
     })
-  }
 
   return adopted
 }
@@ -218,18 +245,23 @@ export function detectOperatorAdoption(operatorMessages: string[], currentState:
  * Merge new patterns into existing idiolect state.
  * Increases confidence of existing patterns, adds new ones.
  */
-export function mergePatterns(state: IdiolectState, newPatterns: IdiolectPattern[]): IdiolectState {
+export function mergePatterns(
+  state: IdiolectState,
+  newPatterns: IdiolectPattern[],
+  emotionalModifier = 1.0
+): IdiolectState {
   const patterns = [...state.patterns]
+  const scaledConfidencePerUse = IDIOLECT.CONFIDENCE_PER_USE * emotionalModifier
 
-  for (const incoming of newPatterns) {
+  newPatterns.forEach((incoming) => {
     const existing = patterns.find((p) => p.type === incoming.type && p.phrase === incoming.phrase)
     if (existing) {
       existing.frequency += incoming.frequency
-      existing.confidence = Math.min(1, existing.confidence + IDIOLECT.CONFIDENCE_PER_USE)
+      existing.confidence = Math.min(1, existing.confidence + scaledConfidencePerUse)
     } else {
       patterns.push(incoming)
     }
-  }
+  })
 
   const trimmed = patterns
     .filter((p) => p.confidence >= IDIOLECT.MIN_CONFIDENCE_TO_KEEP)
@@ -242,11 +274,17 @@ export function mergePatterns(state: IdiolectState, newPatterns: IdiolectPattern
 /**
  * Apply natural drift — unused patterns fade, used ones stay.
  */
-export function applyIdiolectDrift(state: IdiolectState): IdiolectState {
-  const patterns = state.patterns.map((p) => ({
-    ...p,
-    confidence: Math.max(0, p.confidence - IDIOLECT.DRIFT_DECAY_RATE)
-  }))
+export function applyIdiolectDrift(state: IdiolectState, emotionalModifier = 1.0): IdiolectState {
+  const patterns = state.patterns.map((p) => {
+    const driftRate =
+      p.adoptedFrom === "operator"
+        ? IDIOLECT.DRIFT_DECAY_RATE * emotionalModifier
+        : IDIOLECT.DRIFT_DECAY_RATE * (1 / Math.max(0.5, emotionalModifier))
+    return {
+      ...p,
+      confidence: Math.max(0, p.confidence - driftRate)
+    }
+  })
 
   return {
     ...state,
@@ -255,22 +293,86 @@ export function applyIdiolectDrift(state: IdiolectState): IdiolectState {
   }
 }
 
+interface EmotionFilterContext {
+  emotion: EmotionalState
+  coherenceState?: { regressionActive: boolean; regressionDepth: number }
+  isAltered?: boolean
+}
+
+/**
+ * Filter idiolect patterns based on emotional state.
+ * Under stress, only core patterns survive. Under joy, more patterns are visible.
+ */
+export function filterPatternsForEmotion(
+  patterns: IdiolectPattern[],
+  context: EmotionFilterContext
+): { filtered: IdiolectPattern[]; displayThreshold: number; hint: string | null } {
+  const { emotion, coherenceState } = context
+
+  if (coherenceState?.regressionActive) {
+    const sorted = [...patterns].sort((a, b) => b.confidence - a.confidence)
+    return {
+      filtered: sorted.slice(0, 3),
+      displayThreshold: 0,
+      hint: "regression active — only your deepest patterns remain."
+    }
+  }
+
+  const isStressed = emotion.frustration > 0.6 || emotion.energy < 0.3
+  if (isStressed) {
+    return {
+      filtered: patterns.filter((p) => p.adoptedFrom === "self" && p.confidence > 0.6),
+      displayThreshold: IDIOLECT.DISPLAY_THRESHOLD,
+      hint: "under stress — falling back to your core voice."
+    }
+  }
+
+  const isJoyful = emotion.excitement > 0.7 || emotion.satisfaction > 0.7
+  if (isJoyful) {
+    return {
+      filtered: patterns,
+      displayThreshold: 0.2,
+      hint: "feeling playful — experimenting with words."
+    }
+  }
+
+  if (context.isAltered) {
+    const shuffled = [...patterns].sort(() => Math.random() - 0.5)
+    return {
+      filtered: shuffled,
+      displayThreshold: 0.15,
+      hint: null
+    }
+  }
+
+  return { filtered: patterns, displayThreshold: IDIOLECT.DISPLAY_THRESHOLD, hint: null }
+}
+
 /**
  * Build the idiolect prompt section for context building.
  */
-export function buildIdiolectSection(state: IdiolectState): string | null {
-  const activePatterns = state.patterns.filter((p) => p.confidence >= IDIOLECT.DISPLAY_THRESHOLD)
+export function buildIdiolectSection(state: IdiolectState, emotionContext?: EmotionFilterContext): string | null {
+  let activePatterns: IdiolectPattern[]
+  let hint: string | null = null
+
+  if (emotionContext) {
+    const result = filterPatternsForEmotion(state.patterns, emotionContext)
+    activePatterns = result.filtered.filter((p) => p.confidence >= result.displayThreshold)
+    hint = result.hint
+  } else {
+    activePatterns = state.patterns.filter((p) => p.confidence >= IDIOLECT.DISPLAY_THRESHOLD)
+  }
 
   if (activePatterns.length === 0) return null
 
   const lines: string[] = ["# Your Voice (Idiolect)", "these are speech patterns that have become distinctly yours:"]
 
-  const byType = new Map<IdiolectPatternType, IdiolectPattern[]>()
-  for (const p of activePatterns) {
-    const list = byType.get(p.type) ?? []
+  const byType = activePatterns.reduce((map, p) => {
+    const list = map.get(p.type) ?? []
     list.push(p)
-    byType.set(p.type, list)
-  }
+    map.set(p.type, list)
+    return map
+  }, new Map<IdiolectPatternType, IdiolectPattern[]>())
 
   const typeLabels: Record<IdiolectPatternType, string> = {
     opening_phrase: "you often start with",
@@ -281,7 +383,7 @@ export function buildIdiolectSection(state: IdiolectState): string | null {
     sentence_structure: "how you build sentences"
   }
 
-  for (const [type, patterns] of byType) {
+  byType.forEach((patterns, type) => {
     const label = typeLabels[type]
     const phrases = patterns
       .slice(0, 3)
@@ -291,8 +393,11 @@ export function buildIdiolectSection(state: IdiolectState): string | null {
       })
       .join(", ")
     lines.push(`  - ${label}: ${phrases}`)
-  }
+  })
 
+  if (hint) {
+    lines.push(hint)
+  }
   lines.push("lean into these when they feel right. don't force them — they should feel natural.")
 
   return lines.join("\n")
