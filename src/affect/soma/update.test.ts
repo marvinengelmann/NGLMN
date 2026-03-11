@@ -25,10 +25,10 @@ const baseEmotion: EmotionalState = {
 describe("computeSomaticTarget", () => {
   it("returns default-like values for neutral emotion", () => {
     const target = computeSomaticTarget(baseEmotion)
-    for (const value of Object.values(target)) {
+    Object.values(target).forEach((value) => {
       expect(value).toBeGreaterThanOrEqual(0)
       expect(value).toBeLessThanOrEqual(1)
-    }
+    })
   })
 
   it("increases tension with high frustration", () => {
@@ -56,10 +56,10 @@ describe("computeSomaticTarget", () => {
       energy: 0
     }
     const target = computeSomaticTarget(extreme)
-    for (const value of Object.values(target)) {
+    Object.values(target).forEach((value) => {
       expect(value).toBeGreaterThanOrEqual(0)
       expect(value).toBeLessThanOrEqual(1)
-    }
+    })
   })
 })
 
@@ -115,9 +115,9 @@ describe("applySomaticHysteresis", () => {
       socialBattery: 0.8
     }
     const result = applySomaticHysteresis(current, target, 100000)
-    for (const dimension of Object.keys(target) as (keyof SomaticState)[]) {
+    ;(Object.keys(target) as (keyof SomaticState)[]).forEach((dimension) => {
       expect(result[dimension]).toBeCloseTo(target[dimension], 2)
-    }
+    })
   })
 })
 
@@ -140,10 +140,10 @@ describe("applySomaticMemory", () => {
 describe("computeSomaticUpdate", () => {
   it("produces valid clamped output", () => {
     const result = computeSomaticUpdate(DEFAULT_SOMATIC_STATE, baseEmotion, 10)
-    for (const value of Object.values(result)) {
+    Object.values(result).forEach((value) => {
       expect(value).toBeGreaterThanOrEqual(0)
       expect(value).toBeLessThanOrEqual(1)
-    }
+    })
   })
 })
 

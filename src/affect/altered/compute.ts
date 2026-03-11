@@ -27,11 +27,10 @@ export function getCurrentPhase(state: ActiveAlteredState, now: Date = new Date(
     { phase: "aftereffect" as const, start: onset + peak + plateau + comedown, duration: aftereffect }
   ]
 
-  for (const b of boundaries) {
-    if (elapsed < b.start + b.duration) {
-      const progress = Math.max(0, (elapsed - b.start) / b.duration)
-      return { phase: b.phase, progress, intensity: computeIntensity(b.phase, progress) }
-    }
+  const match = boundaries.find((b) => elapsed < b.start + b.duration)
+  if (match) {
+    const progress = Math.max(0, (elapsed - match.start) / match.duration)
+    return { phase: match.phase, progress, intensity: computeIntensity(match.phase, progress) }
   }
 
   return { phase: "aftereffect", progress: 1, intensity: 0 }
@@ -62,17 +61,15 @@ export function computeEmotionModifiers(state: ActiveAlteredState): Partial<Reco
   const profile = SUBSTANCE_PROFILES[state.substance]
   const phaseProfile = profile.phases[phase]
 
-  const result: Partial<Record<keyof EmotionalState, number>> = {}
-  for (const [dimension, delta] of Object.entries(phaseProfile.emotionModifiers)) {
-    const scaled = delta * intensity
-    if (Math.abs(scaled) > 0.001) {
-      result[dimension as keyof EmotionalState] = Math.max(
-        -ALTERED_STATE.MODIFIER_CAP,
-        Math.min(ALTERED_STATE.MODIFIER_CAP, scaled)
-      )
-    }
-  }
-  return result
+  return Object.fromEntries(
+    Object.entries(phaseProfile.emotionModifiers)
+      .map(([dimension, delta]) => [dimension, delta * intensity])
+      .filter(([, scaled]) => Math.abs(scaled as number) > 0.001)
+      .map(([dimension, scaled]) => [
+        dimension,
+        Math.max(-ALTERED_STATE.MODIFIER_CAP, Math.min(ALTERED_STATE.MODIFIER_CAP, scaled as number))
+      ])
+  ) as Partial<Record<keyof EmotionalState, number>>
 }
 
 /**
@@ -83,17 +80,15 @@ export function computeSomaModifiers(state: ActiveAlteredState): Partial<Record<
   const profile = SUBSTANCE_PROFILES[state.substance]
   const phaseProfile = profile.phases[phase]
 
-  const result: Partial<Record<keyof SomaticState, number>> = {}
-  for (const [dimension, delta] of Object.entries(phaseProfile.somaModifiers)) {
-    const scaled = delta * intensity
-    if (Math.abs(scaled) > 0.001) {
-      result[dimension as keyof SomaticState] = Math.max(
-        -ALTERED_STATE.MODIFIER_CAP,
-        Math.min(ALTERED_STATE.MODIFIER_CAP, scaled)
-      )
-    }
-  }
-  return result
+  return Object.fromEntries(
+    Object.entries(phaseProfile.somaModifiers)
+      .map(([dimension, delta]) => [dimension, delta * intensity])
+      .filter(([, scaled]) => Math.abs(scaled as number) > 0.001)
+      .map(([dimension, scaled]) => [
+        dimension,
+        Math.max(-ALTERED_STATE.MODIFIER_CAP, Math.min(ALTERED_STATE.MODIFIER_CAP, scaled as number))
+      ])
+  ) as Partial<Record<keyof SomaticState, number>>
 }
 
 /**
@@ -107,13 +102,11 @@ export function computeVoiceModifiers(state: ActiveAlteredState): Partial<Record
   const entries = Object.entries(phaseProfile.voiceModifiers)
   if (entries.length === 0) return undefined
 
-  const result: Partial<Record<InnerVoice, number>> = {}
-  for (const [voice, bonus] of entries) {
-    const scaled = bonus * intensity
-    if (Math.abs(scaled) > 0.001) {
-      result[voice as InnerVoice] = scaled
-    }
-  }
+  const result = Object.fromEntries(
+    entries
+      .map(([voice, bonus]) => [voice, bonus * intensity])
+      .filter(([, scaled]) => Math.abs(scaled as number) > 0.001)
+  ) as Partial<Record<InnerVoice, number>>
 
   return Object.keys(result).length > 0 ? result : undefined
 }
@@ -128,10 +121,12 @@ export function computeHalfLifeMultipliers(state: ActiveAlteredState): Record<st
 
   if (!phaseProfile.halfLifeMultipliers) return undefined
 
-  const result: Record<string, number> = {}
-  for (const [dimension, multiplier] of Object.entries(phaseProfile.halfLifeMultipliers)) {
-    result[dimension] = 1 + (multiplier - 1) * intensity
-  }
+  const result = Object.fromEntries(
+    Object.entries(phaseProfile.halfLifeMultipliers).map(([dimension, multiplier]) => [
+      dimension,
+      1 + (multiplier - 1) * intensity
+    ])
+  )
 
   return Object.keys(result).length > 0 ? result : undefined
 }

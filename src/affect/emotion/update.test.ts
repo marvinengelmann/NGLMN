@@ -52,10 +52,10 @@ describe("applyCrossCoupling — amplification rules", () => {
       confidence: 0.95
     }
     const result = applyCrossCoupling(state)
-    for (const value of Object.values(result)) {
+    Object.values(result).forEach((value) => {
       expect(value).toBeGreaterThanOrEqual(0)
       expect(value).toBeLessThanOrEqual(1)
-    }
+    })
   })
 
   it("uses diminishing returns near 1.0 — amplification weakens with less headroom", () => {
@@ -187,10 +187,10 @@ describe("applyContradictionBudget", () => {
       caution: 0
     }
     const result = applyContradictionBudget(state)
-    for (const value of Object.values(result)) {
+    Object.values(result).forEach((value) => {
       expect(value).toBeGreaterThanOrEqual(0)
       expect(value).toBeLessThanOrEqual(1)
-    }
+    })
     vi.restoreAllMocks()
   })
 
@@ -316,9 +316,9 @@ describe("computeMoodBaseline — mood contagion", () => {
       connectionLevel: 1.0,
       attachmentAvoidance: 0
     })
-    for (const value of Object.values(result)) {
+    Object.values(result).forEach((value) => {
       expect(value).toBeGreaterThanOrEqual(0)
       expect(value).toBeLessThanOrEqual(1)
-    }
+    })
   })
 })

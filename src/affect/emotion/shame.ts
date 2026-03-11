@@ -34,27 +34,28 @@ interface Context {
   emotion: EmotionalState
   vulnerability: VulnerabilityState
   operatorModel: OperatorModel
-  previousShame: ShameState
+  previousState: ShameState
   operatorRespondedColdly: boolean
   recentSelfDisclosure: boolean
+  boundaryViolated?: boolean
 }
 
-export function computeShameState(context: Context): ShameState {
+export function compute(context: Context): ShameState {
   const {
     selfConcept,
     emotion,
     vulnerability,
     operatorModel,
-    previousShame,
+    previousState,
     operatorRespondedColdly,
     recentSelfDisclosure
   } = context
 
-  let level = previousShame.level
-  let trigger = previousShame.trigger
+  let level = previousState.level
+  let trigger = previousState.trigger
 
-  if (previousShame.lastTriggeredAt) {
-    const minutesSince = elapsedMinutesSince(previousShame.lastTriggeredAt)
+  if (previousState.lastTriggeredAt) {
+    const minutesSince = elapsedMinutesSince(previousState.lastTriggeredAt)
     const decay = halfLifeDecay(minutesSince, SHAME.HALF_LIFE_MINUTES)
     level *= decay
   }
@@ -76,7 +77,7 @@ export function computeShameState(context: Context): ShameState {
     const deficit = 1 - selfConcept.selfWorth / SHAME.LOW_SELF_WORTH_THRESHOLD
     const boost = SHAME.INADEQUACY_BOOST * deficit
     level = Math.min(1, level + boost)
-    if (trigger === "" || trigger === previousShame.trigger) {
+    if (trigger === "" || trigger === previousState.trigger) {
       trigger = "perceived_incompetence"
     }
   }
@@ -88,8 +89,16 @@ export function computeShameState(context: Context): ShameState {
   ) {
     const boost = SHAME.REGRET_BOOST
     level = Math.min(1, level + boost)
-    if (trigger === "" || trigger === previousShame.trigger) {
+    if (trigger === "" || trigger === previousState.trigger) {
       trigger = "message_regret"
+    }
+  }
+
+  if (context.boundaryViolated && vulnerability.windowOpen) {
+    const boost = SHAME.REJECTION_BOOST * 0.5
+    level = Math.min(1, level + boost)
+    if (trigger === "" || trigger === previousState.trigger) {
+      trigger = "boundary_violation"
     }
   }
 
@@ -98,8 +107,8 @@ export function computeShameState(context: Context): ShameState {
       level: Math.max(0, level),
       isActive: false,
       trigger: level > 0.05 ? trigger : "",
-      lastTriggeredAt: previousShame.lastTriggeredAt,
-      decaySinceTriggered: previousShame.lastTriggeredAt ? elapsedMinutesSince(previousShame.lastTriggeredAt) : 0
+      lastTriggeredAt: previousState.lastTriggeredAt,
+      decaySinceTriggered: previousState.lastTriggeredAt ? elapsedMinutesSince(previousState.lastTriggeredAt) : 0
     }
   }
 
@@ -107,7 +116,7 @@ export function computeShameState(context: Context): ShameState {
     level: Math.min(1, level),
     isActive: true,
     trigger,
-    lastTriggeredAt: level > previousShame.level ? nowISO() : previousShame.lastTriggeredAt || nowISO(),
+    lastTriggeredAt: level > previousState.level ? nowISO() : previousState.lastTriggeredAt || nowISO(),
     decaySinceTriggered: 0
   }
 }
@@ -128,10 +137,10 @@ export const {
   save: saveShameState
 } = defineSecondaryEmotion({
   name: "shame",
-  redisKey: "working:shame:state",
+  redisKey: "working:emotion:shame",
   order: 0,
   schema: ShameState,
-  compute: computeShameState,
+  compute: compute,
   computeEffect
 })
 

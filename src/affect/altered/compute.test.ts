@@ -113,9 +113,9 @@ describe("computeEmotionModifiers", () => {
     const start = addMinutes(new Date(), -15)
     const state = makeState("cannabis", start)
     const mods = computeEmotionModifiers(state)
-    for (const value of Object.values(mods)) {
+    Object.values(mods).forEach((value) => {
       expect(Math.abs(value)).toBeLessThanOrEqual(0.3)
-    }
+    })
   })
 })
 

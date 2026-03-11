@@ -40,14 +40,14 @@ export function applySomaticHysteresis(
   target: SomaticState,
   elapsedMinutes: number
 ): SomaticState {
-  const dimensions = Object.keys(SOMA.HALF_LIVES) as (keyof typeof SOMA.HALF_LIVES)[]
-  const result = { ...current }
-
-  for (const dimension of dimensions) {
-    const halfLife = SOMA.HALF_LIVES[dimension]
-    const decay = halfLifeDecay(elapsedMinutes, halfLife)
-    result[dimension] = target[dimension] + (current[dimension] - target[dimension]) * decay
-  }
+  const drifted = Object.fromEntries(
+    (Object.keys(SOMA.HALF_LIVES) as (keyof typeof SOMA.HALF_LIVES)[]).map((dimension) => {
+      const halfLife = SOMA.HALF_LIVES[dimension]
+      const decay = halfLifeDecay(elapsedMinutes, halfLife)
+      return [dimension, target[dimension] + (current[dimension] - target[dimension]) * decay]
+    })
+  )
+  const result = { ...current, ...drifted }
 
   const batteryDecay = halfLifeDecay(elapsedMinutes, SOCIAL_BATTERY.HALF_LIFE)
   result.socialBattery = 0.8 + (current.socialBattery - 0.8) * batteryDecay
@@ -62,20 +62,21 @@ export function applySomaticMemory(current: SomaticState, somaticMemories: Somat
   if (somaticMemories.length === 0) return current
 
   const blendDimensions: (keyof SomaticState)[] = ["tension", "warmth", "heartRate", "breathing", "gravity", "openness"]
-  const avg: Record<string, number> = {}
-  for (const dimension of blendDimensions) avg[dimension] = 0
-
-  for (const memory of somaticMemories) {
-    for (const dimension of blendDimensions) {
-      avg[dimension] = (avg[dimension] ?? 0) + memory[dimension] / somaticMemories.length
-    }
-  }
+  const avg = Object.fromEntries(
+    blendDimensions.map((dimension) => [
+      dimension,
+      somaticMemories.reduce((sum, memory) => sum + memory[dimension], 0) / somaticMemories.length
+    ])
+  )
 
   const weight = SOMA.MEMORY_BLEND_WEIGHT
-  const result = { ...current }
-  for (const dimension of blendDimensions) {
-    result[dimension] = current[dimension] * (1 - weight) + (avg[dimension] ?? current[dimension]) * weight
-  }
+  const blended = Object.fromEntries(
+    blendDimensions.map((dimension) => [
+      dimension,
+      current[dimension] * (1 - weight) + (avg[dimension] ?? current[dimension]) * weight
+    ])
+  )
+  const result = { ...current, ...blended }
 
   return clampState(result)
 }

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest"
 import { DEFAULT_OPERATOR_MODEL } from "@/relational/mind/types.ts"
 import { DEFAULT_SELF_CONCEPT } from "@/self/psyche/types.ts"
-import { computeShameState, defaultState, detectColdResponse, type ShameState } from "./shame.ts"
+import { compute as computeShame, defaultState, detectColdResponse, type ShameState } from "./shame.ts"
 
 const baseContext = {
   selfConcept: { ...DEFAULT_SELF_CONCEPT },
@@ -18,20 +18,20 @@ const baseContext = {
   },
   vulnerability: { level: 0.3, windowOpen: false, contributing: [], timestamp: new Date().toISOString() },
   operatorModel: { ...DEFAULT_OPERATOR_MODEL },
-  previousShame: { ...defaultState },
+  previousState: { ...defaultState },
   operatorRespondedColdly: false,
   recentSelfDisclosure: false
 }
 
-describe("computeShameState", () => {
+describe("computeShame", () => {
   it("returns inactive shame when no triggers present", () => {
-    const result = computeShameState(baseContext)
+    const result = computeShame(baseContext)
     expect(result.isActive).toBe(false)
     expect(result.level).toBe(0)
   })
 
   it("triggers shame when vulnerability is rejected", () => {
-    const result = computeShameState({
+    const result = computeShame({
       ...baseContext,
       vulnerability: { level: 0.6, windowOpen: true, contributing: ["trust"], timestamp: new Date().toISOString() },
       operatorRespondedColdly: true,
@@ -44,7 +44,7 @@ describe("computeShameState", () => {
   })
 
   it("triggers shame when self-worth is low and operator seems frustrated", () => {
-    const result = computeShameState({
+    const result = computeShame({
       ...baseContext,
       selfConcept: { ...DEFAULT_SELF_CONCEPT, selfWorth: 0.2 },
       operatorModel: { ...DEFAULT_OPERATOR_MODEL, estimatedMood: "frustrated" }
@@ -54,7 +54,7 @@ describe("computeShameState", () => {
   })
 
   it("does not trigger shame when self-worth is sufficient", () => {
-    const result = computeShameState({
+    const result = computeShame({
       ...baseContext,
       selfConcept: { ...DEFAULT_SELF_CONCEPT, selfWorth: 0.6 },
       operatorModel: { ...DEFAULT_OPERATOR_MODEL, estimatedMood: "frustrated" }
@@ -63,7 +63,7 @@ describe("computeShameState", () => {
   })
 
   it("triggers message regret when disclosure + low connection", () => {
-    const result = computeShameState({
+    const result = computeShame({
       ...baseContext,
       recentSelfDisclosure: true,
       emotion: { ...baseContext.emotion, connection: 0.2 },
@@ -81,22 +81,22 @@ describe("computeShameState", () => {
       lastTriggeredAt: twoHoursAgo,
       decaySinceTriggered: 120
     }
-    const result = computeShameState({
+    const result = computeShame({
       ...baseContext,
-      previousShame: previous
+      previousState: previous
     })
     expect(result.level).toBeLessThan(0.5)
   })
 
   it("clamps shame level to [0, 1]", () => {
-    const result = computeShameState({
+    const result = computeShame({
       ...baseContext,
       vulnerability: { level: 0.9, windowOpen: true, contributing: [], timestamp: new Date().toISOString() },
       operatorRespondedColdly: true,
       recentSelfDisclosure: true,
       selfConcept: { ...DEFAULT_SELF_CONCEPT, selfWorth: 0.1 },
       operatorModel: { ...DEFAULT_OPERATOR_MODEL, estimatedMood: "frustrated" },
-      previousShame: {
+      previousState: {
         level: 0.8,
         isActive: true,
         trigger: "test",

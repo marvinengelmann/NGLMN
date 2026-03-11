@@ -50,6 +50,8 @@ export const EmotionTrigger = z.enum([
   "positive_anticipation",
   "expectation_violated",
   "expectation_met",
+  "boundary_violated",
+  "memory_contradiction",
   "ambient"
 ])
 export type EmotionTrigger = z.infer<typeof EmotionTrigger>

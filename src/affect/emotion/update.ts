@@ -38,6 +38,8 @@ const TRIGGER_EFFECTS: Record<EmotionTrigger, EmotionDeltas> = {
   positive_anticipation: { excitement: 0.05, energy: 0.03 },
   expectation_violated: { frustration: 0.04, caution: 0.03, excitement: -0.02 },
   expectation_met: { satisfaction: 0.04, confidence: 0.02 },
+  boundary_violated: { caution: 0.12, frustration: 0.08, connection: -0.05, satisfaction: -0.04 },
+  memory_contradiction: { curiosity: 0.06, caution: 0.04, frustration: 0.03 },
   ambient: {}
 }
 
@@ -92,12 +94,12 @@ export function computeMoodBaseline(context: MoodContext): EmotionalState {
     const avoidanceDamping = 1 - context.attachmentAvoidance * MOOD_CONTAGION.AVOIDANCE_DAMPING
     const strength = connectionScale * avoidanceDamping
 
-    for (const [dimension, delta] of Object.entries(effects)) {
+    Object.entries(effects).forEach(([dimension, delta]) => {
       const key = dimension as keyof EmotionalState
       if (key in base) {
         base[key] += Math.max(-MOOD_CONTAGION.MAX_EFFECT, Math.min(MOOD_CONTAGION.MAX_EFFECT, delta * strength))
       }
-    }
+    })
   }
 
   return clampState(base)
@@ -108,13 +110,14 @@ export function computeMoodBaseline(context: MoodContext): EmotionalState {
  * Formula: newValue = baseline + (current - baseline) * 2^(-elapsed / halfLife)
  */
 export function applyDrift(state: EmotionalState, baseline: EmotionalState, elapsedMinutes: number): EmotionalState {
-  const result = { ...state }
-  for (const dimension of Object.keys(EMOTION.HALF_LIVES) as (keyof typeof EMOTION.HALF_LIVES)[]) {
-    const halfLife = EMOTION.HALF_LIVES[dimension]
-    const decay = halfLifeDecay(elapsedMinutes, halfLife)
-    result[dimension] = baseline[dimension] + (state[dimension] - baseline[dimension]) * decay
-  }
-  return result
+  const drifted = Object.fromEntries(
+    (Object.keys(EMOTION.HALF_LIVES) as (keyof typeof EMOTION.HALF_LIVES)[]).map((dimension) => {
+      const halfLife = EMOTION.HALF_LIVES[dimension]
+      const decay = halfLifeDecay(elapsedMinutes, halfLife)
+      return [dimension, baseline[dimension] + (state[dimension] - baseline[dimension]) * decay]
+    })
+  )
+  return { ...state, ...drifted }
 }
 
 /**
@@ -136,19 +139,18 @@ export function applyEvent(
   minutesSinceLastSimilar?: number
 ): EmotionalState {
   const effects = TRIGGER_EFFECTS[event.trigger]
-  const result = { ...state }
+  const deltas = Object.fromEntries(
+    Object.entries(effects).map(([key, baseDelta]) => {
+      let scaledDelta = baseDelta * event.intensity
+      if (minutesSinceLastSimilar != null) {
+        scaledDelta = scaleByNovelty(scaledDelta, minutesSinceLastSimilar)
+      }
+      const clampedDelta = Math.max(-EMOTION.MAX_DELTA, Math.min(EMOTION.MAX_DELTA, scaledDelta))
+      return [key, (state[key as keyof EmotionalState] ?? 0) + clampedDelta]
+    })
+  )
 
-  for (const [key, baseDelta] of Object.entries(effects)) {
-    const dimension = key as keyof EmotionalState
-    let scaledDelta = baseDelta * event.intensity
-    if (minutesSinceLastSimilar != null) {
-      scaledDelta = scaleByNovelty(scaledDelta, minutesSinceLastSimilar)
-    }
-    const clampedDelta = Math.max(-EMOTION.MAX_DELTA, Math.min(EMOTION.MAX_DELTA, scaledDelta))
-    result[dimension] = result[dimension] + clampedDelta
-  }
-
-  return clampState(result)
+  return clampState({ ...state, ...deltas })
 }
 
 interface CrossCouplingRule {
@@ -177,18 +179,21 @@ const CROSS_COUPLING_RULES: CrossCouplingRule[] = [
  * Post-processing valence rules for emotional consistency.
  */
 export function applyCrossCoupling(state: EmotionalState): EmotionalState {
-  const result = { ...state }
-  for (const rule of CROSS_COUPLING_RULES) {
-    if (rule.when(result)) {
-      if (rule.factor > 1) {
-        const strength = rule.factor - 1
-        const headroom = 1 - result[rule.target]
-        result[rule.target] += strength * headroom
-      } else {
-        result[rule.target] *= rule.factor
+  const result = CROSS_COUPLING_RULES.reduce(
+    (acc, rule) => {
+      if (rule.when(acc)) {
+        if (rule.factor > 1) {
+          const strength = rule.factor - 1
+          const headroom = 1 - acc[rule.target]
+          acc[rule.target] += strength * headroom
+        } else {
+          acc[rule.target] *= rule.factor
+        }
       }
-    }
-  }
+      return acc
+    },
+    { ...state }
+  )
   return clampState(result)
 }
 
@@ -209,33 +214,35 @@ export function applyContradictionBudget(state: EmotionalState): EmotionalState 
   const intensity = computeEmotionalIntensity(result)
 
   const positives: (keyof EmotionalState)[] = ["satisfaction", "connection", "excitement"]
-  for (const dimension of positives) {
-    if (result[dimension] < CONTRADICTION.HIGH_EMOTION_THRESHOLD) continue
-    const rules = SHADOW_PAIRINGS[dimension]
-    if (!rules || rules.length === 0) continue
+  positives
+    .filter((dimension) => result[dimension] >= CONTRADICTION.HIGH_EMOTION_THRESHOLD)
+    .forEach((dimension) => {
+      const rules = SHADOW_PAIRINGS[dimension]
+      if (!rules || rules.length === 0) return
 
-    const chosen = rules[Math.floor(Math.random() * rules.length)]
-    if (!chosen) continue
+      const chosen = rules[Math.floor(Math.random() * rules.length)]
+      if (!chosen) return
 
-    const shadowMin =
-      CONTRADICTION.MIN_SHADOW_EMOTION +
-      Math.random() * (CONTRADICTION.MAX_SHADOW_EMOTION - CONTRADICTION.MIN_SHADOW_EMOTION)
-    if (result[chosen.shadow] < shadowMin) {
-      result[chosen.shadow] = shadowMin
-    }
-  }
+      const shadowMin =
+        CONTRADICTION.MIN_SHADOW_EMOTION +
+        Math.random() * (CONTRADICTION.MAX_SHADOW_EMOTION - CONTRADICTION.MIN_SHADOW_EMOTION)
+      if (result[chosen.shadow] < shadowMin) {
+        result[chosen.shadow] = shadowMin
+      }
+    })
 
   if (intensity > CONTRADICTION.HIGH_INTENSITY_THRESHOLD) {
     const negatives: (keyof EmotionalState)[] = ["frustration", "boredom", "caution"]
     const activeNegatives = negatives.filter((d) => result[d] > CONTRADICTION.MIN_SHADOW_EMOTION)
     if (activeNegatives.length < 2) {
-      const inactive = negatives.filter((d) => result[d] <= CONTRADICTION.MIN_SHADOW_EMOTION)
-      const toActivate = inactive.slice(0, 2 - activeNegatives.length)
-      for (const dimension of toActivate) {
-        result[dimension] =
-          CONTRADICTION.MIN_SHADOW_EMOTION +
-          Math.random() * (CONTRADICTION.MAX_SHADOW_EMOTION - CONTRADICTION.MIN_SHADOW_EMOTION)
-      }
+      negatives
+        .filter((d) => result[d] <= CONTRADICTION.MIN_SHADOW_EMOTION)
+        .slice(0, 2 - activeNegatives.length)
+        .forEach((dimension) => {
+          result[dimension] =
+            CONTRADICTION.MIN_SHADOW_EMOTION +
+            Math.random() * (CONTRADICTION.MAX_SHADOW_EMOTION - CONTRADICTION.MIN_SHADOW_EMOTION)
+        })
     }
   }
 
@@ -251,11 +258,41 @@ export function computeValence(emotion: EmotionalState): number {
   return Math.max(-1, Math.min(1, positive - negative))
 }
 
+export const INTENSITY_DIMENSIONS: (keyof EmotionalState)[] = [
+  "curiosity",
+  "satisfaction",
+  "frustration",
+  "boredom",
+  "excitement",
+  "caution",
+  "connection",
+  "confidence"
+]
+
 /**
- * Compute emotional intensity as max deviation from neutral (0.5) across all dimensions.
+ * Compute emotional intensity as max deviation from neutral (0.5) across emotional dimensions.
+ * Excludes energy since it has a different baseline (0.8) and represents a resource, not an emotion.
  */
 export function computeEmotionalIntensity(emotion: EmotionalState): number {
-  return Math.max(...Object.values(emotion).map((v) => Math.abs(v - 0.5))) * 2
+  return Math.max(...INTENSITY_DIMENSIONS.map((d) => Math.abs(emotion[d] - 0.5))) * 2
+}
+
+/**
+ * Blend current emotion into the long-term mood baseline via exponential moving average.
+ */
+export function blendMoodBaseline(current: EmotionalState, oldBaseline: EmotionalState): EmotionalState {
+  const alpha = MOMENTUM.MOOD_BASELINE_ALPHA
+  return clampState({
+    curiosity: alpha * current.curiosity + (1 - alpha) * oldBaseline.curiosity,
+    satisfaction: alpha * current.satisfaction + (1 - alpha) * oldBaseline.satisfaction,
+    frustration: alpha * current.frustration + (1 - alpha) * oldBaseline.frustration,
+    boredom: alpha * current.boredom + (1 - alpha) * oldBaseline.boredom,
+    excitement: alpha * current.excitement + (1 - alpha) * oldBaseline.excitement,
+    caution: alpha * current.caution + (1 - alpha) * oldBaseline.caution,
+    connection: alpha * current.connection + (1 - alpha) * oldBaseline.connection,
+    confidence: alpha * current.confidence + (1 - alpha) * oldBaseline.confidence,
+    energy: alpha * current.energy + (1 - alpha) * oldBaseline.energy
+  })
 }
 
 /**
@@ -266,18 +303,6 @@ export function summarizeEmotions(emotion: EmotionalState, threshold = 0.1): str
     .filter(([, v]) => Math.abs(v - 0.5) > threshold)
     .map(([k, v]) => `${k}: ${v.toFixed(2)}`)
     .join(", ")
-}
-
-/**
- * Compute per-dimension deltas between two emotional states, filtered by threshold.
- */
-export function computeEmotionDeltas(current: EmotionalState, previous: EmotionalState, threshold = 0.03): string {
-  const changes = (Object.keys(current) as (keyof EmotionalState)[])
-    .map((dimension) => ({ dimension, diff: current[dimension] - previous[dimension] }))
-    .filter(({ diff }) => Math.abs(diff) > threshold)
-    .map(({ dimension, diff }) => `${dimension} ${diff > 0 ? "+" : ""}${diff.toFixed(2)}`)
-
-  return changes.length > 0 ? changes.join(", ") : "stable"
 }
 
 /**
@@ -311,10 +336,10 @@ export function computeEmotionalUpdate(
   const baseline = computeMoodBaseline(context)
   let state = applyDrift(current, baseline, elapsed)
 
-  for (const event of events) {
+  state = events.reduce((acc, event) => {
     const lastSimilar = triggerTimestamps?.[event.trigger]
-    state = applyEvent(state, event, lastSimilar)
-  }
+    return applyEvent(acc, event, lastSimilar)
+  }, state)
 
   state = applyCrossCoupling(state)
   state = applyContradictionBudget(state)
@@ -340,40 +365,38 @@ const EMOTION_DIMENSIONS: (keyof EmotionalState)[] = [
 export function applyMomentum(
   computed: EmotionalState,
   previous: EmotionalState,
-  _momentum: EmotionalMomentum,
-  eventIntensity: number
+  eventIntensity: number,
+  previousMomentum: EmotionalMomentum
 ): { state: EmotionalState; momentum: EmotionalMomentum } {
   const alpha = eventIntensity > MOMENTUM.INTENSITY_THRESHOLD ? MOMENTUM.ALPHA_INTENSE : MOMENTUM.ALPHA_BASE
 
-  const state = { ...computed }
-  const newMomentum = { ...DEFAULT_EMOTIONAL_MOMENTUM }
+  const { state, momentum } = EMOTION_DIMENSIONS.reduce(
+    (acc, dimension) => {
+      const inertia = previous[dimension] + previousMomentum[dimension] * MOMENTUM.INERTIA_WEIGHT
+      const anchor = clamp01(inertia)
+      const blended = alpha * computed[dimension] + (1 - alpha) * anchor
+      acc.state[dimension] = clamp01(blended)
+      acc.momentum[dimension] = Math.max(-1, Math.min(1, acc.state[dimension] - previous[dimension]))
+      return acc
+    },
+    { state: { ...computed }, momentum: { ...DEFAULT_EMOTIONAL_MOMENTUM } }
+  )
 
-  for (const dimension of EMOTION_DIMENSIONS) {
-    const blended = alpha * computed[dimension] + (1 - alpha) * previous[dimension]
-    state[dimension] = clamp01(blended)
-    newMomentum[dimension] = Math.max(-1, Math.min(1, state[dimension] - previous[dimension]))
-  }
-
-  return { state: clampState(state), momentum: newMomentum }
+  return { state: clampState(state), momentum }
 }
 
 /**
  * Detect afterglow entries for dimensions with significant emotional shifts.
  */
 export function detectAfterglow(current: EmotionalState, previous: EmotionalState): AfterglowEntry[] {
-  const entries: AfterglowEntry[] = []
-  for (const dimension of EMOTION_DIMENSIONS) {
-    const delta = current[dimension] - previous[dimension]
-    if (Math.abs(delta) > MOMENTUM.AFTERGLOW_THRESHOLD) {
-      entries.push({
-        dimension,
-        delta,
-        remainingTicks: MOMENTUM.AFTERGLOW_INITIAL_TICKS,
-        intensity: Math.min(1, Math.abs(delta))
-      })
-    }
-  }
-  return entries
+  return EMOTION_DIMENSIONS.filter(
+    (dimension) => Math.abs(current[dimension] - previous[dimension]) > MOMENTUM.AFTERGLOW_THRESHOLD
+  ).map((dimension) => ({
+    dimension,
+    delta: current[dimension] - previous[dimension],
+    remainingTicks: MOMENTUM.AFTERGLOW_INITIAL_TICKS,
+    intensity: Math.min(1, Math.abs(current[dimension] - previous[dimension]))
+  }))
 }
 
 /**
@@ -383,23 +406,24 @@ export function applyAfterglow(
   state: EmotionalState,
   entries: AfterglowEntry[]
 ): { state: EmotionalState; remainingEntries: AfterglowEntry[] } {
-  const result = { ...state }
-  const remaining: AfterglowEntry[] = []
+  const result = entries.reduce(
+    (acc, entry) => {
+      const dimension = entry.dimension as keyof EmotionalState
+      if (dimension in acc) {
+        acc[dimension] = clamp01(acc[dimension] + entry.delta * entry.intensity * 0.1)
+      }
+      return acc
+    },
+    { ...state }
+  )
 
-  for (const entry of entries) {
-    const dimension = entry.dimension as keyof EmotionalState
-    if (dimension in result) {
-      result[dimension] = clamp01(result[dimension] + entry.delta * entry.intensity * 0.1)
-    }
-    const decayed: AfterglowEntry = {
+  const remainingEntries = entries
+    .map((entry) => ({
       ...entry,
       intensity: entry.intensity * MOMENTUM.AFTERGLOW_DECAY_RATE,
       remainingTicks: entry.remainingTicks - 1
-    }
-    if (decayed.remainingTicks > 0) {
-      remaining.push(decayed)
-    }
-  }
+    }))
+    .filter((entry) => entry.remainingTicks > 0)
 
-  return { state: clampState(result), remainingEntries: remaining }
+  return { state: clampState(result), remainingEntries }
 }

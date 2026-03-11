@@ -125,6 +125,10 @@ export async function setCurrentEmotion(state: EmotionalState): Promise<void> {
   await redis.set(WORKING_KEYS.EMOTION_CURRENT, state)
 }
 
+export async function getRawTriggerTimestamps(): Promise<Record<string, string>> {
+  return (await redis.get<Record<string, string>>(WORKING_KEYS.EMOTION_TRIGGER_TIMESTAMPS)) ?? {}
+}
+
 export async function getTriggerTimestamps(): Promise<Record<string, number>> {
   const raw = await redis.get<Record<string, string>>(WORKING_KEYS.EMOTION_TRIGGER_TIMESTAMPS)
   if (!raw) return {}
@@ -150,9 +154,9 @@ export async function setTriggerTimestamps(entries: Array<{ trigger: string; tim
   if (entries.length === 0) return
   const raw = await redis.get<Record<string, string>>(WORKING_KEYS.EMOTION_TRIGGER_TIMESTAMPS)
   const timestamps = raw ?? {}
-  for (const { trigger, timestamp } of entries) {
+  entries.forEach(({ trigger, timestamp }) => {
     timestamps[trigger] = timestamp
-  }
+  })
   await redis.set(WORKING_KEYS.EMOTION_TRIGGER_TIMESTAMPS, timestamps)
 }
 
