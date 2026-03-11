@@ -26,12 +26,13 @@ import type { SenseData } from "./types.ts"
  */
 export async function runHeartbeat() {
   log.info("Heartbeat starting")
-  let tickId = `tick-${Date.now()}`
+  const lockId = `tick-${Date.now()}`
+  let tickId = lockId
   let startTime = Date.now()
   let timestamp = nowISO()
   setTickContext({ tickId })
 
-  const acquired = await tryAcquireBusy(tickId)
+  const acquired = await tryAcquireBusy(lockId)
   if (!acquired) {
     log.info("Heartbeat skipped — busy lock held by another tick")
     return
@@ -130,6 +131,6 @@ export async function runHeartbeat() {
     throw error
   } finally {
     await clearConversationWaitingSince()
-    await clearBusy(tickId)
+    await clearBusy(lockId)
   }
 }
