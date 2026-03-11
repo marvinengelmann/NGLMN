@@ -414,6 +414,29 @@ export const boundaryLog = pgTable(
 export type BoundaryLogInsert = typeof boundaryLog.$inferInsert
 export type BoundaryLogSelect = typeof boundaryLog.$inferSelect
 
+export const interactionOutcomes = pgTable(
+  "interaction_outcomes",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    tickId: text("tick_id").notNull(),
+    conversationId: text("conversation_id"),
+    strategy: jsonb("strategy").notNull(),
+    responseText: text("response_text"),
+    operatorReaction: jsonb("operator_reaction"),
+    outcomeScore: real("outcome_score"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    resolvedAt: timestamp("resolved_at", { withTimezone: true })
+  },
+  (table) => [
+    index("idx_interaction_outcomes_tick_id").on(table.tickId),
+    index("idx_interaction_outcomes_created_at").on(table.createdAt),
+    index("idx_interaction_outcomes_resolved_at").on(table.resolvedAt)
+  ]
+)
+
+export type InteractionOutcomeInsert = typeof interactionOutcomes.$inferInsert
+export type InteractionOutcomeSelect = typeof interactionOutcomes.$inferSelect
+
 export const genesis = pgTable("genesis", {
   id: uuid("id").primaryKey().defaultRandom(),
   seed: text("seed").notNull(),
@@ -424,3 +447,28 @@ export const genesis = pgTable("genesis", {
 
 export type GenesisInsert = typeof genesis.$inferInsert
 export type GenesisSelect = typeof genesis.$inferSelect
+
+export const conversationArcs = pgTable(
+  "conversation_arcs",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    conversationId: text("conversation_id").notNull(),
+    startedAt: timestamp("started_at", { withTimezone: true }).notNull(),
+    endedAt: timestamp("ended_at", { withTimezone: true }).notNull(),
+    themes: jsonb("themes").notNull(),
+    tone: text("tone").notNull(),
+    emotionalArc: jsonb("emotional_arc").notNull(),
+    operatorEngagement: real("operator_engagement").notNull(),
+    unresolvedTopics: jsonb("unresolved_topics").notNull(),
+    significantMoments: jsonb("significant_moments").notNull(),
+    messageCount: integer("message_count").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow()
+  },
+  (table) => [
+    index("idx_conversation_arcs_created_at").on(table.createdAt),
+    index("idx_conversation_arcs_conversation_id").on(table.conversationId)
+  ]
+)
+
+export type ConversationArcInsert = typeof conversationArcs.$inferInsert
+export type ConversationArcSelect = typeof conversationArcs.$inferSelect
