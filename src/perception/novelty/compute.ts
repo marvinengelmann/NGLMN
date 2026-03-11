@@ -1,6 +1,8 @@
 import type { EmotionalState } from "@/affect/emotion/types.ts"
+import { log } from "@/infra/lib/logger.ts"
 import type { ExpectationViolation } from "@/perception/anticipation/types.ts"
 import { NOVELTY } from "./constants.ts"
+import { computeSemanticNovelty } from "./semantic.ts"
 import type { NoveltyState, SurpriseState } from "./types.ts"
 
 /**
@@ -18,9 +20,9 @@ export function computeNoveltyLevel(
 
   const keys = Object.keys(updatedMap)
   if (keys.length > NOVELTY.MAX_HABITUATION_ENTRIES) {
-    for (const k of keys.slice(0, keys.length - NOVELTY.MAX_HABITUATION_ENTRIES)) {
+    keys.slice(0, keys.length - NOVELTY.MAX_HABITUATION_ENTRIES).forEach((k) => {
       delete updatedMap[k]
-    }
+    })
   }
 
   return { level: novelty, updatedMap }
@@ -43,17 +45,22 @@ export function computeSurprise(
     }
   }
 
-  let maxSurprise = noveltyLevel * NOVELTY.SURPRISE_NOVELTY_WEIGHT
-  let dominantValence = 0
-  let dominantSource: string | null = noveltyLevel > NOVELTY.SURPRISE_LOW_NOVELTY_THRESHOLD ? "novelty" : null
-
-  for (const violation of violations) {
-    if (violation.surpriseIntensity > maxSurprise) {
-      maxSurprise = violation.surpriseIntensity
-      dominantValence = violation.valence
-      dominantSource = violation.actualOutcome
-    }
+  const initial = {
+    maxSurprise: noveltyLevel * NOVELTY.SURPRISE_NOVELTY_WEIGHT,
+    dominantValence: 0,
+    dominantSource: noveltyLevel > NOVELTY.SURPRISE_LOW_NOVELTY_THRESHOLD ? "novelty" as string | null : null as string | null
   }
+
+  const { maxSurprise, dominantValence, dominantSource } = violations.reduce((acc, violation) => {
+    if (violation.surpriseIntensity > acc.maxSurprise) {
+      return {
+        maxSurprise: violation.surpriseIntensity,
+        dominantValence: violation.valence,
+        dominantSource: violation.actualOutcome
+      }
+    }
+    return acc
+  }, initial)
 
   const level = Math.min(1, maxSurprise)
 
@@ -94,12 +101,14 @@ export function computeNoveltyEffect(
 
 /**
  * Update full novelty state from message content.
+ * When useSemanticNovelty is true, uses vector similarity instead of string matching.
  */
-export function updateNoveltyState(
+export async function updateNoveltyState(
   previous: NoveltyState,
   messageTexts: string[],
-  emotion: EmotionalState
-): NoveltyState {
+  emotion: EmotionalState,
+  useSemanticNovelty: boolean = false
+): Promise<NoveltyState> {
   if (messageTexts.length === 0) {
     return {
       ...previous,
@@ -116,7 +125,21 @@ export function updateNoveltyState(
   let source: string | null = null
   let habituationMap = { ...previous.habituationMap }
 
-  for (const text of messageTexts) {
+  const processText = async (text: string): Promise<void> => {
+    if (useSemanticNovelty) {
+      try {
+        const result = await computeSemanticNovelty(text)
+        if (result) {
+          if (result.level > maxNovelty) {
+            maxNovelty = result.level
+            source = text.slice(0, NOVELTY.SOURCE_PREVIEW_LENGTH)
+          }
+          return
+        }
+      } catch (e) {
+        log.warn("Semantic novelty failed, falling back to string-based", { error: String(e) })
+      }
+    }
     const { level, updatedMap } = computeNoveltyLevel(text, habituationMap)
     habituationMap = updatedMap
     if (level > maxNovelty) {
@@ -124,6 +147,11 @@ export function updateNoveltyState(
       source = text.slice(0, NOVELTY.SOURCE_PREVIEW_LENGTH)
     }
   }
+
+  await messageTexts.reduce(
+    (chain, text) => chain.then(() => processText(text)),
+    Promise.resolve()
+  )
 
   const noveltySeekingUrge =
     maxNovelty > 0.5

@@ -58,14 +58,14 @@ describe("computeNoveltyEffect", () => {
 })
 
 describe("updateNoveltyState", () => {
-  it("should detect novelty in new messages", () => {
-    const result = updateNoveltyState(DEFAULT_NOVELTY_STATE, ["something completely new"], makeEmotionalState())
+  it("should detect novelty in new messages", async () => {
+    const result = await updateNoveltyState(DEFAULT_NOVELTY_STATE, ["something completely new"], makeEmotionalState())
     expect(result.level).toBeGreaterThan(0)
     expect(result.isActive).toBe(true)
   })
 
-  it("should increase novelty seeking urge when bored with no messages", () => {
-    const result = updateNoveltyState(DEFAULT_NOVELTY_STATE, [], makeEmotionalState({ boredom: 0.8 }))
+  it("should increase novelty seeking urge when bored with no messages", async () => {
+    const result = await updateNoveltyState(DEFAULT_NOVELTY_STATE, [], makeEmotionalState({ boredom: 0.8 }))
     expect(result.noveltySeekingUrge).toBeGreaterThan(DEFAULT_NOVELTY_STATE.noveltySeekingUrge)
   })
 })

@@ -51,6 +51,9 @@ const EnvSchema = z.object({
   CALDAV_USER: z.string().optional(),
   CALDAV_PASS: z.string().optional(),
 
+  UPSTASH_VECTOR_HABITUATION_URL: z.string().optional(),
+  UPSTASH_VECTOR_HABITUATION_TOKEN: z.string().optional(),
+
   GENESIS_SEED: z
     .string()
     .regex(/^[0-9a-z]{3}-[0-9a-z]{3}$/)
