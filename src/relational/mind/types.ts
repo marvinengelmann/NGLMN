@@ -44,6 +44,36 @@ export const DEFAULT_OPERATOR_PROFILE: OperatorProfile = {
   lastProfileUpdate: ""
 }
 
+export const OperatorPrediction = z.object({
+  expectedResponseMinutes: z.number().nullable().default(null),
+  expectedMood: OperatorMood.nullable().default(null),
+  expectedEngagement: z.enum(["high", "low"]).nullable().default(null),
+  confidence: z.number().min(0).max(1).default(0.3),
+  madeAt: z.string().nullable().default(null)
+})
+export type OperatorPrediction = z.infer<typeof OperatorPrediction>
+
+export const PredictionAccuracy = z.object({
+  recentScores: z.array(z.number()).default([]),
+  runningAverage: z.number().min(0).max(1).default(0.5),
+  totalPredictions: z.number().default(0)
+})
+export type PredictionAccuracy = z.infer<typeof PredictionAccuracy>
+
+export const DEFAULT_OPERATOR_PREDICTION: OperatorPrediction = {
+  expectedResponseMinutes: null,
+  expectedMood: null,
+  expectedEngagement: null,
+  confidence: 0.3,
+  madeAt: null
+}
+
+export const DEFAULT_PREDICTION_ACCURACY: PredictionAccuracy = {
+  recentScores: [],
+  runningAverage: 0.5,
+  totalPredictions: 0
+}
+
 export const OperatorModel = z.object({
   estimatedMood: OperatorMood,
   estimatedIntent: z.string().max(200),
@@ -54,7 +84,9 @@ export const OperatorModel = z.object({
   lastUpdated: z.string(),
   moodUncertainty: MoodUncertainty.nullable().default(null),
   contradiction: z.string().nullable().default(null),
-  moodHistory: z.array(MoodHistoryEntry).default([])
+  moodHistory: z.array(MoodHistoryEntry).default([]),
+  predictions: OperatorPrediction.default(DEFAULT_OPERATOR_PREDICTION),
+  predictionAccuracy: PredictionAccuracy.default(DEFAULT_PREDICTION_ACCURACY)
 })
 export type OperatorModel = z.infer<typeof OperatorModel>
 
@@ -117,5 +149,7 @@ export const DEFAULT_OPERATOR_MODEL: OperatorModel = {
   lastUpdated: "",
   moodUncertainty: null,
   contradiction: null,
-  moodHistory: []
+  moodHistory: [],
+  predictions: DEFAULT_OPERATOR_PREDICTION,
+  predictionAccuracy: DEFAULT_PREDICTION_ACCURACY
 }
