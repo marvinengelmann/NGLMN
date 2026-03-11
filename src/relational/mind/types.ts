@@ -153,3 +153,76 @@ export const DEFAULT_OPERATOR_MODEL: OperatorModel = {
   predictions: DEFAULT_OPERATOR_PREDICTION,
   predictionAccuracy: DEFAULT_PREDICTION_ACCURACY
 }
+
+export const TemporalMoodPattern = z.object({
+  hourBucket: z.number().min(0).max(23),
+  dayOfWeek: z.number().min(0).max(6).optional(),
+  dominantMood: OperatorMood,
+  frequency: z.number().min(0),
+  confidence: z.number().min(0).max(1)
+})
+export type TemporalMoodPattern = z.infer<typeof TemporalMoodPattern>
+
+export const TopicResonance = z.object({
+  topic: z.string(),
+  engagementScore: z.number().min(0).max(1),
+  averageOutcomeScore: z.number().min(0).max(1),
+  occurrences: z.number().min(0),
+  lastSeenAt: z.string()
+})
+export type TopicResonance = z.infer<typeof TopicResonance>
+
+export const CommunicationPreferences = z.object({
+  preferredMessageLength: z.enum(["short", "medium", "long"]).default("medium"),
+  respondsToHumor: z.number().min(0).max(1).default(0.5),
+  respondsToVulnerability: z.number().min(0).max(1).default(0.5),
+  respondsToDepth: z.number().min(0).max(1).default(0.5),
+  emojiUsage: z.enum(["none", "rare", "moderate", "frequent"]).default("rare"),
+  averageResponseTimeMinutes: z.number().nullable().default(null),
+  peakActivityHours: z.array(z.number()).default([])
+})
+export type CommunicationPreferences = z.infer<typeof CommunicationPreferences>
+
+export const InferredTraits = z.object({
+  extraversion: z.number().min(0).max(1).default(0.5),
+  openness: z.number().min(0).max(1).default(0.5),
+  stressResilience: z.number().min(0).max(1).default(0.5),
+  emotionalExpressiveness: z.number().min(0).max(1).default(0.5),
+  consistencyScore: z.number().min(0).max(1).default(0.5)
+})
+export type InferredTraits = z.infer<typeof InferredTraits>
+
+export const DEFAULT_COMMUNICATION_PREFS: CommunicationPreferences = {
+  preferredMessageLength: "medium",
+  respondsToHumor: 0.5,
+  respondsToVulnerability: 0.5,
+  respondsToDepth: 0.5,
+  emojiUsage: "rare",
+  averageResponseTimeMinutes: null,
+  peakActivityHours: []
+}
+
+export const DEFAULT_INFERRED_TRAITS: InferredTraits = {
+  extraversion: 0.5,
+  openness: 0.5,
+  stressResilience: 0.5,
+  emotionalExpressiveness: 0.5,
+  consistencyScore: 0.5
+}
+
+export const DeepOperatorProfile = z.object({
+  temporalPatterns: z.array(TemporalMoodPattern).default([]),
+  topicResonance: z.array(TopicResonance).default([]),
+  communicationPrefs: CommunicationPreferences.default(DEFAULT_COMMUNICATION_PREFS),
+  inferredTraits: InferredTraits.default(DEFAULT_INFERRED_TRAITS),
+  updatedAt: z.string().default("")
+})
+export type DeepOperatorProfile = z.infer<typeof DeepOperatorProfile>
+
+export const DEFAULT_DEEP_OPERATOR_PROFILE: DeepOperatorProfile = {
+  temporalPatterns: [],
+  topicResonance: [],
+  communicationPrefs: DEFAULT_COMMUNICATION_PREFS,
+  inferredTraits: DEFAULT_INFERRED_TRAITS,
+  updatedAt: ""
+}
