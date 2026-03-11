@@ -14,9 +14,9 @@ Every minute, ANIMA senses its environment, feels emotions through a 27-dimensio
 
 - **Consciousness Loop** — Autonomous heartbeat with circadian rhythm, emotional gating, and five phases: sense, feel, deliberate, act, maintain
 - **Affect System** — 27-dimension emotion engine with somatic markers, motivational drives, vulnerability windows, and pharmacokinetic altered states
-- **Dual-Process Cognition** — System 1 instinct and System 2 reasoning with polyphonic inner dialog, cognitive conflict detection, and interaction outcome learning
-- **Three-Layer Memory** — Working memory, episodic recall with distortion, and semantic knowledge — plus dream consolidation, ritual detection, and goal lifecycle management
-- **Relationship Modeling** — Attachment theory, deep operator model with predictive forecasting, crisis detection, and cognitive dissonance with self-deception
+- **Dual-Process Cognition** — System 1 instinct and System 2 reasoning with polyphonic inner dialog, cognitive conflict detection, and closed-loop strategy learning
+- **Three-Layer Memory** — Working memory, episodic recall with distortion, and semantic knowledge — plus dream consolidation, autobiographical narrative, ritual detection, and goal lifecycle management
+- **Relationship Modeling** — Attachment theory, deep operator profiling with temporal patterns and trait inference, predictive forecasting, crisis detection, and cognitive dissonance with self-deception
 - **Identity** — Seed-based personality DNA, narrative self-concept, counterfactual reflection, contextual impulses, and psychological coherence monitoring
 - **Communication** — Telegram with typing simulation, evolving idiolect, emotional syntax instability, and humor callbacks — plus vision, voice, X, email, and calendar
 - **Self-Evolution** — Curiosity-driven prompt, workflow, and code evolution with sandboxed execution and guardian validation
@@ -29,7 +29,7 @@ Every minute, ANIMA senses its environment, feels emotions through a 27-dimensio
 | **FEEL** | Pipeline with parallel prefetch: emotions, body state, attachment, operator model, perception, integration |
 | **DELIBERATE** | Build context, run inner dialog, contextual impulses, call LLM |
 | **ACT** | Validate via guardian, send messages, execute actions, persist state |
-| **MAINTAIN** | Drift attachment, update baselines, decay goals, detect rituals, enforce boundaries |
+| **MAINTAIN** | Drift attachment, update baselines, decay goals, detect rituals, enforce boundaries, reinforce lessons, consolidate autobiography, update operator profile |
 
 For detailed diagrams of the cognitive loop and data layer, see [docs/architecture.md](docs/architecture.md).
 
