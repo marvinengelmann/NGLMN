@@ -1,4 +1,5 @@
 import * as z from "zod"
+import { nowISO } from "@/infra/lib/time.ts"
 
 export const DriveType = z.enum(["curiosity", "connection", "mastery", "autonomy", "expression"])
 export type DriveType = z.infer<typeof DriveType>
@@ -23,20 +24,26 @@ export const DriveState = z.object({
 })
 export type DriveState = z.infer<typeof DriveState>
 
-const DEFAULT_DRIVE_LEVEL: DriveLevel = {
-  satiation: 0.5,
-  frustration: 0,
-  salience: 0.5,
-  lastSatisfiedAt: new Date().toISOString(),
-  consecutiveBlockedTicks: 0
+function createDefaultDriveLevel(): DriveLevel {
+  return {
+    satiation: 0.5,
+    frustration: 0,
+    salience: 0.5,
+    lastSatisfiedAt: nowISO(),
+    consecutiveBlockedTicks: 0
+  }
 }
 
-export const DEFAULT_DRIVE_STATE: DriveState = {
-  curiosity: { ...DEFAULT_DRIVE_LEVEL },
-  connection: { ...DEFAULT_DRIVE_LEVEL },
-  mastery: { ...DEFAULT_DRIVE_LEVEL },
-  autonomy: { ...DEFAULT_DRIVE_LEVEL },
-  expression: { ...DEFAULT_DRIVE_LEVEL },
-  dominantDrive: null,
-  conflicting: []
+export function createDefaultDriveState(): DriveState {
+  return {
+    curiosity: createDefaultDriveLevel(),
+    connection: createDefaultDriveLevel(),
+    mastery: createDefaultDriveLevel(),
+    autonomy: createDefaultDriveLevel(),
+    expression: createDefaultDriveLevel(),
+    dominantDrive: null,
+    conflicting: []
+  }
 }
+
+export const DEFAULT_DRIVE_STATE: DriveState = createDefaultDriveState()

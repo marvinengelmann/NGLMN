@@ -28,39 +28,42 @@ interface DriveUpdateContext {
 export function computeDriveUpdate(context: DriveUpdateContext): DriveState {
   const { current, elapsedMinutes, blocked, satisfied } = context
   const now = nowISO()
-  const updated = {} as Record<DriveType, DriveLevel>
+  const updated = Object.fromEntries(
+    DRIVE_NAMES.map((drive) => {
+      const level = current[drive]
+      let satiation = decaySatiation(level, drive, elapsedMinutes)
+      let frustration = level.frustration
+      let consecutiveBlockedTicks = level.consecutiveBlockedTicks
+      let lastSatisfiedAt = level.lastSatisfiedAt
 
-  for (const drive of DRIVE_NAMES) {
-    const level = current[drive]
-    let satiation = decaySatiation(level, drive, elapsedMinutes)
-    let frustration = level.frustration
-    let consecutiveBlockedTicks = level.consecutiveBlockedTicks
-    let lastSatisfiedAt = level.lastSatisfiedAt
+      if (satisfied.has(drive)) {
+        satiation = Math.min(1, satiation + DRIVES.SATISFACTION_AMOUNTS[drive])
+        frustration = Math.max(0, frustration - DRIVES.SATISFACTION_FRUSTRATION_RELIEF)
+        consecutiveBlockedTicks = 0
+        lastSatisfiedAt = now
+      }
 
-    if (satisfied.has(drive)) {
-      satiation = Math.min(1, satiation + DRIVES.SATISFACTION_AMOUNTS[drive])
-      frustration = Math.max(0, frustration - DRIVES.SATISFACTION_FRUSTRATION_RELIEF)
-      consecutiveBlockedTicks = 0
-      lastSatisfiedAt = now
-    }
+      if (blocked.has(drive)) {
+        consecutiveBlockedTicks++
+        frustration = Math.min(1, frustration + DRIVES.FRUSTRATION_GROWTH * consecutiveBlockedTicks)
+      } else {
+        frustration = frustration * DRIVES.FRUSTRATION_DECAY
+      }
 
-    if (blocked.has(drive)) {
-      consecutiveBlockedTicks++
-      frustration = Math.min(1, frustration + DRIVES.FRUSTRATION_GROWTH * consecutiveBlockedTicks)
-    } else {
-      frustration = frustration * DRIVES.FRUSTRATION_DECAY
-    }
+      const salience = computeSalience(satiation, frustration)
 
-    const salience = computeSalience(satiation, frustration)
-
-    updated[drive] = {
-      satiation,
-      frustration: Math.min(1, frustration),
-      salience,
-      lastSatisfiedAt,
-      consecutiveBlockedTicks
-    }
-  }
+      return [
+        drive,
+        {
+          satiation,
+          frustration: Math.min(1, frustration),
+          salience,
+          lastSatisfiedAt,
+          consecutiveBlockedTicks
+        }
+      ]
+    })
+  ) as Record<DriveType, DriveLevel>
 
   const salienceEntries = DRIVE_NAMES.map((d) => ({
     drive: d,
@@ -71,16 +74,12 @@ export function computeDriveUpdate(context: DriveUpdateContext): DriveState {
   const dominantDrive =
     salienceEntries[0] && salienceEntries[0].salience > DRIVES.SALIENCE_THRESHOLD ? salienceEntries[0].drive : null
 
-  const conflicting: [DriveType, DriveType][] = []
-  for (let i = 0; i < salienceEntries.length; i++) {
-    for (let j = i + 1; j < salienceEntries.length; j++) {
-      const a = salienceEntries[i]
-      const b = salienceEntries[j]
-      if (a && b && a.salience > DRIVES.CONFLICT_THRESHOLD && b.salience > DRIVES.CONFLICT_THRESHOLD) {
-        conflicting.push([a.drive, b.drive])
-      }
-    }
-  }
+  const conflicting: [DriveType, DriveType][] = salienceEntries.flatMap((a, i) =>
+    salienceEntries
+      .slice(i + 1)
+      .filter((b) => a.salience > DRIVES.CONFLICT_THRESHOLD && b.salience > DRIVES.CONFLICT_THRESHOLD)
+      .map((b) => [a.drive, b.drive] as [DriveType, DriveType])
+  )
 
   return {
     curiosity: updated.curiosity,
@@ -97,18 +96,13 @@ export function computeDriveUpdate(context: DriveUpdateContext): DriveState {
  * Generate emotion triggers from frustrated drives.
  */
 export function computeDriveEmotionTriggers(state: DriveState): EmotionUpdateEvent[] {
-  const triggers: EmotionUpdateEvent[] = []
-
-  for (const drive of DRIVE_NAMES) {
-    const level = state[drive]
-    if (level.frustration >= DRIVES.EMOTION_TRIGGER_FRUSTRATION) {
-      triggers.push({
-        trigger: "drive_frustrated",
-        intensity: level.frustration * DRIVES.FRUSTRATION_EMOTION_INTENSITY,
-        detail: `${drive} drive frustrated (${level.frustration.toFixed(2)})`
-      })
-    }
-  }
+  const triggers: EmotionUpdateEvent[] = DRIVE_NAMES.filter(
+    (drive) => state[drive].frustration >= DRIVES.EMOTION_TRIGGER_FRUSTRATION
+  ).map((drive) => ({
+    trigger: "drive_frustrated" as const,
+    intensity: state[drive].frustration * DRIVES.FRUSTRATION_EMOTION_INTENSITY,
+    detail: `${drive} drive frustrated (${state[drive].frustration.toFixed(2)})`
+  }))
 
   if (state.conflicting.length > 0) {
     triggers.push({
@@ -127,7 +121,8 @@ export function computeDriveEmotionTriggers(state: DriveState): EmotionUpdateEve
 export function inferSatisfiedDrives(
   inConversation: boolean,
   pendingMessageCount: number,
-  action: string
+  action: string,
+  recentActions: string[] = []
 ): Set<DriveType> {
   const satisfied = new Set<DriveType>()
 
@@ -149,6 +144,23 @@ export function inferSatisfiedDrives(
     satisfied.add("expression")
   }
 
+  if (action === "create") {
+    satisfied.add("expression")
+  }
+
+  if (action === "check_email" || (action === "social_media" && recentActions.includes("social_media"))) {
+    satisfied.add("curiosity")
+  }
+
+  if (action === "morning") {
+    satisfied.add("connection")
+  }
+
+  const hasEmotionalSharing = inConversation && recentActions.some((a) => a === "reflect" || a === "store_knowledge")
+  if (hasEmotionalSharing) {
+    satisfied.add("expression")
+  }
+
   return satisfied
 }
 
@@ -158,7 +170,8 @@ export function inferSatisfiedDrives(
 export function inferBlockedDrives(
   operatorSilenceMinutes: number,
   consecutiveIdleTicks: number,
-  isDreaming: boolean
+  isDreaming: boolean,
+  recentActions: string[] = []
 ): Set<DriveType> {
   const blocked = new Set<DriveType>()
 
@@ -166,9 +179,23 @@ export function inferBlockedDrives(
     blocked.add("connection")
   }
 
-  if (consecutiveIdleTicks > DRIVES.EXPRESSION_BLOCKED_IDLE_TICKS) {
+  if (consecutiveIdleTicks > 10 && !recentActions.some((a) => a === "social_media" || a === "check_email")) {
+    blocked.add("connection")
+  }
+
+  if (consecutiveIdleTicks > DRIVES.CURIOSITY_BLOCKED_IDLE_TICKS) {
     blocked.add("curiosity")
+  }
+
+  if (
+    consecutiveIdleTicks > DRIVES.EXPRESSION_BLOCKED_IDLE_TICKS &&
+    !recentActions.some((a) => a === "create" || a === "social_media")
+  ) {
     blocked.add("expression")
+  }
+
+  if (recentActions.length > 0 && recentActions.every((a) => a === "idle")) {
+    blocked.add("autonomy")
   }
 
   if (isDreaming) {

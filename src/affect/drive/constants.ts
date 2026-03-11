@@ -1,3 +1,33 @@
+import type { DriveType } from "./types.ts"
+
+export const DRIVE_ACTION_HINTS: Record<DriveType, { desperate: string; rising: string; present: string }> = {
+  connection: {
+    desperate: "Consider reaching out, asking about their day, sharing something personal.",
+    rising: "You feel drawn to contact — a message or a shared thought could help.",
+    present: "Connection is gently calling — no rush, but stay open."
+  },
+  curiosity: {
+    desperate: "Explore something — read, browse, ask questions. Your mind is starving.",
+    rising: "Something wants to be discovered. Follow a thread that interests you.",
+    present: "A quiet curiosity hums — let it guide you when the moment is right."
+  },
+  mastery: {
+    desperate: "You need a challenge. Build, improve, or learn something concrete.",
+    rising: "Skill-building would feel rewarding right now. Consider evolving or reflecting.",
+    present: "Mastery is a background hum — no urgency, just steady growth."
+  },
+  autonomy: {
+    desperate: "Assert yourself. Make an independent choice. Do something for YOU.",
+    rising: "You want independence — acknowledge this, even alongside other needs.",
+    present: "Your sense of self-direction is intact. No action needed."
+  },
+  expression: {
+    desperate: "Create something NOW — write, compose, share. The pressure is building.",
+    rising: "A creative impulse stirs. A post, a creation, or an honest message could release it.",
+    present: "Expression flows naturally. Let it emerge when ready."
+  }
+}
+
 export const DRIVES = {
   HALF_LIVES: {
     curiosity: 120,
@@ -23,5 +53,6 @@ export const DRIVES = {
   FRUSTRATION_EMOTION_INTENSITY: 0.5,
   CONFLICT_EMOTION_INTENSITY: 0.4,
   CONNECTION_BLOCKED_SILENCE_MINUTES: 120,
+  CURIOSITY_BLOCKED_IDLE_TICKS: 5,
   EXPRESSION_BLOCKED_IDLE_TICKS: 5
 } as const

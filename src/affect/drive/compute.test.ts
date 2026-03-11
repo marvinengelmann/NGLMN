@@ -145,6 +145,26 @@ describe("inferSatisfiedDrives", () => {
     expect(satisfied.has("curiosity")).toBe(true)
     expect(satisfied.has("mastery")).toBe(true)
   })
+
+  it("should satisfy expression for create action", () => {
+    const satisfied = inferSatisfiedDrives(false, 0, "create")
+    expect(satisfied.has("expression")).toBe(true)
+  })
+
+  it("should satisfy curiosity for check_email action", () => {
+    const satisfied = inferSatisfiedDrives(false, 0, "check_email")
+    expect(satisfied.has("curiosity")).toBe(true)
+  })
+
+  it("should satisfy connection for morning action", () => {
+    const satisfied = inferSatisfiedDrives(false, 0, "morning")
+    expect(satisfied.has("connection")).toBe(true)
+  })
+
+  it("should satisfy expression when sharing emotions in conversation", () => {
+    const satisfied = inferSatisfiedDrives(true, 1, "idle", ["reflect", "idle"])
+    expect(satisfied.has("expression")).toBe(true)
+  })
 })
 
 describe("inferBlockedDrives", () => {
@@ -153,9 +173,33 @@ describe("inferBlockedDrives", () => {
     expect(blocked.has("connection")).toBe(true)
   })
 
-  it("should block curiosity and expression during long idle", () => {
+  it("should block curiosity during long idle", () => {
     const blocked = inferBlockedDrives(0, 8, false)
     expect(blocked.has("curiosity")).toBe(true)
+  })
+
+  it("should block expression during long idle without creative actions", () => {
+    const blocked = inferBlockedDrives(0, 8, false, ["idle", "idle"])
     expect(blocked.has("expression")).toBe(true)
+  })
+
+  it("should not block expression if recent create action exists", () => {
+    const blocked = inferBlockedDrives(0, 8, false, ["create", "idle"])
+    expect(blocked.has("expression")).toBe(false)
+  })
+
+  it("should block connection when idle > 10 ticks without social activity", () => {
+    const blocked = inferBlockedDrives(60, 12, false, ["idle", "idle"])
+    expect(blocked.has("connection")).toBe(true)
+  })
+
+  it("should block autonomy when all recent actions are idle", () => {
+    const blocked = inferBlockedDrives(0, 0, false, ["idle", "idle", "idle"])
+    expect(blocked.has("autonomy")).toBe(true)
+  })
+
+  it("should not block autonomy when recent actions include non-idle", () => {
+    const blocked = inferBlockedDrives(0, 0, false, ["idle", "reflect", "idle"])
+    expect(blocked.has("autonomy")).toBe(false)
   })
 })
