@@ -442,6 +442,7 @@ export const genesis = pgTable("genesis", {
   seed: text("seed").notNull(),
   dna: jsonb("dna").notNull(),
   identity: jsonb("identity").notNull(),
+  voiceId: text("voice_id"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow()
 })
 

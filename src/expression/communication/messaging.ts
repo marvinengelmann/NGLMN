@@ -25,6 +25,7 @@ import { convertMp3ToOggOpus } from "@/infra/lib/audio.ts"
 import { log } from "@/infra/lib/logger.ts"
 import { captureError } from "@/infra/lib/sentry.ts"
 import { nowISO, sleep } from "@/infra/lib/time.ts"
+import { getGenesisVoiceId } from "@/self/genesis/state.ts"
 import { MESSAGE_DELAY, TYPOS } from "./constants.ts"
 import { getCommunicationRegister } from "./state.ts"
 
@@ -84,7 +85,8 @@ export async function sendMessages(decision: AnimaDecision, context?: MessagingC
     } else if (message.asVoice && message.voiceText) {
       try {
         await sendRecordVoiceAction()
-        const mp3Buffer = await textToSpeech(message.voiceText)
+        const voiceId = await getGenesisVoiceId()
+        const mp3Buffer = await textToSpeech(message.voiceText, voiceId)
         const oggBuffer = await convertMp3ToOggOpus(mp3Buffer)
         const sentId = await sendVoiceToOperator(oggBuffer, message.replyTo)
 

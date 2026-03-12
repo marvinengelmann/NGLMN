@@ -73,6 +73,14 @@ export async function getGenesisDNA(): Promise<GenesisDNA | null> {
 }
 
 /**
+ * Get the genesis voice ID for TTS, or undefined if no custom voice was designed.
+ */
+export async function getGenesisVoiceId(): Promise<string | undefined> {
+  const record = await getGenesisRecord()
+  return record?.identity.voiceId
+}
+
+/**
  * Cache a genesis record after creation.
  */
 export function cacheGenesisRecord(record: GenesisRecord): void {

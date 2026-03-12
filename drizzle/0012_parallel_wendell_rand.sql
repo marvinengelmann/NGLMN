@@ -1,0 +1,1 @@
+ALTER TABLE "genesis" ADD COLUMN "voice_id" text;

@@ -1,12 +1,15 @@
 import { callIntelligence } from "@/core/intelligence.ts"
+import { buildVoiceDescription, selectBestPreview } from "@/expression/voice/design.ts"
 import { env } from "@/infra/config/env.ts"
 import { db } from "@/infra/db/client.ts"
 import { genesis } from "@/infra/db/schema.ts"
+import { designVoice, saveVoice } from "@/infra/integrations/elevenlabs.ts"
 import { redis } from "@/infra/integrations/redis.ts"
 import { log } from "@/infra/lib/logger.ts"
+import { captureError } from "@/infra/lib/sentry.ts"
 import { PERSONALITY_PROMPTS, PERSONALITY_SECTION_INTRO } from "@/self/personality/profiles.ts"
 import { addNarrativeEntry } from "@/self/psyche/state.ts"
-import { generateDNA, generateSeed } from "./seed.ts"
+import { decodeSeed, generateDNA, generateSeed } from "./seed.ts"
 import { cacheGenesisRecord, GENESIS_REDIS_KEY, getGenesisRecord } from "./state.ts"
 import { type GenesisDNA, GenesisIdentity, type GenesisRecord } from "./types.ts"
 
@@ -27,6 +30,11 @@ export async function runGenesis(): Promise<GenesisRecord> {
   const dna = generateDNA(seed)
   const identity = await generateIdentity(dna)
 
+  const voiceId = await designAndSaveVoice(dna, identity.chosenName, seed)
+  if (voiceId) {
+    identity.voiceId = voiceId
+  }
+
   const record: GenesisRecord = {
     seed,
     dna,
@@ -37,7 +45,8 @@ export async function runGenesis(): Promise<GenesisRecord> {
   await db.insert(genesis).values({
     seed,
     dna,
-    identity
+    identity,
+    voiceId
   })
   await redis.set(GENESIS_REDIS_KEY, record)
   cacheGenesisRecord(record)
@@ -87,4 +96,31 @@ This is your genesis moment. Choose your name, describe your appearance, and wri
   }
 
   return result.value
+}
+
+async function designAndSaveVoice(dna: GenesisDNA, name: string, seed: string): Promise<string | undefined> {
+  try {
+    const description = buildVoiceDescription(dna)
+    const numericSeed = decodeSeed(seed)
+
+    log.info("🎙️ Designing voice", { description: description.slice(0, 100) })
+
+    const previews = await designVoice(description, numericSeed)
+    if (previews.length === 0) {
+      log.warn("Voice design returned no previews")
+      return undefined
+    }
+
+    const selectedId = selectBestPreview(previews)
+    const voiceId = await saveVoice(name, description, selectedId)
+
+    log.info("🎙️ Voice designed and saved", { voiceId })
+    return voiceId
+  } catch (error) {
+    captureError(error, { phase: "voice_design" })
+    log.warn("Voice design failed, falling back to ENV voice", {
+      error: error instanceof Error ? error.message : String(error)
+    })
+    return undefined
+  }
 }

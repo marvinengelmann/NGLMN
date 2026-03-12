@@ -1,4 +1,5 @@
 import { ElevenLabsClient } from "elevenlabs"
+import type { VoicePreviewResponseModel } from "elevenlabs/api"
 import { env } from "@/infra/config/env.ts"
 
 let client: ElevenLabsClient | null = null
@@ -13,10 +14,13 @@ function getClient(): ElevenLabsClient {
 /**
  * Convert text (with optional audio tags) to speech audio via ElevenLabs v3 TTS.
  * @param voiceText - Text with audio tags like [sighs], [laughs], etc.
+ * @param voiceId - Optional voice ID override (falls back to ELEVENLABS_VOICE_ID env var).
  * @returns MP3 audio buffer.
  */
-export async function textToSpeech(voiceText: string): Promise<Buffer> {
-  const stream = await getClient().textToSpeech.convert(env().ELEVENLABS_VOICE_ID, {
+export async function textToSpeech(voiceText: string, voiceId?: string): Promise<Buffer> {
+  const resolvedVoiceId = voiceId ?? env().ELEVENLABS_VOICE_ID
+
+  const stream = await getClient().textToSpeech.convert(resolvedVoiceId, {
     text: voiceText,
     model_id: "eleven_v3",
     output_format: "mp3_44100_128",
@@ -33,6 +37,37 @@ export async function textToSpeech(voiceText: string): Promise<Buffer> {
     chunks.push(chunk)
   }
   return Buffer.concat(chunks)
+}
+
+/**
+ * Design a voice from a text description, returning preview candidates.
+ * @param description - Natural language voice description for ElevenLabs.
+ * @param seed - Numeric seed for deterministic voice generation.
+ * @returns Array of voice previews with generated_voice_id and audio.
+ */
+export async function designVoice(description: string, seed: number): Promise<VoicePreviewResponseModel[]> {
+  const response = await getClient().textToVoice.createPreviews({
+    voice_description: description,
+    auto_generate_text: true,
+    seed
+  })
+  return response.previews
+}
+
+/**
+ * Save a designed voice preview as a permanent voice in the ElevenLabs library.
+ * @param name - Display name for the saved voice.
+ * @param description - Voice description metadata.
+ * @param generatedVoiceId - The generated_voice_id from a design preview.
+ * @returns The permanent voice_id string.
+ */
+export async function saveVoice(name: string, description: string, generatedVoiceId: string): Promise<string> {
+  const voice = await getClient().textToVoice.createVoiceFromPreview({
+    voice_name: name,
+    voice_description: description,
+    generated_voice_id: generatedVoiceId
+  })
+  return voice.voice_id
 }
 
 /**

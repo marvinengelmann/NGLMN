@@ -70,7 +70,8 @@ export type GenesisDNA = z.infer<typeof GenesisDNA>
 export const GenesisIdentity = z.object({
   chosenName: z.string(),
   appearanceDescription: z.string(),
-  birthNarrative: z.string()
+  birthNarrative: z.string(),
+  voiceId: z.string().optional()
 })
 export type GenesisIdentity = z.infer<typeof GenesisIdentity>
 
