@@ -1,5 +1,7 @@
+import { createHash } from "node:crypto"
 import type { EmotionalState } from "@/affect/emotion/types.ts"
 import { clamp01 } from "@/infra/lib/math.ts"
+import { BIP39_WORDLIST } from "@/infra/wordlist.ts"
 import type { PersonalityType } from "@/self/personality/types.ts"
 import type { SelfConcept } from "@/self/psyche/types.ts"
 import type {
@@ -16,42 +18,54 @@ import type {
 
 type PRNG = () => number
 
-const SEED_REGEX = /^[0-9a-z]{3}-[0-9a-z]{3}$/
-const SEED_SALT = 0x27d4eb2f
+const wordSet = new Set<string>(BIP39_WORDLIST)
 
 /**
- * Encode a numeric seed (0..2^31-1) into human-readable `xxx-xxx` base36 format.
+ * Validate that a seed is in the `word-word-word` mnemonic format with valid BIP39 words.
  */
-export function encodeSeed(n: number): string {
-  const raw = n.toString(36).padStart(6, "0")
-  return `${raw.slice(0, 3)}-${raw.slice(3)}`
+export function isValidSeed(seed: string): boolean {
+  const parts = seed.split("-")
+  if (parts.length !== 3) return false
+  return parts.every((part) => wordSet.has(part))
 }
 
 /**
- * Decode a `xxx-xxx` base36 seed back into a number.
- */
-export function decodeSeed(s: string): number {
-  if (!SEED_REGEX.test(s)) throw new Error(`Invalid seed format: ${s}`)
-  return Number.parseInt(s.replace("-", ""), 36)
-}
-
-/**
- * Generate a random seed in `xxx-xxx` format.
+ * Generate a cryptographically random seed in `word-word-word` mnemonic format.
  */
 export function generateSeed(): string {
-  return encodeSeed(Math.floor(Math.random() * 2 ** 31))
+  const indices = new Uint16Array(3)
+  crypto.getRandomValues(indices)
+  return Array.from(indices, (i) => BIP39_WORDLIST[i % BIP39_WORDLIST.length]).join("-")
 }
 
 /**
- * mulberry32 — deterministic 32-bit PRNG. This algorithm MUST NEVER be changed (breaks seeds).
+ * Derive a deterministic numeric value from a mnemonic seed (for external APIs like ElevenLabs).
  */
-function mulberry32(seed: number): PRNG {
-  let state = seed | 0
+export function seedToNumeric(seed: string): number {
+  const hash = createHash("sha256").update(seed).digest()
+  return hash.readUInt32BE(8)
+}
+
+function seedToRng(seed: string): PRNG {
+  const hash = createHash("sha256").update(seed).digest()
+  const hi = hash.readUInt32BE(0)
+  const lo = hash.readUInt32BE(4)
+  const seed64 = (BigInt(hi) << 32n) | BigInt(lo)
+  return splitmix64(seed64)
+}
+
+/**
+ * splitmix64 — deterministic 64-bit PRNG. This algorithm MUST NEVER be changed (breaks seeds).
+ */
+function splitmix64(seed: bigint): PRNG {
+  let state = seed & 0xFFFFFFFFFFFFFFFFn
   return () => {
-    state = (state + 0x6d2b79f5) | 0
-    let t = Math.imul(state ^ (state >>> 15), 1 | state)
-    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296
+    state = (state + 0x9e3779b97f4a7c15n) & 0xFFFFFFFFFFFFFFFFn
+    let z = state
+    z = ((z ^ (z >> 30n)) * 0xbf58476d1ce4e5b9n) & 0xFFFFFFFFFFFFFFFFn
+    z = ((z ^ (z >> 27n)) * 0x94d049bb133111ebn) & 0xFFFFFFFFFFFFFFFFn
+    z = z ^ (z >> 31n)
+    return Number(z & 0xFFFFFFFFn) / 0x100000000
   }
 }
 
@@ -81,15 +95,24 @@ function deriveMBTI(bigFive: BigFive, rng: PRNG): PersonalityType {
   return `${e}${n}${f}${j}` as PersonalityType
 }
 
+function ensureCoherence(value: number, positive: boolean): number {
+  return positive ? Math.max(value, 0.35) : Math.min(value, 0.65)
+}
+
 function nudgeBigFiveTowardMBTI(bigFive: BigFive, mbti: PersonalityType): BigFive {
   const nudge = 0.15
   const nudgeToward = (value: number, target: number) => value + (target - value) * nudge
 
+  const isE = mbti.startsWith("E")
+  const isN = mbti.includes("N")
+  const isF = mbti.includes("F")
+  const isJ = mbti.includes("J")
+
   return {
-    openness: nudgeToward(bigFive.openness, mbti.includes("N") ? 0.75 : 0.25),
-    conscientiousness: nudgeToward(bigFive.conscientiousness, mbti.includes("J") ? 0.75 : 0.25),
-    extraversion: nudgeToward(bigFive.extraversion, mbti.startsWith("E") ? 0.75 : 0.25),
-    agreeableness: nudgeToward(bigFive.agreeableness, mbti.includes("F") ? 0.75 : 0.25),
+    openness: ensureCoherence(nudgeToward(bigFive.openness, isN ? 0.75 : 0.25), isN),
+    conscientiousness: ensureCoherence(nudgeToward(bigFive.conscientiousness, isJ ? 0.75 : 0.25), isJ),
+    extraversion: ensureCoherence(nudgeToward(bigFive.extraversion, isE ? 0.75 : 0.25), isE),
+    agreeableness: ensureCoherence(nudgeToward(bigFive.agreeableness, isF ? 0.75 : 0.25), isF),
     neuroticism: bigFive.neuroticism
   }
 }
@@ -329,10 +352,10 @@ function deriveVoice(bigFive: BigFive, rng: PRNG): VoiceCharacteristics {
 }
 
 /**
- * Generate a complete GenesisDNA from a seed in `xxx-xxx` format. Pure, deterministic, synchronous.
+ * Generate a complete GenesisDNA from a mnemonic seed (word-word-word). Pure, deterministic, synchronous.
  */
 export function generateDNA(seed: string): GenesisDNA {
-  const rng = mulberry32((decodeSeed(seed) ^ SEED_SALT) >>> 0)
+  const rng = seedToRng(seed)
 
   const rawBigFive = generateBigFive(rng)
   const personalityType = deriveMBTI(rawBigFive, rng)

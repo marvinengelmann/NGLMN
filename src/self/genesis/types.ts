@@ -54,7 +54,7 @@ export const VoiceCharacteristics = z.object({
 export type VoiceCharacteristics = z.infer<typeof VoiceCharacteristics>
 
 export const GenesisDNA = z.object({
-  seed: z.string().regex(/^[0-9a-z]{3}-[0-9a-z]{3}$/),
+  seed: z.string(),
   personalityType: PersonalityType,
   bigFive: BigFive,
   emotionalBaseline: EmotionalState,
@@ -76,7 +76,7 @@ export const GenesisIdentity = z.object({
 export type GenesisIdentity = z.infer<typeof GenesisIdentity>
 
 export const GenesisRecord = z.object({
-  seed: z.string().regex(/^[0-9a-z]{3}-[0-9a-z]{3}$/),
+  seed: z.string(),
   dna: GenesisDNA,
   identity: GenesisIdentity,
   createdAt: z.string()

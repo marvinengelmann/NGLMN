@@ -1,76 +1,88 @@
 import { describe, expect, it } from "vitest"
-import { decodeSeed, encodeSeed, generateDNA, generateSeed } from "./seed.ts"
+import { generateDNA, generateSeed, isValidSeed, seedToNumeric } from "./seed.ts"
 import { GenesisDNA } from "./types.ts"
 
-describe("encodeSeed / decodeSeed", () => {
-  it("roundtrips for 0", () => {
-    expect(encodeSeed(0)).toBe("000-000")
-    expect(decodeSeed("000-000")).toBe(0)
+describe("isValidSeed", () => {
+  it("accepts valid 3-word BIP39 seeds", () => {
+    expect(isValidSeed("abandon-ability-able")).toBe(true)
+    expect(isValidSeed("zoo-zebra-zero")).toBe(true)
+    expect(isValidSeed("crystal-dawn-flame")).toBe(true)
   })
 
-  it("roundtrips for max value (2^31 - 1)", () => {
-    const max = 2 ** 31 - 1
-    const encoded = encodeSeed(max)
-    expect(encoded).toMatch(/^[0-9a-z]{3}-[0-9a-z]{3}$/)
-    expect(decodeSeed(encoded)).toBe(max)
+  it("rejects seeds with wrong word count", () => {
+    expect(isValidSeed("abandon-ability")).toBe(false)
+    expect(isValidSeed("abandon")).toBe(false)
+    expect(isValidSeed("abandon-ability-able-about")).toBe(false)
   })
 
-  it("roundtrips for many values", () => {
-    const values = [0, 1, 42, 1000, 999999, 2 ** 31 - 1]
-    values.forEach((n) => {
-      expect(decodeSeed(encodeSeed(n))).toBe(n)
-    })
+  it("rejects seeds with invalid BIP39 words", () => {
+    expect(isValidSeed("hello-world-foo")).toBe(false)
+    expect(isValidSeed("abandon-ability-notaword")).toBe(false)
   })
 
-  it("produces correct format", () => {
-    expect(encodeSeed(42)).toMatch(/^[0-9a-z]{3}-[0-9a-z]{3}$/)
+  it("rejects empty and malformed strings", () => {
+    expect(isValidSeed("")).toBe(false)
+    expect(isValidSeed("--")).toBe(false)
+    expect(isValidSeed("abc-def-ghi")).toBe(false)
   })
 
-  it("throws on invalid format", () => {
-    expect(() => decodeSeed("abc")).toThrow("Invalid seed format")
-    expect(() => decodeSeed("ABC-DEF")).toThrow("Invalid seed format")
-    expect(() => decodeSeed("0000-00")).toThrow("Invalid seed format")
+  it("rejects uppercase words", () => {
+    expect(isValidSeed("Abandon-Ability-Able")).toBe(false)
   })
 })
 
 describe("generateSeed", () => {
-  it("produces valid format", () => {
-    const seed = generateSeed()
-    expect(seed).toMatch(/^[0-9a-z]{3}-[0-9a-z]{3}$/)
+  it("produces valid mnemonic seeds", () => {
+    for (let i = 0; i < 20; i++) {
+      expect(isValidSeed(generateSeed())).toBe(true)
+    }
   })
 
   it("produces different seeds on consecutive calls", () => {
-    const seeds = new Set(Array.from({ length: 10 }, () => generateSeed()))
+    const seeds = new Set(Array.from({ length: 20 }, () => generateSeed()))
     expect(seeds.size).toBeGreaterThan(1)
+  })
+
+  it("produces seeds in word-word-word format", () => {
+    const seed = generateSeed()
+    const parts = seed.split("-")
+    expect(parts).toHaveLength(3)
+    expect(parts.every((p) => p.length > 0)).toBe(true)
+  })
+})
+
+describe("seedToNumeric", () => {
+  it("returns the same number for the same seed", () => {
+    expect(seedToNumeric("abandon-ability-able")).toBe(seedToNumeric("abandon-ability-able"))
+  })
+
+  it("returns different numbers for different seeds", () => {
+    expect(seedToNumeric("abandon-ability-able")).not.toBe(seedToNumeric("zoo-zebra-zero"))
   })
 })
 
 describe("generateDNA", () => {
-  it("seed 000-000 produces INFP", () => {
-    const dna = generateDNA("000-000")
-    expect(dna.personalityType).toBe("INFP")
-  })
-
   it("produces identical DNA for the same seed", () => {
-    const dna1 = generateDNA("000-016")
-    const dna2 = generateDNA("000-016")
+    const dna1 = generateDNA("crystal-dawn-flame")
+    const dna2 = generateDNA("crystal-dawn-flame")
     expect(dna1).toEqual(dna2)
   })
 
   it("produces different DNA for different seeds", () => {
-    const dna1 = generateDNA("000-016")
-    const dna2 = generateDNA("000-017")
+    const dna1 = generateDNA("crystal-dawn-flame")
+    const dna2 = generateDNA("abandon-ability-able")
     expect(dna1.bigFive).not.toEqual(dna2.bigFive)
   })
 
   it("validates against the GenesisDNA schema", () => {
-    const dna = generateDNA("q3r-abc")
+    const dna = generateDNA("crystal-dawn-flame")
     const result = GenesisDNA.safeParse(dna)
     expect(result.success).toBe(true)
   })
 
   it("keeps Big Five values in [0, 1]", () => {
-    ;["000-000", "000-001", "000-002", "abc-def", "zzz-zzz"].forEach((seed) => {
+    const seeds = ["abandon-ability-able", "zoo-zebra-zero", "crystal-dawn-flame", "frozen-tide-raven"]
+    seeds.forEach((seed) => {
       const dna = generateDNA(seed)
       Object.values(dna.bigFive).forEach((value) => {
         expect(value).toBeGreaterThanOrEqual(0)
@@ -80,7 +92,8 @@ describe("generateDNA", () => {
   })
 
   it("keeps emotional baseline values in [0, 1]", () => {
-    ;["000-000", "000-001", "abc-def"].forEach((seed) => {
+    const seeds = ["abandon-ability-able", "zoo-zebra-zero", "crystal-dawn-flame"]
+    seeds.forEach((seed) => {
       const dna = generateDNA(seed)
       Object.values(dna.emotionalBaseline).forEach((value) => {
         expect(value).toBeGreaterThanOrEqual(0)
@@ -90,7 +103,8 @@ describe("generateDNA", () => {
   })
 
   it("keeps self concept values in [0, 1]", () => {
-    ;["000-000", "000-001", "abc-def"].forEach((seed) => {
+    const seeds = ["abandon-ability-able", "zoo-zebra-zero", "crystal-dawn-flame"]
+    seeds.forEach((seed) => {
       const dna = generateDNA(seed)
       Object.values(dna.initialSelfConcept).forEach((value) => {
         expect(value).toBeGreaterThanOrEqual(0)
@@ -100,12 +114,13 @@ describe("generateDNA", () => {
   })
 
   it("produces 7 values in the hierarchy", () => {
-    const dna = generateDNA("000-016")
+    const dna = generateDNA("crystal-dawn-flame")
     expect(dna.valueHierarchy).toHaveLength(7)
   })
 
   it("produces 5-8 interest seeds", () => {
-    ;["000-000", "000-001", "000-016", "abc-def", "zzz-zzz"].forEach((seed) => {
+    const seeds = ["abandon-ability-able", "zoo-zebra-zero", "crystal-dawn-flame", "frozen-tide-raven"]
+    seeds.forEach((seed) => {
       const dna = generateDNA(seed)
       expect(dna.interestSeeds.length).toBeGreaterThanOrEqual(5)
       expect(dna.interestSeeds.length).toBeLessThanOrEqual(8)
@@ -114,40 +129,32 @@ describe("generateDNA", () => {
 
   it("produces a valid MBTI type", () => {
     const validTypes = [
-      "INTJ",
-      "INTP",
-      "ENTJ",
-      "ENTP",
-      "INFJ",
-      "INFP",
-      "ENFJ",
-      "ENFP",
-      "ISTJ",
-      "ISFJ",
-      "ESTJ",
-      "ESFJ",
-      "ISTP",
-      "ISFP",
-      "ESTP",
-      "ESFP"
+      "INTJ", "INTP", "ENTJ", "ENTP",
+      "INFJ", "INFP", "ENFJ", "ENFP",
+      "ISTJ", "ISFJ", "ESTJ", "ESFJ",
+      "ISTP", "ISFP", "ESTP", "ESFP"
     ]
-    ;["000-000", "000-001", "000-016", "abc-def", "zzz-zzz", "123-456"].forEach((seed) => {
+    const seeds = ["abandon-ability-able", "zoo-zebra-zero", "crystal-dawn-flame", "frozen-tide-raven", "alpha-brisk-coral"]
+    seeds.forEach((seed) => {
       const dna = generateDNA(seed)
       expect(validTypes).toContain(dna.personalityType)
     })
   })
 
   it("is deterministic across many seeds", () => {
-    Array.from({ length: 50 }).forEach((_, i) => {
-      const seed = encodeSeed(i)
-      const a = generateDNA(seed)
-      const b = generateDNA(seed)
-      expect(a).toEqual(b)
+    const baseSeed = "abandon-ability-able"
+    const a = generateDNA(baseSeed)
+    const b = generateDNA(baseSeed)
+    expect(a).toEqual(b)
+
+    const otherSeeds = ["zoo-zebra-zero", "crystal-dawn-flame", "frozen-tide-raven"]
+    otherSeeds.forEach((seed) => {
+      expect(generateDNA(seed)).toEqual(generateDNA(seed))
     })
   })
 
   it("keeps communication style values in [0, 1]", () => {
-    const dna = generateDNA("000-016")
+    const dna = generateDNA("crystal-dawn-flame")
     expect(dna.communicationStyle.verbosity).toBeGreaterThanOrEqual(0)
     expect(dna.communicationStyle.verbosity).toBeLessThanOrEqual(1)
     expect(dna.communicationStyle.formality).toBeGreaterThanOrEqual(0)
@@ -159,7 +166,7 @@ describe("generateDNA", () => {
   })
 
   it("produces valid voice characteristics", () => {
-    const dna = generateDNA("000-016")
+    const dna = generateDNA("crystal-dawn-flame")
     expect(["very_low", "low", "medium", "high", "very_high"]).toContain(dna.voiceCharacteristics.pitch)
     expect(["very_slow", "slow", "medium", "fast", "very_fast"]).toContain(dna.voiceCharacteristics.pace)
     expect(["hollow", "thin", "balanced", "rich", "deep"]).toContain(dna.voiceCharacteristics.resonance)

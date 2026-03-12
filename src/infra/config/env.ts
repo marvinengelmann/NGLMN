@@ -54,10 +54,7 @@ const EnvSchema = z.object({
   UPSTASH_VECTOR_HABITUATION_URL: z.string().optional(),
   UPSTASH_VECTOR_HABITUATION_TOKEN: z.string().optional(),
 
-  GENESIS_SEED: z
-    .string()
-    .regex(/^[0-9a-z]{3}-[0-9a-z]{3}$/)
-    .optional()
+  GENESIS_SEED: z.string().optional()
 })
 
 type EnvKey = keyof z.infer<typeof EnvSchema>
