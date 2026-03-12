@@ -1,4 +1,9 @@
-import { describe, expect, it } from "vitest"
+import { describe, expect, it, vi } from "vitest"
+
+vi.mock("@/infra/integrations/vector.ts", () => ({
+  vectorIndex: {}
+}))
+
 import { makeEmotionalState } from "@/test/factories.ts"
 import { computeNoveltyEffect, computeNoveltyLevel, computeSurprise, updateNoveltyState } from "./compute.ts"
 import { DEFAULT_NOVELTY_STATE, DEFAULT_SURPRISE_STATE, type SurpriseState } from "./types.ts"

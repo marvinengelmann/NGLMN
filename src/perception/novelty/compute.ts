@@ -130,13 +130,11 @@ export async function updateNoveltyState(
     if (useSemanticNovelty) {
       try {
         const result = await computeSemanticNovelty(text)
-        if (result) {
-          if (result.level > maxNovelty) {
-            maxNovelty = result.level
-            source = text.slice(0, NOVELTY.SOURCE_PREVIEW_LENGTH)
-          }
-          return
+        if (result.level > maxNovelty) {
+          maxNovelty = result.level
+          source = text.slice(0, NOVELTY.SOURCE_PREVIEW_LENGTH)
         }
+        return
       } catch (e) {
         log.warn("Semantic novelty failed, falling back to string-based", { error: String(e) })
       }

@@ -35,8 +35,6 @@ const EnvSchema = z.object({
   ELEVENLABS_API_KEY: z.string().optional(),
   ELEVENLABS_VOICE_ID: z.string().default("9GYSBtwJVgyLbYO5E3Ld"),
 
-  XAI_API_KEY: z.string().optional(),
-
   X_API_KEY: z.string().optional(),
   X_API_SECRET: z.string().optional(),
   X_ACCESS_TOKEN: z.string().optional(),
@@ -50,9 +48,6 @@ const EnvSchema = z.object({
   CALDAV_SERVER_URL: z.string().optional(),
   CALDAV_USER: z.string().optional(),
   CALDAV_PASS: z.string().optional(),
-
-  UPSTASH_VECTOR_HABITUATION_URL: z.string().optional(),
-  UPSTASH_VECTOR_HABITUATION_TOKEN: z.string().optional(),
 
   GENESIS_SEED: z.string().optional(),
   GENESIS_NAME: z.string().optional(),

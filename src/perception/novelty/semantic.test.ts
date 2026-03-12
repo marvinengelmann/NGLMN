@@ -1,20 +1,22 @@
 import { afterEach, describe, expect, it, vi } from "vitest"
 import { computeSemanticNovelty } from "./semantic.ts"
 
-const mockQuery = vi.fn()
-const mockUpsert = vi.fn()
-const mockInfo = vi.fn()
-const mockDelete = vi.fn()
-const mockRange = vi.fn()
+const { mockQuery, mockUpsert, mockInfo, mockDelete, mockRange } = vi.hoisted(() => ({
+  mockQuery: vi.fn(),
+  mockUpsert: vi.fn(),
+  mockInfo: vi.fn(),
+  mockDelete: vi.fn(),
+  mockRange: vi.fn()
+}))
 
-vi.mock("./vector.ts", () => ({
-  getHabituationIndex: () => ({
+vi.mock("@/infra/integrations/vector.ts", () => ({
+  vectorIndex: {
     query: mockQuery,
     upsert: mockUpsert,
     info: mockInfo,
     delete: mockDelete,
     range: mockRange
-  })
+  }
 }))
 
 afterEach(() => {
@@ -24,17 +26,20 @@ afterEach(() => {
 describe("computeSemanticNovelty", () => {
   it("should return novelty 1.0 for completely new stimulus", async () => {
     mockQuery.mockResolvedValue([])
-    mockInfo.mockResolvedValue({ vectorCount: 10 })
+    mockInfo.mockResolvedValue({ namespaces: { habituation: { vectorCount: 10 } } })
 
     const result = await computeSemanticNovelty("I love cats")
-    expect(result).not.toBeNull()
-    expect(result?.level).toBe(1.0)
+    expect(result.level).toBe(1.0)
     expect(mockUpsert).toHaveBeenCalledWith(
       expect.objectContaining({
         data: "I love cats",
         metadata: expect.objectContaining({ exposureCount: 1 })
-      })
+      }),
+      { namespace: "habituation" }
     )
+    expect(mockQuery).toHaveBeenCalledWith(expect.objectContaining({ data: "I love cats" }), {
+      namespace: "habituation"
+    })
   })
 
   it("should reduce novelty for semantically similar stimulus (score > 0.85)", async () => {
@@ -51,14 +56,14 @@ describe("computeSemanticNovelty", () => {
     ])
 
     const result = await computeSemanticNovelty("Cats are my favorites")
-    expect(result).not.toBeNull()
-    expect(result?.level).toBeCloseTo(0.4)
-    expect(result?.id).toBe("existing-id")
+    expect(result.level).toBeCloseTo(0.4)
+    expect(result.id).toBe("existing-id")
     expect(mockUpsert).toHaveBeenCalledWith(
       expect.objectContaining({
         id: "existing-id",
         metadata: expect.objectContaining({ exposureCount: 3 })
-      })
+      }),
+      { namespace: "habituation" }
     )
   })
 
@@ -66,11 +71,10 @@ describe("computeSemanticNovelty", () => {
     mockQuery
       .mockResolvedValueOnce([{ id: "some-id", score: 0.5, metadata: { exposureCount: 5 } }])
       .mockResolvedValueOnce([])
-    mockInfo.mockResolvedValue({ vectorCount: 10 })
+    mockInfo.mockResolvedValue({ namespaces: { habituation: { vectorCount: 10 } } })
 
     const result = await computeSemanticNovelty("Quantum physics is fascinating")
-    expect(result).not.toBeNull()
-    expect(result?.level).toBe(1.0)
+    expect(result.level).toBe(1.0)
   })
 
   it("should habituate to zero after 5+ exposures", async () => {
@@ -83,13 +87,12 @@ describe("computeSemanticNovelty", () => {
     ])
 
     const result = await computeSemanticNovelty("same topic again")
-    expect(result).not.toBeNull()
-    expect(result?.level).toBe(0)
+    expect(result.level).toBe(0)
   })
 
   it("should trigger eviction when too many entries", async () => {
     mockQuery.mockResolvedValueOnce([])
-    mockInfo.mockResolvedValue({ vectorCount: 210 })
+    mockInfo.mockResolvedValue({ namespaces: { habituation: { vectorCount: 210 } } })
     mockRange.mockResolvedValueOnce({
       nextCursor: "0",
       vectors: Array.from({ length: 210 }, (_, i) => ({
@@ -103,7 +106,9 @@ describe("computeSemanticNovelty", () => {
     })
 
     await computeSemanticNovelty("trigger eviction")
-    expect(mockRange).toHaveBeenCalled()
-    expect(mockDelete).toHaveBeenCalled()
+    expect(mockRange).toHaveBeenCalledWith(expect.objectContaining({ cursor: 0, limit: 100, includeMetadata: true }), {
+      namespace: "habituation"
+    })
+    expect(mockDelete).toHaveBeenCalledWith(expect.any(Array), { namespace: "habituation" })
   })
 })
