@@ -340,7 +340,7 @@ export async function maintain(
 
   try {
     const infoResult = await vectorIndex.info()
-    const episodeCount = infoResult.vectorCount ?? 0
+    const episodeCount = infoResult.namespaces[""]?.vectorCount ?? 0
     if (episodeCount > EPISODIC_LIFECYCLE.EPISODE_PRESSURE_THRESHOLD) {
       await redis.set("working:memory:pressure", true)
       log.info("Memory pressure flag set", { episodeCount })
