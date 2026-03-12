@@ -14,7 +14,7 @@ import { act } from "./act.ts"
 import { deliberate } from "./deliberate.ts"
 import { feel } from "./feel.ts"
 import { maintain } from "./maintain.ts"
-import { WriteBuffer } from "./pipeline/persistence.ts"
+import { createWriteBuffer } from "./pipeline/persistence.ts"
 import { preloadContextState } from "./pipeline/preload.ts"
 import type { TickState } from "./pipeline/types.ts"
 import { sense } from "./sense.ts"
@@ -38,7 +38,7 @@ export async function runHeartbeat() {
     return
   }
 
-  const buffer = new WriteBuffer()
+  const buffer = createWriteBuffer()
 
   try {
     let lastTickState: TickState | null = null

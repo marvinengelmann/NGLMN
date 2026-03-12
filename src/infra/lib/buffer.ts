@@ -3,81 +3,85 @@ import { db } from "@/infra/db/client.ts"
 import { redis } from "@/infra/integrations/redis.ts"
 import { log } from "@/infra/lib/logger.ts"
 
-export class WriteBuffer {
-  private redisWrites = new Map<string, unknown>()
-  private redisExpiry = new Map<string, number>()
-  private redisDeletions = new Set<string>()
-  private postgresWrites: Array<{ table: PgTable; values: Record<string, unknown> }> = []
+export type WriteBuffer = ReturnType<typeof createWriteBuffer>
 
-  stage(key: string, value: unknown): void {
-    this.redisDeletions.delete(key)
-    this.redisWrites.set(key, value)
-  }
+export function createWriteBuffer() {
+  const redisWrites = new Map<string, unknown>()
+  const redisExpiry = new Map<string, number>()
+  const redisDeletions = new Set<string>()
+  let postgresWrites: Array<{ table: PgTable; values: Record<string, unknown> }> = []
 
-  stageWithExpiry(key: string, value: unknown, ttlSeconds: number): void {
-    this.redisDeletions.delete(key)
-    this.redisWrites.set(key, value)
-    this.redisExpiry.set(key, ttlSeconds)
-  }
+  return {
+    stage(key: string, value: unknown): void {
+      redisDeletions.delete(key)
+      redisWrites.set(key, value)
+    },
 
-  stageDel(key: string): void {
-    this.redisWrites.delete(key)
-    this.redisExpiry.delete(key)
-    this.redisDeletions.add(key)
-  }
+    stageWithExpiry(key: string, value: unknown, ttlSeconds: number): void {
+      redisDeletions.delete(key)
+      redisWrites.set(key, value)
+      redisExpiry.set(key, ttlSeconds)
+    },
 
-  stagePostgres(table: PgTable, values: Record<string, unknown>): void {
-    this.postgresWrites.push({ table, values })
-  }
+    stageDel(key: string): void {
+      redisWrites.delete(key)
+      redisExpiry.delete(key)
+      redisDeletions.add(key)
+    },
 
-  get stagedRedisCount(): number {
-    return this.redisWrites.size + this.redisDeletions.size
-  }
+    stagePostgres(table: PgTable, values: Record<string, unknown>): void {
+      postgresWrites.push({ table, values })
+    },
 
-  get stagedPostgresCount(): number {
-    return this.postgresWrites.length
-  }
+    get stagedRedisCount(): number {
+      return redisWrites.size + redisDeletions.size
+    },
 
-  async flushRedis(): Promise<void> {
-    if (this.redisWrites.size === 0 && this.redisDeletions.size === 0) return
+    get stagedPostgresCount(): number {
+      return postgresWrites.length
+    },
 
-    const pipeline = redis.pipeline()
-    this.redisWrites.forEach((value, key) => {
-      const ttl = this.redisExpiry.get(key)
-      if (ttl != null) {
-        pipeline.set(key, value, { ex: ttl })
-      } else {
-        pipeline.set(key, value)
-      }
-    })
-    this.redisDeletions.forEach((key) => {
-      pipeline.del(key)
-    })
-    await pipeline.exec()
-    log.debug("WriteBuffer: flushed Redis", { sets: this.redisWrites.size, deletes: this.redisDeletions.size })
-    this.redisWrites.clear()
-    this.redisExpiry.clear()
-    this.redisDeletions.clear()
-  }
+    async flushRedis(): Promise<void> {
+      if (redisWrites.size === 0 && redisDeletions.size === 0) return
 
-  async flushPostgres(): Promise<void> {
-    if (this.postgresWrites.length === 0) return
+      const pipeline = redis.pipeline()
+      redisWrites.forEach((value, key) => {
+        const ttl = redisExpiry.get(key)
+        if (ttl != null) {
+          pipeline.set(key, value, { ex: ttl })
+        } else {
+          pipeline.set(key, value)
+        }
+      })
+      redisDeletions.forEach((key) => {
+        pipeline.del(key)
+      })
+      await pipeline.exec()
+      log.debug("WriteBuffer: flushed Redis", { sets: redisWrites.size, deletes: redisDeletions.size })
+      redisWrites.clear()
+      redisExpiry.clear()
+      redisDeletions.clear()
+    },
 
-    const queries = this.postgresWrites.map(({ table, values }) => db.insert(table).values(values))
-    await db.batch(queries as [(typeof queries)[0], ...typeof queries])
-    log.debug("WriteBuffer: flushed Postgres", { rows: this.postgresWrites.length })
-    this.postgresWrites = []
-  }
+    async flushPostgres(): Promise<void> {
+      if (postgresWrites.length === 0) return
 
-  async flush(): Promise<void> {
-    await Promise.all([this.flushRedis(), this.flushPostgres()])
-  }
+      const queries = postgresWrites.map(({ table, values }) => db.insert(table).values(values))
+      await db.batch(queries as [(typeof queries)[0], ...typeof queries])
+      log.debug("WriteBuffer: flushed Postgres", { rows: postgresWrites.length })
+      postgresWrites = []
+    },
 
-  discard(): void {
-    this.redisWrites.clear()
-    this.redisExpiry.clear()
-    this.redisDeletions.clear()
-    this.postgresWrites = []
-    log.debug("WriteBuffer: discarded all staged writes")
+    async flush(): Promise<void> {
+      await Promise.all([this.flushRedis(), this.flushPostgres()])
+    },
+
+    discard(): void {
+      redisWrites.clear()
+      redisExpiry.clear()
+      redisDeletions.clear()
+      postgresWrites = []
+      log.debug("WriteBuffer: discarded all staged writes")
+    }
   }
 }

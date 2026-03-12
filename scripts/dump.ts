@@ -10,7 +10,7 @@ import "dotenv/config"
 import { estimateTokenCount } from "tokenx"
 import { buildContext, buildSystemPrompt } from "@/consciousness/context/builder.ts"
 import { feel } from "@/consciousness/feel.ts"
-import { WriteBuffer } from "@/consciousness/pipeline/persistence.ts"
+import { createWriteBuffer } from "@/consciousness/pipeline/persistence.ts"
 import { preloadContextState } from "@/consciousness/pipeline/preload.ts"
 import type { TickState } from "@/consciousness/pipeline/types.ts"
 import type { SenseData, SenseResult } from "@/consciousness/types.ts"
@@ -55,7 +55,7 @@ async function dump() {
     maxUpdateId: null
   }
 
-  const dumpBuffer = new WriteBuffer()
+  const dumpBuffer = createWriteBuffer()
   const feelResult = await feel(senseResult, dumpBuffer)
 
   const senseData: SenseData = {

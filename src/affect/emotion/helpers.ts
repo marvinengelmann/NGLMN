@@ -1,7 +1,7 @@
 function sumContributions<T extends string>(
-  contributions: { source: T; value: number }[]
+  items: { source: T; value: number }[]
 ): { level: number; source: T | null; maxContribution: number } {
-  return contributions.reduce(
+  return items.reduce(
     (acc, c) => ({
       level: acc.level + c.value,
       source: c.value > acc.maxContribution ? c.source : acc.source,
@@ -23,32 +23,34 @@ export function decayAndFinalize(
   return { finalLevel, isActive }
 }
 
+export type Contributions<T extends string> = ReturnType<typeof contributions<T>>
+
 /**
  * Fluent builder for emotion contributions — replaces verbose push patterns.
  */
-export class Contributions<T extends string> {
-  private items: { source: T; value: number }[] = []
+export function contributions<T extends string>() {
+  const items: { source: T; value: number }[] = []
 
-  add(condition: boolean, source: T, value: number): this {
-    if (condition) this.items.push({ source, value })
-    return this
+  const builder = {
+    add(condition: boolean, source: T, value: number) {
+      if (condition) items.push({ source, value })
+      return builder
+    },
+
+    sum(): { level: number; source: T | null; maxContribution: number } {
+      return sumContributions(items)
+    },
+
+    decay(
+      previousLevel: number,
+      decayPerTick: number,
+      activationThreshold: number
+    ): { level: number; source: T | null; finalLevel: number; isActive: boolean } {
+      const { level, source } = sumContributions(items)
+      const { finalLevel, isActive } = decayAndFinalize(previousLevel, level, decayPerTick, activationThreshold)
+      return { level, source, finalLevel, isActive }
+    }
   }
 
-  sum(): { level: number; source: T | null; maxContribution: number } {
-    return sumContributions(this.items)
-  }
-
-  decay(
-    previousLevel: number,
-    decayPerTick: number,
-    activationThreshold: number
-  ): { level: number; source: T | null; finalLevel: number; isActive: boolean } {
-    const { level, source } = this.sum()
-    const { finalLevel, isActive } = decayAndFinalize(previousLevel, level, decayPerTick, activationThreshold)
-    return { level, source, finalLevel, isActive }
-  }
-}
-
-export function contributions<T extends string>(): Contributions<T> {
-  return new Contributions<T>()
+  return builder
 }

@@ -1,1 +1,1 @@
-export { WriteBuffer } from "@/infra/lib/buffer.ts"
+export { createWriteBuffer, type WriteBuffer } from "@/infra/lib/buffer.ts"
