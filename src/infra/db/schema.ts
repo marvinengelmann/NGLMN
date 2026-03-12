@@ -147,6 +147,7 @@ export const promptVersions = pgTable("prompt_versions", {
   version: integer("version").notNull(),
   content: text("content").notNull(),
   changelog: text("changelog"),
+  metricsAtCreation: jsonb("metrics_at_creation"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow()
 })
 
@@ -473,3 +474,24 @@ export const conversationArcs = pgTable(
 
 export type ConversationArcInsert = typeof conversationArcs.$inferInsert
 export type ConversationArcSelect = typeof conversationArcs.$inferSelect
+
+export const lessons = pgTable(
+  "lessons",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    insight: text("insight").notNull(),
+    context: jsonb("context").notNull(),
+    confidence: real("confidence").notNull().default(0.5),
+    source: text("source").notNull().default("interaction"),
+    reinforcementCount: integer("reinforcement_count").notNull().default(0),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow()
+  },
+  (table) => [
+    index("idx_lessons_confidence").on(table.confidence),
+    index("idx_lessons_source").on(table.source)
+  ]
+)
+
+export type LessonInsert = typeof lessons.$inferInsert
+export type LessonSelect = typeof lessons.$inferSelect

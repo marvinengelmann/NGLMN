@@ -1,14 +1,17 @@
-import { differenceInMinutes, parseISO } from "date-fns"
+import { differenceInMinutes, parseISO, subDays } from "date-fns"
+import { and, desc, eq, lt } from "drizzle-orm"
+import { db } from "@/infra/db/client.ts"
+import { lessons as lessonsTable } from "@/infra/db/schema.ts"
 import { redis } from "@/infra/integrations/redis.ts"
 import { log } from "@/infra/lib/logger.ts"
 import { clamp01 } from "@/infra/lib/math.ts"
 import { nowISO } from "@/infra/lib/time.ts"
-import type { Lesson, LessonContext } from "./types.ts"
+import type { Lesson, LessonContext, LessonSource } from "./types.ts"
 
 const REDIS_KEY = "working:learning:lessons"
 const LAST_ANALYSIS_KEY = "working:learning:lastAnalysis"
 
-const MAX_LESSONS = 12
+const MAX_REDIS_LESSONS = 30
 const POSITIVE_THRESHOLD = 0.6
 const NEGATIVE_THRESHOLD = 0.3
 const POSITIVE_BOOST = 0.05
@@ -17,12 +20,31 @@ const DECAY_PER_VALIDATION = 0.002
 const MIN_CONFIDENCE_TO_SURFACE = 0.3
 
 /**
- * Retrieve all stored lessons from Redis.
+ * Retrieve lessons from Redis cache, falling back to DB.
  */
 export async function getLessons(): Promise<Lesson[]> {
   const raw = await redis.get<Lesson[]>(REDIS_KEY)
-  if (!raw || !Array.isArray(raw)) return []
-  return raw
+  if (raw && Array.isArray(raw) && raw.length > 0) return raw
+
+  const dbRows = await db.select().from(lessonsTable).orderBy(desc(lessonsTable.confidence)).limit(MAX_REDIS_LESSONS)
+
+  const lessons: Lesson[] = dbRows.map((row) => ({
+    id: row.id,
+    insight: row.insight,
+    context: row.context as LessonContext,
+    confidence: row.confidence,
+    validationCount: row.reinforcementCount,
+    source: (row.source as LessonSource) ?? "interaction",
+    reinforcementCount: row.reinforcementCount,
+    createdAt: row.createdAt.toISOString(),
+    updatedAt: row.updatedAt.toISOString()
+  }))
+
+  if (lessons.length > 0) {
+    await redis.set(REDIS_KEY, lessons)
+  }
+
+  return lessons
 }
 
 /**
@@ -43,9 +65,13 @@ export async function getRelevantLessons(context: {
 }
 
 /**
- * Store a new lesson derived from strategy analysis.
+ * Store a new lesson with write-through to DB and Redis.
  */
-export async function addLesson(insight: string, context: LessonContext): Promise<Lesson> {
+export async function addLesson(
+  insight: string,
+  context: LessonContext,
+  source: LessonSource = "interaction"
+): Promise<Lesson> {
   const existing = await getLessons()
 
   const duplicate = existing.find(
@@ -56,23 +82,52 @@ export async function addLesson(insight: string, context: LessonContext): Promis
   if (duplicate) {
     duplicate.confidence = clamp01(duplicate.confidence + POSITIVE_BOOST)
     duplicate.validationCount += 1
+    duplicate.reinforcementCount = (duplicate.reinforcementCount ?? 0) + 1
     duplicate.lastValidatedAt = nowISO()
+    duplicate.updatedAt = nowISO()
+
+    await db
+      .update(lessonsTable)
+      .set({
+        confidence: duplicate.confidence,
+        reinforcementCount: duplicate.reinforcementCount,
+        updatedAt: new Date()
+      })
+      .where(eq(lessonsTable.id, duplicate.id))
+
     await persistLessons(existing)
     log.info("Existing lesson reinforced", { id: duplicate.id })
     return duplicate
   }
 
+  const now = nowISO()
+  const rows = await db
+    .insert(lessonsTable)
+    .values({
+      insight,
+      context,
+      confidence: 0.5,
+      source,
+      reinforcementCount: 0
+    })
+    .returning({ id: lessonsTable.id })
+
+  const dbId = rows[0]?.id ?? crypto.randomUUID()
+
   const lesson: Lesson = {
-    id: crypto.randomUUID(),
+    id: dbId,
     insight,
     context,
     confidence: 0.5,
     validationCount: 0,
-    createdAt: nowISO()
+    source,
+    reinforcementCount: 0,
+    createdAt: now,
+    updatedAt: now
   }
 
   await persistLessons([...existing, lesson])
-  log.info("Lesson stored", { insight: insight.slice(0, 80) })
+  log.info("Lesson stored", { insight: insight.slice(0, 80), source })
   return lesson
 }
 
@@ -132,6 +187,26 @@ export async function setLastAnalysisTimestamp(): Promise<void> {
   await redis.set(LAST_ANALYSIS_KEY, nowISO())
 }
 
+/**
+ * Prune lessons with very low confidence that are older than 30 days.
+ */
+export async function pruneOldLessons(): Promise<number> {
+  const thirtyDaysAgo = subDays(new Date(), 30)
+  const deleted = await db
+    .delete(lessonsTable)
+    .where(and(lt(lessonsTable.confidence, 0.1), lt(lessonsTable.createdAt, thirtyDaysAgo)))
+    .returning({ id: lessonsTable.id })
+
+  if (deleted.length > 0) {
+    const lessons = await getLessons()
+    const remaining = lessons.filter((l) => !deleted.some((d) => d.id === l.id))
+    await redis.set(REDIS_KEY, remaining)
+    log.info("Old lessons pruned", { count: deleted.length })
+  }
+
+  return deleted.length
+}
+
 function matchesContext(lessonCtx: LessonContext, strategy: Record<string, string | undefined>): boolean {
   const fields: (keyof LessonContext)[] = ["register", "timeOfDay", "dominantDrive", "operatorMood"]
   return fields.every((field) => {
@@ -143,7 +218,7 @@ function matchesContext(lessonCtx: LessonContext, strategy: Record<string, strin
 }
 
 async function persistLessons(lessons: Lesson[]): Promise<void> {
-  const sorted = lessons.sort((a, b) => b.confidence - a.confidence).slice(0, MAX_LESSONS)
+  const sorted = lessons.sort((a, b) => b.confidence - a.confidence).slice(0, MAX_REDIS_LESSONS)
   await redis.set(REDIS_KEY, sorted)
 }
 
@@ -151,7 +226,6 @@ const ANALYSIS_COOLDOWN_HOURS = 4
 
 /**
  * Reinforce lessons from the most recent resolved outcome.
- * Called from MAINTAIN — extracts strategy context and delegates to reinforceLessons.
  */
 export async function reinforceFromLatestOutcome(): Promise<void> {
   const { getUnresolvedOutcome } = await import("./outcomes.ts")
@@ -168,7 +242,6 @@ export async function reinforceFromLatestOutcome(): Promise<void> {
 
 /**
  * Run strategy analysis if enough time has passed since the last run.
- * Returns the number of lessons created, or 0 if skipped.
  */
 export async function maybeRunAnalysis(): Promise<number> {
   const lastAnalysis = await getLastAnalysisTimestamp()

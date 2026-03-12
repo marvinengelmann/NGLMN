@@ -23,6 +23,7 @@ import { getOperatorModel, getRelationalPatterns } from "@/relational/mind/state
 import { getAggregateTrustExperience } from "@/relational/trust/compute.ts"
 import { getBoundaryState } from "@/self/boundaries/state.ts"
 import { getCoherenceState } from "@/self/coherence/state.ts"
+import { getGenesisDNA } from "@/self/genesis/state.ts"
 import { getDeceptionState } from "@/self/deception/state.ts"
 import { getHeldBackBuffer } from "@/self/psyche/heldback.ts"
 import { getGrowthArcs, getSelfConcept } from "@/self/psyche/state.ts"
@@ -30,6 +31,7 @@ import type { FeelPrefetch } from "./types.ts"
 
 export async function prefetchFeelState(): Promise<FeelPrefetch> {
   const [
+    genesisDNA,
     currentEmotion,
     previousMomentum,
     existingAfterglow,
@@ -62,6 +64,7 @@ export async function prefetchFeelState(): Promise<FeelPrefetch> {
     selfInsightsResult,
     relationalPatterns
   ] = await Promise.all([
+    getGenesisDNA(),
     getEmotionalState(),
     getEmotionalMomentum(),
     getAfterglowEntries(),
@@ -96,6 +99,7 @@ export async function prefetchFeelState(): Promise<FeelPrefetch> {
   ])
 
   return {
+    dnaBaseline: genesisDNA?.emotionalBaseline ?? null,
     currentEmotion,
     previousMomentum,
     existingAfterglow,

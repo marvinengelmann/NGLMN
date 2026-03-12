@@ -1,9 +1,10 @@
-import { desc } from "drizzle-orm"
+import { desc, eq } from "drizzle-orm"
+import type { EmotionalState } from "@/affect/emotion/types.ts"
 import { db } from "@/infra/db/client.ts"
 import { genesis } from "@/infra/db/schema.ts"
 import { getValidatedRedis, redis } from "@/infra/integrations/redis.ts"
 import type { PersonalityType } from "@/self/personality/types.ts"
-import { type GenesisDNA, GenesisRecord } from "./types.ts"
+import { type BigFive, type GenesisDNA, GenesisRecord } from "./types.ts"
 
 export const GENESIS_REDIS_KEY = "working:genesis:record"
 
@@ -85,4 +86,29 @@ export async function getGenesisVoiceId(): Promise<string | undefined> {
  */
 export function cacheGenesisRecord(record: GenesisRecord): void {
   memoryCache = record
+}
+
+/**
+ * Update mutable DNA fields (BigFive, emotional baseline, personality type) in DB, Redis, and memory cache.
+ */
+export async function updateGenesisDNA(updates: {
+  bigFive: BigFive
+  emotionalBaseline: EmotionalState
+  personalityType: PersonalityType
+}): Promise<void> {
+  const record = await getGenesisRecord()
+  if (!record) return
+
+  const updatedDNA: GenesisDNA = {
+    ...record.dna,
+    bigFive: updates.bigFive,
+    emotionalBaseline: updates.emotionalBaseline,
+    personalityType: updates.personalityType
+  }
+
+  const updatedRecord: GenesisRecord = { ...record, dna: updatedDNA }
+
+  await db.update(genesis).set({ dna: updatedDNA }).where(eq(genesis.seed, record.seed))
+  await redis.set(GENESIS_REDIS_KEY, updatedRecord)
+  memoryCache = updatedRecord
 }

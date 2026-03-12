@@ -30,7 +30,12 @@ export async function runEmotionChain(sense: SenseResult, prefetch: FeelPrefetch
     sense.rawTriggers,
     sense.moodContext,
     Math.max(1, sense.elapsedMinutes),
-    sense.triggerTimestamps
+    sense.triggerTimestamps,
+    {
+      dnaBaseline: prefetch.dnaBaseline ?? undefined,
+      isIdle: prefetch.consecutiveIdleTicks > 0,
+      trustExperience: prefetch.trustExperience
+    }
   )
 
   const eventIntensity = computeEmotionalIntensity(computed)

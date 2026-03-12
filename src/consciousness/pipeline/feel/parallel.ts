@@ -11,7 +11,7 @@ import {
 import { extractSignals, learnFromObservation } from "@/relational/mind/triggers.ts"
 import { detectModelCorrection, updateOperatorModel } from "@/relational/mind/update.ts"
 import { updateBoundaryState } from "@/self/boundaries/compute.ts"
-import { buildDissonanceState, checkDissonance, resolveDissonance } from "@/self/dissonance/compute.ts"
+import { checkDissonanceWithCooldown } from "@/self/dissonance/compute.ts"
 import type { SenseResult } from "../../types.ts"
 import type { FeelPrefetch, ParallelFanResult } from "./types.ts"
 
@@ -71,12 +71,12 @@ async function runInstinct(sense: SenseResult, emotion: EmotionalState, soma: So
 async function runDissonance(emotion: EmotionalState, prefetch: FeelPrefetch) {
   const selfKnowledge = prefetch.selfInsights.map((k) => ({ key: k.key, value: k.value }))
 
-  let dissonanceEvents = await checkDissonance(prefetch.recentActions, prefetch.selfConcept, emotion, selfKnowledge)
-  dissonanceEvents = dissonanceEvents.map((event) => ({
-    ...event,
-    resolution: resolveDissonance(event, emotion)
-  }))
-  return buildDissonanceState(dissonanceEvents)
+  return checkDissonanceWithCooldown({
+    recentActions: prefetch.recentActions,
+    selfConcept: prefetch.selfConcept,
+    emotion,
+    selfKnowledge
+  })
 }
 
 async function runOperatorModel(

@@ -7,7 +7,8 @@ import { getSomaticState } from "@/affect/soma/state.ts"
 import { rechargeSocialBattery } from "@/affect/soma/update.ts"
 import { updateHabitState } from "@/cognition/habit.ts"
 import { getHabitState } from "@/cognition/habits.ts"
-import { maybeRunAnalysis, reinforceFromLatestOutcome } from "@/cognition/learning/lessons.ts"
+import { maybeRunAnalysis, pruneOldLessons, reinforceFromLatestOutcome } from "@/cognition/learning/lessons.ts"
+import { expireStaleOutcomes } from "@/cognition/learning/outcomes.ts"
 import {
   applyIdiolectDrift,
   computeIdiolectModifiers,
@@ -68,6 +69,7 @@ import { maybeUpdateProfile } from "@/relational/mind/profiling.ts"
 import { formBoundary, maybeFormNegativeBoundary } from "@/self/boundaries/compute.ts"
 import { detectBoundaryFormation } from "@/self/boundaries/detect.ts"
 import { getBoundaryState } from "@/self/boundaries/state.ts"
+import { maybeDriftBigFive } from "@/self/genesis/drift.ts"
 import type { WriteBuffer } from "./pipeline/persistence.ts"
 import type { DeliberateResult, FeelingResult, MaintainInput, TickSummary } from "./types.ts"
 
@@ -76,6 +78,9 @@ const IDIOLECT_DRIFT_PROBABILITY = 0.05
 const CONVERSATION_PATTERN_PROBABILITY = 0.1
 const CURIOSITY_EXPLORE_PROBABILITY = 0.03
 const STRATEGY_ANALYSIS_PROBABILITY = 0.02
+const EXPIRE_OUTCOMES_PROBABILITY = 0.1
+const PRUNE_LESSONS_PROBABILITY = 0.05
+const BIGFIVE_DRIFT_PROBABILITY = 0.01
 const DEEP_PROFILE_UPDATE_PROBABILITY = 0.05
 
 const REDIS = {
@@ -360,10 +365,35 @@ export async function maintain(
     }
   }
 
+  if (Math.random() < EXPIRE_OUTCOMES_PROBABILITY) {
+    try {
+      await expireStaleOutcomes()
+    } catch (e) {
+      log.debug("Outcome expiry skipped", { error: String(e) })
+    }
+  }
+
+  if (Math.random() < PRUNE_LESSONS_PROBABILITY) {
+    try {
+      await pruneOldLessons()
+    } catch (e) {
+      log.debug("Lesson pruning skipped", { error: String(e) })
+    }
+  }
+
   try {
     await maybeConsolidate()
   } catch (e) {
     log.debug("Memory consolidation skipped", { error: String(e) })
+  }
+
+  if (Math.random() < BIGFIVE_DRIFT_PROBABILITY) {
+    try {
+      const recentActions = await getRecentActions()
+      await maybeDriftBigFive(recentActions, [input.decision.reasoning])
+    } catch (e) {
+      log.debug("BigFive drift skipped", { error: String(e) })
+    }
   }
 
   if (Math.random() < DEEP_PROFILE_UPDATE_PROBABILITY) {

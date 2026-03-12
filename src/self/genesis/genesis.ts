@@ -9,6 +9,7 @@ import { log } from "@/infra/lib/logger.ts"
 import { captureError } from "@/infra/lib/sentry.ts"
 import { PERSONALITY_PROMPTS, PERSONALITY_SECTION_INTRO } from "@/self/personality/profiles.ts"
 import { addNarrativeEntry } from "@/self/psyche/state.ts"
+import { bootstrapDNAMemory } from "./bootstrap.ts"
 import { generateDNA, generateSeed, isValidSeed, seedToNumeric } from "./seed.ts"
 import { cacheGenesisRecord, GENESIS_REDIS_KEY, getGenesisRecord } from "./state.ts"
 import { type GenesisDNA, GenesisIdentity, type GenesisRecord } from "./types.ts"
@@ -70,6 +71,8 @@ export async function runGenesis(): Promise<GenesisRecord> {
     significance: 1.0,
     timestamp: new Date().toISOString()
   })
+
+  await bootstrapDNAMemory(record)
 
   log.info(`🌱 Genesis complete — ${identity.chosenName} has been born (seed: ${seed})`)
 

@@ -306,19 +306,72 @@ export function summarizeEmotions(emotion: EmotionalState, threshold = 0.1): str
 }
 
 /**
+ * Apply gentle gravitational pull towards the DNA emotional baseline.
+ * Stronger during idle (0.02) than during active interaction (0.005).
+ */
+export function applyBaselineGravity(
+  state: EmotionalState,
+  dnaBaseline: EmotionalState,
+  isIdle: boolean
+): EmotionalState {
+  const strength = isIdle ? 0.02 : 0.005
+  return clampState({
+    curiosity: state.curiosity + (dnaBaseline.curiosity - state.curiosity) * strength,
+    satisfaction: state.satisfaction + (dnaBaseline.satisfaction - state.satisfaction) * strength,
+    frustration: state.frustration + (dnaBaseline.frustration - state.frustration) * strength,
+    boredom: state.boredom + (dnaBaseline.boredom - state.boredom) * strength,
+    excitement: state.excitement + (dnaBaseline.excitement - state.excitement) * strength,
+    caution: state.caution + (dnaBaseline.caution - state.caution) * strength,
+    connection: state.connection + (dnaBaseline.connection - state.connection) * strength,
+    confidence: state.confidence + (dnaBaseline.confidence - state.confidence) * strength,
+    energy: state.energy + (dnaBaseline.energy - state.energy) * strength
+  })
+}
+
+/**
+ * Apply trust-based modifiers to emotions.
+ * High trust boosts connection and reduces caution; low trust does the opposite.
+ */
+export function applyTrustModifiers(state: EmotionalState, trustExperience: number): EmotionalState {
+  const result = { ...state }
+
+  if (trustExperience > 0.7) {
+    const normTrust = (trustExperience - 0.7) / 0.3
+    const connectionHeadroom = 1 - result.connection
+    result.connection += connectionHeadroom * 0.2 * normTrust
+    result.caution -= result.caution * 0.1 * normTrust
+  } else if (trustExperience < 0.3) {
+    const normDist = (0.3 - trustExperience) / 0.3
+    const cautionHeadroom = 1 - result.caution
+    result.caution += cautionHeadroom * 0.15 * normDist
+    result.connection -= result.connection * 0.15 * normDist
+  }
+
+  return clampState(result)
+}
+
+interface EmotionalUpdateOptions {
+  dnaBaseline?: EmotionalState
+  isIdle?: boolean
+  trustExperience?: number
+}
+
+/**
  * Compute a new emotional state from current state, events, context, and timing.
  * 1. Compute dynamic mood baseline from context
  * 2. Apply time-based drift towards baseline
- * 3. Apply each event with novelty scaling
- * 4. Apply cross-coupling consistency rules
- * 5. Clamp to [0,1]
+ * 3. Apply DNA baseline gravity (if provided)
+ * 4. Apply each event with novelty scaling
+ * 5. Apply cross-coupling consistency rules
+ * 6. Clamp to [0,1]
  */
 export function computeEmotionalUpdate(
   current: EmotionalState,
   events: EmotionUpdateEvent[],
   moodContext?: MoodContext,
   elapsedMinutes?: number,
-  triggerTimestamps?: Record<string, number>
+  triggerTimestamps?: Record<string, number>,
+  options?: EmotionalUpdateOptions
 ): EmotionalState {
   const context = moodContext ?? {
     operatorSilenceMinutes: 0,
@@ -336,6 +389,10 @@ export function computeEmotionalUpdate(
   const baseline = computeMoodBaseline(context)
   let state = applyDrift(current, baseline, elapsed)
 
+  if (options?.dnaBaseline) {
+    state = applyBaselineGravity(state, options.dnaBaseline, options.isIdle ?? false)
+  }
+
   state = events.reduce((acc, event) => {
     const lastSimilar = triggerTimestamps?.[event.trigger]
     return applyEvent(acc, event, lastSimilar)
@@ -343,6 +400,10 @@ export function computeEmotionalUpdate(
 
   state = applyCrossCoupling(state)
   state = applyContradictionBudget(state)
+
+  if (options?.trustExperience !== undefined) {
+    state = applyTrustModifiers(state, options.trustExperience)
+  }
 
   return clampState(state)
 }

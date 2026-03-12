@@ -79,7 +79,9 @@ export const FeelingResult = z.object({
   coherenceState: CoherenceState,
   creativeUrge: CreativeUrgeState,
   boundaryState: BoundaryState,
-  metacognitiveState: MetacognitiveState
+  metacognitiveState: MetacognitiveState,
+  communicationSimplification: z.number().min(0).max(1).default(0),
+  hedgingLevel: z.number().min(0).max(1).default(0)
 })
 export type FeelingResult = z.infer<typeof FeelingResult>
 

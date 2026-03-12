@@ -1,7 +1,7 @@
-import { subDays } from "date-fns"
-import { desc, eq, gte, isNull } from "drizzle-orm"
+import { subDays, subHours } from "date-fns"
+import { and, desc, eq, gte, isNull, lt } from "drizzle-orm"
 import { db } from "@/infra/db/client.ts"
-import { interactionOutcomes } from "@/infra/db/schema.ts"
+import { type InteractionOutcomeSelect, interactionOutcomes } from "@/infra/db/schema.ts"
 import { computeOutcomeScore, type InteractionStrategy, type OperatorReaction } from "./types.ts"
 
 /**
@@ -62,6 +62,49 @@ export async function getUnresolvedOutcome() {
     .limit(1)
 
   return rows[0] ?? null
+}
+
+/**
+ * Get all unresolved outcomes, ordered by creation time (oldest first).
+ */
+export async function getUnresolvedOutcomes(): Promise<InteractionOutcomeSelect[]> {
+  return db
+    .select()
+    .from(interactionOutcomes)
+    .where(isNull(interactionOutcomes.resolvedAt))
+    .orderBy(interactionOutcomes.createdAt)
+}
+
+/**
+ * Expire stale unresolved outcomes older than 24 hours with a low score.
+ * Returns the number of expired outcomes.
+ */
+export async function expireStaleOutcomes(): Promise<number> {
+  const cutoff = subHours(new Date(), 24)
+  const stale = await db
+    .select({ id: interactionOutcomes.id })
+    .from(interactionOutcomes)
+    .where(and(isNull(interactionOutcomes.resolvedAt), lt(interactionOutcomes.createdAt, cutoff)))
+
+  if (stale.length === 0) return 0
+
+  for (const row of stale) {
+    await db
+      .update(interactionOutcomes)
+      .set({
+        outcomeScore: 0.15,
+        resolvedAt: new Date(),
+        operatorReaction: {
+          repliedWithinMinutes: null,
+          sentiment: "neutral",
+          engagementDelta: 0,
+          conversationContinued: false
+        }
+      })
+      .where(eq(interactionOutcomes.id, row.id))
+  }
+
+  return stale.length
 }
 
 /**

@@ -33,6 +33,7 @@ import type { HeldBackBuffer } from "@/self/psyche/heldback.ts"
 import type { GrowthArc, SelfConcept } from "@/self/psyche/types.ts"
 
 export interface FeelPrefetch {
+  dnaBaseline: EmotionalState | null
   currentEmotion: EmotionalState
   previousMomentum: EmotionalMomentum
   existingAfterglow: AfterglowEntry[]
@@ -121,4 +122,6 @@ export interface FinalFanResult {
   metacognitiveState: MetacognitiveState
   dampedEmotion: EmotionalState
   selfConceptWithMomentum: SelfConcept
+  communicationSimplification: number
+  hedgingLevel: number
 }

@@ -9,6 +9,8 @@ import type { VulnerabilityState } from "@/relational/attachment/types.ts"
 import type { CoherenceState } from "@/self/coherence/types.ts"
 import type { DeceptionState } from "@/self/deception/types.ts"
 import type { DissonanceState } from "@/self/dissonance/types.ts"
+import { renderGeneticTraitsSection } from "@/self/genesis/render.ts"
+import type { GenesisDNA } from "@/self/genesis/types.ts"
 import type { HeldBackBuffer } from "@/self/psyche/heldback.ts"
 import { shouldSurface } from "@/self/psyche/heldback.ts"
 import type { SelfConcept } from "@/self/psyche/types.ts"
@@ -40,6 +42,7 @@ interface InnerSectionsInput {
   secondaryEmotionStates: Map<string, SecondaryEmotionState>
   coherenceState?: CoherenceState | null
   metacognitiveState?: MetacognitiveState | null
+  genesisDNA?: GenesisDNA | null
 }
 
 function formatReason(reason: string): string {
@@ -219,6 +222,10 @@ export function buildInnerSections(input: InnerSectionsInput): string[] {
     if (instabilityPrompt) {
       sections.push(instabilityPrompt)
     }
+  }
+
+  if (input.genesisDNA) {
+    sections.push(renderGeneticTraitsSection(input.genesisDNA))
   }
 
   if (input.metacognitiveState) {

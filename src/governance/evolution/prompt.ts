@@ -1,9 +1,9 @@
-import { desc, eq } from "drizzle-orm"
+import { and, desc, eq, gte, lt } from "drizzle-orm"
 import type { MetricsSnapshot } from "@/affect/emotion/types.ts"
 import { callIntelligence } from "@/core/intelligence.ts"
 import { PromptProposalOutput } from "@/governance/evolution/types.ts"
 import { db } from "@/infra/db/client.ts"
-import { promptVersions } from "@/infra/db/schema.ts"
+import { interactionOutcomes, promptVersions } from "@/infra/db/schema.ts"
 import { log } from "@/infra/lib/logger.ts"
 import { logAndCaptureError } from "@/infra/lib/result.ts"
 import { PROMPT_EVOLUTION_SYSTEM_PROMPT } from "@/prompts/evolution.ts"
@@ -59,6 +59,7 @@ export async function proposePromptChange(
   recentOutputs: string[]
 ): Promise<PromptProposal> {
   const trust = await canActAutonomously("prompt_modification")
+  const performanceNote = await getPromptVersionPerformance(promptId)
 
   const responseResult = await callIntelligence({
     system: PROMPT_EVOLUTION_SYSTEM_PROMPT,
@@ -66,7 +67,8 @@ export async function proposePromptChange(
       promptId,
       currentContent,
       metrics,
-      recentOutputs: recentOutputs.slice(0, 5)
+      recentOutputs: recentOutputs.slice(0, 5),
+      ...(performanceNote ? { previousVersionPerformance: performanceNote } : {})
     }),
     schema: PromptProposalOutput,
     maxTokens: 4096
@@ -89,7 +91,12 @@ export async function proposePromptChange(
   }
 }
 
-export async function applyPromptChange(promptId: string, newContent: string, changelog: string): Promise<number> {
+export async function applyPromptChange(
+  promptId: string,
+  newContent: string,
+  changelog: string,
+  metricsAtCreation?: MetricsSnapshot
+): Promise<number> {
   const current = await getCurrentPromptVersion(promptId)
   const newVersion = (current?.version ?? 0) + 1
 
@@ -97,7 +104,8 @@ export async function applyPromptChange(promptId: string, newContent: string, ch
     promptId,
     version: newVersion,
     content: newContent,
-    changelog
+    changelog,
+    metricsAtCreation: metricsAtCreation ?? null
   })
 
   const changelogResult = await writeChangelogEntry("prompt", `${promptId}: ${changelog}`, "success")
@@ -106,6 +114,55 @@ export async function applyPromptChange(promptId: string, newContent: string, ch
   await recordSuccess("prompt_modification")
 
   return newVersion
+}
+
+/**
+ * Compare outcome scores before/after a prompt version change.
+ * Returns a human-readable performance summary, or null if insufficient data.
+ */
+export async function getPromptVersionPerformance(promptId: string): Promise<string | null> {
+  const versions = await db
+    .select({ version: promptVersions.version, createdAt: promptVersions.createdAt })
+    .from(promptVersions)
+    .where(eq(promptVersions.promptId, promptId))
+    .orderBy(desc(promptVersions.version))
+    .limit(2)
+
+  if (versions.length < 2) return null
+
+  const current = versions[0]
+  const previous = versions[1]
+  if (!current || !previous) return null
+
+  const [scoresBefore, scoresAfter] = await Promise.all([
+    db
+      .select({ score: interactionOutcomes.outcomeScore })
+      .from(interactionOutcomes)
+      .where(
+        and(
+          gte(interactionOutcomes.createdAt, previous.createdAt),
+          lt(interactionOutcomes.createdAt, current.createdAt)
+        )
+      )
+      .limit(50),
+    db
+      .select({ score: interactionOutcomes.outcomeScore })
+      .from(interactionOutcomes)
+      .where(gte(interactionOutcomes.createdAt, current.createdAt))
+      .limit(50)
+  ])
+
+  const avgBefore =
+    scoresBefore.filter((s) => s.score !== null).reduce((sum, s) => sum + (s.score ?? 0), 0) /
+    (scoresBefore.length || 1)
+  const avgAfter =
+    scoresAfter.filter((s) => s.score !== null).reduce((sum, s) => sum + (s.score ?? 0), 0) / (scoresAfter.length || 1)
+
+  if (scoresBefore.length < 3 && scoresAfter.length < 3) return null
+
+  const delta = avgAfter - avgBefore
+  const direction = delta > 0.05 ? "improved" : delta < -0.05 ? "declined" : "stable"
+  return `Version ${previous.version}→${current.version}: outcome scores ${direction} (${avgBefore.toFixed(2)}→${avgAfter.toFixed(2)}, n=${scoresBefore.length}/${scoresAfter.length})`
 }
 
 export async function rollbackPrompt(promptId: string, targetVersion: number): Promise<number> {

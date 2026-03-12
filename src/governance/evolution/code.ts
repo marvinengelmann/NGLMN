@@ -1,5 +1,6 @@
 import { estimateTokenCount, sliceByTokens } from "tokenx"
 import { callIntelligence } from "@/core/intelligence.ts"
+import { addEvolutionLesson, getRelevantEvolutionLessons } from "@/governance/evolution/learning.ts"
 import { getNextEvolutionNumber } from "@/governance/evolution/state.ts"
 import {
   type CodeProposal,
@@ -290,9 +291,23 @@ export async function proposeCodeChange(
   })
 
   const allSourceCode = sourceFiles.map((f) => f.content).join("\n")
-  const libraryDocs = await fetchLibraryDocs(allSourceCode, capabilityGap).catch(() => "")
+  const [libraryDocs, evolutionLessons] = await Promise.all([
+    fetchLibraryDocs(allSourceCode, capabilityGap).catch(() => ""),
+    getRelevantEvolutionLessons().catch(() => [])
+  ])
 
-  const proposalContext: ProposalContext = { insight, capabilityGap, tree, libraryDocs, previousAttempt }
+  const lessonsContext =
+    evolutionLessons.length > 0
+      ? `\n\nPrevious evolution lessons (avoid these mistakes):\n${evolutionLessons.map((l) => `- ${l.insight}`).join("\n")}`
+      : ""
+
+  const proposalContext: ProposalContext = {
+    insight: insight + lessonsContext,
+    capabilityGap,
+    tree,
+    libraryDocs,
+    previousAttempt
+  }
   const response = await resolveFileRequests(proposalContext, sourceFiles, 0)
 
   if (response.type === "request_files")
@@ -387,6 +402,19 @@ export async function executeCodeEvolution(proposal: CodeProposal): Promise<{
       })
       await deleteBranch(branchName)
       await recordFailure("code_modification")
+
+      const errorType = !sandboxResult.tscCheckPassed
+        ? "tsc"
+        : !sandboxResult.biomeCheckPassed
+          ? "biome"
+          : sandboxResult.testsFailed > 0
+            ? "test"
+            : "sandbox"
+      await addEvolutionLesson(
+        proposal.files.map((f) => f.path),
+        errorType,
+        sandboxResult.stderr
+      ).catch((e) => log.debug("Evolution lesson storage failed", { error: String(e) }))
       ;(
         await writeChangelogEntry(
           "code",

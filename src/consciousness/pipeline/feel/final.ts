@@ -105,6 +105,8 @@ export async function runFinalSubsystems(
     coherenceState,
     metacognitiveState,
     dampedEmotion,
-    selfConceptWithMomentum
+    selfConceptWithMomentum,
+    communicationSimplification: coherenceEffect.communicationSimplification,
+    hedgingLevel: metacognitiveModifiers.hedgingLevel
   }
 }

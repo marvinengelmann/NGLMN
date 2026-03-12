@@ -1,6 +1,7 @@
-import { differenceInHours } from "date-fns"
+import { differenceInHours, differenceInMinutes } from "date-fns"
 import type { EmotionalState } from "@/affect/emotion/types.ts"
 import { callIntelligence } from "@/core/intelligence.ts"
+import { redis } from "@/infra/integrations/redis.ts"
 import { log } from "@/infra/lib/logger.ts"
 import { halfLifeDecay } from "@/infra/lib/math.ts"
 import { nowISO } from "@/infra/lib/time.ts"
@@ -143,4 +144,42 @@ export function buildDissonanceState(events: DissonanceEvent[]): DissonanceState
     recentEvents: events.slice(0, 10),
     cumulativeUnresolved
   }
+}
+
+const DISSONANCE_COOLDOWN_KEY = "working:dissonance:lastCheck"
+const DISSONANCE_CACHE_KEY = "working:dissonance:cachedResult"
+const DISSONANCE_COOLDOWN_MINUTES = 15
+
+interface DissonanceCheckArgs {
+  recentActions: string[]
+  selfConcept: SelfConcept
+  emotion: EmotionalState
+  selfKnowledge: { key: string; value: unknown }[]
+}
+
+/**
+ * Check dissonance with a 15-minute cooldown.
+ * Returns cached result if the last check was within the cooldown period.
+ */
+export async function checkDissonanceWithCooldown(args: DissonanceCheckArgs): Promise<DissonanceState> {
+  const lastCheckStr = await redis.get<string>(DISSONANCE_COOLDOWN_KEY)
+  if (lastCheckStr) {
+    const minutesSinceCheck = differenceInMinutes(new Date(), new Date(lastCheckStr))
+    if (minutesSinceCheck < DISSONANCE_COOLDOWN_MINUTES) {
+      const cached = await redis.get<DissonanceState>(DISSONANCE_CACHE_KEY)
+      if (cached) return cached
+    }
+  }
+
+  let dissonanceEvents = await checkDissonance(args.recentActions, args.selfConcept, args.emotion, args.selfKnowledge)
+  dissonanceEvents = dissonanceEvents.map((event) => ({
+    ...event,
+    resolution: resolveDissonance(event, args.emotion)
+  }))
+  const state = buildDissonanceState(dissonanceEvents)
+
+  await redis.set(DISSONANCE_COOLDOWN_KEY, nowISO(), { ex: DISSONANCE_COOLDOWN_MINUTES * 60 })
+  await redis.set(DISSONANCE_CACHE_KEY, state, { ex: DISSONANCE_COOLDOWN_MINUTES * 60 })
+
+  return state
 }

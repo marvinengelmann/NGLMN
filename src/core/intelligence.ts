@@ -15,6 +15,7 @@ interface CallIntelligenceOptions<T extends z.ZodType> {
   maxTokens?: number
   reasoning?: boolean
   images?: Array<{ base64: string; mimeType: string }>
+  temperature?: number
 }
 
 const VISION_MODEL = "xai/grok-2-vision-1212"
@@ -47,7 +48,8 @@ export function callIntelligence<T extends z.ZodType>(
         ? { messages: [{ role: "user" as const, content: messageContent }] }
         : { prompt: options.userMessage }),
       output: Output.object({ schema: options.schema }),
-      maxOutputTokens: options.maxTokens ?? MAX_OUTPUT_TOKENS
+      maxOutputTokens: options.maxTokens ?? MAX_OUTPUT_TOKENS,
+      ...(options.temperature !== undefined && !hasImages ? { temperature: options.temperature } : {})
     })
 
     const inputTokens = result.usage?.inputTokens ?? 0

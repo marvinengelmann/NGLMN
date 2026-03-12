@@ -10,7 +10,7 @@ import {
 } from "@/affect/emotion/state.ts"
 import type { EmotionalState } from "@/affect/emotion/types.ts"
 import { INTENSITY_DIMENSIONS } from "@/affect/emotion/update.ts"
-import { analyzeStrategyPatterns } from "@/cognition/learning/analysis.ts"
+import { analyzeAndLearn } from "@/cognition/learning/analysis.ts"
 import { getBudgetState } from "@/core/budget.ts"
 import { analyzeConversationPatterns, getRecentConversationArcs } from "@/expression/communication/patterns.ts"
 import { REFLECTION } from "@/expression/routine/constants.ts"
@@ -145,7 +145,7 @@ export async function buildReflectionInput(): Promise<ReflectionInput> {
       ? ticksWithMessages.filter((t) => t.responseSent).length / ticksWithMessages.length
       : undefined
 
-  const outcomePatterns = await analyzeStrategyPatterns()
+  const lessonsCreated = await analyzeAndLearn()
 
   const staleGoalTitles = activeGoals.filter((g) => g.status === "stale" || g.status === "overdue").map((g) => g.title)
 
@@ -161,7 +161,7 @@ export async function buildReflectionInput(): Promise<ReflectionInput> {
     tickCount: metrics.tickCount,
     operatorInteractions: recentTicks.filter((t) => t.responseSent).length,
     operatorSentiment,
-    outcomePatterns: outcomePatterns.length > 0 ? outcomePatterns : undefined,
+    outcomePatterns: lessonsCreated > 0 ? [`${lessonsCreated} new strategy lessons learned`] : undefined,
     staleGoals: staleGoalTitles.length > 0 ? staleGoalTitles : undefined,
     goalConflicts: goalConflicts.length > 0 ? goalConflicts : undefined,
     emotionalHistory: emotionRows.map((r) => ({

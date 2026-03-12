@@ -3,6 +3,7 @@ import { generateContextualImpulse } from "@/cognition/boredom.ts"
 import { ATTENTION } from "@/cognition/constants.ts"
 import { findAutomaticHabit } from "@/cognition/habit.ts"
 import { getHabitState } from "@/cognition/habits.ts"
+import { computeTemperatureFromMetacognition } from "@/cognition/metacognition/temperature.ts"
 import { detectCognitiveConflict, shouldInstinctOverride } from "@/cognition/override.ts"
 import { generateInnerDialog } from "@/cognition/polyphony/dialog.ts"
 import { getVoiceDominanceBoost, selectActiveVoices, shouldRunDialog } from "@/cognition/polyphony/voices.ts"
@@ -90,7 +91,10 @@ export async function deliberate(tickState: TickState): Promise<DeliberateResult
   }
 
   const contextString = await buildContext(tickState, senseData, xContext, emailContext, calendarContext)
-  const systemPrompt = await buildSystemPrompt(contextString)
+  const systemPrompt = await buildSystemPrompt(contextString, {
+    communicationSimplification: feelResult.communicationSimplification,
+    hedgingLevel: feelResult.hedgingLevel
+  })
 
   const alteredState = preloaded.alteredState
   const alteredVoiceModifiers = alteredState ? computeVoiceModifiers(alteredState) : undefined
@@ -243,10 +247,13 @@ export async function deliberate(tickState: TickState): Promise<DeliberateResult
     .filter((m): m is typeof m & { image: NonNullable<typeof m.image> } => m.image != null)
     .map((m) => ({ base64: m.image.base64, mimeType: m.image.mimeType }))
 
+  const temperature = computeTemperatureFromMetacognition(feelResult.metacognitiveState)
+
   const callResult = await callIntelligence({
     system: systemPrompt,
     userMessage: userPrompt,
     schema: AnimaDecision,
+    temperature,
     ...(images.length > 0 ? { images } : {})
   })
 

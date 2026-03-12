@@ -3,7 +3,7 @@ import { analyzeMessageSentiment } from "@/affect/emotion/analyze.ts"
 import { TRIGGER_INTENSITY } from "@/affect/emotion/constants.ts"
 import { getEmotionalState, getLastEmotionTimestamp, getTriggerTimestamps } from "@/affect/emotion/state.ts"
 import type { EmotionUpdateEvent, MoodContext } from "@/affect/emotion/types.ts"
-import { getUnresolvedOutcome, resolveOutcome } from "@/cognition/learning/outcomes.ts"
+import { getUnresolvedOutcomes, resolveOutcome } from "@/cognition/learning/outcomes.ts"
 import { reinforceInsight } from "@/cognition/learning/reinforce.ts"
 import type { OperatorReaction } from "@/cognition/learning/types.ts"
 import { ACCUMULATION } from "@/expression/communication/constants.ts"
@@ -160,8 +160,8 @@ export async function sense(options?: SenseOptions): Promise<SenseResult> {
   ]
 
   if (newMessages.length > 0) {
-    const unresolvedOutcome = await getUnresolvedOutcome()
-    if (unresolvedOutcome) {
+    const unresolvedOutcomes = await getUnresolvedOutcomes()
+    for (const unresolvedOutcome of unresolvedOutcomes) {
       const minutesSinceOutcome = differenceInMinutes(new Date(), new Date(unresolvedOutcome.createdAt))
       const avgMessageLength = newMessages.reduce((sum, m) => sum + (m.text?.length ?? 0), 0) / newMessages.length
       const baselineLength = 40

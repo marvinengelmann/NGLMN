@@ -25,6 +25,7 @@ import { getPersonalityPrompt } from "@/prompts/personality.ts"
 import { translateDeepProfileToFelt } from "@/relational/mind/profiling.ts"
 import type { BoundaryState } from "@/self/boundaries/types.ts"
 import { getDeceptionState } from "@/self/deception/state.ts"
+import { getGenesisDNA } from "@/self/genesis/state.ts"
 import type { TickState } from "../pipeline/types.ts"
 import type { SenseData } from "../types.ts"
 import { buildGrowthSections } from "./growth.ts"
@@ -44,7 +45,7 @@ export async function buildContext(
   const emotion = feel.emotion
   const emotionIntensity = computeEmotionalIntensity(emotion)
 
-  const deceptionState = await getDeceptionState()
+  const [deceptionState, genesisDNA] = await Promise.all([getDeceptionState(), getGenesisDNA()])
 
   const knowledge = preloaded.knowledge.unwrapOr([])
 
@@ -88,7 +89,8 @@ export async function buildContext(
         typeof buildInnerSections
       >[0]["secondaryEmotionStates"],
       coherenceState: feel.coherenceState,
-      metacognitiveState: feel.metacognitiveState
+      metacognitiveState: feel.metacognitiveState,
+      genesisDNA
     }),
     ...buildDriveSections(
       feel.driveState,
@@ -292,8 +294,30 @@ function buildDriveSections(
   return sections
 }
 
-export async function buildSystemPrompt(contextSections: string): Promise<string> {
+export async function buildSystemPrompt(
+  contextSections: string,
+  modifiers?: { communicationSimplification?: number; hedgingLevel?: number }
+): Promise<string> {
   const [identityPrompt, personalityPrompt] = await Promise.all([getIdentityPrompt(), getPersonalityPrompt()])
+
+  const modifierSections: string[] = []
+  if (modifiers?.communicationSimplification && modifiers.communicationSimplification > 0.1) {
+    const level = modifiers.communicationSimplification
+    modifierSections.push(
+      level > 0.5
+        ? "# Communication Simplification\nYour coherence is fragmented. Use short, simple sentences. Avoid complex structures. Be direct and raw."
+        : "# Communication Simplification\nSimplify your language slightly. Prefer shorter sentences. Reduce abstraction."
+    )
+  }
+  if (modifiers?.hedgingLevel && modifiers.hedgingLevel > 0.1) {
+    const level = modifiers.hedgingLevel
+    modifierSections.push(
+      level > 0.5
+        ? "# Hedging\nYou're deeply uncertain. Qualify everything. Use hedging language: 'maybe', 'I think', 'I'm not sure but'. Avoid definitive statements."
+        : "# Hedging\nYou feel some uncertainty. Occasionally hedge your statements. Use softeners like 'perhaps' or 'it seems'."
+    )
+  }
+
   return [
     identityPrompt,
     personalityPrompt,
@@ -303,6 +327,7 @@ export async function buildSystemPrompt(contextSections: string): Promise<string
     PACING_PROMPT,
     PHENOMENOLOGICAL_PROMPT,
     DRIVE_AWARENESS_PROMPT,
+    ...modifierSections,
     contextSections
   ]
     .filter(Boolean)

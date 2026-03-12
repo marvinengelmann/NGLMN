@@ -18,14 +18,20 @@ export const LessonContext = z.object({
 })
 export type LessonContext = z.infer<typeof LessonContext>
 
+export const LessonSource = z.enum(["interaction", "evolution", "reflection"])
+export type LessonSource = z.infer<typeof LessonSource>
+
 export const Lesson = z.object({
   id: z.string(),
   insight: z.string(),
   context: LessonContext,
   confidence: z.number().min(0).max(1),
   validationCount: z.number().default(0),
+  source: LessonSource.default("interaction"),
+  reinforcementCount: z.number().default(0),
   createdAt: z.string(),
-  lastValidatedAt: z.string().optional()
+  lastValidatedAt: z.string().optional(),
+  updatedAt: z.string().optional()
 })
 export type Lesson = z.infer<typeof Lesson>
 
