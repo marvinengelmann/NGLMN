@@ -115,7 +115,7 @@ This is your genesis moment. Choose your name, describe your appearance, and wri
   const result = await callIntelligence({
     system,
     userMessage,
-    schema: GenesisIdentity
+    schema: GenesisIdentity.omit({ voiceId: true })
   })
 
   if (result.isErr()) {
