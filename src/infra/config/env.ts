@@ -54,7 +54,9 @@ const EnvSchema = z.object({
   UPSTASH_VECTOR_HABITUATION_URL: z.string().optional(),
   UPSTASH_VECTOR_HABITUATION_TOKEN: z.string().optional(),
 
-  GENESIS_SEED: z.string().optional()
+  GENESIS_SEED: z.string().optional(),
+  GENESIS_NAME: z.string().optional(),
+  GENESIS_GENDER: z.enum(["female", "male", "nonbinary"]).optional()
 })
 
 type EnvKey = keyof z.infer<typeof EnvSchema>

@@ -9,9 +9,21 @@ Seeds use a 3-word mnemonic format with BIP39 words (e.g. `crystal-dawn-flame`).
 - **Entropy:** 2048³ = 8,589,934,592 unique personalities
 - **Examples:** `crystal-dawn-flame`, `frozen-tide-raven`, `amber-pulse-drift`
 
+## Genesis Overrides
+
+All overrides are optional environment variables:
+
+| Variable | Description | Example |
+|---|---|---|
+| `GENESIS_SEED` | Fix the personality seed | `crystal-dawn-garden` |
+| `GENESIS_NAME` | Suggest a name to ANIMA (communicated as the operator's wish) | `ANIMA` |
+| `GENESIS_GENDER` | Suggest a gender identity (`female`, `male`, `nonbinary`) | `female` |
+
+Name and gender are communicated to ANIMA as the operator's preference during genesis — not enforced as hard overrides.
+
 ## How It Works
 
-1. The 3-word seed is joined into a UTF-8 string (e.g. `"crystal-dawn-flame"`)
+1. The 3-word seed is joined into a UTF-8 string (e.g. `"crystal-dawn-garden"`)
 2. SHA-256 hashes the string; the first 8 bytes become a 64-bit seed
 3. The seed feeds a deterministic PRNG (splitmix64)
 4. The PRNG generates Big Five traits, from which all other personality dimensions are derived

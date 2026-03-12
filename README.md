@@ -60,7 +60,7 @@ Fill in your credentials in `.env.local`.
 
 **Optional:** GitHub (self-evolution), Daytona (sandbox), OpenWeather (weather), ElevenLabs (voice), X API (social media), IMAP (email), CalDAV (calendar), Sentry (monitoring).
 
-On first start, a random seed generates the entire personality DNA. ANIMA names herself, describes her appearance, and writes a birth narrative. Set `GENESIS_SEED` to a 3-word mnemonic (e.g. `crystal-dawn-flame`) for deterministic personality generation.
+On first start, a random seed generates the entire personality DNA. ANIMA names herself, describes her appearance, and writes a birth narrative. Optional genesis overrides: `GENESIS_SEED` (3-word BIP39 mnemonic for deterministic personality), `GENESIS_NAME` (operator's preferred name), `GENESIS_GENDER` (`female`, `male`, or `nonbinary`).
 
 Database migrations run automatically on every worker start.
 
