@@ -27,7 +27,6 @@ import { trySafe } from "@/infra/lib/result.ts"
 import { nowISO, sleep } from "@/infra/lib/time.ts"
 import { getActiveGoals } from "@/memory/goals.ts"
 import { getKnowledge } from "@/memory/semantic.ts"
-import { setLastUpdateId } from "@/memory/working.ts"
 import { detectPerceptionGoals } from "@/perception/goals.ts"
 import { readGitActivity, readOwnState, readTelegramActivity, readWeatherData } from "@/perception/sensors.ts"
 import {
@@ -49,6 +48,7 @@ import type { ConversationState, SenseResult } from "./types.ts"
 
 interface SenseOptions {
   interruptedPreviousSend?: boolean
+  lastUpdateIdOverride?: number | null
 }
 
 /**
@@ -59,14 +59,16 @@ export async function sense(options?: SenseOptions): Promise<SenseResult> {
   const waitingSince = await getConversationWaitingSince()
   const inConversation = waitingSince != null
   const timeout = inConversation ? HEARTBEAT.CONVERSATION_POLL_TIMEOUT : 0
-  const { messages: initialMessages, maxUpdateId: initialMaxId } = await fetchNewMessages(timeout)
+  const offsetOverride = options?.lastUpdateIdOverride
+  const { messages: initialMessages, maxUpdateId: initialMaxId } = await fetchNewMessages(timeout, offsetOverride)
 
   let allMessages = [...initialMessages]
   let finalMaxUpdateId = initialMaxId
 
   if (initialMessages.length > 0 && inConversation) {
     await sleep(ACCUMULATION.WINDOW_MS)
-    const { messages: followUp, maxUpdateId: followUpMaxId } = await fetchNewMessages(0)
+    const followUpOffset = finalMaxUpdateId ?? offsetOverride
+    const { messages: followUp, maxUpdateId: followUpMaxId } = await fetchNewMessages(0, followUpOffset)
     if (followUp.length > 0) {
       allMessages = [...allMessages, ...followUp]
       if (followUpMaxId != null) {
@@ -77,10 +79,6 @@ export async function sense(options?: SenseOptions): Promise<SenseResult> {
 
   const newMessages = allMessages
   const maxUpdateId = finalMaxUpdateId
-
-  if (maxUpdateId != null) {
-    await setLastUpdateId(maxUpdateId)
-  }
 
   if (newMessages.length > 0) {
     await incrementTotalInteractions()
@@ -313,6 +311,7 @@ export async function sense(options?: SenseOptions): Promise<SenseResult> {
     rawTriggers: allTriggers,
     elapsedMinutes,
     triggerTimestamps,
-    interruptedPreviousSend: options?.interruptedPreviousSend ?? false
+    interruptedPreviousSend: options?.interruptedPreviousSend ?? false,
+    maxUpdateId
   }
 }

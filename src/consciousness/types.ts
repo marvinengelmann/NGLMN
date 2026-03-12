@@ -43,7 +43,8 @@ export const SenseResult = z.object({
   rawTriggers: z.array(EmotionUpdateEvent),
   elapsedMinutes: z.number(),
   triggerTimestamps: z.record(z.string(), z.number()),
-  interruptedPreviousSend: z.boolean().default(false)
+  interruptedPreviousSend: z.boolean().default(false),
+  maxUpdateId: z.number().nullable().default(null)
 })
 export type SenseResult = z.infer<typeof SenseResult>
 
@@ -107,7 +108,8 @@ export const ActResult = z.object({
   responseSent: z.boolean(),
   responseText: z.string().optional(),
   actionExecuted: z.string(),
-  interrupted: z.boolean().default(false)
+  interrupted: z.boolean().default(false),
+  postActEmotion: EmotionalState.optional()
 })
 export type ActResult = z.infer<typeof ActResult>
 

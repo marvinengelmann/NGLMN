@@ -1,7 +1,7 @@
 import { differenceInDays, differenceInMinutes, parseISO } from "date-fns"
 import type { GuiltSource } from "@/affect/emotion/guilt.ts"
 import { getGuiltState, markRepaired, saveGuiltState } from "@/affect/emotion/guilt.ts"
-import { getEmotionalState, getMoodBaseline } from "@/affect/emotion/state.ts"
+import { getMoodBaseline } from "@/affect/emotion/state.ts"
 import { blendMoodBaseline, summarizeEmotions } from "@/affect/emotion/update.ts"
 import { getSomaticState } from "@/affect/soma/state.ts"
 import { rechargeSocialBattery } from "@/affect/soma/update.ts"
@@ -409,16 +409,17 @@ export async function maintain(
   await pushRecentTickDuration(durationMs)
   await pushRecentAction(input.decision.action)
 
-  const primaryTrigger = input.senseResult.perception.emotionalTriggers[0]?.trigger ?? "message_received"
-  const currentEmotion = input.actResult.responseSent
-    ? ((await getEmotionalState()) ?? feelResult.emotion)
-    : feelResult.emotion
-  buffer.stage(REDIS.EMOTION_CURRENT, currentEmotion)
-  buffer.stagePostgres(emotionHistory, {
-    state: currentEmotion,
-    trigger: primaryTrigger,
-    tickId: input.tickId
-  })
+  const currentEmotion = input.actResult.postActEmotion ?? feelResult.emotion
+
+  if (!input.actResult.responseSent) {
+    const primaryTrigger = input.senseResult.perception.emotionalTriggers[0]?.trigger ?? "message_received"
+    buffer.stage(REDIS.EMOTION_CURRENT, currentEmotion)
+    buffer.stagePostgres(emotionHistory, {
+      state: currentEmotion,
+      trigger: primaryTrigger,
+      tickId: input.tickId
+    })
+  }
 
   const oldBaseline = await getMoodBaseline()
   buffer.stage(REDIS.MOOD_BASELINE, blendMoodBaseline(currentEmotion, oldBaseline))

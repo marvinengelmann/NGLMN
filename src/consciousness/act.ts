@@ -2,14 +2,13 @@ import { differenceInMinutes, getHours, parseISO } from "date-fns"
 import { EVENT_SUBSTANCE_MAP } from "@/affect/altered/events.ts"
 import { startAlteredState } from "@/affect/altered/state.ts"
 import { EMOTIONAL_THRESHOLDS, TRIGGER_INTENSITY } from "@/affect/emotion/constants.ts"
-import { getEmotionalState, saveEmotionalState } from "@/affect/emotion/state.ts"
+import type { EmotionalState } from "@/affect/emotion/types.ts"
 import {
   computeEmotionalIntensity,
   computeEmotionalUpdate,
   computeValence,
   summarizeEmotions
 } from "@/affect/emotion/update.ts"
-import { saveSomaticState } from "@/affect/soma/state.ts"
 import { computeSomaticUpdate, drainSocialBattery } from "@/affect/soma/update.ts"
 import { createOutcome } from "@/cognition/learning/outcomes.ts"
 import type { InteractionStrategy } from "@/cognition/learning/types.ts"
@@ -23,8 +22,7 @@ import { executeMorning, executeReflection } from "@/expression/routine/executor
 import { runEvolutionCycle } from "@/governance/evolution/cycle.ts"
 import { validatePublicContent } from "@/governance/security/privacy.ts"
 import { executeWorkflow } from "@/governance/workflow/engine.ts"
-import { db } from "@/infra/db/client.ts"
-import { narrativeEntries } from "@/infra/db/schema.ts"
+import { emotionHistory, narrativeEntries, psycheSnapshots, somaticHistory } from "@/infra/db/schema.ts"
 import {
   setCalendarLastCheck,
   setEmailLastCheck,
@@ -43,9 +41,10 @@ import { getLastTickSummary } from "@/memory/working.ts"
 import { isDissonanceSignificant } from "@/self/dissonance/compute.ts"
 import { startChosenLifeEvent, startSleepEvent } from "@/self/lifecycle.ts"
 import { buildNarrativeSummary, generateNarrativeEntry } from "@/self/psyche/narrative.ts"
-import { addGrowthArc, addNarrativeEntry, savePsycheSnapshot, saveSelfConcept } from "@/self/psyche/state.ts"
+import { getGrowthArcs, getRecentNarratives } from "@/self/psyche/state.ts"
 import { detectGrowthArc, updateSelfConcept } from "@/self/psyche/update.ts"
 import { recordActiveTick } from "./gating.ts"
+import type { WriteBuffer } from "./pipeline/persistence.ts"
 import type { ActResult, DeliberateResult, FeelingResult, SenseResult } from "./types.ts"
 
 /**
@@ -56,6 +55,7 @@ export async function act(
   deliberateResult: DeliberateResult,
   senseResult: SenseResult,
   feelResult: FeelingResult,
+  buffer: WriteBuffer,
   tickId?: string
 ): Promise<ActResult> {
   const { decision } = deliberateResult
@@ -111,12 +111,18 @@ export async function act(
     }
   }
 
+  let postActEmotion: EmotionalState | undefined
   if (responseSent) {
-    const currentEmotion = await getEmotionalState()
-    const outcomeEmotion = computeEmotionalUpdate(currentEmotion, [
+    const outcomeEmotion = computeEmotionalUpdate(feelResult.emotion, [
       { trigger: "message_sent", intensity: TRIGGER_INTENSITY.MESSAGE_SENT }
     ])
-    await saveEmotionalState(outcomeEmotion, "message_sent")
+    postActEmotion = outcomeEmotion
+    buffer.stage("working:emotion:current", outcomeEmotion)
+    buffer.stagePostgres(emotionHistory, {
+      state: outcomeEmotion,
+      trigger: "message_sent",
+      tickId: tickId ?? null
+    })
 
     const drainedSoma = drainSocialBattery(
       feelResult.soma,
@@ -124,7 +130,12 @@ export async function act(
       senseResult.pendingMessages.length
     )
     const postActionSoma = computeSomaticUpdate(drainedSoma, outcomeEmotion, 0)
-    await saveSomaticState(postActionSoma, "post_action")
+    buffer.stage("working:soma:current", postActionSoma)
+    buffer.stage("working:soma:lastTimestamp", new Date().toISOString())
+    buffer.stagePostgres(somaticHistory, {
+      state: postActionSoma,
+      trigger: "post_action"
+    })
 
     await recordActiveTick()
   }
@@ -160,11 +171,12 @@ export async function act(
     dissonanceDetected: isDissonanceSignificant(feelResult.dissonance.activeDissonance),
     elapsedHours
   })
-  await saveSelfConcept(updatedConcept)
+  buffer.stage("working:psyche:current", updatedConcept)
 
   const growthArc = detectGrowthArc(updatedConcept, feelResult.selfConcept, nowISO())
   if (growthArc) {
-    await addGrowthArc(growthArc)
+    const existingArcs = await getGrowthArcs()
+    buffer.stage("working:psyche:growthArcs", [...existingArcs, growthArc].slice(-10))
     log.info("Growth arc detected", { observation: growthArc.observation })
   }
 
@@ -177,19 +189,25 @@ export async function act(
       updatedConcept
     )
     if (entry) {
-      await db.insert(narrativeEntries).values({
+      buffer.stagePostgres(narrativeEntries, {
         content: entry.content,
         emotionalColoring: entry.emotionalColoring,
         significance: entry.significance
       })
-      await addNarrativeEntry(entry)
 
-      await savePsycheSnapshot({
+      const existingNarratives = await getRecentNarratives()
+      buffer.stage("working:psyche:recentNarratives", [...existingNarratives, entry].slice(-5))
+
+      const narrativeSummary = buildNarrativeSummary([entry])
+      buffer.stage("working:psyche:current", updatedConcept)
+      buffer.stage("working:psyche:aspirations", [])
+      buffer.stage("working:psyche:fears", [])
+      buffer.stage("working:psyche:narrativeSummary", narrativeSummary)
+      buffer.stagePostgres(psycheSnapshots, {
         selfConcept: updatedConcept,
         aspirations: [],
         fears: [],
-        narrativeSummary: buildNarrativeSummary([entry]),
-        timestamp: entry.timestamp
+        narrativeSummary
       })
 
       log.info("Narrative entry persisted", { significance: entry.significance })
@@ -213,7 +231,7 @@ export async function act(
     })
   }
 
-  return { responseSent, responseText, actionExecuted: decision.action, interrupted }
+  return { responseSent, responseText, actionExecuted: decision.action, interrupted, postActEmotion }
 }
 
 async function executeAction(deliberateResult: DeliberateResult, feelResult: FeelingResult): Promise<void> {

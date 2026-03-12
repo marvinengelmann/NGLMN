@@ -45,6 +45,7 @@ export async function runHeartbeat() {
     let lastDecision: Awaited<ReturnType<typeof deliberate>> | null = null
     let lastActResult: Awaited<ReturnType<typeof act>> | null = null
     let previousSendInterrupted = false
+    let lastKnownUpdateId: number | null = null
 
     while (true) {
       tickId = `tick-${Date.now()}`
@@ -52,7 +53,16 @@ export async function runHeartbeat() {
       timestamp = nowISO()
       setTickContext({ tickId })
 
-      const senseResult = await sense({ interruptedPreviousSend: previousSendInterrupted })
+      const senseResult = await sense({
+        interruptedPreviousSend: previousSendInterrupted,
+        lastUpdateIdOverride: lastKnownUpdateId
+      })
+
+      if (senseResult.maxUpdateId != null) {
+        lastKnownUpdateId = senseResult.maxUpdateId
+        buffer.stage("working:telegram:lastUpdateId", senseResult.maxUpdateId)
+      }
+
       const feelResult = await feel(senseResult, buffer)
 
       const senseData: SenseData = {
@@ -88,7 +98,7 @@ export async function runHeartbeat() {
       }
 
       const deliberateResult = await deliberate(tickState)
-      const actResult = await act(deliberateResult, senseResult, feelResult, tickId)
+      const actResult = await act(deliberateResult, senseResult, feelResult, buffer, tickId)
 
       lastTickState = tickState
       lastDecision = deliberateResult

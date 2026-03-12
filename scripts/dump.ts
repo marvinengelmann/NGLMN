@@ -51,7 +51,8 @@ async function dump() {
     rawTriggers: [],
     elapsedMinutes: 0,
     triggerTimestamps: {},
-    interruptedPreviousSend: false
+    interruptedPreviousSend: false,
+    maxUpdateId: null
   }
 
   const dumpBuffer = new WriteBuffer()

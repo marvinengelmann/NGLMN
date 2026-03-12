@@ -31,11 +31,14 @@ export async function sendToOperator(text: string): Promise<number> {
  * @param timeout - Long poll timeout in seconds (Telegram holds the connection open).
  * @returns Parsed messages and the highest update ID (caller decides when to commit offset).
  */
-export async function fetchNewMessages(timeout: number): Promise<{
+export async function fetchNewMessages(
+  timeout: number,
+  offsetOverride?: number | null
+): Promise<{
   messages: PendingMessage[]
   maxUpdateId: number | null
 }> {
-  const lastUpdateId = await getLastUpdateId()
+  const lastUpdateId = offsetOverride !== undefined ? offsetOverride : await getLastUpdateId()
 
   const updates = await bot.getUpdates({
     offset: lastUpdateId != null ? lastUpdateId + 1 : undefined,
