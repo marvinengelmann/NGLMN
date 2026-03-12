@@ -43,7 +43,7 @@ export function generateSeed(): string {
  */
 export function seedToNumeric(seed: string): number {
   const hash = createHash("sha256").update(seed).digest()
-  return hash.readUInt32BE(8)
+  return hash.readUInt32BE(8) & 0x7FFFFFFF
 }
 
 function seedToRng(seed: string): PRNG {
