@@ -42,6 +42,10 @@ export const TYPOS = {
   VULNERABILITY_OPEN_BOOST: 1.2
 } as const
 
+export const ACCUMULATION = {
+  WINDOW_MS: 2500
+} as const
+
 export const REGISTER = {
   SWITCH_THRESHOLD: 0.15
 } as const

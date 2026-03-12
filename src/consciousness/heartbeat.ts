@@ -44,6 +44,7 @@ export async function runHeartbeat() {
     let lastTickState: TickState | null = null
     let lastDecision: Awaited<ReturnType<typeof deliberate>> | null = null
     let lastActResult: Awaited<ReturnType<typeof act>> | null = null
+    let previousSendInterrupted = false
 
     while (true) {
       tickId = `tick-${Date.now()}`
@@ -51,7 +52,7 @@ export async function runHeartbeat() {
       timestamp = nowISO()
       setTickContext({ tickId })
 
-      const senseResult = await sense()
+      const senseResult = await sense({ interruptedPreviousSend: previousSendInterrupted })
       const feelResult = await feel(senseResult, buffer)
 
       const senseData: SenseData = {
@@ -61,7 +62,8 @@ export async function runHeartbeat() {
         weather: senseResult.perception.weatherData ?? null,
         conversationState: senseResult.conversationState,
         triggeredWorkflows: senseResult.triggeredWorkflows,
-        moodContext: senseResult.moodContext
+        moodContext: senseResult.moodContext,
+        interruptedPreviousSend: senseResult.interruptedPreviousSend
       }
 
       const preloaded = await preloadContextState(senseData, feelResult.emotion)
@@ -91,6 +93,14 @@ export async function runHeartbeat() {
       lastTickState = tickState
       lastDecision = deliberateResult
       lastActResult = actResult
+
+      if (actResult.interrupted) {
+        previousSendInterrupted = true
+        log.info("Send interrupted, re-sensing immediately")
+        continue
+      }
+
+      previousSendInterrupted = false
 
       if (!deliberateResult.decision.expectsReply) break
 

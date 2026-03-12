@@ -50,7 +50,8 @@ async function dump() {
     moodContext,
     rawTriggers: [],
     elapsedMinutes: 0,
-    triggerTimestamps: {}
+    triggerTimestamps: {},
+    interruptedPreviousSend: false
   }
 
   const dumpBuffer = new WriteBuffer()
@@ -63,7 +64,8 @@ async function dump() {
     weather: null,
     conversationState: senseResult.conversationState,
     triggeredWorkflows: senseResult.triggeredWorkflows,
-    moodContext: senseResult.moodContext
+    moodContext: senseResult.moodContext,
+    interruptedPreviousSend: false
   }
 
   const preloaded = await preloadContextState(senseData, feelResult.emotion)

@@ -6,6 +6,7 @@ import type { EmotionUpdateEvent, MoodContext } from "@/affect/emotion/types.ts"
 import { getUnresolvedOutcome, resolveOutcome } from "@/cognition/learning/outcomes.ts"
 import { reinforceInsight } from "@/cognition/learning/reinforce.ts"
 import type { OperatorReaction } from "@/cognition/learning/types.ts"
+import { ACCUMULATION } from "@/expression/communication/constants.ts"
 import { archiveConversation, detectConversationBoundary } from "@/expression/communication/conversation.ts"
 import {
   getActiveConversation,
@@ -23,7 +24,7 @@ import { fetchNewMessages } from "@/infra/integrations/telegram.ts"
 import { log } from "@/infra/lib/logger.ts"
 import { clamp } from "@/infra/lib/math.ts"
 import { trySafe } from "@/infra/lib/result.ts"
-import { nowISO } from "@/infra/lib/time.ts"
+import { nowISO, sleep } from "@/infra/lib/time.ts"
 import { getActiveGoals } from "@/memory/goals.ts"
 import { getKnowledge } from "@/memory/semantic.ts"
 import { setLastUpdateId } from "@/memory/working.ts"
@@ -46,15 +47,36 @@ import { getOperatorModel, getRelationalPatterns } from "@/relational/mind/state
 import { extractSignals, matchRelationalPatterns } from "@/relational/mind/triggers.ts"
 import type { ConversationState, SenseResult } from "./types.ts"
 
+interface SenseOptions {
+  interruptedPreviousSend?: boolean
+}
+
 /**
  * SENSE phase — pure perception, no processing or decisions.
  * Gathers all raw data, builds context and prompts for THINK.
  */
-export async function sense(): Promise<SenseResult> {
+export async function sense(options?: SenseOptions): Promise<SenseResult> {
   const waitingSince = await getConversationWaitingSince()
   const inConversation = waitingSince != null
   const timeout = inConversation ? HEARTBEAT.CONVERSATION_POLL_TIMEOUT : 0
-  const { messages: newMessages, maxUpdateId } = await fetchNewMessages(timeout)
+  const { messages: initialMessages, maxUpdateId: initialMaxId } = await fetchNewMessages(timeout)
+
+  let allMessages = [...initialMessages]
+  let finalMaxUpdateId = initialMaxId
+
+  if (initialMessages.length > 0 && inConversation) {
+    await sleep(ACCUMULATION.WINDOW_MS)
+    const { messages: followUp, maxUpdateId: followUpMaxId } = await fetchNewMessages(0)
+    if (followUp.length > 0) {
+      allMessages = [...allMessages, ...followUp]
+      if (followUpMaxId != null) {
+        finalMaxUpdateId = followUpMaxId
+      }
+    }
+  }
+
+  const newMessages = allMessages
+  const maxUpdateId = finalMaxUpdateId
 
   if (maxUpdateId != null) {
     await setLastUpdateId(maxUpdateId)
@@ -290,6 +312,7 @@ export async function sense(): Promise<SenseResult> {
     moodContext,
     rawTriggers: allTriggers,
     elapsedMinutes,
-    triggerTimestamps
+    triggerTimestamps,
+    interruptedPreviousSend: options?.interruptedPreviousSend ?? false
   }
 }

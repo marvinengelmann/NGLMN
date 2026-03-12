@@ -125,6 +125,23 @@ export async function fetchNewMessages(timeout: number): Promise<{
 }
 
 /**
+ * Non-destructive peek for new operator messages without committing the offset.
+ * @returns true if there are pending messages from the operator.
+ */
+export async function peekForNewMessages(): Promise<boolean> {
+  const lastUpdateId = await getLastUpdateId()
+
+  const updates = await bot.getUpdates({
+    offset: lastUpdateId != null ? lastUpdateId + 1 : undefined,
+    timeout: 0,
+    limit: 1,
+    allowed_updates: ["message"]
+  })
+
+  return updates.some((u) => u.message && String(u.message.chat.id) === operatorChatId)
+}
+
+/**
  * Check if the Telegram bot API is reachable.
  */
 export async function pingTelegram(): Promise<boolean> {

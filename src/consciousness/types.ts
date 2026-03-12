@@ -42,7 +42,8 @@ export const SenseResult = z.object({
   moodContext: MoodContext,
   rawTriggers: z.array(EmotionUpdateEvent),
   elapsedMinutes: z.number(),
-  triggerTimestamps: z.record(z.string(), z.number())
+  triggerTimestamps: z.record(z.string(), z.number()),
+  interruptedPreviousSend: z.boolean().default(false)
 })
 export type SenseResult = z.infer<typeof SenseResult>
 
@@ -53,7 +54,8 @@ export const SenseData = z.object({
   weather: WeatherData.nullable(),
   conversationState: ConversationState.nullable(),
   triggeredWorkflows: z.array(WorkflowDefinition).default([]),
-  moodContext: MoodContext
+  moodContext: MoodContext,
+  interruptedPreviousSend: z.boolean().default(false)
 })
 export type SenseData = z.infer<typeof SenseData>
 
@@ -102,7 +104,8 @@ export type DeliberateResult = z.infer<typeof DeliberateResult>
 export const ActResult = z.object({
   responseSent: z.boolean(),
   responseText: z.string().optional(),
-  actionExecuted: z.string()
+  actionExecuted: z.string(),
+  interrupted: z.boolean().default(false)
 })
 export type ActResult = z.infer<typeof ActResult>
 

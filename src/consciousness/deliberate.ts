@@ -39,7 +39,8 @@ export async function deliberate(tickState: TickState): Promise<DeliberateResult
     weather: senseResult.perception.weatherData ?? null,
     conversationState: senseResult.conversationState,
     triggeredWorkflows: senseResult.triggeredWorkflows,
-    moodContext: senseResult.moodContext
+    moodContext: senseResult.moodContext,
+    interruptedPreviousSend: senseResult.interruptedPreviousSend
   }
 
   let xContext: { canBrowse: boolean; canPost: boolean; timeline?: EnrichedTweet[] } | undefined

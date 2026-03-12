@@ -61,6 +61,7 @@ export async function act(
   const { decision } = deliberateResult
   let responseSent = false
   let responseText: string | undefined
+  let interrupted = false
 
   const routineHandlesMessaging = decision.action === "morning" || decision.action === "dream"
   if (decision.messages.length > 0 && !routineHandlesMessaging) {
@@ -74,6 +75,7 @@ export async function act(
     if (messagingResult.isOk()) {
       responseSent = messagingResult.value.responseSent
       responseText = messagingResult.value.responseText
+      interrupted = messagingResult.value.interrupted
     } else {
       logAndCaptureError(messagingResult.error, { phase: "act_messaging" })
     }
@@ -211,7 +213,7 @@ export async function act(
     })
   }
 
-  return { responseSent, responseText, actionExecuted: decision.action }
+  return { responseSent, responseText, actionExecuted: decision.action, interrupted }
 }
 
 async function executeAction(deliberateResult: DeliberateResult, feelResult: FeelingResult): Promise<void> {

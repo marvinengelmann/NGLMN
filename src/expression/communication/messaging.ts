@@ -14,6 +14,7 @@ import { handleGuardianVerdict, validateOutput } from "@/governance/security/gua
 import { pushRecentResponse, setGuardianResult } from "@/governance/security/state.ts"
 import { textToSpeech } from "@/infra/integrations/elevenlabs.ts"
 import {
+  peekForNewMessages,
   sendMessageWithReply,
   sendPhotoToOperator,
   sendRecordVoiceAction,
@@ -38,6 +39,7 @@ interface MessagingContext {
 interface MessagingResult {
   responseSent: boolean
   responseText?: string
+  interrupted: boolean
 }
 
 /**
@@ -47,9 +49,10 @@ interface MessagingResult {
 export async function sendMessages(decision: AnimaDecision, context?: MessagingContext): Promise<MessagingResult> {
   const allTexts: string[] = []
   const register = (await getCommunicationRegister()) ?? "casual"
+  let interrupted = false
 
-  await decision.messages.reduce(async (previousPromise, message, messageIndex) => {
-    await previousPromise
+  for (let messageIndex = 0; messageIndex < decision.messages.length; messageIndex++) {
+    const message = decision.messages[messageIndex]!
 
     const guardianResult = await validateOutput(message.text)
     await setGuardianResult(guardianResult)
@@ -57,7 +60,7 @@ export async function sendMessages(decision: AnimaDecision, context?: MessagingC
     const { blocked } = await handleGuardianVerdict(guardianResult, "anima-message")
     if (blocked) {
       log.warn("Guardian blocked message", { text: message.text.slice(0, 50) })
-      return
+      continue
     }
 
     if (message.withImage && message.imagePrompt) {
@@ -108,12 +111,18 @@ export async function sendMessages(decision: AnimaDecision, context?: MessagingC
       )
 
       const paragraphs = splitIntoParagraphs(possiblyTypoed)
-      await paragraphs.reduce(async (paragraphPromise, paragraph, i) => {
-        await paragraphPromise
 
-        if (!paragraph) return
+      for (let i = 0; i < paragraphs.length; i++) {
+        const paragraph = paragraphs[i]
+        if (!paragraph) continue
 
         if (i > 0) {
+          const hasNewMessages = await peekForNewMessages()
+          if (hasNewMessages) {
+            interrupted = true
+            log.info("Mid-send interrupt detected between paragraphs")
+            break
+          }
           await sleep(computeInterParagraphPause())
         }
 
@@ -121,9 +130,9 @@ export async function sendMessages(decision: AnimaDecision, context?: MessagingC
         const sentId = await sendMessageWithReply(paragraph, i === 0 ? message.replyTo : undefined)
 
         await pushToActiveConversation([{ role: "anima", text: paragraph, timestamp: nowISO(), messageId: sentId }])
-      }, Promise.resolve())
+      }
 
-      if (correction) {
+      if (!interrupted && correction) {
         const delay =
           TYPOS.CORRECTION_DELAY_MIN_MS +
           Math.random() * (TYPOS.CORRECTION_DELAY_MAX_MS - TYPOS.CORRECTION_DELAY_MIN_MS)
@@ -136,17 +145,26 @@ export async function sendMessages(decision: AnimaDecision, context?: MessagingC
       }
     }
 
+    if (interrupted) break
+
     allTexts.push(message.text)
     await pushRecentResponse(message.text)
 
     if (messageIndex < decision.messages.length - 1) {
+      const hasNewMessages = await peekForNewMessages()
+      if (hasNewMessages) {
+        interrupted = true
+        log.info("Mid-send interrupt detected between messages")
+        break
+      }
       const delay = MESSAGE_DELAY.MIN_BETWEEN_MESSAGES_MS + Math.random() * MESSAGE_DELAY.MAX_JITTER_MS
       await sleep(delay)
     }
-  }, Promise.resolve())
+  }
 
   return {
     responseSent: allTexts.length > 0,
-    responseText: allTexts.join("\n")
+    responseText: allTexts.join("\n"),
+    interrupted
   }
 }
