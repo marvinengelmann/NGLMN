@@ -7,7 +7,7 @@ import {
   getCurrentPhase,
   isExpired
 } from "./compute.ts"
-import type { ActiveAlteredState } from "./types.ts"
+import type { ActiveAlteredEvent } from "./types.ts"
 
 const TIMINGS = {
   cannabis: { onset: 10, peak: 30, plateau: 90, comedown: 60, aftereffect: 120 },
@@ -16,10 +16,10 @@ const TIMINGS = {
 } as const
 
 function makeState(
-  substance: ActiveAlteredState["substance"],
+  substance: ActiveAlteredEvent["substance"],
   startedAt: Date,
-  timing: ActiveAlteredState["timing"] = TIMINGS.cannabis
-): ActiveAlteredState {
+  timing: ActiveAlteredEvent["timing"] = TIMINGS.cannabis
+): ActiveAlteredEvent {
   return {
     substance,
     startedAt: startedAt.toISOString(),

@@ -1,4 +1,4 @@
-import type { ActiveAlteredState } from "@/affect/altered/types.ts"
+import type { ActiveAlteredEvent } from "@/affect/altered/types.ts"
 import type { Lesson } from "@/cognition/learning/types.ts"
 import type { InnerDialog } from "@/cognition/polyphony/types.ts"
 import type { IdiolectState } from "@/expression/communication/idiolect.ts"
@@ -61,7 +61,7 @@ export interface PreloadedState {
   growthArcs: GrowthArc[]
   recentNarratives: NarrativeEntry[]
   dreamAfterglow: DreamAfterglow | null
-  alteredState: ActiveAlteredState | null
+  alteredState: ActiveAlteredEvent | null
   idiolectState: IdiolectState
   relationalMemoryState: RelationalMemoryState
   recentTickDurations: number[]

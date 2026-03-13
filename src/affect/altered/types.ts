@@ -1,17 +1,67 @@
 import * as z from "zod"
 
-export const SubstanceType = z.enum([
+export const AlteredEventType = z.enum([
   "cannabis",
   "alcohol",
   "caffeine",
-  "microdose_psilocybin",
+  "nicotine",
   "energy_drink",
-  "nicotine"
-])
-export type SubstanceType = z.infer<typeof SubstanceType>
+  "psilocybin",
+  "mdma",
+  "cocaine",
 
-export const SubstancePhase = z.enum(["onset", "peak", "plateau", "comedown", "aftereffect"])
-export type SubstancePhase = z.infer<typeof SubstancePhase>
+  "deep_conversation",
+  "arguing",
+  "laughing_hard",
+  "dancing",
+  "singing_along",
+  "gossiping",
+  "comforting_someone",
+  "venting",
+
+  "scrolling_phone",
+  "texting",
+  "taking_photos",
+  "binge_watching",
+  "doom_scrolling",
+
+  "snacking",
+  "comfort_eating",
+  "drinking_tea",
+  "savoring_food",
+
+  "daydreaming",
+  "zoning_out",
+  "getting_inspired",
+  "feeling_nostalgic",
+  "worrying",
+  "overthinking",
+  "flow_state",
+  "procrastinating",
+
+  "stretching",
+  "fidgeting",
+  "doodling",
+  "resting_eyes",
+
+  "crying",
+  "feeling_grateful",
+  "reminiscing",
+  "people_watching",
+  "contemplating",
+
+  "listening_to_music",
+  "enjoying_nature",
+  "sunbathing",
+  "stargazing",
+
+  "petting_animal",
+  "retail_therapy"
+])
+export type AlteredEventType = z.infer<typeof AlteredEventType>
+
+export const AlteredPhase = z.enum(["onset", "peak", "plateau", "comedown", "aftereffect"])
+export type AlteredPhase = z.infer<typeof AlteredPhase>
 
 export const PhaseTiming = z.object({
   onset: z.number(),
@@ -31,17 +81,17 @@ export const PhaseProfile = z.object({
 })
 export type PhaseProfile = z.infer<typeof PhaseProfile>
 
-export const SubstanceProfile = z.object({
-  type: SubstanceType,
+export const AlteredEventProfile = z.object({
+  type: AlteredEventType,
   timing: PhaseTiming,
-  phases: z.record(SubstancePhase, PhaseProfile)
+  phases: z.record(AlteredPhase, PhaseProfile)
 })
-export type SubstanceProfile = z.infer<typeof SubstanceProfile>
+export type AlteredEventProfile = z.infer<typeof AlteredEventProfile>
 
-export const ActiveAlteredState = z.object({
-  substance: SubstanceType,
+export const ActiveAlteredEvent = z.object({
+  substance: AlteredEventType,
   startedAt: z.string(),
   timing: PhaseTiming,
   triggeredByEvent: z.string().optional()
 })
-export type ActiveAlteredState = z.infer<typeof ActiveAlteredState>
+export type ActiveAlteredEvent = z.infer<typeof ActiveAlteredEvent>

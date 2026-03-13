@@ -1,4 +1,5 @@
 import { getPhenomenologicalText, isExpired } from "@/affect/altered/compute.ts"
+import { ALTERED_EVENT_TYPES } from "@/affect/altered/events.ts"
 import { DRIVE_ACTION_HINTS } from "@/affect/drive/constants.ts"
 import type { DriveState } from "@/affect/drive/types.ts"
 import "@/affect/emotion/init.ts"
@@ -323,7 +324,7 @@ export async function buildSystemPrompt(
     identityPrompt,
     personalityPrompt,
     RHYTHM_PROMPT,
-    buildActionsPrompt(getAvailableLifeEvents().map((e) => e.type)),
+    buildActionsPrompt(getAvailableLifeEvents().map((e) => e.type), ALTERED_EVENT_TYPES),
     COMMUNICATION_PROMPT,
     PACING_PROMPT,
     PHENOMENOLOGICAL_PROMPT,

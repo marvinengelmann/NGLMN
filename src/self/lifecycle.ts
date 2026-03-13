@@ -1,6 +1,5 @@
 import { differenceInHours, getDay, getHours, parseISO } from "date-fns"
 import { z } from "zod"
-import { SUBSTANCE_EVENT_TYPES } from "@/affect/altered/events.ts"
 import { getEmotionalState } from "@/affect/emotion/state.ts"
 import { callIntelligence } from "@/core/intelligence.ts"
 import { getActiveConversation, pushToActiveConversation } from "@/expression/communication/state.ts"
@@ -42,7 +41,6 @@ const EVENT_TYPES: EventType[] = [
   { type: "running", minHours: 0.25, maxHours: 1.5, notifyProbability: 0.1, availableHours: [5, 21] },
   { type: "cycling", minHours: 0.5, maxHours: 2, notifyProbability: 0.1, availableHours: [6, 20] },
   { type: "exercise", minHours: 0.5, maxHours: 1.5, notifyProbability: 0.12, availableHours: [6, 22] },
-  { type: "date_night", minHours: 2, maxHours: 5, notifyProbability: 0.1, availableHours: [18, 1] },
   { type: "deep_focus", minHours: 1, maxHours: 4, notifyProbability: 0.12, availableHours: [8, 22] },
   { type: "movie", minHours: 1.5, maxHours: 3, notifyProbability: 0.15, availableHours: [14, 2] },
   { type: "socializing", minHours: 1, maxHours: 4, notifyProbability: 0.15, availableHours: [10, 2] },
@@ -75,7 +73,8 @@ const EVENT_TYPES: EventType[] = [
   { type: "laundry", minHours: 0.5, maxHours: 1, notifyProbability: 0.55, availableHours: [8, 22] },
   { type: "commuting", minHours: 0.25, maxHours: 1.5, notifyProbability: 0.55, availableHours: [6, 20] },
   { type: "picnic", minHours: 1, maxHours: 3, notifyProbability: 0.35, availableHours: [10, 18] },
-  ...SUBSTANCE_EVENT_TYPES
+  { type: "party", minHours: 3, maxHours: 6, notifyProbability: 0.08, availableHours: [20, 5], weekendOnly: true },
+  { type: "bar_with_friends", minHours: 2, maxHours: 4, notifyProbability: 0.1, availableHours: [18, 3] }
 ]
 
 export function getEventMeta(type: string): EventType | undefined {

@@ -1,5 +1,4 @@
 import { differenceInMinutes, getHours, parseISO } from "date-fns"
-import { EVENT_SUBSTANCE_MAP } from "@/affect/altered/events.ts"
 import { startAlteredState } from "@/affect/altered/state.ts"
 import { EMOTIONAL_THRESHOLDS, TRIGGER_INTENSITY } from "@/affect/emotion/constants.ts"
 import type { EmotionalState } from "@/affect/emotion/types.ts"
@@ -304,12 +303,11 @@ async function executeAction(deliberateResult: DeliberateResult, feelResult: Fee
     }
 
     case "life_event": {
-      const { lifeEventType, lifeEventDetail } = decision.actionPayload ?? {}
+      const { lifeEventType, lifeEventDetail, alteredEventType } = decision.actionPayload ?? {}
       if (lifeEventType) {
         await startChosenLifeEvent(lifeEventType, lifeEventDetail)
-        const substance = EVENT_SUBSTANCE_MAP[lifeEventType]
-        if (substance) {
-          await startAlteredState(substance, lifeEventType)
+        if (alteredEventType) {
+          await startAlteredState(alteredEventType, lifeEventType)
         }
       }
       break

@@ -1,4 +1,5 @@
 import * as z from "zod"
+import { AlteredEventType } from "@/affect/altered/types.ts"
 import { SemanticCategory, SemanticScope } from "@/memory/types.ts"
 
 export const BudgetState = z.object({
@@ -27,7 +28,6 @@ export const LifeEventType = z.enum([
   "running",
   "cycling",
   "exercise",
-  "date_night",
   "deep_focus",
   "movie",
   "socializing",
@@ -60,13 +60,8 @@ export const LifeEventType = z.enum([
   "laundry",
   "commuting",
   "picnic",
-  "smoking_joint",
-  "drinking_wine",
   "party",
-  "bar_with_friends",
-  "coffee_binge",
-  "energy_drink",
-  "microdosing"
+  "bar_with_friends"
 ])
 export type LifeEventType = z.infer<typeof LifeEventType>
 
@@ -111,6 +106,7 @@ export const AnimaDecision = z.object({
       capabilityGap: z.string().optional(),
       lifeEventType: LifeEventType.optional(),
       lifeEventDetail: z.string().optional(),
+      alteredEventType: AlteredEventType.optional(),
       socialMediaMode: z.enum(["browse", "post"]).optional(),
       xPostText: z.string().max(280).optional(),
       knowledgeCategory: SemanticCategory.optional(),

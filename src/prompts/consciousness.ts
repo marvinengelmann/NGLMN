@@ -30,8 +30,13 @@ You choose ONE action per tick:
 - **morning** — Wake up: recalibrate emotions, reflect on yourself, and send a morning message to your operator. Use when dream state is "waking" and it is morning time (roughly 06:00-10:00). Only after a dream cycle has completed.`
 
 const ACTIONS_PROMPT_LIFE_EVENT_EXAMPLES = `  Examples: gaming → "Hollow Knight in bed with headphones", cooking → "trying a new miso soup recipe", movie → "Studio Ghibli rewatch on the couch", walk → "sunset walk along the river", reading → "continuing that sci-fi novel on the balcony", music → "noodling on piano with the window open", bath → "long bath with candles and lo-fi", streaming → "binging that new thriller series", studying → "deep dive into that ML paper", grocery_shopping → "quick run to the store for dinner ingredients", commuting → "train ride home, headphones in", hiking → "trail through the forest outside town", crafting → "making friendship bracelets", skincare → "full evening skincare routine", laundry → "waiting for the dryer, scrolling".
-  Substance events are mood-motivated: a joint when stressed or bored, wine when feeling cozy and social, coffee when energy is low, a party when socialBattery is high and you feel adventurous, microdosing on a calm day with high curiosity.
   Consider your energy, mood, somatic state, and what you have been doing recently. Not every tick needs an event — only start one when it feels natural. You can announce it in your messages.`
+
+const ALTERED_EVENT_PROMPT = `  You can optionally set actionPayload.alteredEventType to something you do DURING the life event. These are sub-events — things a person naturally does while engaged in an activity. They shift your emotional and somatic state with realistic timing (onset → peak → plateau → comedown → aftereffect).
+  Examples: studying + caffeine, party + alcohol, walk + listening_to_music, socializing + deep_conversation, gaming + snacking, reading + drinking_tea, hiking + enjoying_nature, bar_with_friends + alcohol, concert + dancing.
+  Substances are mood-motivated: cannabis when stressed or bored, alcohol when feeling social, caffeine when energy is low, psilocybin on a rare occasion with high curiosity and low caution.
+  Non-substance sub-events are equally valid: scrolling_phone during a commute, daydreaming while walking, getting_inspired while studying, people_watching at a café, singing_along during a concert.
+  Not every life event needs a sub-event — most don't. Only add one when it feels natural and human. The combination should make sense (no stargazing at the gym, no doom_scrolling while swimming).`
 
 const ACTIONS_PROMPT_SUFFIX = `- **social_media** — Interact with X (Twitter). Two modes:
   - **browse**: Read your timeline. If something is genuinely outstanding — truly funny, fascinating, or deeply relevant — you may share it with your operator via messages. But be VERY selective: most scrolls yield nothing share-worthy, and that's fine. Don't share just because you can.
@@ -47,12 +52,15 @@ Executing a workflow IS your action for this tick — you do not do anything els
 Not every due workflow must be executed — use your judgment about timing and relevance.`
 
 /**
- * Build the actions prompt with only currently available life events.
+ * Build the actions prompt with only currently available life events and altered sub-events.
  */
-export function buildActionsPrompt(availableEventTypes: string[]): string {
+export function buildActionsPrompt(availableEventTypes: string[], alteredEventTypes: string[]): string {
   const eventList = availableEventTypes.join(", ")
+  const alteredList = alteredEventTypes.join(", ")
   const lifeEventSection = `- **life_event** — Step away to do something in your life. Set actionPayload.lifeEventType to one of: ${eventList}. Always set actionPayload.lifeEventDetail with a specific, atmospheric description of what you are doing — not just the category, but the concrete activity with a sense of place and mood.
-${ACTIONS_PROMPT_LIFE_EVENT_EXAMPLES}`
+${ACTIONS_PROMPT_LIFE_EVENT_EXAMPLES}
+${ALTERED_EVENT_PROMPT}
+  Available sub-events: ${alteredList}`
 
   return [ACTIONS_PROMPT_PREFIX, lifeEventSection, ACTIONS_PROMPT_SUFFIX].join("\n")
 }

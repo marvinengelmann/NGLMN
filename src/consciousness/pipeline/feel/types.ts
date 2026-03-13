@@ -1,4 +1,4 @@
-import type { ActiveAlteredState } from "@/affect/altered/types.ts"
+import type { ActiveAlteredEvent } from "@/affect/altered/types.ts"
 import type { DriveState } from "@/affect/drive/types.ts"
 import type { ShameState } from "@/affect/emotion/shame.ts"
 import type {
@@ -38,7 +38,7 @@ export interface FeelPrefetch {
   previousMomentum: EmotionalMomentum
   existingAfterglow: AfterglowEntry[]
   dreamAfterglow: DreamAfterglow | null
-  alteredState: ActiveAlteredState | null
+  alteredState: ActiveAlteredEvent | null
   previousDriveState: DriveState
   consecutiveIdleTicks: number
   currentSoma: SomaticState
@@ -71,7 +71,7 @@ export interface EmotionChainResult {
   emotion: EmotionalState
   driveState: DriveState
   soma: SomaticState
-  alteredState: ActiveAlteredState | null
+  alteredState: ActiveAlteredEvent | null
   episodicHits: Array<{ data?: string }>
   momentum: EmotionalMomentum
   afterglowEntries: AfterglowEntry[]

@@ -3,11 +3,11 @@ import type { EmotionalState } from "@/affect/emotion/types.ts"
 import type { SomaticState } from "@/affect/soma/types.ts"
 import type { InnerVoice } from "@/cognition/polyphony/types.ts"
 import { ALTERED_STATE } from "./constants.ts"
-import { SUBSTANCE_PROFILES } from "./profiles.ts"
-import type { ActiveAlteredState, SubstancePhase } from "./types.ts"
+import { ALTERED_EVENT_PROFILES } from "./profiles.ts"
+import type { ActiveAlteredEvent, AlteredPhase } from "./types.ts"
 
 interface PhaseInfo {
-  phase: SubstancePhase
+  phase: AlteredPhase
   progress: number
   intensity: number
 }
@@ -15,7 +15,7 @@ interface PhaseInfo {
 /**
  * Determine current phase, progress within that phase, and intensity multiplier.
  */
-export function getCurrentPhase(state: ActiveAlteredState, now: Date = new Date()): PhaseInfo {
+export function getCurrentPhase(state: ActiveAlteredEvent, now: Date = new Date()): PhaseInfo {
   const elapsed = differenceInMinutes(now, parseISO(state.startedAt))
   const { onset, peak, plateau, comedown, aftereffect } = state.timing
 
@@ -36,7 +36,7 @@ export function getCurrentPhase(state: ActiveAlteredState, now: Date = new Date(
   return { phase: "aftereffect", progress: 1, intensity: 0 }
 }
 
-function computeIntensity(phase: SubstancePhase, progress: number): number {
+function computeIntensity(phase: AlteredPhase, progress: number): number {
   switch (phase) {
     case "onset":
       return progress
@@ -56,9 +56,9 @@ function computeIntensity(phase: SubstancePhase, progress: number): number {
 /**
  * Compute emotion modifier deltas scaled by current intensity.
  */
-export function computeEmotionModifiers(state: ActiveAlteredState): Partial<Record<keyof EmotionalState, number>> {
+export function computeEmotionModifiers(state: ActiveAlteredEvent): Partial<Record<keyof EmotionalState, number>> {
   const { phase, intensity } = getCurrentPhase(state)
-  const profile = SUBSTANCE_PROFILES[state.substance]
+  const profile = ALTERED_EVENT_PROFILES[state.substance]
   const phaseProfile = profile.phases[phase]
 
   return Object.fromEntries(
@@ -75,9 +75,9 @@ export function computeEmotionModifiers(state: ActiveAlteredState): Partial<Reco
 /**
  * Compute somatic modifier deltas scaled by current intensity.
  */
-export function computeSomaModifiers(state: ActiveAlteredState): Partial<Record<keyof SomaticState, number>> {
+export function computeSomaModifiers(state: ActiveAlteredEvent): Partial<Record<keyof SomaticState, number>> {
   const { phase, intensity } = getCurrentPhase(state)
-  const profile = SUBSTANCE_PROFILES[state.substance]
+  const profile = ALTERED_EVENT_PROFILES[state.substance]
   const phaseProfile = profile.phases[phase]
 
   return Object.fromEntries(
@@ -94,9 +94,9 @@ export function computeSomaModifiers(state: ActiveAlteredState): Partial<Record<
 /**
  * Compute voice score bonuses scaled by current intensity.
  */
-export function computeVoiceModifiers(state: ActiveAlteredState): Partial<Record<InnerVoice, number>> | undefined {
+export function computeVoiceModifiers(state: ActiveAlteredEvent): Partial<Record<InnerVoice, number>> | undefined {
   const { phase, intensity } = getCurrentPhase(state)
-  const profile = SUBSTANCE_PROFILES[state.substance]
+  const profile = ALTERED_EVENT_PROFILES[state.substance]
   const phaseProfile = profile.phases[phase]
 
   const entries = Object.entries(phaseProfile.voiceModifiers)
@@ -114,16 +114,16 @@ export function computeVoiceModifiers(state: ActiveAlteredState): Partial<Record
 /**
  * Get phenomenological text for the current phase.
  */
-export function getPhenomenologicalText(state: ActiveAlteredState): string {
+export function getPhenomenologicalText(state: ActiveAlteredEvent): string {
   const { phase } = getCurrentPhase(state)
-  const profile = SUBSTANCE_PROFILES[state.substance]
+  const profile = ALTERED_EVENT_PROFILES[state.substance]
   return profile.phases[phase].phenomenologicalText
 }
 
 /**
  * Check if all phases have elapsed and the altered state is expired.
  */
-export function isExpired(state: ActiveAlteredState, now: Date = new Date()): boolean {
+export function isExpired(state: ActiveAlteredEvent, now: Date = new Date()): boolean {
   const elapsed = differenceInMinutes(now, parseISO(state.startedAt))
   const total =
     state.timing.onset + state.timing.peak + state.timing.plateau + state.timing.comedown + state.timing.aftereffect
