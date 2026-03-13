@@ -54,17 +54,13 @@ export function detectFragmentation(context: CoherenceContext): FragmentationSou
 }
 
 /**
- * Compute overall coherence/integration score.
+ * Compute overall coherence/integration score via target-based convergence.
+ * Each fragmentation source lowers the equilibrium target; the score drifts toward it.
  */
 export function computeCoherence(context: CoherenceContext, previous: CoherenceState): number {
   const sources = detectFragmentation(context)
-  const fragmentationPenalty = sources.length * COHERENCE.MISMATCH_WEIGHT
-
-  let score = previous.integrationScore
-  score -= fragmentationPenalty
-  score += COHERENCE.RECOVERY_RATE
-
-  return clamp01(score)
+  const target = clamp01(1 - sources.length * COHERENCE.FRAGMENTATION_WEIGHT)
+  return clamp01(previous.integrationScore + (target - previous.integrationScore) * COHERENCE.CONVERGENCE_RATE)
 }
 
 /**
@@ -104,7 +100,7 @@ export function updateCoherenceState(previous: CoherenceState, context: Coherenc
   if (regressing) {
     regressionDepth = Math.min(1, regressionDepth + COHERENCE.REGRESSION_DEPTH_INCREMENT)
   } else if (previous.regressionActive) {
-    regressionDepth = Math.max(0, regressionDepth - COHERENCE.RECOVERY_RATE)
+    regressionDepth = Math.max(0, regressionDepth - COHERENCE.CONVERGENCE_RATE)
   }
 
   return {

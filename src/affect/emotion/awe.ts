@@ -91,7 +91,7 @@ export function compute(context: Context): AweState {
     source: isActive ? source : null,
     selfDiminishment,
     opennessSurge,
-    lastEvokedAt: isActive && !previousState.isActive ? nowISO() : previousState.lastEvokedAt
+    lastEvokedAt: isActive ? nowISO() : previousState.lastEvokedAt
   }
 }
 

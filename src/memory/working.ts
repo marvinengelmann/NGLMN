@@ -51,6 +51,29 @@ export async function clearBusy(tickId: string): Promise<void> {
   await redis.eval<[string], number>(CLEAR_BUSY_SCRIPT, [KEYS.BUSY], [tickId])
 }
 
+/**
+ * Force-expire a stale busy lock by extracting the timestamp from the tickId.
+ * Returns true if a stale lock was cleared.
+ */
+export async function forceExpireStaleBusy(ttlMs: number): Promise<boolean> {
+  const value = await redis.get<string>(KEYS.BUSY)
+  if (!value) return false
+
+  const match = typeof value === "string" ? value.match(/^tick-(\d+)$/) : null
+  if (!match?.[1]) {
+    await redis.del(KEYS.BUSY)
+    return true
+  }
+
+  const lockTime = Number(match[1])
+  if (Date.now() - lockTime > ttlMs) {
+    await redis.del(KEYS.BUSY)
+    return true
+  }
+
+  return false
+}
+
 export async function getLastUpdateId(): Promise<number | null> {
   return redis.get<number>(KEYS.TELEGRAM_LAST_UPDATE_ID)
 }

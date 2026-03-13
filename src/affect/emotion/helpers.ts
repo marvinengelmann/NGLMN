@@ -11,6 +11,14 @@ function sumContributions<T extends string>(
   )
 }
 
+/**
+ * Decay the previous level and blend in new contributions.
+ *
+ * Rising stimuli get an instant response (jump to newLevel).
+ * Sustained or declining stimuli follow an EMA that converges
+ * to the current contribution level — so ongoing stimulation
+ * no longer blocks decay entirely.
+ */
 export function decayAndFinalize(
   previousLevel: number,
   newLevel: number,
@@ -18,7 +26,9 @@ export function decayAndFinalize(
   activationThreshold: number
 ): { finalLevel: number; isActive: boolean } {
   const decayedLevel = previousLevel * decayPerTick
-  const finalLevel = Math.min(1, Math.max(decayedLevel, newLevel))
+  const emaLevel = decayedLevel + newLevel * (1 - decayPerTick)
+  const rising = newLevel > previousLevel
+  const finalLevel = Math.min(1, rising ? Math.max(emaLevel, newLevel) : emaLevel)
   const isActive = finalLevel > activationThreshold
   return { finalLevel, isActive }
 }

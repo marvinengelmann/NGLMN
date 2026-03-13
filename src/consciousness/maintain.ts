@@ -1,4 +1,5 @@
 import { differenceInDays, differenceInMinutes, parseISO } from "date-fns"
+import { getDisappointmentState, markAcknowledged, saveDisappointmentState } from "@/affect/emotion/disappointment.ts"
 import type { GuiltSource } from "@/affect/emotion/guilt.ts"
 import { getGuiltState, markRepaired, saveGuiltState } from "@/affect/emotion/guilt.ts"
 import { getMoodBaseline } from "@/affect/emotion/state.ts"
@@ -307,6 +308,15 @@ export async function maintain(
         await saveGuiltState(updated)
         log.info("Guilt entries repaired after response")
       }
+    }
+  }
+
+  if (input.senseResult.pendingMessages.length > 0) {
+    const disappointmentState = await getDisappointmentState()
+    const acknowledged = markAcknowledged(disappointmentState)
+    if (acknowledged !== disappointmentState) {
+      await saveDisappointmentState(acknowledged)
+      log.info("Disappointment entries acknowledged after operator message")
     }
   }
 

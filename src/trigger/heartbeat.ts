@@ -6,7 +6,7 @@ import { getConversationWaitingSince } from "@/expression/communication/state.ts
 import { HEARTBEAT } from "@/infra/config/constants.ts"
 import { fetchNewMessages } from "@/infra/integrations/telegram.ts"
 import { log } from "@/infra/lib/logger.ts"
-import { isBusy } from "@/memory/working.ts"
+import { forceExpireStaleBusy, isBusy } from "@/memory/working.ts"
 import {
   getActiveLifeEvent,
   handleMidEventCheck,
@@ -23,12 +23,17 @@ export const heartbeatTask = schedules.task({
   maxDuration: HEARTBEAT.BUSY_TTL,
   run: async (_, { ctx, signal }) => {
     if (await isBusy()) {
-      log.info("Heartbeat skipped — busy")
-      await runs.cancel(ctx.run.id)
-      if (!signal.aborted) {
-        await new Promise<void>((resolve) => signal.addEventListener("abort", () => resolve(), { once: true }))
+      const staleCleared = await forceExpireStaleBusy(HEARTBEAT.BUSY_TTL * 1000)
+      if (staleCleared) {
+        log.warn("Stale busy lock force-expired — proceeding with heartbeat")
+      } else {
+        log.info("Heartbeat skipped — busy")
+        await runs.cancel(ctx.run.id)
+        if (!signal.aborted) {
+          await new Promise<void>((resolve) => signal.addEventListener("abort", () => resolve(), { once: true }))
+        }
+        return
       }
-      return
     }
 
     if (await isLifeEventActive()) {

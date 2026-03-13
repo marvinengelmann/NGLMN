@@ -7,7 +7,8 @@ import { logDissonanceEvent } from "@/self/dissonance/state.ts"
 
 const ConflictAnalysis = z.object({
   hasConflict: z.boolean(),
-  description: z.string()
+  description: z.string(),
+  severity: z.number().min(0).max(1)
 })
 
 const MAX_PAIRS = 3
@@ -29,7 +30,7 @@ export async function detectGoalConflicts(
       const acc = await accPromise
       const result = await callIntelligence({
         system:
-          "Analyze whether these two goals conflict with each other. Consider time, resources, and directional tension.",
+          "Analyze whether these two goals conflict with each other. Consider time, resources, and directional tension. Rate severity from 0.0 (trivial) to 1.0 (fundamental contradiction).",
         userMessage: `Goal A: "${a.title}" — ${a.description ?? "no description"}\nGoal B: "${b.title}" — ${b.description ?? "no description"}`,
         schema: ConflictAnalysis,
         maxTokens: 256,
@@ -46,8 +47,7 @@ export async function detectGoalConflicts(
         await logDissonanceEvent({
           declaredValue: `goal: ${a.title}`,
           actualAction: `goal: ${b.title}`,
-          dissonanceScore: 0.4,
-          resolution: "unresolved",
+          dissonanceScore: result.value.severity,
           timestamp: nowISO()
         })
       }

@@ -442,7 +442,10 @@ export function applyEmotionalDamping(emotion: EmotionalState, damping: number):
 }
 
 /**
- * Blend computed emotions with previous state via momentum for emotional continuity.
+ * Apply momentum as a continuation force on top of computed emotions.
+ * Computed values (including drift) are always preserved as the base —
+ * momentum only adds a small inertial nudge in the direction of recent change,
+ * scaled by event intensity.
  */
 export function applyMomentum(
   computed: EmotionalState,
@@ -454,10 +457,8 @@ export function applyMomentum(
 
   const { state, momentum } = EMOTION_DIMENSIONS.reduce(
     (acc, dimension) => {
-      const inertia = previous[dimension] + previousMomentum[dimension] * MOMENTUM.INERTIA_WEIGHT
-      const anchor = clamp01(inertia)
-      const blended = alpha * computed[dimension] + (1 - alpha) * anchor
-      acc.state[dimension] = clamp01(blended)
+      const continuationForce = previousMomentum[dimension] * MOMENTUM.INERTIA_WEIGHT
+      acc.state[dimension] = clamp01(computed[dimension] + continuationForce * alpha)
       acc.momentum[dimension] = Math.max(-1, Math.min(1, acc.state[dimension] - previous[dimension]))
       return acc
     },

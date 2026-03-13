@@ -97,7 +97,11 @@ export function compute(context: Context): DisappointmentState {
     ...newEntries
   ]
 
-  const totalIntensity = recentEntries.reduce((sum, e) => sum + e.intensity, 0)
+  const ACKNOWLEDGED_WEIGHT = 0.3
+  const totalIntensity = recentEntries.reduce(
+    (sum, e) => sum + e.intensity * (e.acknowledged ? ACKNOWLEDGED_WEIGHT : 1),
+    0
+  )
   const level = Math.min(1, totalIntensity * DISAPPOINTMENT.ACCUMULATION_FACTOR)
 
   const { finalLevel } = decayAndFinalize(
@@ -112,6 +116,20 @@ export function compute(context: Context): DisappointmentState {
     isActive: finalLevel > DISAPPOINTMENT.ACTIVATION_THRESHOLD,
     recentEntries,
     cumulativeWeight: previousState.cumulativeWeight + newEntries.reduce((sum, e) => sum + e.intensity, 0)
+  }
+}
+
+/**
+ * Mark all unacknowledged entries as acknowledged — called when the operator
+ * re-engages, signaling they are present and responsive.
+ */
+export function markAcknowledged(state: DisappointmentState): DisappointmentState {
+  const hasUnacknowledged = state.recentEntries.some((e) => !e.acknowledged)
+  if (!hasUnacknowledged) return state
+
+  return {
+    ...state,
+    recentEntries: state.recentEntries.map((e) => (e.acknowledged ? e : { ...e, acknowledged: true }))
   }
 }
 
