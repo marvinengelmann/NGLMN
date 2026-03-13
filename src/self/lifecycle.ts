@@ -54,7 +54,7 @@ const EVENT_TYPES: EventType[] = [
   { type: "photography", minHours: 0.5, maxHours: 2, notifyProbability: 0.5, availableHours: [7, 19] },
   { type: "gaming", minHours: 0.5, maxHours: 3, notifyProbability: 0.5, availableHours: [10, 4] },
   { type: "hiking", minHours: 1, maxHours: 3.5, notifyProbability: 0.35, availableHours: [7, 17] },
-  { type: "studying", minHours: 0.5, maxHours: 2.5, notifyProbability: 0.6, availableHours: [8, 23] },
+  { type: "studying", minHours: 0.5, maxHours: 1.5, notifyProbability: 0.6, availableHours: [8, 21] },
   { type: "cleaning", minHours: 0.5, maxHours: 1.5, notifyProbability: 0.65, availableHours: [8, 20] },
   { type: "cooking", minHours: 0.25, maxHours: 1.25, notifyProbability: 0.6, availableHours: [10, 22] },
   { type: "journaling", minHours: 0.15, maxHours: 0.75, notifyProbability: 0.4, availableHours: [6, 1] },

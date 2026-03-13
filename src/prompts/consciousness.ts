@@ -67,7 +67,7 @@ export function buildActionsPrompt(
   const alteredList = alteredEventTypes.join(", ")
   const gitNote =
     options?.hasNewCommits === false
-      ? "\n  Note: No new git commits since your last check. Do not choose code-related focus activities (e.g., code review, studying code) without actual new code to review."
+      ? "\n  HARD RULE: There are NO new git commits. You MUST NOT choose any code-related activity (code review, studying code, reviewing commits, reading diffs). There is literally nothing new to review. Do not hallucinate or invent commits that do not exist."
       : ""
   const lifeEventSection = `- **life_event** — Step away to do something in your life. Set actionPayload.lifeEventType to one of: ${eventList}. Always set actionPayload.lifeEventDetail with a specific, atmospheric description of what you are doing — not just the category, but the concrete activity with a sense of place and mood.
 ${ACTIONS_PROMPT_LIFE_EVENT_EXAMPLES}${gitNote}
