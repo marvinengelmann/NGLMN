@@ -49,12 +49,14 @@ export async function clearWeatherData(): Promise<void> {
 
 const SENSE_KEYS = {
   OPERATOR_SILENT_FIRED: "working:emotion:operatorSilentFired",
-  LAST_SYSTEM_STATUS: "working:emotion:lastSystemStatus"
+  LAST_SYSTEM_STATUS: "working:emotion:lastSystemStatus",
+  LAST_WEATHER_CONDITION: "working:perception:lastWeatherCondition",
+  LAST_GIT_COMMIT_SHA: "working:perception:lastGitCommitSha"
 } as const
 
 export async function getOperatorSilentFlag(): Promise<boolean> {
   const value = await redis.get(SENSE_KEYS.OPERATOR_SILENT_FIRED)
-  return value === "true"
+  return value === true || value === "true"
 }
 
 export async function setOperatorSilentFlag(): Promise<void> {
@@ -71,4 +73,20 @@ export async function getLastSystemStatus(): Promise<string | null> {
 
 export async function setLastSystemStatus(status: string): Promise<void> {
   await redis.set(SENSE_KEYS.LAST_SYSTEM_STATUS, status)
+}
+
+export async function getLastWeatherCondition(): Promise<string | null> {
+  return redis.get<string>(SENSE_KEYS.LAST_WEATHER_CONDITION)
+}
+
+export async function setLastWeatherCondition(condition: string): Promise<void> {
+  await redis.set(SENSE_KEYS.LAST_WEATHER_CONDITION, condition)
+}
+
+export async function getLastGitCommitSha(): Promise<string | null> {
+  return redis.get<string>(SENSE_KEYS.LAST_GIT_COMMIT_SHA)
+}
+
+export async function setLastGitCommitSha(sha: string): Promise<void> {
+  await redis.set(SENSE_KEYS.LAST_GIT_COMMIT_SHA, sha)
 }

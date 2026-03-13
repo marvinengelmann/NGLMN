@@ -10,10 +10,14 @@ import type { WeatherData } from "@/infra/integrations/types.ts"
 import { log } from "@/infra/lib/logger.ts"
 import { getLastTickSummary } from "@/memory/working.ts"
 import {
+  getLastGitCommitSha,
   getLastSystemStatus,
+  getLastWeatherCondition,
   getOperatorLastActivity,
   getOperatorSilentFlag,
+  setLastGitCommitSha,
   setLastSystemStatus,
+  setLastWeatherCondition,
   setOperatorSilentFlag
 } from "@/perception/state.ts"
 import { PERCEPTION } from "./constants.ts"
@@ -96,7 +100,8 @@ const STORM_CONDITIONS = ["Thunderstorm", "Squall", "Tornado"]
 const RAIN_CONDITIONS = ["Rain", "Drizzle"]
 
 /**
- * Read current weather data and generate emotional triggers from it.
+ * Read current weather data and generate one-shot transition triggers.
+ * Only fires when the weather condition category changes (e.g. Clear → Rain).
  */
 export async function readWeatherData(): Promise<{
   weatherData: WeatherData | null
@@ -111,14 +116,20 @@ export async function readWeatherData(): Promise<{
 
     const triggers: EmotionUpdateEvent[] = []
 
-    if (weatherData.temperature < 0) {
-      triggers.push({ trigger: "weather_update", intensity: 0.4, detail: "Freezing conditions" })
-    } else if (weatherData.temperature > 35) {
-      triggers.push({ trigger: "weather_update", intensity: 0.4, detail: "Extreme heat" })
-    } else if (STORM_CONDITIONS.includes(weatherData.condition) || RAIN_CONDITIONS.includes(weatherData.condition)) {
-      triggers.push({ trigger: "weather_update", intensity: 0.3, detail: `Weather: ${weatherData.description}` })
-    } else if (weatherData.condition === "Clear" && weatherData.temperature >= 15 && weatherData.temperature <= 28) {
-      triggers.push({ trigger: "weather_update", intensity: 0.3, detail: "Beautiful weather" })
+    const currentCondition = categorizeWeather(weatherData)
+    const lastCondition = await getLastWeatherCondition()
+
+    if (currentCondition !== lastCondition) {
+      if (weatherData.temperature < 0) {
+        triggers.push({ trigger: "weather_update", intensity: 0.4, detail: "Freezing conditions" })
+      } else if (weatherData.temperature > 35) {
+        triggers.push({ trigger: "weather_update", intensity: 0.4, detail: "Extreme heat" })
+      } else if (STORM_CONDITIONS.includes(weatherData.condition) || RAIN_CONDITIONS.includes(weatherData.condition)) {
+        triggers.push({ trigger: "weather_update", intensity: 0.3, detail: `Weather: ${weatherData.description}` })
+      } else if (weatherData.condition === "Clear" && weatherData.temperature >= 15 && weatherData.temperature <= 28) {
+        triggers.push({ trigger: "weather_update", intensity: 0.3, detail: "Beautiful weather" })
+      }
+      await setLastWeatherCondition(currentCondition)
     }
 
     return { weatherData, triggers }
@@ -128,8 +139,18 @@ export async function readWeatherData(): Promise<{
   }
 }
 
+function categorizeWeather(weather: WeatherData): string {
+  if (weather.temperature < 0) return "freezing"
+  if (weather.temperature > 35) return "extreme_heat"
+  if (STORM_CONDITIONS.includes(weather.condition)) return "storm"
+  if (RAIN_CONDITIONS.includes(weather.condition)) return "rain"
+  if (weather.condition === "Clear" && weather.temperature >= 15 && weather.temperature <= 28) return "beautiful"
+  return weather.condition
+}
+
 /**
- * Read recent Git activity on ANIMA's own repo and generate emotional triggers from it.
+ * Read recent Git activity on ANIMA's own repo and generate one-shot triggers.
+ * Only fires when new commits appear since the last check.
  */
 export async function readGitActivity(): Promise<{
   recentCommits: Array<{ sha: string; message: string; date: string; isSelfAuthored: boolean }>
@@ -151,21 +172,32 @@ export async function readGitActivity(): Promise<{
     const externalCommitCount = last24h.filter((c) => !c.isSelfAuthored).length
 
     const triggers: EmotionUpdateEvent[] = []
+    const latestSha = commits[0]?.sha ?? null
+    const lastSeenSha = await getLastGitCommitSha()
 
-    if (externalCommitCount > 0) {
-      triggers.push({
-        trigger: "git_activity",
-        intensity: Math.min(1, externalCommitCount * 0.2),
-        detail: `${externalCommitCount} external commit(s) in last 24h`
-      })
-    }
+    if (latestSha && latestSha !== lastSeenSha) {
+      const lastSeenIndex = lastSeenSha ? commits.findIndex((c) => c.sha === lastSeenSha) : -1
+      const newCommits = lastSeenIndex > 0 ? commits.slice(0, lastSeenIndex) : commits
+      const newExternal = newCommits.filter((c) => !c.message.startsWith("Evolution #"))
+      const newSelf = newCommits.filter((c) => c.message.startsWith("Evolution #"))
 
-    if (selfCommitCount > 0) {
-      triggers.push({
-        trigger: "git_activity",
-        intensity: Math.min(1, selfCommitCount * 0.15),
-        detail: `${selfCommitCount} self-evolution commit(s) in last 24h`
-      })
+      if (newExternal.length > 0) {
+        triggers.push({
+          trigger: "git_activity",
+          intensity: Math.min(1, newExternal.length * 0.2),
+          detail: `${newExternal.length} new external commit(s)`
+        })
+      }
+
+      if (newSelf.length > 0) {
+        triggers.push({
+          trigger: "git_activity",
+          intensity: Math.min(1, newSelf.length * 0.15),
+          detail: `${newSelf.length} new self-evolution commit(s)`
+        })
+      }
+
+      await setLastGitCommitSha(latestSha)
     }
 
     return { recentCommits, selfCommitCount, externalCommitCount, triggers }
