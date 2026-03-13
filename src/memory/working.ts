@@ -1,9 +1,11 @@
 import { TickSummary } from "@/core/types.ts"
 import { HEARTBEAT } from "@/infra/config/constants.ts"
 import { getValidatedRedis, redis } from "@/infra/integrations/redis.ts"
+import { nowISO } from "@/infra/lib/time.ts"
 
 const KEYS = {
   TICK_LAST: "working:tick:last",
+  PROCESS_ALIVE: "working:process:alive",
   BUSY: "working:busy",
   TELEGRAM_LAST_UPDATE_ID: "working:telegram:lastUpdateId",
   ROLLBACK_EVENTS: "working:rollback:events",
@@ -23,6 +25,18 @@ export async function getLastTickSummary(): Promise<TickSummary | null> {
 
 export async function setLastTickSummary(summary: TickSummary): Promise<void> {
   await redis.set(KEYS.TICK_LAST, summary)
+}
+
+/**
+ * Update the process-alive timestamp. Called on every cron invocation,
+ * including gated/skipped ticks, so the health check knows the process is running.
+ */
+export async function touchProcessAlive(): Promise<void> {
+  await redis.set(KEYS.PROCESS_ALIVE, nowISO(), { ex: 3600 })
+}
+
+export async function getProcessAliveTimestamp(): Promise<string | null> {
+  return redis.get<string>(KEYS.PROCESS_ALIVE)
 }
 
 export async function isBusy(): Promise<boolean> {

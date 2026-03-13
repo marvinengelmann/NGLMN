@@ -16,7 +16,7 @@ import { log } from "@/infra/lib/logger.ts"
 import { extractErrorMessage } from "@/infra/lib/result.ts"
 import { captureError } from "@/infra/lib/sentry.ts"
 import { nowISO } from "@/infra/lib/time.ts"
-import { getLastTickSummary } from "@/memory/working.ts"
+import { getLastTickSummary, getProcessAliveTimestamp } from "@/memory/working.ts"
 
 /**
  * Runs the full health check lifecycle: check all services, persist result,
@@ -101,9 +101,11 @@ export async function collectHealthStatus(): Promise<HealthCheckResult> {
   let lastTickRecency: ProcessStatus = "dead"
   let lastTickAgeSeconds = Infinity
   try {
-    const lastTick = await getLastTickSummary()
-    if (lastTick) {
-      lastTickAgeSeconds = differenceInSeconds(new Date(), parseISO(lastTick.timestamp))
+    const [lastTick, processAlive] = await Promise.all([getLastTickSummary(), getProcessAliveTimestamp()])
+
+    const referenceTimestamp = processAlive ?? lastTick?.timestamp
+    if (referenceTimestamp) {
+      lastTickAgeSeconds = differenceInSeconds(new Date(), parseISO(referenceTimestamp))
       const okThreshold = HEALTH_CHECK.EXPECTED_INTERVAL_SECONDS * HEALTH_CHECK.OK_MULTIPLIER
       const staleThreshold = HEALTH_CHECK.EXPECTED_INTERVAL_SECONDS * HEALTH_CHECK.STALE_MULTIPLIER
       if (lastTickAgeSeconds < okThreshold) lastTickRecency = "ok"
