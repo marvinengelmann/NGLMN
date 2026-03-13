@@ -24,12 +24,19 @@ export async function createSandbox(): Promise<Sandbox> {
   )
 }
 
-export async function runInSandbox(
-  sandbox: Sandbox,
-  command: string,
-  cwd?: string,
-  timeoutSec: number = 120
-): Promise<{ result: string; exitCode: number }> {
+interface RunInSandboxOptions {
+  sandbox: Sandbox
+  command: string
+  cwd?: string
+  timeoutSec?: number
+}
+
+export async function runInSandbox({
+  sandbox,
+  command,
+  cwd,
+  timeoutSec = 120
+}: RunInSandboxOptions): Promise<{ result: string; exitCode: number }> {
   const response = await sandbox.process.executeCommand(command, cwd, undefined, timeoutSec)
   return { result: response.result, exitCode: response.exitCode }
 }
@@ -56,17 +63,16 @@ export async function validateInSandbox(branch: string): Promise<SandboxResult> 
     sandbox = await createSandbox()
     log.info("Sandbox created", { branch: safeBranch })
 
-    await runInSandbox(
+    await runInSandbox({
       sandbox,
-      `mkdir -p /app && git clone --branch '${safeBranch}' --single-branch '${repoUrl}' '${appDir}'`,
-      undefined,
-      60
-    )
+      command: `mkdir -p /app && git clone --branch '${safeBranch}' --single-branch '${repoUrl}' '${appDir}'`,
+      timeoutSec: 60
+    })
 
-    await runInSandbox(sandbox, "bun install", appDir, 120)
+    await runInSandbox({ sandbox, command: "bun install", cwd: appDir })
     log.info("Sandbox setup complete", { branch })
 
-    const biomeResult = await runInSandbox(sandbox, "bunx biome check src/ 2>&1", appDir, 120)
+    const biomeResult = await runInSandbox({ sandbox, command: "bunx biome check src/ 2>&1", cwd: appDir })
     const biomeCheckPassed = biomeResult.exitCode === 0
 
     if (!biomeCheckPassed) {
@@ -88,7 +94,7 @@ export async function validateInSandbox(branch: string): Promise<SandboxResult> 
       }
     }
 
-    const tscResult = await runInSandbox(sandbox, "bunx tsc --noEmit 2>&1", appDir, 120)
+    const tscResult = await runInSandbox({ sandbox, command: "bunx tsc --noEmit 2>&1", cwd: appDir })
     const tscCheckPassed = tscResult.exitCode === 0
 
     if (!tscCheckPassed) {
@@ -110,7 +116,7 @@ export async function validateInSandbox(branch: string): Promise<SandboxResult> 
       }
     }
 
-    const testResult = await runInSandbox(sandbox, "bun run test:run 2>&1", appDir, 180)
+    const testResult = await runInSandbox({ sandbox, command: "bun run test:run 2>&1", cwd: appDir, timeoutSec: 180 })
 
     const passMatch = testResult.result.match(/Tests\s+(\d+) passed/)
     const failMatch = testResult.result.match(/(\d+) failed/)

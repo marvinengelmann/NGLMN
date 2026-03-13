@@ -51,7 +51,7 @@ export async function fetchCurrentWeather(lat: number, lon: number): Promise<Wea
       description: weather.description,
       cloudPercent: clouds.all,
       isDay,
-      locationName: data.name ?? undefined,
+      locationName: data.name,
       fetchedAt: nowISO()
     }
   } catch {
