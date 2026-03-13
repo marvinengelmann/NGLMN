@@ -1,3 +1,4 @@
+import { getHours } from "date-fns"
 import { computeEmotionModifiers, computeSomaModifiers, isExpired } from "@/affect/altered/compute.ts"
 import {
   computeDriveEmotionTriggers,
@@ -19,7 +20,7 @@ import { computeSomaticUpdate } from "@/affect/soma/update.ts"
 import { DREAM_AFTERGLOW } from "@/expression/dream/constants.ts"
 import { applyClampedDeltas } from "@/infra/lib/math.ts"
 import { setEmotionContext } from "@/infra/lib/sentry.ts"
-import { elapsedMinutesSince, nowISO } from "@/infra/lib/time.ts"
+import { elapsedMinutesSince, nowISO, nowLocal } from "@/infra/lib/time.ts"
 import { queryRelated } from "@/memory/episodic.ts"
 import type { SenseResult } from "../../types.ts"
 import type { EmotionChainResult, FeelPrefetch } from "./types.ts"
@@ -111,7 +112,13 @@ export async function runEmotionChain(sense: SenseResult, prefetch: FeelPrefetch
   const messageText = sense.pendingMessages.map((m) => m.text).join(" ")
   const somaticMemories = messageText ? await querySomaticMemories(messageText) : []
 
-  let soma = computeSomaticUpdate(prefetch.currentSoma, emotion, elapsed, somaticMemories)
+  let soma = computeSomaticUpdate({
+    current: prefetch.currentSoma,
+    emotion,
+    elapsedMinutes: elapsed,
+    hourOfDay: getHours(nowLocal()),
+    memories: somaticMemories
+  })
   if (alteredState && !isExpired(alteredState)) {
     const somaMods = computeSomaModifiers(alteredState)
     soma = applyClampedDeltas(soma, somaMods, new Set(["socialBattery"]))

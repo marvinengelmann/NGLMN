@@ -4,6 +4,7 @@ import { DEFAULT_SOMATIC_STATE, type SomaticState } from "./types.ts"
 import {
   applySomaticHysteresis,
   applySomaticMemory,
+  circadianFatigue,
   computeSomaticTarget,
   computeSomaticUpdate,
   drainSocialBattery,
@@ -22,9 +23,43 @@ const baseEmotion: EmotionalState = {
   energy: 0.5
 }
 
+const NOON = 12
+
+describe("circadianFatigue", () => {
+  it("returns lowest fatigue at peak hour (11:00)", () => {
+    const peak = circadianFatigue(11)
+    expect(peak).toBeLessThan(0.1)
+  })
+
+  it("returns high fatigue late at night (23:00)", () => {
+    const night = circadianFatigue(23)
+    expect(night).toBeGreaterThan(0.7)
+  })
+
+  it("shows post-lunch dip around 14:30", () => {
+    const morning = circadianFatigue(10)
+    const postLunch = circadianFatigue(14.5)
+    expect(postLunch).toBeGreaterThan(morning)
+  })
+
+  it("shows evening fatigue higher than afternoon", () => {
+    const afternoon = circadianFatigue(15)
+    const evening = circadianFatigue(20)
+    expect(evening).toBeGreaterThan(afternoon)
+  })
+
+  it("clamps output to [0, 1]", () => {
+    for (let h = 0; h < 24; h++) {
+      const f = circadianFatigue(h)
+      expect(f).toBeGreaterThanOrEqual(0)
+      expect(f).toBeLessThanOrEqual(1)
+    }
+  })
+})
+
 describe("computeSomaticTarget", () => {
   it("returns default-like values for neutral emotion", () => {
-    const target = computeSomaticTarget(baseEmotion)
+    const target = computeSomaticTarget(baseEmotion, NOON)
     Object.values(target).forEach((value) => {
       expect(value).toBeGreaterThanOrEqual(0)
       expect(value).toBeLessThanOrEqual(1)
@@ -32,14 +67,14 @@ describe("computeSomaticTarget", () => {
   })
 
   it("increases tension with high frustration", () => {
-    const neutral = computeSomaticTarget(baseEmotion)
-    const tense = computeSomaticTarget({ ...baseEmotion, frustration: 1.0 })
+    const neutral = computeSomaticTarget(baseEmotion, NOON)
+    const tense = computeSomaticTarget({ ...baseEmotion, frustration: 1.0 }, NOON)
     expect(tense.tension).toBeGreaterThan(neutral.tension)
   })
 
   it("increases warmth with high connection", () => {
-    const neutral = computeSomaticTarget(baseEmotion)
-    const warm = computeSomaticTarget({ ...baseEmotion, connection: 1.0 })
+    const neutral = computeSomaticTarget(baseEmotion, NOON)
+    const warm = computeSomaticTarget({ ...baseEmotion, connection: 1.0 }, NOON)
     expect(warm.warmth).toBeGreaterThan(neutral.warmth)
   })
 
@@ -55,11 +90,23 @@ describe("computeSomaticTarget", () => {
       confidence: 0,
       energy: 0
     }
-    const target = computeSomaticTarget(extreme)
+    const target = computeSomaticTarget(extreme, NOON)
     Object.values(target).forEach((value) => {
       expect(value).toBeGreaterThanOrEqual(0)
       expect(value).toBeLessThanOrEqual(1)
     })
+  })
+
+  it("produces higher gravity at night than in the morning", () => {
+    const morning = computeSomaticTarget(baseEmotion, 10)
+    const night = computeSomaticTarget(baseEmotion, 23)
+    expect(night.gravity).toBeGreaterThan(morning.gravity)
+  })
+
+  it("produces lower heart rate at night than in the morning", () => {
+    const morning = computeSomaticTarget(baseEmotion, 10)
+    const night = computeSomaticTarget(baseEmotion, 23)
+    expect(night.heartRate).toBeLessThan(morning.heartRate)
   })
 })
 
@@ -139,7 +186,12 @@ describe("applySomaticMemory", () => {
 
 describe("computeSomaticUpdate", () => {
   it("produces valid clamped output", () => {
-    const result = computeSomaticUpdate(DEFAULT_SOMATIC_STATE, baseEmotion, 10)
+    const result = computeSomaticUpdate({
+      current: DEFAULT_SOMATIC_STATE,
+      emotion: baseEmotion,
+      elapsedMinutes: 10,
+      hourOfDay: NOON
+    })
     Object.values(result).forEach((value) => {
       expect(value).toBeGreaterThanOrEqual(0)
       expect(value).toBeLessThanOrEqual(1)

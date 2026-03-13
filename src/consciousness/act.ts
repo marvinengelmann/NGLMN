@@ -129,7 +129,12 @@ export async function act(
       decision.messages.length,
       senseResult.pendingMessages.length
     )
-    const postActionSoma = computeSomaticUpdate(drainedSoma, outcomeEmotion, 0)
+    const postActionSoma = computeSomaticUpdate({
+      current: drainedSoma,
+      emotion: outcomeEmotion,
+      elapsedMinutes: 0,
+      hourOfDay: getHours(nowLocal())
+    })
     buffer.stage("working:soma:current", postActionSoma)
     buffer.stage("working:soma:lastTimestamp", new Date().toISOString())
     buffer.stagePostgres(somaticHistory, {

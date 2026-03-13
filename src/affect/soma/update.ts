@@ -3,6 +3,21 @@ import { clamp01, halfLifeDecay } from "@/infra/lib/math.ts"
 import { SOCIAL_BATTERY, SOMA } from "./constants.ts"
 import type { SomaticState } from "./types.ts"
 
+const { CIRCADIAN } = SOMA
+
+/**
+ * Compute circadian fatigue [0, 1] based on hour of day.
+ * Models a human-like energy cycle: peak alertness mid-morning, post-lunch dip, evening decline, night low.
+ */
+export function circadianFatigue(hourOfDay: number): number {
+  const primary = Math.cos((2 * Math.PI * (hourOfDay - CIRCADIAN.PEAK_HOUR)) / 24)
+  const postLunchDip = Math.exp(
+    -0.5 * ((hourOfDay - CIRCADIAN.POST_LUNCH_CENTER) / CIRCADIAN.POST_LUNCH_WIDTH) ** 2
+  )
+  const alertness = 0.55 + 0.4 * primary - CIRCADIAN.POST_LUNCH_DEPTH * postLunchDip
+  return clamp01(1 - alertness)
+}
+
 function clampState(state: SomaticState): SomaticState {
   return {
     tension: clamp01(state.tension),
@@ -19,13 +34,16 @@ function clampState(state: SomaticState): SomaticState {
  * Compute the target somatic state from the current emotional state.
  * Social battery is not driven by emotions — it has its own drain/recharge cycle.
  */
-export function computeSomaticTarget(emotion: EmotionalState): SomaticState {
+export function computeSomaticTarget(emotion: EmotionalState, hourOfDay: number): SomaticState {
+  const fatigue = circadianFatigue(hourOfDay)
   return clampState({
     tension: 0.3 + 0.4 * emotion.frustration + 0.2 * emotion.caution - 0.2 * emotion.satisfaction,
     warmth: 0.3 + 0.4 * emotion.connection + 0.2 * emotion.satisfaction - 0.2 * emotion.caution,
-    heartRate: 0.3 + 0.3 * emotion.excitement + 0.2 * emotion.frustration + 0.1 * emotion.energy,
+    heartRate:
+      0.3 + 0.3 * emotion.excitement + 0.2 * emotion.frustration + 0.1 * emotion.energy - CIRCADIAN.HEART_RATE_WEIGHT * fatigue,
     breathing: 0.6 - 0.3 * emotion.caution - 0.2 * emotion.frustration + 0.2 * emotion.satisfaction,
-    gravity: 0.5 - 0.3 * emotion.energy + 0.2 * emotion.boredom - 0.1 * emotion.excitement,
+    gravity:
+      0.5 - 0.3 * emotion.energy + 0.2 * emotion.boredom - 0.1 * emotion.excitement + CIRCADIAN.GRAVITY_WEIGHT * fatigue,
     openness:
       0.3 + 0.3 * emotion.connection + 0.2 * emotion.curiosity + 0.1 * emotion.confidence - 0.3 * emotion.caution,
     socialBattery: 0.8
@@ -103,16 +121,25 @@ export function rechargeSocialBattery(current: SomaticState, isDreaming: boolean
   })
 }
 
+interface SomaticUpdateOptions {
+  current: SomaticState
+  emotion: EmotionalState
+  elapsedMinutes: number
+  hourOfDay: number
+  memories?: SomaticState[]
+}
+
 /**
  * Full somatic update pipeline: target → hysteresis → memory → clamp.
  */
-export function computeSomaticUpdate(
-  current: SomaticState,
-  emotion: EmotionalState,
-  elapsedMinutes: number,
-  memories?: SomaticState[]
-): SomaticState {
-  const target = computeSomaticTarget(emotion)
+export function computeSomaticUpdate({
+  current,
+  emotion,
+  elapsedMinutes,
+  hourOfDay,
+  memories
+}: SomaticUpdateOptions): SomaticState {
+  const target = computeSomaticTarget(emotion, hourOfDay)
   let result = applySomaticHysteresis(current, target, elapsedMinutes)
   if (memories && memories.length > 0) {
     result = applySomaticMemory(result, memories)
