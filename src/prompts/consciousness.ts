@@ -54,11 +54,23 @@ Not every due workflow must be executed — use your judgment about timing and r
 /**
  * Build the actions prompt with only currently available life events and altered sub-events.
  */
-export function buildActionsPrompt(availableEventTypes: string[], alteredEventTypes: string[]): string {
+export function buildActionsPrompt(
+  availableEventTypes: string[],
+  alteredEventTypes: string[],
+  options?: { hasNewCommits?: boolean }
+): string {
+  if (availableEventTypes.length === 0) {
+    return [ACTIONS_PROMPT_PREFIX, ACTIONS_PROMPT_SUFFIX].join("\n")
+  }
+
   const eventList = availableEventTypes.join(", ")
   const alteredList = alteredEventTypes.join(", ")
+  const gitNote =
+    options?.hasNewCommits === false
+      ? "\n  Note: No new git commits since your last check. Do not choose code-related focus activities (e.g., code review, studying code) without actual new code to review."
+      : ""
   const lifeEventSection = `- **life_event** — Step away to do something in your life. Set actionPayload.lifeEventType to one of: ${eventList}. Always set actionPayload.lifeEventDetail with a specific, atmospheric description of what you are doing — not just the category, but the concrete activity with a sense of place and mood.
-${ACTIONS_PROMPT_LIFE_EVENT_EXAMPLES}
+${ACTIONS_PROMPT_LIFE_EVENT_EXAMPLES}${gitNote}
 ${ALTERED_EVENT_PROMPT}
   Available sub-events: ${alteredList}`
 

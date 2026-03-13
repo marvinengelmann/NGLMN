@@ -18,6 +18,7 @@ import { LIFECYCLE } from "./constants.ts"
 const LIFECYCLE_EVENT_KEY = "working:lifecycle:event"
 const LIFECYCLE_EVENT_META_KEY = "working:lifecycle:event:meta"
 const LIFECYCLE_LAST_ROLLED_KEY = "working:lifecycle:lastRolledUpdateId"
+const LIFECYCLE_HISTORY_KEY = "working:lifecycle:history"
 
 export interface EventType {
   type: string
@@ -89,18 +90,56 @@ function isHourInRange(hour: number, range: [number, number]): boolean {
   return hour >= start || hour < end
 }
 
+const LifeEventHistoryEntry = z.object({
+  type: z.string(),
+  startedAt: z.string()
+})
+
+async function getLifeEventHistory(): Promise<z.infer<typeof LifeEventHistoryEntry>[]> {
+  const raw = await redis.lrange(LIFECYCLE_HISTORY_KEY, 0, LIFECYCLE.EVENT_HISTORY_SIZE - 1)
+  return raw
+    .map((entry) => {
+      const parsed = LifeEventHistoryEntry.safeParse(typeof entry === "string" ? JSON.parse(entry) : entry)
+      return parsed.success ? parsed.data : null
+    })
+    .filter((e): e is z.infer<typeof LifeEventHistoryEntry> => e != null)
+}
+
+async function pushLifeEventHistory(type: string): Promise<void> {
+  const entry: z.infer<typeof LifeEventHistoryEntry> = { type, startedAt: nowISO() }
+  await redis.lpush(LIFECYCLE_HISTORY_KEY, JSON.stringify(entry))
+  await redis.ltrim(LIFECYCLE_HISTORY_KEY, 0, LIFECYCLE.EVENT_HISTORY_SIZE - 1)
+}
+
+interface AvailableLifeEventsOptions {
+  operatorSilenceMinutes: number
+  hasNewCommits: boolean
+}
+
 /**
- * Get life events available at the current time of day and day of week.
+ * Get life events available at the current time of day and day of week,
+ * filtered by cooldowns, conversation guard, and data validation.
  */
-export function getAvailableLifeEvents(): EventType[] {
+export async function getAvailableLifeEvents(options: AvailableLifeEventsOptions): Promise<EventType[]> {
+  if (options.operatorSilenceMinutes < LIFECYCLE.CONVERSATION_GUARD_MINUTES) {
+    return []
+  }
+
   const now = nowLocal()
   const hour = getHours(now)
   const day = getDay(now)
   const isWeekend = day === 0 || day === 6
 
+  const history = await getLifeEventHistory()
+  const cooldownCutoff = new Date(Date.now() - LIFECYCLE.EVENT_COOLDOWN_HOURS * 3600 * 1000)
+  const recentTypes = new Set(
+    history.filter((e) => parseISO(e.startedAt) > cooldownCutoff).map((e) => e.type)
+  )
+
   return EVENT_TYPES.filter((event) => {
     if (event.weekendOnly && !isWeekend) return false
     if (event.availableHours && !isHourInRange(hour, event.availableHours)) return false
+    if (recentTypes.has(event.type)) return false
     return true
   })
 }
@@ -298,7 +337,7 @@ export async function startChosenLifeEvent(type: string, detail?: string): Promi
   if (result !== "OK") return
 
   const resolvedDetail = detail ?? event.type
-  await storeEventMeta(event, resolvedDetail, durationHours)
+  await Promise.all([storeEventMeta(event, resolvedDetail, durationHours), pushLifeEventHistory(event.type)])
 
   log.info("Life event started", { type: event.type, detail: resolvedDetail, durationHours: durationHours.toFixed(1) })
 }

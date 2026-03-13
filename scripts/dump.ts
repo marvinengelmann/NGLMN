@@ -81,7 +81,10 @@ async function dump() {
   }
 
   const contextString = await buildContext(tickState, senseData)
-  const systemPrompt = await buildSystemPrompt(contextString)
+  const systemPrompt = await buildSystemPrompt(contextString, {
+    operatorSilenceMinutes: 60,
+    hasNewCommits: false
+  })
 
   console.log("=".repeat(80))
   console.log("  SYSTEM PROMPT")

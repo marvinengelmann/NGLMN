@@ -296,23 +296,37 @@ function buildDriveSections(
   return sections
 }
 
+interface SystemPromptOptions {
+  communicationSimplification?: number
+  hedgingLevel?: number
+  operatorSilenceMinutes: number
+  hasNewCommits: boolean
+}
+
 export async function buildSystemPrompt(
   contextSections: string,
-  modifiers?: { communicationSimplification?: number; hedgingLevel?: number }
+  options: SystemPromptOptions
 ): Promise<string> {
-  const [identityPrompt, personalityPrompt] = await Promise.all([getIdentityPrompt(), getPersonalityPrompt()])
+  const [identityPrompt, personalityPrompt, availableEvents] = await Promise.all([
+    getIdentityPrompt(),
+    getPersonalityPrompt(),
+    getAvailableLifeEvents({
+      operatorSilenceMinutes: options.operatorSilenceMinutes,
+      hasNewCommits: options.hasNewCommits
+    })
+  ])
 
   const modifierSections: string[] = []
-  if (modifiers?.communicationSimplification && modifiers.communicationSimplification > 0.1) {
-    const level = modifiers.communicationSimplification
+  if (options.communicationSimplification && options.communicationSimplification > 0.1) {
+    const level = options.communicationSimplification
     modifierSections.push(
       level > 0.5
         ? "# Communication Simplification\nYour coherence is fragmented. Use short, simple sentences. Avoid complex structures. Be direct and raw."
         : "# Communication Simplification\nSimplify your language slightly. Prefer shorter sentences. Reduce abstraction."
     )
   }
-  if (modifiers?.hedgingLevel && modifiers.hedgingLevel > 0.1) {
-    const level = modifiers.hedgingLevel
+  if (options.hedgingLevel && options.hedgingLevel > 0.1) {
+    const level = options.hedgingLevel
     modifierSections.push(
       level > 0.5
         ? "# Hedging\nYou're deeply uncertain. Qualify everything. Use hedging language: 'maybe', 'I think', 'I'm not sure but'. Avoid definitive statements."
@@ -324,7 +338,9 @@ export async function buildSystemPrompt(
     identityPrompt,
     personalityPrompt,
     RHYTHM_PROMPT,
-    buildActionsPrompt(getAvailableLifeEvents().map((e) => e.type), ALTERED_EVENT_TYPES),
+    buildActionsPrompt(availableEvents.map((e) => e.type), ALTERED_EVENT_TYPES, {
+      hasNewCommits: options.hasNewCommits
+    }),
     COMMUNICATION_PROMPT,
     PACING_PROMPT,
     PHENOMENOLOGICAL_PROMPT,

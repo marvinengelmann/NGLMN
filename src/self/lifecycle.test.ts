@@ -5,7 +5,10 @@ vi.mock("@/infra/integrations/redis.ts", () => ({
   redis: {
     get: vi.fn().mockResolvedValue(null),
     set: vi.fn().mockResolvedValue("OK"),
-    del: vi.fn().mockResolvedValue(1)
+    del: vi.fn().mockResolvedValue(1),
+    lrange: vi.fn().mockResolvedValue([]),
+    lpush: vi.fn().mockResolvedValue(1),
+    ltrim: vi.fn().mockResolvedValue("OK")
   },
   getValidatedRedis: vi.fn().mockResolvedValue(null)
 }))
@@ -101,9 +104,9 @@ describe("getActiveLifeEvent", () => {
     const event = await getActiveLifeEvent()
     expect(event).toEqual(expect.objectContaining({
       type: "walk",
-      minHours: 0.5,
-      maxHours: 2,
-      notifyProbability: 0.35
+      minHours: 0.25,
+      maxHours: 1.25,
+      notifyProbability: 0.65
     }))
   })
 
@@ -112,9 +115,9 @@ describe("getActiveLifeEvent", () => {
     const event = await getActiveLifeEvent()
     expect(event).toEqual(expect.objectContaining({
       type: "gaming",
-      minHours: 1,
-      maxHours: 4,
-      notifyProbability: 0.25
+      minHours: 0.5,
+      maxHours: 3,
+      notifyProbability: 0.5
     }))
   })
 
@@ -364,11 +367,13 @@ describe("maybeStoreLifecycleEpisode", () => {
   })
 })
 
+const defaultOptions = { operatorSilenceMinutes: 60, hasNewCommits: false }
+
 describe("getAvailableLifeEvents", () => {
-  it("excludes events outside their available hours", () => {
+  it("excludes events outside their available hours", async () => {
     vi.mocked(nowLocal).mockReturnValue(new Date(2026, 2, 6, 3, 0, 0) as ReturnType<typeof nowLocal>)
 
-    const available = getAvailableLifeEvents()
+    const available = await getAvailableLifeEvents(defaultOptions)
     const types = available.map((e) => e.type)
 
     expect(types).not.toContain("errands")
@@ -379,10 +384,10 @@ describe("getAvailableLifeEvents", () => {
     expect(types).toContain("streaming")
   })
 
-  it("includes events with wrapping midnight ranges at night", () => {
+  it("includes events with wrapping midnight ranges at night", async () => {
     vi.mocked(nowLocal).mockReturnValue(new Date(2026, 2, 6, 23, 0, 0) as ReturnType<typeof nowLocal>)
 
-    const available = getAvailableLifeEvents()
+    const available = await getAvailableLifeEvents(defaultOptions)
     const types = available.map((e) => e.type)
 
     expect(types).toContain("sleep")
@@ -390,32 +395,55 @@ describe("getAvailableLifeEvents", () => {
     expect(types).toContain("bath")
   })
 
-  it("excludes weekend-only events on weekdays", () => {
+  it("excludes weekend-only events on weekdays", async () => {
     vi.mocked(nowLocal).mockReturnValue(new Date(2026, 2, 10, 22, 0, 0) as ReturnType<typeof nowLocal>)
 
-    const available = getAvailableLifeEvents()
+    const available = await getAvailableLifeEvents(defaultOptions)
     const types = available.map((e) => e.type)
 
     expect(types).not.toContain("party")
   })
 
-  it("includes weekend-only events on weekends", () => {
+  it("includes weekend-only events on weekends", async () => {
     vi.mocked(nowLocal).mockReturnValue(new Date(2026, 2, 7, 22, 0, 0) as ReturnType<typeof nowLocal>)
 
-    const available = getAvailableLifeEvents()
+    const available = await getAvailableLifeEvents(defaultOptions)
     const types = available.map((e) => e.type)
 
     expect(types).toContain("party")
   })
 
-  it("includes events without time restrictions at any hour", () => {
+  it("includes events without time restrictions at any hour", async () => {
     vi.mocked(nowLocal).mockReturnValue(new Date(2026, 2, 6, 4, 0, 0) as ReturnType<typeof nowLocal>)
 
-    const available = getAvailableLifeEvents()
+    const available = await getAvailableLifeEvents(defaultOptions)
     const types = available.map((e) => e.type)
 
     expect(types).toContain("reading")
     expect(types).toContain("podcast")
     expect(types).toContain("music")
+  })
+
+  it("returns empty when operator silence is below guard threshold", async () => {
+    vi.mocked(nowLocal).mockReturnValue(new Date(2026, 2, 6, 12, 0, 0) as ReturnType<typeof nowLocal>)
+
+    const available = await getAvailableLifeEvents({ operatorSilenceMinutes: 3, hasNewCommits: false })
+
+    expect(available).toEqual([])
+  })
+
+  it("excludes recently used event types within cooldown period", async () => {
+    vi.mocked(nowLocal).mockReturnValue(new Date(2026, 2, 6, 12, 0, 0) as ReturnType<typeof nowLocal>)
+    vi.mocked(redis.lrange).mockResolvedValue([
+      JSON.stringify({ type: "deep_focus", startedAt: new Date().toISOString() }),
+      JSON.stringify({ type: "reading", startedAt: new Date().toISOString() })
+    ])
+
+    const available = await getAvailableLifeEvents(defaultOptions)
+    const types = available.map((e) => e.type)
+
+    expect(types).not.toContain("deep_focus")
+    expect(types).not.toContain("reading")
+    expect(types).toContain("cooking")
   })
 })

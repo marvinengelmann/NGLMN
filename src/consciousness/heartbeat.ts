@@ -97,7 +97,20 @@ export async function runHeartbeat() {
         preloaded
       }
 
-      const deliberateResult = await deliberate(tickState)
+      let deliberateResult = await deliberate(tickState)
+
+      if (previousSendInterrupted && deliberateResult.decision.action === "life_event") {
+        log.warn("Overriding life_event after mid-send interrupt — forcing idle to allow re-processing")
+        deliberateResult = {
+          ...deliberateResult,
+          decision: {
+            ...deliberateResult.decision,
+            action: "idle",
+            reasoning: `Override: life_event blocked after mid-send interrupt. Original: ${deliberateResult.decision.reasoning}`
+          }
+        }
+      }
+
       const actResult = await act(deliberateResult, senseResult, feelResult, buffer, tickId)
 
       lastTickState = tickState

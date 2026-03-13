@@ -93,7 +93,9 @@ export async function deliberate(tickState: TickState): Promise<DeliberateResult
   const contextString = await buildContext(tickState, senseData, xContext, emailContext, calendarContext)
   const systemPrompt = await buildSystemPrompt(contextString, {
     communicationSimplification: feelResult.communicationSimplification,
-    hedgingLevel: feelResult.hedgingLevel
+    hedgingLevel: feelResult.hedgingLevel,
+    operatorSilenceMinutes: senseData.moodContext.operatorSilenceMinutes,
+    hasNewCommits: (senseResult.perception.gitActivity?.externalCommitCount ?? 0) > 0
   })
 
   const alteredState = preloaded.alteredState
