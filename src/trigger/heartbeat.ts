@@ -6,14 +6,12 @@ import { getConversationWaitingSince } from "@/expression/communication/state.ts
 import { HEARTBEAT } from "@/infra/config/constants.ts"
 import { fetchNewMessages } from "@/infra/integrations/telegram.ts"
 import { log } from "@/infra/lib/logger.ts"
-import { captureError } from "@/infra/lib/sentry.ts"
 import { isBusy } from "@/memory/working.ts"
-import { LIFECYCLE } from "@/self/constants.ts"
 import {
   getActiveLifeEvent,
+  handleMidEventCheck,
   isLifeEventActive,
-  maybeStoreLifecycleEpisode,
-  sendLifecycleNotification
+  maybeStoreLifecycleEpisode
 } from "@/self/lifecycle.ts"
 
 export const heartbeatTask = schedules.task({
@@ -35,12 +33,10 @@ export const heartbeatTask = schedules.task({
 
     if (await isLifeEventActive()) {
       const event = await getActiveLifeEvent()
-      if (event?.interruptible) {
+      if (event) {
         const peek = await fetchNewMessages(0)
-        if (peek.messages.length > 0 && Math.random() < LIFECYCLE.MID_EVENT_NOTIFY_PROBABILITY) {
-          sendLifecycleNotification(event.type, "mid_event").catch((e) =>
-            captureError(e, { phase: "lifecycle_mid_event" })
-          )
+        if (peek.messages.length > 0) {
+          await handleMidEventCheck(event, peek.maxUpdateId)
         }
       }
       log.info("Heartbeat skipped — life event active")

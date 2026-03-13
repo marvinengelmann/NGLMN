@@ -13,13 +13,14 @@ import type { RelationalMemoryState } from "@/memory/types.ts"
 import type { AnticipatoryState } from "@/perception/anticipation/types.ts"
 import { computeTimePerception } from "@/perception/pace.ts"
 import {
-  ACTIONS_PROMPT,
+  buildActionsPrompt,
   COMMUNICATION_PROMPT,
   DRIVE_AWARENESS_PROMPT,
   PACING_PROMPT,
   PHENOMENOLOGICAL_PROMPT,
   RHYTHM_PROMPT
 } from "@/prompts/consciousness.ts"
+import { getAvailableLifeEvents } from "@/self/lifecycle.ts"
 import { getIdentityPrompt } from "@/prompts/identity.ts"
 import { getPersonalityPrompt } from "@/prompts/personality.ts"
 import { translateDeepProfileToFelt } from "@/relational/mind/profiling.ts"
@@ -322,7 +323,7 @@ export async function buildSystemPrompt(
     identityPrompt,
     personalityPrompt,
     RHYTHM_PROMPT,
-    ACTIONS_PROMPT,
+    buildActionsPrompt(getAvailableLifeEvents().map((e) => e.type)),
     COMMUNICATION_PROMPT,
     PACING_PROMPT,
     PHENOMENOLOGICAL_PROMPT,

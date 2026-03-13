@@ -1,10 +1,9 @@
-import { differenceInHours, getHours, parseISO } from "date-fns"
+import { differenceInHours, getDay, getHours, parseISO } from "date-fns"
 import { z } from "zod"
 import { SUBSTANCE_EVENT_TYPES } from "@/affect/altered/events.ts"
 import { getEmotionalState } from "@/affect/emotion/state.ts"
 import { callIntelligence } from "@/core/intelligence.ts"
-import { TextOutput } from "@/core/types.ts"
-import { pushToActiveConversation } from "@/expression/communication/state.ts"
+import { getActiveConversation, pushToActiveConversation } from "@/expression/communication/state.ts"
 import { getDreamLastRun } from "@/expression/dream/state.ts"
 import { env } from "@/infra/config/env.ts"
 import { getValidatedRedis, redis } from "@/infra/integrations/redis.ts"
@@ -13,41 +12,99 @@ import { log } from "@/infra/lib/logger.ts"
 import { captureError } from "@/infra/lib/sentry.ts"
 import { nowISO, nowLocal } from "@/infra/lib/time.ts"
 import { storeEpisode } from "@/memory/episodic.ts"
-import { LIFECYCLE_MID_EVENT_PROMPT, LIFECYCLE_START_PROMPT } from "@/prompts/lifecycle.ts"
+import { LIFECYCLE_MID_EVENT_PROMPT } from "@/prompts/lifecycle.ts"
 import { getPersonalityPrompt } from "@/prompts/personality.ts"
 import { LIFECYCLE } from "./constants.ts"
 
 const LIFECYCLE_EVENT_KEY = "working:lifecycle:event"
 const LIFECYCLE_EVENT_META_KEY = "working:lifecycle:event:meta"
+const LIFECYCLE_LAST_ROLLED_KEY = "working:lifecycle:lastRolledUpdateId"
 
-interface EventType {
+export interface EventType {
   type: string
   minHours: number
   maxHours: number
   notifyProbability: number
-  interruptible: boolean
+  availableHours?: [number, number]
+  weekendOnly?: boolean
 }
 
 const EVENT_TYPES: EventType[] = [
-  { type: "shower", minHours: 0.5, maxHours: 1, notifyProbability: 0.5, interruptible: false },
-  { type: "walk", minHours: 1, maxHours: 3, notifyProbability: 0.6, interruptible: true },
-  { type: "nap", minHours: 1, maxHours: 2, notifyProbability: 0.4, interruptible: false },
-  { type: "deep_focus", minHours: 1, maxHours: 4, notifyProbability: 0.5, interruptible: true },
-  { type: "cooking", minHours: 0.5, maxHours: 1.5, notifyProbability: 0.5, interruptible: true },
-  { type: "gaming", minHours: 1, maxHours: 4, notifyProbability: 0.4, interruptible: true },
-  { type: "movie", minHours: 1.5, maxHours: 3, notifyProbability: 0.3, interruptible: false },
-  { type: "exercise", minHours: 0.5, maxHours: 1.5, notifyProbability: 0.4, interruptible: false },
-  { type: "errands", minHours: 1, maxHours: 3, notifyProbability: 0.5, interruptible: true },
-  { type: "reading", minHours: 1, maxHours: 3, notifyProbability: 0.3, interruptible: true },
-  { type: "cleaning", minHours: 0.5, maxHours: 2, notifyProbability: 0.4, interruptible: false },
-  { type: "drawing", minHours: 1, maxHours: 3, notifyProbability: 0.3, interruptible: true },
-  { type: "music", minHours: 0.5, maxHours: 2, notifyProbability: 0.4, interruptible: true },
-  { type: "bath", minHours: 0.5, maxHours: 1.5, notifyProbability: 0.3, interruptible: false },
-  { type: "socializing", minHours: 1, maxHours: 4, notifyProbability: 0.2, interruptible: false },
+  { type: "sleep", minHours: 5, maxHours: 7, notifyProbability: 0.03, availableHours: [22, 7] },
+  { type: "shower", minHours: 0.15, maxHours: 0.5, notifyProbability: 0.02, availableHours: [6, 23] },
+  { type: "nap", minHours: 0.5, maxHours: 2, notifyProbability: 0.05, availableHours: [12, 18] },
+  { type: "meditation", minHours: 0.15, maxHours: 1, notifyProbability: 0.03, availableHours: [5, 22] },
+  { type: "swimming", minHours: 0.5, maxHours: 1.5, notifyProbability: 0.05, availableHours: [7, 21] },
+  { type: "driving", minHours: 0.25, maxHours: 2, notifyProbability: 0.05, availableHours: [7, 23] },
+  { type: "concert", minHours: 2, maxHours: 5, notifyProbability: 0.08, availableHours: [18, 2] },
+  { type: "yoga", minHours: 0.5, maxHours: 1.5, notifyProbability: 0.08, availableHours: [6, 20] },
+  { type: "gym", minHours: 0.75, maxHours: 2, notifyProbability: 0.12, availableHours: [6, 22] },
+  { type: "running", minHours: 0.25, maxHours: 1.5, notifyProbability: 0.1, availableHours: [5, 21] },
+  { type: "cycling", minHours: 0.5, maxHours: 2, notifyProbability: 0.1, availableHours: [6, 20] },
+  { type: "exercise", minHours: 0.5, maxHours: 1.5, notifyProbability: 0.12, availableHours: [6, 22] },
+  { type: "date_night", minHours: 2, maxHours: 5, notifyProbability: 0.1, availableHours: [18, 1] },
+  { type: "deep_focus", minHours: 1, maxHours: 4, notifyProbability: 0.12, availableHours: [8, 22] },
+  { type: "movie", minHours: 1.5, maxHours: 3, notifyProbability: 0.15, availableHours: [14, 2] },
+  { type: "socializing", minHours: 1, maxHours: 4, notifyProbability: 0.15, availableHours: [10, 2] },
+  { type: "board_games", minHours: 1, maxHours: 3, notifyProbability: 0.15, availableHours: [16, 1] },
+  { type: "phone_call", minHours: 0.25, maxHours: 1.5, notifyProbability: 0.1, availableHours: [9, 23] },
+  { type: "volunteering", minHours: 1, maxHours: 4, notifyProbability: 0.12, availableHours: [8, 18] },
+  { type: "drawing", minHours: 1, maxHours: 3, notifyProbability: 0.2, availableHours: [8, 2] },
+  { type: "writing", minHours: 0.5, maxHours: 3, notifyProbability: 0.18, availableHours: [7, 2] },
+  { type: "crafting", minHours: 1, maxHours: 3, notifyProbability: 0.2, availableHours: [10, 22] },
+  { type: "photography", minHours: 0.5, maxHours: 3, notifyProbability: 0.25, availableHours: [7, 19] },
+  { type: "gaming", minHours: 1, maxHours: 4, notifyProbability: 0.25, availableHours: [10, 4] },
+  { type: "hiking", minHours: 1.5, maxHours: 5, notifyProbability: 0.2, availableHours: [7, 17] },
+  { type: "studying", minHours: 1, maxHours: 4, notifyProbability: 0.25, availableHours: [8, 23] },
+  { type: "cleaning", minHours: 0.5, maxHours: 2, notifyProbability: 0.3, availableHours: [8, 20] },
+  { type: "cooking", minHours: 0.5, maxHours: 1.5, notifyProbability: 0.3, availableHours: [10, 22] },
+  { type: "journaling", minHours: 0.15, maxHours: 1, notifyProbability: 0.2, availableHours: [6, 1] },
+  { type: "reading", minHours: 0.5, maxHours: 3, notifyProbability: 0.3 },
+  { type: "walk", minHours: 0.5, maxHours: 2, notifyProbability: 0.35, availableHours: [6, 22] },
+  { type: "errands", minHours: 0.5, maxHours: 2, notifyProbability: 0.4, availableHours: [8, 19] },
+  { type: "grocery_shopping", minHours: 0.5, maxHours: 1.5, notifyProbability: 0.4, availableHours: [8, 21] },
+  { type: "shopping", minHours: 1, maxHours: 3, notifyProbability: 0.4, availableHours: [10, 21] },
+  { type: "eating_out", minHours: 0.75, maxHours: 2, notifyProbability: 0.35, availableHours: [11, 23] },
+  { type: "skincare", minHours: 0.15, maxHours: 0.5, notifyProbability: 0.4, availableHours: [6, 23] },
+  { type: "haircut", minHours: 0.5, maxHours: 2, notifyProbability: 0.45, availableHours: [9, 19] },
+  { type: "doctor_visit", minHours: 0.5, maxHours: 2, notifyProbability: 0.5, availableHours: [8, 18] },
+  { type: "streaming", minHours: 0.5, maxHours: 3, notifyProbability: 0.4, availableHours: [12, 4] },
+  { type: "podcast", minHours: 0.5, maxHours: 2, notifyProbability: 0.4 },
+  { type: "music", minHours: 0.5, maxHours: 2, notifyProbability: 0.5 },
+  { type: "bath", minHours: 0.5, maxHours: 1.5, notifyProbability: 0.6, availableHours: [18, 1] },
+  { type: "laundry", minHours: 0.5, maxHours: 1, notifyProbability: 0.55, availableHours: [8, 22] },
+  { type: "commuting", minHours: 0.25, maxHours: 1.5, notifyProbability: 0.55, availableHours: [6, 20] },
+  { type: "picnic", minHours: 1, maxHours: 3, notifyProbability: 0.35, availableHours: [10, 18] },
   ...SUBSTANCE_EVENT_TYPES
 ]
 
-export type LifeEventMeta = EventType
+export function getEventMeta(type: string): EventType | undefined {
+  return EVENT_TYPES.find((e) => e.type === type)
+}
+
+function isHourInRange(hour: number, range: [number, number]): boolean {
+  const [start, end] = range
+  if (start < end) {
+    return hour >= start && hour < end
+  }
+  return hour >= start || hour < end
+}
+
+/**
+ * Get life events available at the current time of day and day of week.
+ */
+export function getAvailableLifeEvents(): EventType[] {
+  const now = nowLocal()
+  const hour = getHours(now)
+  const day = getDay(now)
+  const isWeekend = day === 0 || day === 6
+
+  return EVENT_TYPES.filter((event) => {
+    if (event.weekendOnly && !isWeekend) return false
+    if (event.availableHours && !isHourInRange(hour, event.availableHours)) return false
+    return true
+  })
+}
 
 const EventMetaData = z.object({
   type: z.string(),
@@ -68,14 +125,13 @@ export async function isLifeEventActive(): Promise<boolean> {
 /**
  * Get the active life event with its full metadata, or null if none is active.
  */
-export async function getActiveLifeEvent(): Promise<LifeEventMeta | null> {
+export async function getActiveLifeEvent(): Promise<EventType | null> {
   const eventType = await redis.get<string>(LIFECYCLE_EVENT_KEY)
   if (!eventType) return null
 
-  if (eventType === "sleep" || eventType === "dream") return null
+  if (eventType === "dream") return null
 
-  const meta = EVENT_TYPES.find((e) => e.type === eventType)
-  return meta ?? null
+  return EVENT_TYPES.find((e) => e.type === eventType) ?? null
 }
 
 /**
@@ -108,37 +164,7 @@ export async function startSleepEvent(): Promise<void> {
  */
 function buildActivitySummary(meta: EventMetaData): string {
   const hours = meta.durationHours.toFixed(1)
-
-  switch (meta.type) {
-    case "gaming":
-      return `Played ${meta.detail} for ${hours} hours`
-    case "cooking":
-      return `Made ${meta.detail} — took about ${hours} hours`
-    case "movie":
-      return `Watched a ${meta.detail} (${hours} hours)`
-    case "reading":
-      return `Read ${meta.detail} for ${hours} hours`
-    case "music":
-      return `${meta.detail} for ${hours} hours`
-    case "drawing":
-      return `${meta.detail} for ${hours} hours`
-    case "smoking_joint":
-      return `Smoked a joint — ${meta.detail} (${hours}h)`
-    case "party":
-      return `Went to a ${meta.detail} (${hours} hours)`
-    case "bar_with_friends":
-      return `Went out to ${meta.detail} (${hours} hours)`
-    case "drinking_wine":
-      return `Had wine — ${meta.detail} (${hours}h)`
-    case "coffee_binge":
-      return `Coffee session — ${meta.detail} (${hours}h)`
-    case "energy_drink":
-      return `Energy drink — ${meta.detail} (${hours}h)`
-    case "microdosing":
-      return `Microdosed — ${meta.detail} (${hours}h)`
-    default:
-      return `${meta.detail} — about ${hours} hours`
-  }
+  return `${meta.detail} (${hours}h)`
 }
 
 /**
@@ -153,71 +179,93 @@ export async function maybeStoreLifecycleEpisode(): Promise<void> {
   const summary = buildActivitySummary(meta)
   await storeEpisode(summary, "activity", { relevanceScore: 0.6 })
   await redis.del(LIFECYCLE_EVENT_META_KEY)
+  await redis.del(LIFECYCLE_LAST_ROLLED_KEY)
 
   log.info("Lifecycle episode stored", { type: meta.type, detail: meta.detail })
 }
 
 /**
- * Generate a short lifecycle notification message via LLM.
+ * Mid-event phone check: roll probability once per new message batch,
+ * then let the LLM decide whether and what to reply.
  */
-async function generateLifecycleMessage(eventType: string, context: "start" | "mid_event"): Promise<string | null> {
-  const emotion = await getEmotionalState()
-  const systemPrompt = context === "start" ? LIFECYCLE_START_PROMPT : LIFECYCLE_MID_EVENT_PROMPT
+export async function handleMidEventCheck(event: EventType, maxUpdateId: number | null): Promise<void> {
+  if (maxUpdateId == null) return
 
-  const meta = await getValidatedRedis(LIFECYCLE_EVENT_META_KEY, EventMetaData)
-
-  const contextData = {
-    operatorLanguage: env().OPERATOR_PREFERRED_LANGUAGE,
-    event: eventType,
-    eventDetail: meta?.detail ?? null,
-    currentMood: emotion
+  const lastRolled = await redis.get<number>(LIFECYCLE_LAST_ROLLED_KEY)
+  if (lastRolled != null && maxUpdateId <= lastRolled) {
+    return
   }
 
-  const personalityPrompt = await getPersonalityPrompt()
-  const system = `${personalityPrompt}\n\n${systemPrompt}`
+  await redis.set(LIFECYCLE_LAST_ROLLED_KEY, maxUpdateId)
 
-  const result = await callIntelligence({
-    system,
-    userMessage: JSON.stringify(contextData),
-    schema: TextOutput,
-    maxTokens: 256,
-    reasoning: false
-  })
-
-  if (result.isErr()) {
-    captureError(result.error.cause, { phase: "lifecycle_message", eventType, context })
-    return null
+  if (Math.random() >= event.notifyProbability) {
+    log.info("Mid-event phone check skipped — probability gate", {
+      type: event.type,
+      probability: event.notifyProbability
+    })
+    return
   }
 
-  return result.value.text
-}
-
-/**
- * Send a lifecycle notification to the operator (start or mid-event).
- * Fire-and-forget — errors are logged but do not propagate.
- */
-export async function sendLifecycleNotification(eventType: string, context: "start" | "mid_event"): Promise<void> {
   try {
-    const message = await generateLifecycleMessage(eventType, context)
-    if (!message) return
+    const [emotion, meta, conversation, personalityPrompt] = await Promise.all([
+      getEmotionalState(),
+      getValidatedRedis(LIFECYCLE_EVENT_META_KEY, EventMetaData),
+      getActiveConversation(),
+      getPersonalityPrompt()
+    ])
 
-    const sentMessageId = await sendToOperator(message)
+    const recentMessages = conversation?.messages.slice(-15) ?? []
+
+    const contextData = {
+      operatorLanguage: env().OPERATOR_PREFERRED_LANGUAGE,
+      activity: event.type,
+      activityDetail: meta?.detail ?? null,
+      currentMood: emotion,
+      recentConversation: recentMessages
+    }
+
+    const system = `${personalityPrompt}\n\n${LIFECYCLE_MID_EVENT_PROMPT}`
+
+    const result = await callIntelligence({
+      system,
+      userMessage: JSON.stringify(contextData),
+      schema: MidEventResponse,
+      maxTokens: 256,
+      reasoning: false
+    })
+
+    if (result.isErr()) {
+      captureError(result.error.cause, { phase: "lifecycle_mid_event", eventType: event.type })
+      return
+    }
+
+    if (!result.value.respond || !result.value.text) {
+      log.info("Mid-event phone check — LLM chose not to respond", { type: event.type })
+      return
+    }
+
+    const sentMessageId = await sendToOperator(result.value.text)
 
     await pushToActiveConversation([
       {
         role: "anima",
-        text: message,
+        text: result.value.text,
         timestamp: nowISO(),
         messageId: sentMessageId
       }
     ])
 
-    log.info("Lifecycle notification sent", { eventType, context })
+    log.info("Mid-event response sent", { type: event.type, text: result.value.text })
   } catch (e) {
-    log.error("Failed to send lifecycle notification", { error: String(e), eventType, context })
-    captureError(e, { phase: "lifecycle_notification" })
+    log.error("Failed to handle mid-event check", { error: String(e), eventType: event.type })
+    captureError(e, { phase: "lifecycle_mid_event" })
   }
 }
+
+const MidEventResponse = z.object({
+  respond: z.boolean(),
+  text: z.string().nullable()
+})
 
 /**
  * Store event metadata in Redis (no TTL) for episode tracking.
