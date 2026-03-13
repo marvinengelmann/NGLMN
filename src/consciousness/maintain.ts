@@ -84,7 +84,7 @@ const BIGFIVE_DRIFT_PROBABILITY = 0.01
 const DEEP_PROFILE_UPDATE_PROBABILITY = 0.05
 
 const REDIS = {
-  ATTACHMENT_STYLE: "working:attachment:style",
+  ATTACHMENT_STYLE: "working:attachment:current",
   MOOD_BASELINE: "working:emotion:moodBaseline",
   IDIOLECT: "working:communication:idiolect",
   HABIT_STATE: "working:cognition:habitState",
