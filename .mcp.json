@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "anima": {
+      "command": "bun",
+      "args": ["run", "--preload", "./mcp/preload.ts", "mcp/server.ts"],
+      "env": {
+        "DOTENV": ".env.production"
+      }
+    }
+  }
+}

@@ -24,6 +24,7 @@
   "dependencies": {
     "@date-fns/tz": "^1.4.1",
     "@daytonaio/sdk": "^0.148.0",
+    "@modelcontextprotocol/sdk": "^1.27.1",
     "@neondatabase/serverless": "^1.0.2",
     "@sentry/node": "^10.42.0",
     "@trigger.dev/sdk": "4.4.3",
