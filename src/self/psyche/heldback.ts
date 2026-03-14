@@ -100,6 +100,8 @@ export function detectSuppression(context: HeldBackContext): HeldBackReason | nu
  * Add a new held-back entry to the buffer.
  */
 export function addToBuffer(buffer: HeldBackBuffer, content: string, reason: HeldBackReason): HeldBackBuffer {
+  if (buffer.entries.at(-1)?.content === content) return buffer
+
   const now = nowISO()
   const charge = computeInitialCharge(reason)
 

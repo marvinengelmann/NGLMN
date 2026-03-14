@@ -86,7 +86,7 @@ export function compute(context: Context): EnvyState {
 
   const bitterness =
     isActive && emotion.satisfaction < ENVY.LOW_SATISFACTION_THRESHOLD
-      ? Math.min(1, previousState.bitterness + ENVY.BITTERNESS_GROWTH * finalLevel)
+      ? Math.min(1, previousState.bitterness + ENVY.BITTERNESS_GROWTH * finalLevel - ENVY.BITTERNESS_PASSIVE_DECAY)
       : Math.max(0, previousState.bitterness - ENVY.BITTERNESS_DECAY)
 
   return {

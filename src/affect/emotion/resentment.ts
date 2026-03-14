@@ -87,7 +87,7 @@ export function compute(context: Context): ResentmentState {
   )
 
   const hardening = isActive
-    ? Math.min(1, previousState.hardening + RESENTMENT.HARDENING_GROWTH * finalLevel)
+    ? Math.min(1, previousState.hardening + RESENTMENT.HARDENING_GROWTH * finalLevel - RESENTMENT.HARDENING_ACTIVE_DECAY)
     : Math.max(0, previousState.hardening - RESENTMENT.HARDENING_DECAY)
 
   const suppressedAnger = isActive

@@ -115,7 +115,9 @@ export function compute(context: Context): DisappointmentState {
     level: finalLevel,
     isActive: finalLevel > DISAPPOINTMENT.ACTIVATION_THRESHOLD,
     recentEntries,
-    cumulativeWeight: previousState.cumulativeWeight + newEntries.reduce((sum, e) => sum + e.intensity, 0)
+    cumulativeWeight:
+      previousState.cumulativeWeight * DISAPPOINTMENT.CUMULATIVE_WEIGHT_DECAY +
+      newEntries.reduce((sum, e) => sum + e.intensity, 0)
   }
 }
 

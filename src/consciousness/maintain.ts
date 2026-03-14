@@ -3,7 +3,7 @@ import { getDisappointmentState, markAcknowledged, saveDisappointmentState } fro
 import type { GuiltSource } from "@/affect/emotion/guilt.ts"
 import { getGuiltState, markRepaired, saveGuiltState } from "@/affect/emotion/guilt.ts"
 import { getMoodBaseline } from "@/affect/emotion/state.ts"
-import { blendMoodBaseline, summarizeEmotions } from "@/affect/emotion/update.ts"
+import { blendMoodBaseline, enforceEmotionFloors, summarizeEmotions } from "@/affect/emotion/update.ts"
 import { getSomaticState } from "@/affect/soma/state.ts"
 import { rechargeSocialBattery } from "@/affect/soma/update.ts"
 import { updateHabitState } from "@/cognition/habit.ts"
@@ -419,7 +419,7 @@ export async function maintain(
   await pushRecentTickDuration(durationMs)
   await pushRecentAction(input.decision.action)
 
-  const currentEmotion = input.actResult.postActEmotion ?? feelResult.emotion
+  const currentEmotion = enforceEmotionFloors(input.actResult.postActEmotion ?? feelResult.emotion)
 
   if (!input.actResult.responseSent) {
     const primaryTrigger = input.senseResult.perception.emotionalTriggers[0]?.trigger ?? "ambient"

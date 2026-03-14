@@ -16,7 +16,7 @@ import {
   type EmotionTrigger,
   type EmotionUpdateEvent
 } from "./types.ts"
-import { computeEmotionalUpdate } from "./update.ts"
+import { computeEmotionalUpdate, enforceEmotionFloors } from "./update.ts"
 
 const MOMENTUM_KEYS = {
   MOMENTUM: "working:emotion:momentum",
@@ -75,7 +75,7 @@ export async function processEmotionTrigger(
   tickId?: string
 ): Promise<EmotionalState> {
   const current = await getEmotionalState()
-  const updated = computeEmotionalUpdate(current, Array.isArray(events) ? events : [events])
+  const updated = enforceEmotionFloors(computeEmotionalUpdate(current, Array.isArray(events) ? events : [events]))
   await saveEmotionalState(updated, trigger, tickId)
   return updated
 }

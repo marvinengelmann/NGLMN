@@ -1,3 +1,4 @@
+import { differenceInHours } from "date-fns"
 import * as z from "zod"
 import { nowISO } from "@/infra/lib/time.ts"
 import { SECONDARY_EMOTIONS } from "./constants.ts"
@@ -116,8 +117,12 @@ export function compute(context: Context): GuiltState {
     })
   }
 
+  const validPrevious = previousState.recentEntries.filter(
+    (e) => !e.repaired && differenceInHours(new Date(), new Date(e.occurredAt)) < GUILT.ENTRY_MAX_AGE_HOURS
+  )
+
   const recentEntries = [
-    ...previousState.recentEntries.filter((e) => !e.repaired).slice(-(GUILT.MAX_ENTRIES - newEntries.length)),
+    ...validPrevious.slice(-(GUILT.MAX_ENTRIES - newEntries.length)),
     ...newEntries
   ]
 

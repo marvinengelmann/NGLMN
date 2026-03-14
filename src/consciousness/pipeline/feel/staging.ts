@@ -123,9 +123,7 @@ function stageSecondaryWrites(buffer: WriteBuffer, result: SecondaryResult): voi
     }
   })
 
-  if (result.hasActiveSecondary) {
-    buffer.stage(REDIS.EMOTION_CURRENT, result.emotion)
-  }
+  buffer.stage(REDIS.EMOTION_CURRENT, result.emotion)
 }
 
 function stageFinalWrites(buffer: WriteBuffer, final: FinalFanResult): void {

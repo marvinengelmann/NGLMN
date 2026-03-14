@@ -6,6 +6,7 @@ import {
   computeEmotionalIntensity,
   computeEmotionalUpdate,
   computeValence,
+  enforceEmotionFloors,
   summarizeEmotions
 } from "@/affect/emotion/update.ts"
 import { computeSomaticUpdate, drainSocialBattery } from "@/affect/soma/update.ts"
@@ -112,9 +113,11 @@ export async function act(
 
   let postActEmotion: EmotionalState | undefined
   if (responseSent) {
-    const outcomeEmotion = computeEmotionalUpdate(feelResult.emotion, [
-      { trigger: "message_sent", intensity: TRIGGER_INTENSITY.MESSAGE_SENT }
-    ])
+    const outcomeEmotion = enforceEmotionFloors(
+      computeEmotionalUpdate(feelResult.emotion, [
+        { trigger: "message_sent", intensity: TRIGGER_INTENSITY.MESSAGE_SENT }
+      ])
+    )
     postActEmotion = outcomeEmotion
     buffer.stage("working:emotion:current", outcomeEmotion)
     buffer.stagePostgres(emotionHistory, {

@@ -11,6 +11,22 @@ import {
 import { clamp01, halfLifeDecay } from "@/infra/lib/math.ts"
 import { CONTRADICTION, EMOTION, MOMENTUM, MOOD_BASELINE, MOOD_CONTAGION } from "./constants.ts"
 
+export const EMOTION_FLOORS: Partial<Record<keyof EmotionalState, number>> = {
+  energy: 0.05,
+  confidence: 0.05
+} as const
+
+export function enforceEmotionFloors(state: EmotionalState): EmotionalState {
+  const result = { ...state }
+  for (const [key, floor] of Object.entries(EMOTION_FLOORS)) {
+    const dim = key as keyof EmotionalState
+    if (result[dim] < floor) {
+      result[dim] = floor
+    }
+  }
+  return result
+}
+
 type EmotionDeltas = Partial<Record<keyof EmotionalState, number>>
 
 const TRIGGER_EFFECTS: Record<EmotionTrigger, EmotionDeltas> = {
