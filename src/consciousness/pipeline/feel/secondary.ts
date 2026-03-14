@@ -23,7 +23,6 @@ export function runSecondaryEmotions(shared: SharedEmotionInput): SecondaryResul
   computedStates.set("shame", shared.shameState)
 
   let emotion = shared.emotion
-  const preSecondaryEnergy = emotion.energy
 
   getRegisteredEmotions()
     .filter((entry) => entry.name !== "shame")
@@ -35,17 +34,22 @@ export function runSecondaryEmotions(shared: SharedEmotionInput): SecondaryResul
       if (entry.computeEffect && state.isActive) {
         const damping = computeSaturationDamping(emotion)
         const rawEffects = entry.computeEffect(state)
-        const dampenedEffects =
-          damping < 1
-            ? (Object.fromEntries(
-                Object.entries(rawEffects).map(([k, v]) => [k, typeof v === "number" ? v * damping : v])
-              ) as Partial<Record<keyof EmotionalState, number>>)
-            : rawEffects
-        emotion = applyClampedDeltas(emotion, dampenedEffects)
+        const energyDrain = rawEffects.energy
+        const hasEnergyDrain = typeof energyDrain === "number" && energyDrain < 0
+        const energyScale = hasEnergyDrain ? emotion.energy : 1
+        const scaledEffects = Object.fromEntries(
+          Object.entries(rawEffects).map(([k, v]) => {
+            if (typeof v !== "number") return [k, v]
+            let scaled = damping < 1 ? v * damping : v
+            if (k === "energy" && scaled < 0) scaled *= energyScale
+            return [k, scaled]
+          })
+        ) as Partial<Record<keyof EmotionalState, number>>
+        emotion = applyClampedDeltas(emotion, scaledEffects)
       }
     })
 
-  if (emotion.energy < SECONDARY_ENERGY_FLOOR && preSecondaryEnergy >= SECONDARY_ENERGY_FLOOR) {
+  if (emotion.energy < SECONDARY_ENERGY_FLOOR) {
     emotion = { ...emotion, energy: SECONDARY_ENERGY_FLOOR }
   }
 

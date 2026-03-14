@@ -423,7 +423,7 @@ export const EMOTION = {
     caution: 360,
     connection: 720,
     confidence: 480,
-    energy: 360
+    energy: 120
   },
   MAX_DELTA: 0.2,
   NOVELTY_SCALE: 0.25,
