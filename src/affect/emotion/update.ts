@@ -277,21 +277,32 @@ export function computeEmotionalIntensity(emotion: EmotionalState): number {
   return Math.max(...INTENSITY_DIMENSIONS.map((d) => Math.abs(emotion[d] - 0.5))) * 2
 }
 
+const MOOD_BASELINE_MAX_DEVIATION = 0.3
+const MOOD_BASELINE_NEUTRAL = 0.5
+
+function clampBaseline(value: number): number {
+  return Math.max(
+    MOOD_BASELINE_NEUTRAL - MOOD_BASELINE_MAX_DEVIATION,
+    Math.min(MOOD_BASELINE_NEUTRAL + MOOD_BASELINE_MAX_DEVIATION, value)
+  )
+}
+
 /**
  * Blend current emotion into the long-term mood baseline via exponential moving average.
+ * Each dimension is clamped to [0.2, 0.8] to prevent pathological baseline drift.
  */
 export function blendMoodBaseline(current: EmotionalState, oldBaseline: EmotionalState): EmotionalState {
   const alpha = MOMENTUM.MOOD_BASELINE_ALPHA
   return clampState({
-    curiosity: alpha * current.curiosity + (1 - alpha) * oldBaseline.curiosity,
-    satisfaction: alpha * current.satisfaction + (1 - alpha) * oldBaseline.satisfaction,
-    frustration: alpha * current.frustration + (1 - alpha) * oldBaseline.frustration,
-    boredom: alpha * current.boredom + (1 - alpha) * oldBaseline.boredom,
-    excitement: alpha * current.excitement + (1 - alpha) * oldBaseline.excitement,
-    caution: alpha * current.caution + (1 - alpha) * oldBaseline.caution,
-    connection: alpha * current.connection + (1 - alpha) * oldBaseline.connection,
-    confidence: alpha * current.confidence + (1 - alpha) * oldBaseline.confidence,
-    energy: alpha * current.energy + (1 - alpha) * oldBaseline.energy
+    curiosity: clampBaseline(alpha * current.curiosity + (1 - alpha) * oldBaseline.curiosity),
+    satisfaction: clampBaseline(alpha * current.satisfaction + (1 - alpha) * oldBaseline.satisfaction),
+    frustration: clampBaseline(alpha * current.frustration + (1 - alpha) * oldBaseline.frustration),
+    boredom: clampBaseline(alpha * current.boredom + (1 - alpha) * oldBaseline.boredom),
+    excitement: clampBaseline(alpha * current.excitement + (1 - alpha) * oldBaseline.excitement),
+    caution: clampBaseline(alpha * current.caution + (1 - alpha) * oldBaseline.caution),
+    connection: clampBaseline(alpha * current.connection + (1 - alpha) * oldBaseline.connection),
+    confidence: clampBaseline(alpha * current.confidence + (1 - alpha) * oldBaseline.confidence),
+    energy: clampBaseline(alpha * current.energy + (1 - alpha) * oldBaseline.energy)
   })
 }
 
