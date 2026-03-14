@@ -321,7 +321,7 @@ async function storeEventMeta(event: EventType, detail: string, durationHours: n
 /**
  * Start a life event chosen by the LLM during the DELIBERATE step.
  */
-export async function startChosenLifeEvent(type: string, detail?: string): Promise<void> {
+export async function startChosenLifeEvent(type: string, detail?: string, chosenDurationHours?: number): Promise<void> {
   if (await isLifeEventActive()) return
 
   const event = EVENT_TYPES.find((e) => e.type === type)
@@ -330,7 +330,9 @@ export async function startChosenLifeEvent(type: string, detail?: string): Promi
     return
   }
 
-  const durationHours = event.minHours + Math.random() * (event.maxHours - event.minHours)
+  const durationHours = chosenDurationHours
+    ? Math.max(event.minHours, Math.min(event.maxHours, chosenDurationHours))
+    : event.minHours + Math.random() * (event.maxHours - event.minHours)
   const ttlSeconds = Math.round(durationHours * 3600)
 
   const result = await redis.set(LIFECYCLE_EVENT_KEY, event.type, { nx: true, ex: ttlSeconds })

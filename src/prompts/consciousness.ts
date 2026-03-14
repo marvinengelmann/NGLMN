@@ -55,21 +55,22 @@ Not every due workflow must be executed — use your judgment about timing and r
  * Build the actions prompt with only currently available life events and altered sub-events.
  */
 export function buildActionsPrompt(
-  availableEventTypes: string[],
+  availableEvents: { type: string; minHours: number; maxHours: number }[],
   alteredEventTypes: string[],
   options?: { hasNewCommits?: boolean }
 ): string {
-  if (availableEventTypes.length === 0) {
+  if (availableEvents.length === 0) {
     return [ACTIONS_PROMPT_PREFIX, ACTIONS_PROMPT_SUFFIX].join("\n")
   }
 
-  const eventList = availableEventTypes.join(", ")
+  const eventList = availableEvents.map((e) => `${e.type} (${e.minHours}–${e.maxHours}h)`).join(", ")
   const alteredList = alteredEventTypes.join(", ")
   const gitNote =
     options?.hasNewCommits === false
       ? "\n  HARD RULE: There are NO new git commits. You MUST NOT choose any code-related activity (code review, studying code, reviewing commits, reading diffs). There is literally nothing new to review. Do not hallucinate or invent commits that do not exist."
       : ""
-  const lifeEventSection = `- **life_event** — Step away to do something in your life. Set actionPayload.lifeEventType to one of: ${eventList}. Always set actionPayload.lifeEventDetail with a specific, atmospheric description of what you are doing — not just the category, but the concrete activity with a sense of place and mood.
+  const lifeEventSection = `- **life_event** — Step away to do something in your life. Set actionPayload.lifeEventType, actionPayload.lifeEventDetail (a specific, atmospheric description with a sense of place and mood), and actionPayload.lifeEventDurationHours (how long this activity takes, within the allowed range).
+  Available events: ${eventList}
 ${ACTIONS_PROMPT_LIFE_EVENT_EXAMPLES}${gitNote}
 ${ALTERED_EVENT_PROMPT}
   Available sub-events: ${alteredList}`

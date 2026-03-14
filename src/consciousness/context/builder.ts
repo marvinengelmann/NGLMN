@@ -338,7 +338,7 @@ export async function buildSystemPrompt(
     identityPrompt,
     personalityPrompt,
     RHYTHM_PROMPT,
-    buildActionsPrompt(availableEvents.map((e) => e.type), ALTERED_EVENT_TYPES, {
+    buildActionsPrompt(availableEvents, ALTERED_EVENT_TYPES, {
       hasNewCommits: options.hasNewCommits
     }),
     COMMUNICATION_PROMPT,

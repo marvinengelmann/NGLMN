@@ -303,9 +303,9 @@ async function executeAction(deliberateResult: DeliberateResult, feelResult: Fee
     }
 
     case "life_event": {
-      const { lifeEventType, lifeEventDetail, alteredEventType } = decision.actionPayload ?? {}
+      const { lifeEventType, lifeEventDetail, lifeEventDurationHours, alteredEventType } = decision.actionPayload ?? {}
       if (lifeEventType) {
-        await startChosenLifeEvent(lifeEventType, lifeEventDetail)
+        await startChosenLifeEvent(lifeEventType, lifeEventDetail, lifeEventDurationHours)
         if (alteredEventType) {
           await startAlteredState(alteredEventType, lifeEventType)
         }
