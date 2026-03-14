@@ -28,7 +28,8 @@ export const PerceptionSummary = z.object({
         })
       ),
       selfCommitCount: z.number(),
-      externalCommitCount: z.number()
+      externalCommitCount: z.number(),
+      hasUnseenCommits: z.boolean()
     })
     .optional(),
   emotionalTriggers: z.array(EmotionUpdateEvent)

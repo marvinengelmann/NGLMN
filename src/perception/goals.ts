@@ -79,7 +79,7 @@ export function detectPatterns(perception: PerceptionSummary): PatternGoal[] {
     })
   }
 
-  if (perception.gitActivity && perception.gitActivity.externalCommitCount >= 3) {
+  if (perception.gitActivity?.hasUnseenCommits) {
     patterns.push({
       title: "Review recent external changes",
       description: `${perception.gitActivity.externalCommitCount} external commits detected. Review changes for context awareness.`,

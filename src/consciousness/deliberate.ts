@@ -95,7 +95,7 @@ export async function deliberate(tickState: TickState): Promise<DeliberateResult
     communicationSimplification: feelResult.communicationSimplification,
     hedgingLevel: feelResult.hedgingLevel,
     operatorSilenceMinutes: senseData.moodContext.operatorSilenceMinutes,
-    hasNewCommits: (senseResult.perception.gitActivity?.externalCommitCount ?? 0) > 0
+    hasNewCommits: senseResult.perception.gitActivity?.hasUnseenCommits ?? false
   })
 
   const alteredState = preloaded.alteredState

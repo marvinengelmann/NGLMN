@@ -41,7 +41,8 @@ export async function evaluatePerception(): Promise<PerceptionSummary> {
         ? {
             recentCommits: git.recentCommits,
             selfCommitCount: git.selfCommitCount,
-            externalCommitCount: git.externalCommitCount
+            externalCommitCount: git.externalCommitCount,
+            hasUnseenCommits: git.hasUnseenCommits
           }
         : undefined,
     emotionalTriggers

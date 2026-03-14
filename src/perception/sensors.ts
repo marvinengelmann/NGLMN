@@ -156,6 +156,7 @@ export async function readGitActivity(): Promise<{
   recentCommits: Array<{ sha: string; message: string; date: string; isSelfAuthored: boolean }>
   selfCommitCount: number
   externalCommitCount: number
+  hasUnseenCommits: boolean
   triggers: EmotionUpdateEvent[]
 }> {
   try {
@@ -174,8 +175,9 @@ export async function readGitActivity(): Promise<{
     const triggers: EmotionUpdateEvent[] = []
     const latestSha = commits[0]?.sha ?? null
     const lastSeenSha = await getLastGitCommitSha()
+    const hasUnseenCommits = latestSha != null && latestSha !== lastSeenSha
 
-    if (latestSha && latestSha !== lastSeenSha) {
+    if (hasUnseenCommits) {
       const lastSeenIndex = lastSeenSha ? commits.findIndex((c) => c.sha === lastSeenSha) : -1
       const newCommits = lastSeenIndex > 0 ? commits.slice(0, lastSeenIndex) : commits
       const newExternal = newCommits.filter((c) => !c.message.startsWith("Evolution #"))
@@ -200,9 +202,9 @@ export async function readGitActivity(): Promise<{
       await setLastGitCommitSha(latestSha)
     }
 
-    return { recentCommits, selfCommitCount, externalCommitCount, triggers }
+    return { recentCommits, selfCommitCount, externalCommitCount, hasUnseenCommits, triggers }
   } catch (e) {
     log.warn("Git sensor failed", { error: String(e) })
-    return { recentCommits: [], selfCommitCount: 0, externalCommitCount: 0, triggers: [] }
+    return { recentCommits: [], selfCommitCount: 0, externalCommitCount: 0, hasUnseenCommits: false, triggers: [] }
   }
 }

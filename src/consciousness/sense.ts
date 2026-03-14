@@ -260,7 +260,8 @@ export async function sense(options?: SenseOptions): Promise<SenseResult> {
         ? {
             recentCommits: gitActivity.recentCommits,
             selfCommitCount: gitActivity.selfCommitCount,
-            externalCommitCount: gitActivity.externalCommitCount
+            externalCommitCount: gitActivity.externalCommitCount,
+            hasUnseenCommits: gitActivity.hasUnseenCommits
           }
         : undefined,
     emotionalTriggers: allTriggers
