@@ -100,17 +100,29 @@ export function compute(context: Context): ResignationState {
   }
 }
 
+const WITHDRAWAL_ADAPTATION_ONSET = 20
+const WITHDRAWAL_ADAPTATION_RATE = 0.02
+const WITHDRAWAL_ADAPTATION_MIN = 0.3
+
 export function computeEffect(state: ResignationState): EmotionEffect {
   if (!state.isActive) return {}
 
-  const depthFactor = 1 + state.depth
+  const adaptationFactor =
+    state.withdrawalTicks > WITHDRAWAL_ADAPTATION_ONSET
+      ? Math.max(
+          WITHDRAWAL_ADAPTATION_MIN,
+          1 - (state.withdrawalTicks - WITHDRAWAL_ADAPTATION_ONSET) * WITHDRAWAL_ADAPTATION_RATE
+        )
+      : 1
+
+  const depthFactor = 1 + state.depth * adaptationFactor
 
   return {
     energy: -state.level * RESIGNATION.ENERGY_DRAIN * depthFactor,
-    curiosity: -state.level * RESIGNATION.CURIOSITY_DRAIN,
-    excitement: -state.level * RESIGNATION.EXCITEMENT_DRAIN,
-    confidence: -state.level * RESIGNATION.CONFIDENCE_DRAIN,
-    satisfaction: -state.level * RESIGNATION.SATISFACTION_DRAIN
+    curiosity: -state.level * RESIGNATION.CURIOSITY_DRAIN * adaptationFactor,
+    excitement: -state.level * RESIGNATION.EXCITEMENT_DRAIN * adaptationFactor,
+    confidence: -state.level * RESIGNATION.CONFIDENCE_DRAIN * adaptationFactor,
+    satisfaction: -state.level * RESIGNATION.SATISFACTION_DRAIN * adaptationFactor
   }
 }
 

@@ -422,7 +422,7 @@ export async function maintain(
   const currentEmotion = input.actResult.postActEmotion ?? feelResult.emotion
 
   if (!input.actResult.responseSent) {
-    const primaryTrigger = input.senseResult.perception.emotionalTriggers[0]?.trigger ?? "message_received"
+    const primaryTrigger = input.senseResult.perception.emotionalTriggers[0]?.trigger ?? "ambient"
     buffer.stage(REDIS.EMOTION_CURRENT, currentEmotion)
     buffer.stagePostgres(emotionHistory, {
       state: currentEmotion,

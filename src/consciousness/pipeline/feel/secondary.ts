@@ -5,12 +5,15 @@ import { applyClampedDeltas } from "@/infra/lib/math.ts"
 import { buildEmotionContext, type SharedEmotionInput } from "../../emotions.ts"
 import type { SecondaryResult } from "./types.ts"
 
+const SECONDARY_ENERGY_FLOOR = 0.05
+
 export function runSecondaryEmotions(shared: SharedEmotionInput): SecondaryResult {
   const previousStates = shared.previousSecondaryEmotionStates
   const computedStates = new Map<string, SecondaryEmotionState>()
   computedStates.set("shame", shared.shameState)
 
   let emotion = shared.emotion
+  const preSecondaryEnergy = emotion.energy
 
   getRegisteredEmotions()
     .filter((entry) => entry.name !== "shame")
@@ -23,6 +26,10 @@ export function runSecondaryEmotions(shared: SharedEmotionInput): SecondaryResul
         emotion = applyClampedDeltas(emotion, entry.computeEffect(state))
       }
     })
+
+  if (emotion.energy < SECONDARY_ENERGY_FLOOR && preSecondaryEnergy >= SECONDARY_ENERGY_FLOOR) {
+    emotion = { ...emotion, energy: SECONDARY_ENERGY_FLOOR }
+  }
 
   const statesToSave = new Map(computedStates)
   statesToSave.delete("shame")
