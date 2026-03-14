@@ -32,10 +32,21 @@ export function registerHealthTools(server: McpServer) {
         .from(tickLog)
         .where(sql`${tickLog.createdAt} > now() - interval '1 hour'`)
 
+      const lastTickSummary = lastTick
+        ? {
+            tickId: (lastTick as Record<string, unknown>).tickId,
+            timestamp: (lastTick as Record<string, unknown>).timestamp,
+            action: (lastTick as Record<string, unknown>).action,
+            durationMs: (lastTick as Record<string, unknown>).durationMs,
+            messagesProcessed: (lastTick as Record<string, unknown>).messagesProcessed,
+            responseSent: (lastTick as Record<string, unknown>).responseSent
+          }
+        : null
+
       return text({
         budget,
         busyLock: busy,
-        lastTick,
+        lastTick: lastTickSummary,
         driftThrottle,
         consecutiveIdleTicks: idleTicks ?? 0,
         consecutiveConversationTicks: convTicks ?? 0,
@@ -76,7 +87,7 @@ export function registerHealthTools(server: McpServer) {
   server.tool(
     "get_psychological_state",
     "Get psychological indicators: coherence, dissonance, and held-back thoughts.",
-    { limit: z.number().min(1).max(20).default(5).describe("Number of log entries per category") },
+    { limit: z.number().min(1).max(20).default(1).describe("Number of log entries per category (use higher values for trend analysis)") },
     async ({ limit }) => {
       const [coherence, dissonance, heldBack] = await Promise.all([
         db.select().from(coherenceLog).orderBy(desc(coherenceLog.createdAt)).limit(limit),

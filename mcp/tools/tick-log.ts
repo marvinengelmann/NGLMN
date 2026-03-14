@@ -7,10 +7,23 @@ import { tickLog } from "@/infra/db/schema.ts"
 export function registerTickLogTools(server: McpServer) {
   server.tool(
     "get_tick_log",
-    "Get recent tick log entries showing what ANIMA did, why, and how long it took.",
+    "Get recent tick log summaries (without reasoning). Use get_tick_detail for full reasoning of a specific tick.",
     { limit: z.number().min(1).max(100).default(10).describe("Number of ticks to return") },
     async ({ limit }) => {
-      const rows = await db.select().from(tickLog).orderBy(desc(tickLog.createdAt)).limit(limit)
+      const rows = await db
+        .select({
+          tickId: tickLog.tickId,
+          timestamp: tickLog.timestamp,
+          action: tickLog.action,
+          messagesProcessed: tickLog.messagesProcessed,
+          responseSent: tickLog.responseSent,
+          responseText: tickLog.responseText,
+          durationMs: tickLog.durationMs,
+          createdAt: tickLog.createdAt
+        })
+        .from(tickLog)
+        .orderBy(desc(tickLog.createdAt))
+        .limit(limit)
       return text(rows)
     }
   )

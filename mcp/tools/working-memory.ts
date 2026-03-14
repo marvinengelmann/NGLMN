@@ -55,7 +55,20 @@ export function registerWorkingMemoryTools(server: McpServer) {
 
       const result: Record<string, unknown> = {}
       for (const k of ALL_KNOWN_KEYS) {
-        result[k] = LIST_KEYS.has(k) ? await redis.lrange(k, 0, -1) : await redis.get(k)
+        const value = LIST_KEYS.has(k) ? await redis.lrange(k, 0, -1) : await redis.get(k)
+        if (k === "working:tick:last" && value && typeof value === "object") {
+          const tick = value as Record<string, unknown>
+          result[k] = {
+            tickId: tick.tickId,
+            timestamp: tick.timestamp,
+            action: tick.action,
+            durationMs: tick.durationMs,
+            messagesProcessed: tick.messagesProcessed,
+            responseSent: tick.responseSent
+          }
+        } else {
+          result[k] = value
+        }
       }
       return text(result)
     }

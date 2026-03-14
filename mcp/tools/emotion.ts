@@ -68,9 +68,14 @@ export function registerEmotionTools(server: McpServer) {
 
   server.tool(
     "get_secondary_emotions",
-    "Get all active secondary emotions (shame, guilt, pride, envy, etc.) from Redis.",
-    {},
-    async () => {
+    "Get active secondary emotions summary (level, isActive, source). Use detailed=true for full entries/history.",
+    {
+      detailed: z
+        .boolean()
+        .default(false)
+        .describe("Include full recentEntries/history arrays (verbose)")
+    },
+    async ({ detailed }) => {
       const secondaryKeys = [
         "working:emotion:shame",
         "working:emotion:guilt",
@@ -96,7 +101,18 @@ export function registerEmotionTools(server: McpServer) {
         const value = await redis.get(key)
         if (value != null) {
           const name = key.replace("working:emotion:", "")
-          result[name] = value
+          if (detailed) {
+            result[name] = value
+          } else {
+            const entry = value as Record<string, unknown>
+            const summary: Record<string, unknown> = {
+              level: entry.level,
+              isActive: entry.isActive
+            }
+            if (entry.source) summary.source = entry.source
+            if (Array.isArray(entry.recentEntries)) summary.entryCount = entry.recentEntries.length
+            result[name] = summary
+          }
         }
       }
       return text(result)
