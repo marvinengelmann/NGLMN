@@ -66,6 +66,11 @@ import {
   saveRelationshipPhase
 } from "@/relational/attachment/state.ts"
 import { detectConflict, hasStyleChanged, updateAttachmentStyle } from "@/relational/attachment/update.ts"
+import { extractProceduresFromOutcomes, pruneProcedures } from "@/cognition/learning/procedures/store.ts"
+import { PROCEDURE_CONSTANTS } from "@/cognition/learning/procedures/types.ts"
+import { extractEntitiesFromConversation } from "@/memory/graph/extract.ts"
+import { decaySalience } from "@/memory/graph/forget.ts"
+import { GRAPH_CONSTANTS } from "@/memory/graph/types.ts"
 import { maybeUpdateProfile } from "@/relational/mind/profiling.ts"
 import { formBoundary, maybeFormNegativeBoundary } from "@/self/boundaries/compute.ts"
 import { detectBoundaryFormation } from "@/self/boundaries/detect.ts"
@@ -411,6 +416,39 @@ export async function maintain(
       await maybeUpdateProfile(feelResult.operatorModel.moodHistory)
     } catch (e) {
       log.debug("Deep profile update skipped", { error: String(e) })
+    }
+  }
+
+  if (input.actResult.responseSent && Math.random() < GRAPH_CONSTANTS.ENTITY_EXTRACTION_PROBABILITY) {
+    try {
+      const messageTexts = input.senseResult.pendingMessages.map((m) => m.text || "")
+      await extractEntitiesFromConversation(messageTexts, input.actResult.responseText ?? "", input.tickId)
+    } catch (e) {
+      log.debug("Entity extraction skipped", { error: String(e) })
+    }
+  }
+
+  if (Math.random() < GRAPH_CONSTANTS.SALIENCE_DECAY_PROBABILITY) {
+    try {
+      await decaySalience()
+    } catch (e) {
+      log.debug("Salience decay skipped", { error: String(e) })
+    }
+  }
+
+  if (Math.random() < PROCEDURE_CONSTANTS.EXTRACTION_PROBABILITY) {
+    try {
+      await extractProceduresFromOutcomes()
+    } catch (e) {
+      log.debug("Procedure extraction skipped", { error: String(e) })
+    }
+  }
+
+  if (Math.random() < PROCEDURE_CONSTANTS.PRUNE_PROBABILITY) {
+    try {
+      await pruneProcedures()
+    } catch (e) {
+      log.debug("Procedure pruning skipped", { error: String(e) })
     }
   }
 

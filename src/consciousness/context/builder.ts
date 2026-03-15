@@ -32,6 +32,7 @@ import type { TickState } from "../pipeline/types.ts"
 import type { SenseData } from "../types.ts"
 import { buildGrowthSections } from "./growth.ts"
 import { buildInnerSections } from "./inner.ts"
+import { buildGraphSection } from "./graph.ts"
 import { buildMemorySections } from "./memory.ts"
 import { buildPerceptionSections } from "./perception.ts"
 import { buildSocialSections } from "./social.ts"
@@ -139,6 +140,24 @@ export async function buildContext(
       preloaded.lessons
     )
   ]
+
+  const graphSection = buildGraphSection(preloaded.graphEntities, preloaded.graphRelations)
+  if (graphSection) {
+    sections.push(graphSection)
+  }
+
+  const provenProcedures = preloaded.procedures.filter((p) => p.successRate >= 0.5)
+  if (provenProcedures.length > 0) {
+    const procLines = provenProcedures.map((p) => {
+      const trigger = p.trigger as Record<string, unknown>
+      const triggerParts = Object.entries(trigger)
+        .filter(([, v]) => v)
+        .map(([k, v]) => `${k}: ${v}`)
+      const triggerStr = triggerParts.length > 0 ? ` (when: ${triggerParts.join(", ")})` : ""
+      return `  - ${p.strategy}${triggerStr} [${Math.round(p.successRate * 100)}% success, ${p.timesApplied}x]`
+    })
+    sections.push(["# Proven Strategies", "Approaches that have worked well before:", ...procLines].join("\n"))
+  }
 
   if (preloaded.autobiography) {
     sections.push(buildAutobiographySection(preloaded.autobiography))

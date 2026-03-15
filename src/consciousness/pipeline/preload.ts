@@ -3,6 +3,7 @@ import { getEmotionHistory } from "@/affect/emotion/state.ts"
 import type { EmotionalState } from "@/affect/emotion/types.ts"
 import { computeEmotionalIntensity } from "@/affect/emotion/update.ts"
 import { getRelevantLessons } from "@/cognition/learning/lessons.ts"
+import { getMatchingProcedures } from "@/cognition/learning/procedures/store.ts"
 import { getLastInnerDialog } from "@/cognition/polyphony/state.ts"
 import { getIdiolectState } from "@/expression/communication/idiolect.ts"
 import { getConversationBuffer } from "@/expression/communication/state.ts"
@@ -15,6 +16,7 @@ import { getAutobiography } from "@/memory/autobiography.ts"
 import { queryRelatedWithDistortion, queryRelationshipHistory } from "@/memory/episodic.ts"
 import { getGoalsByPriority } from "@/memory/goals.ts"
 import { getRelationalMemoryState } from "@/memory/relational.ts"
+import { getEntitySubgraph, getRelevantEntities } from "@/memory/graph/query.ts"
 import { getKnowledge, getOperatorLanguage } from "@/memory/semantic.ts"
 import {
   getConsecutiveIdleTicks,
@@ -99,24 +101,54 @@ export async function preloadContextState(senseData: SenseData, emotion: Emotion
     getRelationalMemoryState()
   ])
 
-  const [recentTickDurations, consecutiveIdleTicks, cachedPatterns, lessons, autobiography, deepOperatorProfile] =
-    await Promise.all([
-      getRecentTickDurations(),
-      getConsecutiveIdleTicks(),
-      redis.get<{ patterns: string[]; recurringUnresolved: string[] }>("working:conversation:patterns"),
-      getRelevantLessons({
-        timeOfDay:
-          new Date().getHours() < 6
-            ? "night"
-            : new Date().getHours() < 12
-              ? "morning"
-              : new Date().getHours() < 18
-                ? "afternoon"
-                : "evening"
-      }),
-      getAutobiography(),
-      getDeepOperatorProfile()
-    ])
+  const messageText =
+    senseData.pendingMessages.length > 0 ? senseData.pendingMessages.map((m) => m.text).join(" ") : ""
+
+  const [
+    recentTickDurations,
+    consecutiveIdleTicks,
+    cachedPatterns,
+    lessons,
+    autobiography,
+    deepOperatorProfile,
+    graphEntitiesResult,
+    proceduresResult
+  ] = await Promise.all([
+    getRecentTickDurations(),
+    getConsecutiveIdleTicks(),
+    redis.get<{ patterns: string[]; recurringUnresolved: string[] }>("working:conversation:patterns"),
+    getRelevantLessons({
+      timeOfDay:
+        new Date().getHours() < 6
+          ? "night"
+          : new Date().getHours() < 12
+            ? "morning"
+            : new Date().getHours() < 18
+              ? "afternoon"
+              : "evening"
+    }),
+    getAutobiography(),
+    getDeepOperatorProfile(),
+    getRelevantEntities(messageText, CONTEXT_LIMITS.maxGraphEntities),
+    getMatchingProcedures({
+      timeOfDay:
+        new Date().getHours() < 6
+          ? "night"
+          : new Date().getHours() < 12
+            ? "morning"
+            : new Date().getHours() < 18
+              ? "afternoon"
+              : "evening",
+      operatorMood: senseData.moodContext.operatorMood !== "unknown" ? senseData.moodContext.operatorMood : undefined,
+      topic: messageText.length > 10 ? messageText.slice(0, 100) : undefined
+    })
+  ])
+
+  const relevantEntities = graphEntitiesResult.unwrapOr([])
+  const graphSubgraph =
+    relevantEntities.length > 0
+      ? (await getEntitySubgraph(relevantEntities.map((e) => e.id))).unwrapOr({ entities: [], relations: [] })
+      : { entities: [], relations: [] }
 
   const knowledgeItems = knowledge.unwrapOr([])
   const recentCounterfactuals = knowledgeItems
@@ -160,6 +192,9 @@ export async function preloadContextState(senseData: SenseData, emotion: Emotion
     recurringUnresolved: cachedPatterns?.recurringUnresolved ?? [],
     lessons,
     autobiography,
-    deepOperatorProfile
+    deepOperatorProfile,
+    graphEntities: graphSubgraph.entities,
+    graphRelations: graphSubgraph.relations,
+    procedures: proceduresResult.unwrapOr([])
   }
 }

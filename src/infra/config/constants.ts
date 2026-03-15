@@ -19,7 +19,8 @@ export const CONTEXT_LIMITS = {
   maxEpisodes: 15,
   maxSemantic: 20,
   maxRelationship: 10,
-  maxEmotionHistory: 10
+  maxEmotionHistory: 10,
+  maxGraphEntities: 15
 } as const
 
 export const HEALTH_CHECK_INTERVAL = 900

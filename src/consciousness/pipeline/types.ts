@@ -5,7 +5,14 @@ import type { IdiolectState } from "@/expression/communication/idiolect.ts"
 import type { ConversationSlot } from "@/expression/communication/types.ts"
 import type { DreamAfterglow, DreamState } from "@/expression/dream/types.ts"
 import type { CodeProposal, EvolutionCycleResult } from "@/governance/evolution/types.ts"
-import type { EmotionHistorySelect, EvolutionLogSelect, GoalSelect } from "@/infra/db/schema.ts"
+import type {
+  EmotionHistorySelect,
+  EntityRelationSelect,
+  EntitySelect,
+  EvolutionLogSelect,
+  GoalSelect,
+  ProcedureSelect
+} from "@/infra/db/schema.ts"
 import type { AnimaResult } from "@/infra/lib/result.ts"
 import type { Autobiography } from "@/memory/autobiography.ts"
 import type { EpisodeMetadata, RelationalMemoryState } from "@/memory/types.ts"
@@ -72,4 +79,7 @@ export interface PreloadedState {
   lessons: Lesson[]
   autobiography: Autobiography | null
   deepOperatorProfile: DeepOperatorProfile
+  graphEntities: EntitySelect[]
+  graphRelations: EntityRelationSelect[]
+  procedures: ProcedureSelect[]
 }

@@ -14,6 +14,16 @@ import {
   uuid
 } from "drizzle-orm/pg-core"
 
+export const entityTypeEnum = pgEnum("entity_type", ["person", "place", "organization", "event", "concept", "object"])
+
+export const episodeLinkTypeEnum = pgEnum("episode_link_type", [
+  "caused",
+  "resolved_by",
+  "reminded_of",
+  "contradicts",
+  "continues"
+])
+
 export const semanticCategoryEnum = pgEnum("semantic_category", [
   "preference",
   "project",
@@ -487,11 +497,125 @@ export const lessons = pgTable(
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow()
   },
-  (table) => [
-    index("idx_lessons_confidence").on(table.confidence),
-    index("idx_lessons_source").on(table.source)
-  ]
+  (table) => [index("idx_lessons_confidence").on(table.confidence), index("idx_lessons_source").on(table.source)]
 )
 
 export type LessonInsert = typeof lessons.$inferInsert
 export type LessonSelect = typeof lessons.$inferSelect
+
+export const entities = pgTable(
+  "entities",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    name: text("name").notNull(),
+    type: entityTypeEnum("type").notNull(),
+    attributes: jsonb("attributes").notNull().default({}),
+    firstMentionedAt: timestamp("first_mentioned_at", { withTimezone: true }).notNull().defaultNow(),
+    lastMentionedAt: timestamp("last_mentioned_at", { withTimezone: true }).notNull().defaultNow(),
+    salience: real("salience").notNull().default(0.5),
+    mentionCount: integer("mention_count").notNull().default(1),
+    source: semanticSourceEnum("source").notNull()
+  },
+  (table) => [
+    index("idx_entities_name").on(table.name),
+    index("idx_entities_type").on(table.type),
+    index("idx_entities_salience").on(table.salience),
+    index("idx_entities_last_mentioned").on(table.lastMentionedAt)
+  ]
+)
+
+export type EntityInsert = typeof entities.$inferInsert
+export type EntitySelect = typeof entities.$inferSelect
+
+export const entityRelations = pgTable(
+  "entity_relations",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    sourceEntityId: uuid("source_entity_id")
+      .notNull()
+      .references(() => entities.id, { onDelete: "cascade" }),
+    targetEntityId: uuid("target_entity_id")
+      .notNull()
+      .references(() => entities.id, { onDelete: "cascade" }),
+    relationType: text("relation_type").notNull(),
+    strength: real("strength").notNull().default(0.5),
+    validFrom: timestamp("valid_from", { withTimezone: true }).notNull().defaultNow(),
+    validUntil: timestamp("valid_until", { withTimezone: true }),
+    source: semanticSourceEnum("source").notNull(),
+    episodeId: text("episode_id"),
+    description: text("description"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow()
+  },
+  (table) => [
+    index("idx_entity_relations_source").on(table.sourceEntityId),
+    index("idx_entity_relations_target").on(table.targetEntityId),
+    index("idx_entity_relations_type").on(table.relationType)
+  ]
+)
+
+export type EntityRelationInsert = typeof entityRelations.$inferInsert
+export type EntityRelationSelect = typeof entityRelations.$inferSelect
+
+export const entityMentions = pgTable(
+  "entity_mentions",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    entityId: uuid("entity_id")
+      .notNull()
+      .references(() => entities.id, { onDelete: "cascade" }),
+    tickId: text("tick_id").notNull(),
+    context: text("context").notNull(),
+    sentiment: real("sentiment").default(0),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow()
+  },
+  (table) => [
+    index("idx_entity_mentions_entity").on(table.entityId),
+    index("idx_entity_mentions_tick").on(table.tickId)
+  ]
+)
+
+export type EntityMentionInsert = typeof entityMentions.$inferInsert
+export type EntityMentionSelect = typeof entityMentions.$inferSelect
+
+export const procedures = pgTable(
+  "procedures",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    trigger: jsonb("trigger").notNull(),
+    strategy: text("strategy").notNull(),
+    successRate: real("success_rate").notNull().default(0.5),
+    timesApplied: integer("times_applied").notNull().default(0),
+    timesSucceeded: integer("times_succeeded").notNull().default(0),
+    lastAppliedAt: timestamp("last_applied_at", { withTimezone: true }),
+    emotionalContext: text("emotional_context"),
+    source: text("source").notNull().default("interaction"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow()
+  },
+  (table) => [
+    index("idx_procedures_success_rate").on(table.successRate),
+    index("idx_procedures_created_at").on(table.createdAt)
+  ]
+)
+
+export type ProcedureInsert = typeof procedures.$inferInsert
+export type ProcedureSelect = typeof procedures.$inferSelect
+
+export const episodeLinks = pgTable(
+  "episode_links",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    sourceEpisodeId: text("source_episode_id").notNull(),
+    targetEpisodeId: text("target_episode_id").notNull(),
+    linkType: episodeLinkTypeEnum("link_type").notNull(),
+    description: text("description"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow()
+  },
+  (table) => [
+    index("idx_episode_links_source").on(table.sourceEpisodeId),
+    index("idx_episode_links_target").on(table.targetEpisodeId)
+  ]
+)
+
+export type EpisodeLinkInsert = typeof episodeLinks.$inferInsert
+export type EpisodeLinkSelect = typeof episodeLinks.$inferSelect
