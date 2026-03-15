@@ -46,6 +46,7 @@ export async function runHeartbeat() {
     let lastActResult: Awaited<ReturnType<typeof act>> | null = null
     let previousSendInterrupted = false
     let lastKnownUpdateId: number | null = null
+    let sentWithoutReply = false
 
     while (true) {
       tickId = `tick-${Date.now()}`
@@ -61,6 +62,10 @@ export async function runHeartbeat() {
       if (senseResult.maxUpdateId != null) {
         lastKnownUpdateId = senseResult.maxUpdateId
         buffer.stage("working:telegram:lastUpdateId", senseResult.maxUpdateId)
+      }
+
+      if (senseResult.pendingMessages.length > 0) {
+        sentWithoutReply = false
       }
 
       const feelResult = await feel(senseResult, buffer)
@@ -111,11 +116,29 @@ export async function runHeartbeat() {
         }
       }
 
+      if (sentWithoutReply && deliberateResult.decision.messages.length > 0) {
+        log.info("Suppressing messages — already responded, awaiting operator reply", {
+          suppressed: deliberateResult.decision.messages.length
+        })
+        deliberateResult = {
+          ...deliberateResult,
+          decision: {
+            ...deliberateResult.decision,
+            messages: [],
+            reasoning: `${deliberateResult.decision.reasoning} [Messages suppressed: already sent, no reply yet]`
+          }
+        }
+      }
+
       const actResult = await act(deliberateResult, senseResult, feelResult, buffer, tickId)
 
       lastTickState = tickState
       lastDecision = deliberateResult
       lastActResult = actResult
+
+      if (actResult.responseSent) {
+        sentWithoutReply = true
+      }
 
       if (actResult.interrupted) {
         previousSendInterrupted = true
