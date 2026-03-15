@@ -330,9 +330,10 @@ export async function startChosenLifeEvent(type: string, detail?: string, chosen
     return
   }
 
-  const durationHours = chosenDurationHours
-    ? Math.max(event.minHours, Math.min(event.maxHours, chosenDurationHours))
-    : event.minHours + Math.random() * (event.maxHours - event.minHours)
+  const durationHours =
+    chosenDurationHours != null && chosenDurationHours > 0
+      ? Math.max(event.minHours, Math.min(event.maxHours, chosenDurationHours))
+      : event.minHours + Math.random() * (event.maxHours - event.minHours)
   const ttlSeconds = Math.round(durationHours * 3600)
 
   const result = await redis.set(LIFECYCLE_EVENT_KEY, event.type, { nx: true, ex: ttlSeconds })

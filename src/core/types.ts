@@ -106,7 +106,7 @@ export const AnimaDecision = z.object({
       capabilityGap: z.string().optional(),
       lifeEventType: LifeEventType.optional(),
       lifeEventDetail: z.string().optional(),
-      lifeEventDurationHours: z.number().positive().optional(),
+      lifeEventDurationHours: z.number().nonnegative().optional(),
       alteredEventType: AlteredEventType.optional(),
       socialMediaMode: z.enum(["browse", "post"]).optional(),
       xPostText: z.string().max(280).optional(),
