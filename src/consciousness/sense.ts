@@ -176,11 +176,12 @@ export async function sense(options?: SenseOptions): Promise<SenseResult> {
 
       const insightsResult = await getKnowledge({ category: "insight", scope: "self", limit: 3 })
       if (insightsResult.isOk()) {
-        insightsResult.value.forEach((insight) => {
-          reinforceInsight(insight.id, outcomeScore).catch((e) =>
-            log.warn("Insight reinforcement failed", { insightId: insight.id, error: String(e) })
-          )
-        })
+        for (const insight of insightsResult.value) {
+          const reinforceResult = await trySafe("COGNITION_ERROR", () => reinforceInsight(insight.id, outcomeScore))
+          if (reinforceResult.isErr()) {
+            log.warn("Insight reinforcement failed", { insightId: insight.id, error: reinforceResult.error.message })
+          }
+        }
       }
     }
   }
@@ -268,9 +269,12 @@ export async function sense(options?: SenseOptions): Promise<SenseResult> {
   }
   await setPerceptionSummary(perception)
 
-  detectPerceptionGoals(perception, currentEmotion).catch((e) =>
-    log.warn("Perception goal detection failed", { error: String(e) })
+  const perceptionGoalResult = await trySafe("PERCEPTION_ERROR", () =>
+    detectPerceptionGoals(perception, currentEmotion)
   )
+  if (perceptionGoalResult.isErr()) {
+    log.warn("Perception goal detection failed", { error: perceptionGoalResult.error.message })
+  }
 
   let conversationState: ConversationState | null = null
   if (inConversation && waitingSince) {

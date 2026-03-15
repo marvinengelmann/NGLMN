@@ -150,15 +150,20 @@ export async function runHeartbeat() {
 
       if (!deliberateResult.decision.expectsReply) break
 
-      const waitingSince = await getConversationWaitingSince()
-      if (!waitingSince) {
-        await setConversationWaitingSince(nowISO())
-      } else {
-        const elapsed = differenceInSeconds(new Date(), parseISO(waitingSince))
-        if (elapsed >= HEARTBEAT.MAX_CONVERSATION_WAIT) {
-          log.info("Conversation hard cap reached", { elapsed })
-          break
+      try {
+        const waitingSince = await getConversationWaitingSince()
+        if (!waitingSince) {
+          await setConversationWaitingSince(nowISO())
+        } else {
+          const elapsed = differenceInSeconds(new Date(), parseISO(waitingSince))
+          if (elapsed >= HEARTBEAT.MAX_CONVERSATION_WAIT) {
+            log.info("Conversation hard cap reached", { elapsed })
+            break
+          }
         }
+      } catch (e) {
+        log.warn("Conversation wait check failed, breaking loop", { error: String(e) })
+        break
       }
     }
 

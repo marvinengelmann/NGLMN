@@ -82,11 +82,10 @@ export async function act(
     }
 
     if (responseSent && decision.corrections.length > 0) {
-      await decision.corrections.reduce(async (prev, correction) => {
-        await prev
+      for (const correction of decision.corrections) {
         await sleep(MESSAGE_DELAY.MIN_BETWEEN_MESSAGES_MS + Math.random() * MESSAGE_DELAY.MAX_JITTER_MS)
         await trySafe("TELEGRAM_ERROR", () => sendMessageWithReply(correction.text, correction.replyTo))
-      }, Promise.resolve())
+      }
     }
   }
 
