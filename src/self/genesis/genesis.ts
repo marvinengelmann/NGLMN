@@ -44,7 +44,8 @@ export async function runGenesis(): Promise<GenesisRecord> {
   const dna = generateDNA(seed)
   const identity = await generateIdentity(dna)
 
-  const voiceId = await designAndSaveVoice(dna, identity.chosenName, seed)
+  const configVoiceId = env().GENESIS_VOICE_ID
+  const voiceId = configVoiceId ?? (await designAndSaveVoice(dna, identity.chosenName, seed))
   if (voiceId) {
     identity.voiceId = voiceId
   }

@@ -51,7 +51,8 @@ const EnvSchema = z.object({
 
   GENESIS_SEED: z.string().optional(),
   GENESIS_NAME: z.string().optional(),
-  GENESIS_GENDER: z.enum(["female", "male", "nonbinary"]).optional()
+  GENESIS_GENDER: z.enum(["female", "male", "nonbinary"]).optional(),
+  GENESIS_VOICE_ID: z.string().optional()
 })
 
 type EnvKey = keyof z.infer<typeof EnvSchema>
