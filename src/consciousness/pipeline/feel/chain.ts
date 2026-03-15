@@ -6,7 +6,9 @@ import {
   inferBlockedDrives,
   inferSatisfiedDrives
 } from "@/affect/drive/compute.ts"
+import { checkMaturedEvents, maturedEventToTrigger, storeDeferredEvent } from "@/affect/emotion/deferred.ts"
 import { detectNostalgia } from "@/affect/emotion/nostalgia.ts"
+import { detectProustFlashback } from "@/perception/proust.ts"
 import {
   applyAfterglow,
   applyEvent,
@@ -124,10 +126,24 @@ export async function runEmotionChain(sense: SenseResult, prefetch: FeelPrefetch
     soma = applyClampedDeltas(soma, somaMods, new Set(["socialBattery"]))
   }
 
+  let deferredQueue = prefetch.deferredQueue
+  for (const trigger of sense.rawTriggers) {
+    deferredQueue = storeDeferredEvent(deferredQueue, trigger.trigger, trigger.intensity, trigger.detail)
+  }
+  const { matured: maturedDeferredEvents, updated: updatedDeferredQueue } = checkMaturedEvents(deferredQueue)
+  for (const maturedEvent of maturedDeferredEvents) {
+    emotion = applyEvent(emotion, maturedEventToTrigger(maturedEvent))
+  }
+
   const episodicHits = messageText ? await queryRelated(messageText, 5) : []
   const nostalgia = episodicHits.length > 0 ? detectNostalgia(episodicHits, new Date()) : null
   if (nostalgia) {
     emotion = applyEvent(emotion, nostalgia)
+  }
+
+  const proustFlashback = episodicHits.length > 0 ? detectProustFlashback(episodicHits) : null
+  if (proustFlashback) {
+    emotion = applyClampedDeltas(emotion, proustFlashback.emotionSpike)
   }
 
   const emotionTrigger = nostalgia ? "nostalgia_wave" : (sense.rawTriggers[0]?.trigger ?? "ambient")
@@ -145,6 +161,9 @@ export async function runEmotionChain(sense: SenseResult, prefetch: FeelPrefetch
     triggerTimestamps: mergedTimestamps,
     dreamAfterglowDecayed,
     alteredStateCleared,
-    emotionTrigger
+    emotionTrigger,
+    proustFlashback,
+    maturedDeferredEvents,
+    updatedDeferredQueue
   }
 }

@@ -19,6 +19,8 @@ import { SubjectiveTimeState } from "@/perception/time/types.ts"
 import { PerceptionSummary } from "@/perception/types.ts"
 import { AttachmentDynamics, VulnerabilityState } from "@/relational/attachment/types.ts"
 import { OperatorModel } from "@/relational/mind/types.ts"
+import type { DeferredEmotionalEvent } from "@/affect/emotion/deferred.ts"
+import type { ProustFlashback } from "@/perception/proust.ts"
 import { BoundaryState } from "@/self/boundaries/types.ts"
 import { CoherenceState } from "@/self/coherence/types.ts"
 import { DissonanceState } from "@/self/dissonance/types.ts"
@@ -82,7 +84,9 @@ export const FeelingResult = z.object({
   boundaryState: BoundaryState,
   metacognitiveState: MetacognitiveState,
   communicationSimplification: z.number().min(0).max(1).default(0),
-  hedgingLevel: z.number().min(0).max(1).default(0)
+  hedgingLevel: z.number().min(0).max(1).default(0),
+  proustFlashback: z.custom<ProustFlashback>().nullable().default(null),
+  maturedDeferredEvents: z.custom<DeferredEmotionalEvent[]>().default([])
 })
 export type FeelingResult = z.infer<typeof FeelingResult>
 

@@ -69,7 +69,8 @@ export async function act(
       sendMessages(decision, {
         emotion: feelResult.emotion,
         soma: feelResult.soma,
-        vulnerabilityOpen: feelResult.vulnerability.windowOpen
+        vulnerabilityOpen: feelResult.vulnerability.windowOpen,
+        heldBackBuffer: feelResult.heldBackBuffer
       })
     )
     if (messagingResult.isOk()) {

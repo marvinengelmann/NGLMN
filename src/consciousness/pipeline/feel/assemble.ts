@@ -36,6 +36,8 @@ export function assembleFeelOutput(
     boundaryState: parallel.boundaryState,
     metacognitiveState: final.metacognitiveState,
     communicationSimplification: final.communicationSimplification,
-    hedgingLevel: final.hedgingLevel
+    hedgingLevel: final.hedgingLevel,
+    proustFlashback: chain.proustFlashback,
+    maturedDeferredEvents: chain.maturedDeferredEvents
   }
 }

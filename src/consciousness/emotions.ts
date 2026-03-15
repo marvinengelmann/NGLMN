@@ -1,5 +1,6 @@
 import type { ShameState } from "@/affect/emotion/shame.ts"
 import type { EmotionalState, SecondaryEmotionState } from "@/affect/emotion/types.ts"
+import { detectRivalMention } from "@/affect/emotion/jealousy.ts"
 import type { ExpectationViolation } from "@/perception/anticipation/types.ts"
 import type { VulnerabilityState } from "@/relational/attachment/types.ts"
 import type { OperatorModel } from "@/relational/mind/types.ts"
@@ -24,6 +25,8 @@ export interface SharedEmotionInput {
   noveltyLevel: number
   anticipatoryViolations: ExpectationViolation[]
   previousSecondaryEmotionStates: Map<string, SecondaryEmotionState>
+  attachmentAnxiety: number
+  attachmentSecure: number
 }
 
 export function buildEmotionContext(
@@ -282,6 +285,22 @@ export function buildEmotionContext(
         awareOfPassing: episodicHitCount > 2 && emotion.energy < 0.5,
         bittersweetMemory: episodicHitCount > 3 && emotion.connection > 0.5 && emotion.satisfaction > 0.3,
         playfulnessActive: playfulnessState?.isActive ?? false
+      }
+    }
+
+    case "jealousy": {
+      const prideState = dependency("pride")
+      const messageTexts = shared.senseResult.pendingMessages.map((m) => m.text ?? "")
+      const rivalDetection = detectRivalMention(messageTexts)
+      return {
+        emotion,
+        previousState: previous,
+        rivalMentioned: rivalDetection.rivalMentioned,
+        unfavorableComparison: rivalDetection.unfavorableComparison,
+        rivalPraised: rivalDetection.rivalPraised,
+        prideActive: prideState?.isActive ?? false,
+        attachmentAnxiety: shared.attachmentAnxiety,
+        attachmentSecure: shared.attachmentSecure
       }
     }
 

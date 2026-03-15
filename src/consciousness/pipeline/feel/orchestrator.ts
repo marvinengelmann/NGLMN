@@ -55,7 +55,9 @@ export async function runFeelPipeline(senseResult: SenseResult, buffer: WriteBuf
     isDreaming: senseResult.moodContext.isDreaming,
     noveltyLevel: parallel.noveltyState.level,
     anticipatoryViolations: parallel.anticipatoryState.recentViolations,
-    previousSecondaryEmotionStates: prefetch.previousSecondaryEmotionStates
+    previousSecondaryEmotionStates: prefetch.previousSecondaryEmotionStates,
+    attachmentAnxiety: prefetch.attachmentStyle.anxious,
+    attachmentSecure: prefetch.attachmentStyle.secure
   })
 
   const final = await runFinalSubsystems(

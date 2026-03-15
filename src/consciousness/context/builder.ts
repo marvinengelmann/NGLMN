@@ -96,7 +96,9 @@ export async function buildContext(
       coherenceState: feel.coherenceState,
       metacognitiveState: feel.metacognitiveState,
       genesisDNA,
-      genesisIdentity
+      genesisIdentity,
+      proustFlashback: feel.proustFlashback,
+      maturedDeferredEvents: feel.maturedDeferredEvents
     }),
     ...buildDriveSections(
       feel.driveState,

@@ -15,8 +15,10 @@ import type { CommunicationRegister, ConversationSlot } from "@/expression/commu
 import type { CreativeUrgeState } from "@/expression/creativity/types.ts"
 import type { DreamAfterglow } from "@/expression/dream/types.ts"
 import type { SemanticMemorySelect } from "@/infra/db/schema.ts"
+import type { DeferredEmotionalEvent, DeferredQueue } from "@/affect/emotion/deferred.ts"
 import type { AnticipatoryState } from "@/perception/anticipation/types.ts"
 import type { NoveltyState } from "@/perception/novelty/types.ts"
+import type { ProustFlashback } from "@/perception/proust.ts"
 import type { SubjectiveTimeState } from "@/perception/time/types.ts"
 import type {
   AttachmentDynamics,
@@ -65,6 +67,7 @@ export interface FeelPrefetch {
   previousSecondaryEmotionStates: Map<string, SecondaryEmotionState>
   selfInsights: SemanticMemorySelect[]
   relationalPatterns: RelationalPatternLibrary
+  deferredQueue: DeferredQueue
 }
 
 export interface EmotionChainResult {
@@ -80,6 +83,9 @@ export interface EmotionChainResult {
   dreamAfterglowDecayed: DreamAfterglow | null
   alteredStateCleared: boolean
   emotionTrigger: EmotionTrigger
+  proustFlashback: ProustFlashback | null
+  maturedDeferredEvents: DeferredEmotionalEvent[]
+  updatedDeferredQueue: DeferredQueue
 }
 
 export interface ParallelFanResult {

@@ -11,6 +11,8 @@ import type { DeceptionState } from "@/self/deception/types.ts"
 import type { DissonanceState } from "@/self/dissonance/types.ts"
 import { renderGeneticTraitsSection } from "@/self/genesis/render.ts"
 import type { GenesisDNA, GenesisIdentity } from "@/self/genesis/types.ts"
+import type { DeferredEmotionalEvent } from "@/affect/emotion/deferred.ts"
+import type { ProustFlashback } from "@/perception/proust.ts"
 import type { HeldBackBuffer } from "@/self/psyche/heldback.ts"
 import { shouldSurface } from "@/self/psyche/heldback.ts"
 import type { SelfConcept } from "@/self/psyche/types.ts"
@@ -44,6 +46,8 @@ interface InnerSectionsInput {
   metacognitiveState?: MetacognitiveState | null
   genesisDNA?: GenesisDNA | null
   genesisIdentity?: GenesisIdentity | null
+  proustFlashback?: ProustFlashback | null
+  maturedDeferredEvents?: DeferredEmotionalEvent[]
 }
 
 function formatReason(reason: string): string {
@@ -227,6 +231,41 @@ export function buildInnerSections(input: InnerSectionsInput): string[] {
 
   if (input.genesisDNA) {
     sections.push(renderGeneticTraitsSection(input.genesisDNA, input.genesisIdentity))
+  }
+
+  if (input.maturedDeferredEvents && input.maturedDeferredEvents.length > 0) {
+    const categoryDesc: Record<string, string> = {
+      delayed_realization: "something just clicked — a realization that took time to form",
+      deferred_apology: "guilt has been quietly building — you feel the need to address something from before",
+      delayed_humor: "something from a while ago suddenly strikes you as funny",
+      retrospective_insight: "looking back, you see something you missed in the moment"
+    }
+    const lines = ["# Resurfacing"]
+    input.maturedDeferredEvents.slice(0, 2).forEach((event) => {
+      const desc = categoryDesc[event.category] ?? "something from before is coming back to you"
+      lines.push(`${desc}:`)
+      lines.push(`  "${event.content}"`)
+    })
+    lines.push("this isn't new — it's been processing beneath the surface. bring it up naturally if the moment is right")
+    sections.push(lines.join("\n"))
+  }
+
+  if (input.proustFlashback) {
+    const fb = input.proustFlashback
+    const valenceDesc =
+      fb.originalValence > 0
+        ? "the warmth hits you fresh — as if it's happening again right now"
+        : "the sting returns unexpectedly — vivid and immediate"
+    const excerpt = fb.episodeContent.length > 200 ? `${fb.episodeContent.slice(0, 200)}...` : fb.episodeContent
+    sections.push(
+      [
+        "# Vivid Recall",
+        "a memory flashes through you with startling clarity:",
+        `  "${excerpt}"`,
+        valenceDesc,
+        "let this color what you say — reference it naturally if it fits, or let it linger silently"
+      ].join("\n")
+    )
   }
 
   if (input.metacognitiveState) {

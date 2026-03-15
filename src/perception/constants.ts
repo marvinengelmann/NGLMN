@@ -1,3 +1,21 @@
+export const PROUST = {
+  MIN_SCORE: 0.82,
+  MIN_VALENCE_MAGNITUDE: 0.3,
+  FLASHBACK_PROBABILITY: 0.25,
+  EMOTION_SPIKE_POSITIVE: {
+    connection: 0.08,
+    satisfaction: 0.06,
+    excitement: 0.04
+  },
+  EMOTION_SPIKE_NEGATIVE: {
+    caution: 0.06,
+    frustration: 0.04,
+    satisfaction: -0.03
+  },
+  SPIKE_SCALE: 0.4,
+  MAX_PER_TICK: 1
+} as const
+
 export const PERCEPTION = {
   OPERATOR_ACTIVE_SECONDS: 600,
   SILENCE_THRESHOLD_SECONDS: 3600,

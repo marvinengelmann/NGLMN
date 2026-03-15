@@ -1,4 +1,5 @@
 import { getActiveAlteredState } from "@/affect/altered/state.ts"
+import { getDeferredQueue } from "@/affect/emotion/deferred.ts"
 import { getDriveState } from "@/affect/drive/state.ts"
 import { getAllSecondaryEmotionStates } from "@/affect/emotion/batch.ts"
 import { getShameState } from "@/affect/emotion/shame.ts"
@@ -62,7 +63,8 @@ export async function prefetchFeelState(): Promise<FeelPrefetch> {
     heldBackBuffer,
     previousSecondaryEmotionStates,
     selfInsightsResult,
-    relationalPatterns
+    relationalPatterns,
+    deferredQueue
   ] = await Promise.all([
     getGenesisDNA(),
     getEmotionalState(),
@@ -95,7 +97,8 @@ export async function prefetchFeelState(): Promise<FeelPrefetch> {
     getHeldBackBuffer(),
     getAllSecondaryEmotionStates(),
     getKnowledge({ category: "insight", scope: "self" }),
-    getRelationalPatterns()
+    getRelationalPatterns(),
+    getDeferredQueue()
   ])
 
   return {
@@ -130,6 +133,7 @@ export async function prefetchFeelState(): Promise<FeelPrefetch> {
     heldBackBuffer,
     previousSecondaryEmotionStates,
     selfInsights: selfInsightsResult.unwrapOr([]),
-    relationalPatterns
+    relationalPatterns,
+    deferredQueue
   }
 }

@@ -9,6 +9,8 @@ import {
   splitIntoParagraphs
 } from "@/expression/communication/timing.ts"
 import { maybeIntroduceTypo } from "@/expression/communication/typos.ts"
+import { maybeIntroduceSlip } from "@/expression/communication/parapraxis.ts"
+import type { HeldBackBuffer } from "@/self/psyche/heldback.ts"
 import { generateAnimaImage } from "@/expression/image/generate.ts"
 import { handleGuardianVerdict, validateOutput } from "@/governance/security/guardian.ts"
 import { pushRecentResponse, setGuardianResult } from "@/governance/security/state.ts"
@@ -27,13 +29,14 @@ import { log } from "@/infra/lib/logger.ts"
 import { captureError } from "@/infra/lib/sentry.ts"
 import { nowISO, sleep } from "@/infra/lib/time.ts"
 import { getGenesisVoiceId } from "@/self/genesis/state.ts"
-import { MESSAGE_DELAY, TYPOS } from "./constants.ts"
+import { MESSAGE_DELAY, PARAPRAXIS, TYPOS } from "./constants.ts"
 import { getCommunicationRegister } from "./state.ts"
 
 interface MessagingContext {
   emotion: EmotionalState
   soma: SomaticState
   vulnerabilityOpen: boolean
+  heldBackBuffer?: HeldBackBuffer
 }
 
 interface MessagingResult {
@@ -110,7 +113,16 @@ export async function sendMessages(decision: AnimaDecision, context?: MessagingC
           : undefined
       )
 
-      const paragraphs = splitIntoParagraphs(possiblyTypoed)
+      const slipResult =
+        context?.heldBackBuffer && context.emotion && context.soma
+          ? maybeIntroduceSlip(possiblyTypoed, {
+              emotion: context.emotion,
+              soma: context.soma,
+              heldBackBuffer: context.heldBackBuffer
+            })
+          : { text: possiblyTypoed, correction: null, slipOccurred: false }
+
+      const paragraphs = splitIntoParagraphs(slipResult.text)
 
       for (let i = 0; i < paragraphs.length; i++) {
         const paragraph = paragraphs[i]
@@ -141,6 +153,18 @@ export async function sendMessages(decision: AnimaDecision, context?: MessagingC
         const correctionId = await sendMessageWithReply(correction)
         await pushToActiveConversation([
           { role: "anima", text: correction, timestamp: nowISO(), messageId: correctionId }
+        ])
+      }
+
+      if (!interrupted && slipResult.slipOccurred && slipResult.correction) {
+        const delay =
+          PARAPRAXIS.CORRECTION_DELAY_MIN_MS +
+          Math.random() * (PARAPRAXIS.CORRECTION_DELAY_MAX_MS - PARAPRAXIS.CORRECTION_DELAY_MIN_MS)
+        await sleep(delay)
+        await simulateTyping(computeTypingDuration(slipResult.correction), sendTypingAction)
+        const slipCorrectionId = await sendMessageWithReply(slipResult.correction)
+        await pushToActiveConversation([
+          { role: "anima", text: slipResult.correction, timestamp: nowISO(), messageId: slipCorrectionId }
         ])
       }
     }

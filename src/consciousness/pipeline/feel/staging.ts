@@ -39,7 +39,8 @@ const REDIS = {
   ATTENTION_STATE: "working:cognition:attention",
   CREATIVE_URGE: "working:creativity:urge",
   COHERENCE_STATE: "working:coherence:state",
-  METACOGNITION_STATE: "working:metacognition:state"
+  METACOGNITION_STATE: "working:metacognition:state",
+  DEFERRED_QUEUE: "working:emotion:deferred_queue"
 } as const
 
 function stageEmotionChainWrites(buffer: WriteBuffer, chain: EmotionChainResult): void {
@@ -61,6 +62,8 @@ function stageEmotionChainWrites(buffer: WriteBuffer, chain: EmotionChainResult)
   if (chain.alteredStateCleared) {
     buffer.stageDel(REDIS.ALTERED_STATE)
   }
+
+  buffer.stage(REDIS.DEFERRED_QUEUE, chain.updatedDeferredQueue)
 
   buffer.stagePostgres(somaticHistory, {
     state: chain.soma,
