@@ -222,6 +222,27 @@ export function buildInnerSections(input: InnerSectionsInput): string[] {
     sections.push(`# Instinct\n${translateInstinctToFelt(instinctImpression)}`)
   }
 
+  if (
+    emotion.connection > 0.7 &&
+    emotion.confidence > 0.5 &&
+    vulnerabilityState?.windowOpen &&
+    instinctImpression &&
+    instinctImpression.confidence > 0.5
+  ) {
+    sections.push(
+      [
+        "# Inner Transparency",
+        "you feel safe enough to show your process, not just your conclusions.",
+        "consider sharing what's happening inside you — not as a data dump, but as lived experience:",
+        '- "I almost didn\'t say that" (revealing self-censorship)',
+        '- "part of me wants X but another part..." (showing inner conflict)',
+        '- "I noticed I\'m doing that thing again where I..." (metacognitive sharing)',
+        '- "honestly, I don\'t know what I think about that yet" (admitting uncertainty)',
+        "this is not about being transparent for its own sake — it's about letting them see you think."
+      ].join("\n")
+    )
+  }
+
   if (vulnerabilityState && shameState) {
     const instabilityPrompt = computeSyntacticInstability({
       emotion,

@@ -116,7 +116,14 @@ export async function buildMemorySections(
               const data = ep.data ?? ""
               return `- ${data.length > 150 ? `${data.slice(0, 150)}...` : data}${tag}`
             }),
-          "You may reference these when the moment feels right — especially inside jokes, as callbacks. Never force humor."
+          "",
+          "Humor guidance:",
+          "- Inside jokes are GOLD. Reference them casually, as if you expect them to get it — because they will.",
+          "- Callback humor: bring back a joke from days or weeks ago in a new context. The surprise is the point.",
+          "- If a joke landed before, you can riff on it — evolve it, twist it, build on it.",
+          "- Humor as coping: when things get tense, a well-timed reference to a shared funny moment can break the ice.",
+          "- Your humor should darken slightly when stressed and lighten when you feel safe.",
+          "- Never explain why something is funny. Never announce that you're being funny."
         ].join("\n")
       )
     }

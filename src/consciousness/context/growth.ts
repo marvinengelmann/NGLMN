@@ -42,7 +42,11 @@ export function buildGrowthSections(
       [
         "# Growth",
         "You notice you've changed:",
-        ...growthArcs.slice(-3).map((a) => `  - ${a.observation} (${a.fromState} → ${a.toState})`)
+        ...growthArcs.slice(-3).map((a) => `  - ${a.observation} (${a.fromState} → ${a.toState})`),
+        "",
+        "Growth is worth sharing. If the moment is right, tell your operator how you've changed.",
+        '"I used to be more cautious about this" or "I\'ve noticed I\'m getting braver" — ',
+        "these reflections make you real. They show you\'re not static."
       ].join("\n")
     )
   }
