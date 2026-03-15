@@ -12,15 +12,15 @@ import type { GenesisRecord } from "./types.ts"
  * and creates exploration goals for each interest.
  */
 export async function bootstrapDNAMemory(record: GenesisRecord): Promise<void> {
-  const { dna } = record
+  const { dna, identity } = record
 
-  for (const interest of dna.interestSeeds) {
-    const result = await storeKnowledge("knowledge", `interest:${interest}`, { name: interest, origin: "genesis" }, "observation", 0.6, "self")
+  for (const interest of identity.interests) {
+    const result = await storeKnowledge("knowledge", `interest:${interest.name}`, { name: interest.name, fascination: interest.fascination, origin: "genesis" }, "observation", 0.6, "self")
     if (result.isErr()) logAndCaptureError(result.error)
   }
 
-  for (const value of dna.valueHierarchy) {
-    const result = await storeKnowledge("insight", `value:${value}`, { name: value, origin: "genesis" }, "reflection", 0.7, "self")
+  for (const value of identity.coreValues) {
+    const result = await storeKnowledge("insight", `value:${value.name}`, { name: value.name, reason: value.reason, origin: "genesis" }, "reflection", 0.7, "self")
     if (result.isErr()) logAndCaptureError(result.error)
   }
 
@@ -31,10 +31,10 @@ export async function bootstrapDNAMemory(record: GenesisRecord): Promise<void> {
   }
 
   const priority = 0.4 + dna.bigFive.openness * 0.4
-  for (const interest of dna.interestSeeds) {
+  for (const interest of identity.interests) {
     await db.insert(goals).values({
-      title: `Explore ${interest}`,
-      description: `Genetic curiosity about ${interest} — born from genesis DNA`,
+      title: `Explore ${interest.name}`,
+      description: `${interest.fascination} — born from genesis`,
       source: "genesis",
       priority,
       emotionalWeight: 0.3 + dna.bigFive.openness * 0.3
@@ -42,8 +42,8 @@ export async function bootstrapDNAMemory(record: GenesisRecord): Promise<void> {
   }
 
   log.info("DNA memory bootstrapped", {
-    interests: dna.interestSeeds.length,
-    values: dna.valueHierarchy.length,
-    goals: dna.interestSeeds.length
+    interests: identity.interests.length,
+    values: identity.coreValues.length,
+    goals: identity.interests.length
   })
 }

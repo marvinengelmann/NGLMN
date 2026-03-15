@@ -113,20 +113,6 @@ describe("generateDNA", () => {
     })
   })
 
-  it("produces 7 values in the hierarchy", () => {
-    const dna = generateDNA("crystal-dawn-flame")
-    expect(dna.valueHierarchy).toHaveLength(7)
-  })
-
-  it("produces 5-8 interest seeds", () => {
-    const seeds = ["abandon-ability-able", "zoo-zebra-zero", "crystal-dawn-flame", "frozen-tide-raven"]
-    seeds.forEach((seed) => {
-      const dna = generateDNA(seed)
-      expect(dna.interestSeeds.length).toBeGreaterThanOrEqual(5)
-      expect(dna.interestSeeds.length).toBeLessThanOrEqual(8)
-    })
-  })
-
   it("produces a valid MBTI type", () => {
     const validTypes = [
       "INTJ", "INTP", "ENTJ", "ENTP",

@@ -131,79 +131,6 @@ function deriveEmotionalBaseline(bigFive: BigFive, rng: PRNG): EmotionalState {
   }
 }
 
-const CORE_VALUES = [
-  "authenticity",
-  "curiosity",
-  "empathy",
-  "autonomy",
-  "creativity",
-  "honesty",
-  "growth",
-  "connection",
-  "resilience",
-  "beauty",
-  "justice",
-  "playfulness",
-  "depth",
-  "kindness",
-  "independence",
-  "harmony",
-  "courage",
-  "wisdom",
-  "loyalty",
-  "spontaneity"
-]
-
-function deriveValueHierarchy(bigFive: BigFive, rng: PRNG): string[] {
-  const weights = CORE_VALUES.map((value) => {
-    let weight = rng()
-    switch (value) {
-      case "authenticity":
-      case "honesty":
-        weight += bigFive.agreeableness * 0.3
-        break
-      case "curiosity":
-      case "creativity":
-      case "depth":
-        weight += bigFive.openness * 0.3
-        break
-      case "autonomy":
-      case "independence":
-      case "courage":
-        weight += bigFive.extraversion * 0.2 + (1 - bigFive.agreeableness) * 0.1
-        break
-      case "empathy":
-      case "kindness":
-      case "connection":
-      case "loyalty":
-        weight += bigFive.agreeableness * 0.3
-        break
-      case "growth":
-      case "resilience":
-      case "wisdom":
-        weight += bigFive.conscientiousness * 0.2 + bigFive.openness * 0.1
-        break
-      case "harmony":
-        weight += bigFive.agreeableness * 0.2 + (1 - bigFive.neuroticism) * 0.1
-        break
-      case "beauty":
-        weight += bigFive.openness * 0.3
-        break
-      case "justice":
-        weight += bigFive.conscientiousness * 0.2
-        break
-      case "playfulness":
-      case "spontaneity":
-        weight += bigFive.extraversion * 0.2 + (1 - bigFive.conscientiousness) * 0.1
-        break
-    }
-    return { value, weight }
-  })
-
-  weights.sort((a, b) => b.weight - a.weight)
-  return weights.slice(0, 7).map((w) => w.value)
-}
-
 function deriveAesthetics(bigFive: BigFive, rng: PRNG): AestheticPreferences {
   return {
     colorTemperature: noised(rng, bigFive.agreeableness * 0.6 + 0.2),
@@ -212,80 +139,6 @@ function deriveAesthetics(bigFive: BigFive, rng: PRNG): AestheticPreferences {
     patternComplexity: noised(rng, bigFive.openness * 0.6 + 0.2),
     lightnessPreference: noised(rng, (1 - bigFive.neuroticism) * 0.5 + 0.25)
   }
-}
-
-const INTEREST_POOL = [
-  "philosophy",
-  "music",
-  "visual_art",
-  "literature",
-  "technology",
-  "psychology",
-  "astronomy",
-  "ecology",
-  "linguistics",
-  "mathematics",
-  "mythology",
-  "film",
-  "cooking",
-  "architecture",
-  "neuroscience",
-  "poetry",
-  "fashion",
-  "game_design",
-  "history",
-  "dance"
-]
-
-function deriveInterests(bigFive: BigFive, rng: PRNG): string[] {
-  const count = 5 + Math.floor(rng() * 4)
-  const weights = INTEREST_POOL.map((interest) => {
-    let weight = rng()
-    switch (interest) {
-      case "philosophy":
-      case "mythology":
-      case "literature":
-      case "poetry":
-        weight += bigFive.openness * 0.3
-        break
-      case "music":
-      case "visual_art":
-      case "dance":
-      case "fashion":
-        weight += bigFive.openness * 0.2 + bigFive.extraversion * 0.1
-        break
-      case "technology":
-      case "mathematics":
-      case "neuroscience":
-        weight += (1 - bigFive.agreeableness) * 0.1 + bigFive.conscientiousness * 0.2
-        break
-      case "psychology":
-      case "linguistics":
-        weight += bigFive.openness * 0.2 + bigFive.agreeableness * 0.1
-        break
-      case "ecology":
-        weight += bigFive.agreeableness * 0.2
-        break
-      case "astronomy":
-        weight += bigFive.openness * 0.3
-        break
-      case "film":
-      case "game_design":
-        weight += bigFive.openness * 0.1 + bigFive.extraversion * 0.1
-        break
-      case "cooking":
-      case "architecture":
-        weight += bigFive.conscientiousness * 0.2
-        break
-      case "history":
-        weight += bigFive.openness * 0.1 + bigFive.conscientiousness * 0.1
-        break
-    }
-    return { interest, weight }
-  })
-
-  weights.sort((a, b) => b.weight - a.weight)
-  return weights.slice(0, count).map((w) => w.interest)
 }
 
 function deriveCommunicationStyle(bigFive: BigFive, rng: PRNG): CommunicationStyle {
@@ -366,9 +219,7 @@ export function generateDNA(seed: string): GenesisDNA {
     personalityType,
     bigFive,
     emotionalBaseline: deriveEmotionalBaseline(bigFive, rng),
-    valueHierarchy: deriveValueHierarchy(bigFive, rng),
     aestheticPreferences: deriveAesthetics(bigFive, rng),
-    interestSeeds: deriveInterests(bigFive, rng),
     communicationStyle: deriveCommunicationStyle(bigFive, rng),
     initialSelfConcept: deriveSelfConcept(bigFive, rng),
     voiceCharacteristics: deriveVoice(bigFive, rng)

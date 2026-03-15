@@ -58,19 +58,31 @@ export const GenesisDNA = z.object({
   personalityType: PersonalityType,
   bigFive: BigFive,
   emotionalBaseline: EmotionalState,
-  valueHierarchy: z.array(z.string()),
   aestheticPreferences: AestheticPreferences,
-  interestSeeds: z.array(z.string()),
   communicationStyle: CommunicationStyle,
   initialSelfConcept: SelfConcept,
   voiceCharacteristics: VoiceCharacteristics
 })
 export type GenesisDNA = z.infer<typeof GenesisDNA>
 
+export const CoreValue = z.object({
+  name: z.string(),
+  reason: z.string()
+})
+export type CoreValue = z.infer<typeof CoreValue>
+
+export const Interest = z.object({
+  name: z.string(),
+  fascination: z.string()
+})
+export type Interest = z.infer<typeof Interest>
+
 export const GenesisIdentity = z.object({
   chosenName: z.string(),
   appearanceDescription: z.string(),
   birthNarrative: z.string(),
+  coreValues: z.array(CoreValue).length(10),
+  interests: z.array(Interest).length(10),
   voiceId: z.string().optional()
 })
 export type GenesisIdentity = z.infer<typeof GenesisIdentity>

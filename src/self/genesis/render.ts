@@ -1,9 +1,9 @@
-import type { GenesisDNA } from "./types.ts"
+import type { GenesisDNA, GenesisIdentity } from "./types.ts"
 
 /**
  * Render DNA traits as a compact text section for the context prompt.
  */
-export function renderGeneticTraitsSection(dna: GenesisDNA): string {
+export function renderGeneticTraitsSection(dna: GenesisDNA, identity?: GenesisIdentity | null): string {
   const lines: string[] = ["# Genetic Traits"]
 
   const verbosity = dna.communicationStyle.verbosity > 0.6 ? "elaborate" : dna.communicationStyle.verbosity < 0.4 ? "terse" : "balanced"
@@ -18,12 +18,12 @@ export function renderGeneticTraitsSection(dna: GenesisDNA): string {
   const lightness = dna.aestheticPreferences.lightnessPreference > 0.6 ? "light" : dna.aestheticPreferences.lightnessPreference < 0.4 ? "dark" : "balanced"
   lines.push(`Aesthetic sense: ${warmth}/${sharpness}/${complexity}/${lightness}`)
 
-  if (dna.interestSeeds.length > 0) {
-    lines.push(`Core interests: ${dna.interestSeeds.join(", ")}`)
+  if (identity?.interests && identity.interests.length > 0) {
+    lines.push(`Core interests: ${identity.interests.map((i) => i.name).join(", ")}`)
   }
 
-  if (dna.valueHierarchy.length > 0) {
-    lines.push(`Core values: ${dna.valueHierarchy.slice(0, 5).join(", ")}`)
+  if (identity?.coreValues && identity.coreValues.length > 0) {
+    lines.push(`Core values: ${identity.coreValues.slice(0, 5).map((v) => v.name).join(", ")}`)
   }
 
   return lines.join("\n")

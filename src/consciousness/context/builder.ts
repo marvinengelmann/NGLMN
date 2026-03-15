@@ -27,7 +27,7 @@ import { getPersonalityPrompt } from "@/prompts/personality.ts"
 import { translateDeepProfileToFelt } from "@/relational/mind/profiling.ts"
 import type { BoundaryState } from "@/self/boundaries/types.ts"
 import { getDeceptionState } from "@/self/deception/state.ts"
-import { getGenesisDNA } from "@/self/genesis/state.ts"
+import { getGenesisRecord } from "@/self/genesis/state.ts"
 import type { TickState } from "../pipeline/types.ts"
 import type { SenseData } from "../types.ts"
 import { buildGrowthSections } from "./growth.ts"
@@ -47,7 +47,9 @@ export async function buildContext(
   const emotion = feel.emotion
   const emotionIntensity = computeEmotionalIntensity(emotion)
 
-  const [deceptionState, genesisDNA] = await Promise.all([getDeceptionState(), getGenesisDNA()])
+  const [deceptionState, genesisRecord] = await Promise.all([getDeceptionState(), getGenesisRecord()])
+  const genesisDNA = genesisRecord?.dna ?? null
+  const genesisIdentity = genesisRecord?.identity ?? null
 
   const knowledge = preloaded.knowledge.unwrapOr([])
 
@@ -92,7 +94,8 @@ export async function buildContext(
       >[0]["secondaryEmotionStates"],
       coherenceState: feel.coherenceState,
       metacognitiveState: feel.metacognitiveState,
-      genesisDNA
+      genesisDNA,
+      genesisIdentity
     }),
     ...buildDriveSections(
       feel.driveState,
