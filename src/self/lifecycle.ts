@@ -234,8 +234,6 @@ export async function handleMidEventCheck(event: EventType, maxUpdateId: number 
     return
   }
 
-  await redis.set(LIFECYCLE_LAST_ROLLED_KEY, maxUpdateId)
-
   if (Math.random() >= event.notifyProbability) {
     log.info("Mid-event phone check skipped — probability gate", {
       type: event.type,
@@ -243,6 +241,8 @@ export async function handleMidEventCheck(event: EventType, maxUpdateId: number 
     })
     return
   }
+
+  await redis.set(LIFECYCLE_LAST_ROLLED_KEY, maxUpdateId)
 
   try {
     const [emotion, meta, conversation, personalityPrompt] = await Promise.all([
