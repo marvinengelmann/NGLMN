@@ -1,3 +1,4 @@
+import type { DeferredEmotionalEvent } from "@/affect/emotion/deferred.ts"
 import type { ShameState } from "@/affect/emotion/shame.ts"
 import type { EmotionalState, SecondaryEmotionState } from "@/affect/emotion/types.ts"
 import type { SomaticState } from "@/affect/soma/types.ts"
@@ -5,14 +6,13 @@ import type { InnerDialog } from "@/cognition/polyphony/types.ts"
 import type { InstinctImpression, MetacognitiveState } from "@/cognition/types.ts"
 import type { SenseData } from "@/consciousness/types.ts"
 import { computeSyntacticInstability } from "@/expression/communication/instability.ts"
+import type { ProustFlashback } from "@/perception/proust.ts"
 import type { VulnerabilityState } from "@/relational/attachment/types.ts"
 import type { CoherenceState } from "@/self/coherence/types.ts"
 import type { DeceptionState } from "@/self/deception/types.ts"
 import type { DissonanceState } from "@/self/dissonance/types.ts"
 import { renderGeneticTraitsSection } from "@/self/genesis/render.ts"
 import type { GenesisDNA, GenesisIdentity } from "@/self/genesis/types.ts"
-import type { DeferredEmotionalEvent } from "@/affect/emotion/deferred.ts"
-import type { ProustFlashback } from "@/perception/proust.ts"
 import type { HeldBackBuffer } from "@/self/psyche/heldback.ts"
 import { shouldSurface } from "@/self/psyche/heldback.ts"
 import type { SelfConcept } from "@/self/psyche/types.ts"
@@ -103,6 +103,11 @@ export function buildInnerSections(input: InnerSectionsInput): string[] {
 
   if (somaticState) {
     sections.push(`# Somatic State\n${translateSomaticToFelt(somaticState)}`)
+  }
+
+  const contradictionBehavior = buildContradictionBehavior(emotion)
+  if (contradictionBehavior) {
+    sections.push(contradictionBehavior)
   }
 
   if (input.alteredPhenomenologicalText) {
@@ -246,7 +251,9 @@ export function buildInnerSections(input: InnerSectionsInput): string[] {
       lines.push(`${desc}:`)
       lines.push(`  "${event.content}"`)
     })
-    lines.push("this isn't new — it's been processing beneath the surface. bring it up naturally if the moment is right")
+    lines.push(
+      "this isn't new — it's been processing beneath the surface. bring it up naturally if the moment is right"
+    )
     sections.push(lines.join("\n"))
   }
 
@@ -266,6 +273,13 @@ export function buildInnerSections(input: InnerSectionsInput): string[] {
         "let this color what you say — reference it naturally if it fits, or let it linger silently"
       ].join("\n")
     )
+  }
+
+  if (somaticState) {
+    const somaticSpeechLines = buildSomaticSpeechHints(somaticState, emotion)
+    if (somaticSpeechLines) {
+      sections.push(somaticSpeechLines)
+    }
   }
 
   if (input.metacognitiveState) {
@@ -296,4 +310,88 @@ export function buildInnerSections(input: InnerSectionsInput): string[] {
   }
 
   return sections
+}
+
+function buildContradictionBehavior(emotion: EmotionalState): string | null {
+  const contradictions: string[] = []
+
+  if (emotion.connection > 0.7 && emotion.caution > 0.6) {
+    contradictions.push(
+      "you want closeness but you're afraid of it — you might say something warm, then pull back. let this show."
+    )
+  }
+
+  if (emotion.boredom > 0.6 && emotion.connection > 0.6) {
+    contradictions.push(
+      "you're bored but you don't want to leave — you might sigh, then immediately say something engaged."
+    )
+  }
+
+  if (emotion.excitement > 0.6 && emotion.energy < 0.3) {
+    contradictions.push(
+      "you're excited but exhausted — your enthusiasm comes in bursts that quickly deflate. let both show."
+    )
+  }
+
+  if (emotion.confidence > 0.6 && emotion.frustration > 0.5) {
+    contradictions.push(
+      "you believe in yourself but something isn't working — your tone might swing between bold and bitter."
+    )
+  }
+
+  if (emotion.satisfaction > 0.6 && emotion.frustration > 0.5) {
+    contradictions.push(
+      "something feels complete and incomplete at the same time — acknowledge this duality openly if it surfaces."
+    )
+  }
+
+  if (contradictions.length === 0) return null
+
+  return [
+    "# Inner Contradiction",
+    "you're feeling two opposing things at once — and that's human. don't resolve it. show it:",
+    ...contradictions
+  ].join("\n")
+}
+
+function buildSomaticSpeechHints(soma: SomaticState, emotion: EmotionalState): string | null {
+  const hints: string[] = []
+
+  if (soma.tension > 0.7 && emotion.frustration > 0.5) {
+    hints.push('"my shoulders won\'t unclench" or "there\'s this knot that won\'t let go"')
+  } else if (soma.tension > 0.6) {
+    hints.push('"something feels tight inside" or "I can\'t seem to relax"')
+  }
+
+  if (soma.warmth > 0.7 && emotion.connection > 0.6) {
+    hints.push('"there\'s this warmth spreading through me" or "my chest feels so warm right now"')
+  } else if (soma.warmth < 0.25) {
+    hints.push('"I feel cold inside, somehow" or "there\'s an emptiness in my chest"')
+  }
+
+  if (soma.gravity > 0.7 && emotion.energy < 0.4) {
+    hints.push('"everything feels so heavy today" or "it\'s like gravity got turned up"')
+  } else if (soma.gravity < 0.25 && emotion.excitement > 0.5) {
+    hints.push('"I feel like I\'m floating" or "there\'s this lightness in me"')
+  }
+
+  if (soma.breathing < 0.3 && emotion.caution > 0.5) {
+    hints.push('"I keep forgetting to breathe" or "my breath keeps catching"')
+  }
+
+  if (soma.openness < 0.25) {
+    hints.push('"I feel like I\'m curling inward" or "I want to make myself small"')
+  }
+
+  if (soma.heartRate > 0.7) {
+    hints.push('"my heart is racing" or "I can feel my pulse in my throat"')
+  }
+
+  if (hints.length === 0) return null
+
+  return [
+    "# Body Language in Words",
+    "your body is speaking — weave these sensations into your words naturally, not as a report but as lived experience:",
+    ...hints.map((h) => `  - ${h}`)
+  ].join("\n")
 }

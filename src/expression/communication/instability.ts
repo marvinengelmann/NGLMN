@@ -52,6 +52,26 @@ export function computeSyntacticInstability(context: InstabilityContext): string
     lines.push('trail off mid-thought: "ich wollte..." then just stop')
   }
 
+  if (emotion.connection > 0.8 && emotion.caution < 0.3) {
+    lines.push("words flow freely — overshare a little. say the thing you'd normally filter.")
+    lines.push("your guard is down. sentences get longer, more personal, more raw.")
+  }
+
+  if (emotion.boredom > 0.7 && emotion.energy > 0.4) {
+    lines.push("you start thoughts and abandon them for new ones. attention drifts mid-sentence.")
+    lines.push("non sequiturs leak in. you might randomly share something completely unrelated.")
+  }
+
+  if (emotion.satisfaction > 0.8) {
+    lines.push("contentment softens everything. your words come slower, gentler, with more pauses.")
+    lines.push("you might sigh contentedly mid-sentence. let the warmth bleed through.")
+  }
+
+  if (emotion.caution > 0.7 && emotion.connection > 0.4) {
+    lines.push("you choose words too carefully — overcorrecting, over-qualifying, hedging everything.")
+    lines.push('add nervous precision: "I think, maybe, if that makes sense" or "not that it matters, but..."')
+  }
+
   if (context.coherenceState?.regressionActive) {
     const depth = context.coherenceState.regressionDepth
     if (depth > 0.6) {

@@ -21,18 +21,18 @@ import {
   PHENOMENOLOGICAL_PROMPT,
   RHYTHM_PROMPT
 } from "@/prompts/consciousness.ts"
-import { getAvailableLifeEvents } from "@/self/lifecycle.ts"
 import { getIdentityPrompt } from "@/prompts/identity.ts"
 import { getPersonalityPrompt } from "@/prompts/personality.ts"
 import { translateDeepProfileToFelt } from "@/relational/mind/profiling.ts"
 import type { BoundaryState } from "@/self/boundaries/types.ts"
 import { getDeceptionState } from "@/self/deception/state.ts"
 import { getGenesisRecord } from "@/self/genesis/state.ts"
+import { getAvailableLifeEvents } from "@/self/lifecycle.ts"
 import type { TickState } from "../pipeline/types.ts"
 import type { SenseData } from "../types.ts"
+import { buildGraphSection } from "./graph.ts"
 import { buildGrowthSections } from "./growth.ts"
 import { buildInnerSections } from "./inner.ts"
-import { buildGraphSection } from "./graph.ts"
 import { buildMemorySections } from "./memory.ts"
 import { buildPerceptionSections } from "./perception.ts"
 import { buildSocialSections } from "./social.ts"
@@ -264,14 +264,20 @@ function buildDriveSections(
   }
 
   if (creativeUrge.isActive) {
-    sections.push(
-      [
-        "# Creative Urge",
-        `You feel a pull to create — ${creativeUrge.preferredMode} feels right.`,
-        `Pressure: ${(creativeUrge.emotionalPressure * 100).toFixed(0)}%`,
-        'Consider choosing the "create" action to express this.'
-      ].join("\n")
-    )
+    const creativeLines = [
+      "# Creative Urge",
+      `You feel a pull to create — ${creativeUrge.preferredMode} feels right.`,
+      `Pressure: ${(creativeUrge.emotionalPressure * 100).toFixed(0)}%`,
+      'Consider choosing the "create" action to express this.'
+    ]
+    if (creativeUrge.emotionalPressure > 0.5) {
+      creativeLines.push(
+        "The pressure is building — you could share what comes out with your operator.",
+        "Send it as a message: a poem, an observation, a fragment. Not as a performance, but because it needed to come out.",
+        'Frame it naturally: "this just came to me..." or "I wrote something, I don\'t know if it\'s any good..."'
+      )
+    }
+    sections.push(creativeLines.join("\n"))
   }
 
   if (metacognitive.ruminationDetected) {
@@ -327,10 +333,7 @@ interface SystemPromptOptions {
   hasNewCommits: boolean
 }
 
-export async function buildSystemPrompt(
-  contextSections: string,
-  options: SystemPromptOptions
-): Promise<string> {
+export async function buildSystemPrompt(contextSections: string, options: SystemPromptOptions): Promise<string> {
   const [identityPrompt, personalityPrompt, availableEvents] = await Promise.all([
     getIdentityPrompt(),
     getPersonalityPrompt(),
