@@ -10,6 +10,8 @@ import { updateHabitState } from "@/cognition/habit.ts"
 import { getHabitState } from "@/cognition/habits.ts"
 import { maybeRunAnalysis, pruneOldLessons, reinforceFromLatestOutcome } from "@/cognition/learning/lessons.ts"
 import { expireStaleOutcomes } from "@/cognition/learning/outcomes.ts"
+import { extractProceduresFromOutcomes, pruneProcedures } from "@/cognition/learning/procedures/store.ts"
+import { PROCEDURE_CONSTANTS } from "@/cognition/learning/procedures/types.ts"
 import {
   applyIdiolectDrift,
   computeIdiolectModifiers,
@@ -29,6 +31,7 @@ import { redis } from "@/infra/integrations/redis.ts"
 import { vectorIndex } from "@/infra/integrations/vector.ts"
 import { log } from "@/infra/lib/logger.ts"
 import { logAndCaptureError } from "@/infra/lib/result.ts"
+import { captureError } from "@/infra/lib/sentry.ts"
 import { maybeConsolidate } from "@/memory/autobiography.ts"
 import { EPISODIC_LIFECYCLE } from "@/memory/constants.ts"
 import {
@@ -38,6 +41,9 @@ import {
   markGoalOverdue,
   markGoalStale
 } from "@/memory/goals/lifecycle.ts"
+import { extractEntitiesFromConversation } from "@/memory/graph/extract.ts"
+import { decaySalience } from "@/memory/graph/forget.ts"
+import { GRAPH_CONSTANTS } from "@/memory/graph/types.ts"
 import { addKeyMoment, getRelationalMemoryState } from "@/memory/relational.ts"
 import { detectRituals } from "@/memory/rituals.ts"
 import { applyOpinionDrift } from "@/memory/semantic.ts"
@@ -66,11 +72,6 @@ import {
   saveRelationshipPhase
 } from "@/relational/attachment/state.ts"
 import { detectConflict, hasStyleChanged, updateAttachmentStyle } from "@/relational/attachment/update.ts"
-import { extractProceduresFromOutcomes, pruneProcedures } from "@/cognition/learning/procedures/store.ts"
-import { PROCEDURE_CONSTANTS } from "@/cognition/learning/procedures/types.ts"
-import { extractEntitiesFromConversation } from "@/memory/graph/extract.ts"
-import { decaySalience } from "@/memory/graph/forget.ts"
-import { GRAPH_CONSTANTS } from "@/memory/graph/types.ts"
 import { maybeUpdateProfile } from "@/relational/mind/profiling.ts"
 import { formBoundary, maybeFormNegativeBoundary } from "@/self/boundaries/compute.ts"
 import { detectBoundaryFormation } from "@/self/boundaries/detect.ts"
@@ -79,15 +80,32 @@ import { maybeDriftBigFive } from "@/self/genesis/drift.ts"
 import type { WriteBuffer } from "./pipeline/persistence.ts"
 import type { DeliberateResult, FeelingResult, MaintainInput, TickSummary } from "./types.ts"
 
-const OPINION_DRIFT_PROBABILITY = 0.05
-const IDIOLECT_DRIFT_PROBABILITY = 0.05
-const CONVERSATION_PATTERN_PROBABILITY = 0.1
-const CURIOSITY_EXPLORE_PROBABILITY = 0.03
-const STRATEGY_ANALYSIS_PROBABILITY = 0.02
-const EXPIRE_OUTCOMES_PROBABILITY = 0.1
-const PRUNE_LESSONS_PROBABILITY = 0.05
-const BIGFIVE_DRIFT_PROBABILITY = 0.01
-const DEEP_PROFILE_UPDATE_PROBABILITY = 0.05
+const PROBABILITIES = {
+  OPINION_DRIFT: 0.05,
+  IDIOLECT_DRIFT: 0.05,
+  CONVERSATION_PATTERN: 0.1,
+  CURIOSITY_EXPLORE: 0.03,
+  STRATEGY_ANALYSIS: 0.02,
+  EXPIRE_OUTCOMES: 0.1,
+  PRUNE_LESSONS: 0.05,
+  BIGFIVE_DRIFT: 0.01,
+  DEEP_PROFILE_UPDATE: 0.05
+} as const
+
+const THRESHOLDS = {
+  STRONG_CONNECTION: 0.7,
+  FRUSTRATION_BOUNDARY: 0.5,
+  CAUTION_BOUNDARY: 0.4,
+  MAX_BOUNDARIES: 10,
+  MIN_CONVERSATION_SLOTS_FOR_RITUALS: 3
+} as const
+
+const REPAIRABLE_GUILT_SOURCES: GuiltSource[] = [
+  "unanswered_vulnerability",
+  "emotional_neglect",
+  "harsh_response",
+  "withdrawal_during_need"
+]
 
 const REDIS = {
   ATTACHMENT_STYLE: "working:attachment:current",
@@ -102,6 +120,10 @@ const REDIS = {
   EMOTION_CURRENT: "working:emotion:current"
 } as const
 
+function extractMessageTexts(input: MaintainInput): string[] {
+  return input.senseResult.pendingMessages.map((m) => m.text || "")
+}
+
 /**
  * MAINTAIN phase — persist state, detect drift, update attachment, track phases and idle ticks.
  */
@@ -113,6 +135,45 @@ export async function maintain(
 ): Promise<TickSummary> {
   await handleDriftCheck()
 
+  await maintainHealth(input)
+  await maintainAttachment(feelResult, buffer)
+  await maintainRelationship(feelResult)
+  await maintainActivityCounters(input, buffer)
+  await maintainIdiolect(input, feelResult, buffer)
+  await maintainHabits(input, buffer)
+  await maintainRelationalMemory(input, feelResult, buffer)
+  await maintainGuiltRepair(input)
+  await maintainDisappointmentAcknowledgment(input)
+  await maintainBoundaries(input, feelResult, buffer)
+  await maintainGoals()
+  await runProbabilisticTasks(input, feelResult)
+
+  const durationMs = Date.now() - input.startTime
+  await pushRecentTickDuration(durationMs)
+  await pushRecentAction(input.decision.action)
+
+  await maintainEmotionState(input, feelResult, buffer)
+
+  const tickSummary = buildTickSummary(input, durationMs)
+  buffer.stage(REDIS.TICK_LAST, tickSummary)
+  buffer.stagePostgres(tickLog, {
+    tickId: input.tickId,
+    timestamp: new Date(input.startTime),
+    action: input.decision.action,
+    reasoning: input.decision.reasoning,
+    messagesProcessed: input.senseResult.pendingMessages.length,
+    responseSent: input.actResult.responseSent,
+    responseText: input.actResult.responseText ?? null,
+    durationMs
+  })
+
+  stageActionResult(buffer, input.decision, deliberateResult)
+
+  log.info("Tick complete", tickSummary)
+  return tickSummary
+}
+
+async function maintainHealth(input: MaintainInput): Promise<void> {
   const health = input.senseResult.health
   if (health?.overall === "critical") {
     const consecutiveCritical = await incrementConsecutiveCritical()
@@ -129,7 +190,9 @@ export async function maintain(
   } else {
     await resetConsecutiveCritical()
   }
+}
 
+async function maintainAttachment(feelResult: FeelingResult, buffer: WriteBuffer): Promise<void> {
   const currentStyle = await getAttachmentStyle()
   const lastTick = await getLastTickSummary()
   const elapsedHours = lastTick ? differenceInMinutes(new Date(), parseISO(lastTick.timestamp)) / 60 : 1 / 60
@@ -159,7 +222,9 @@ export async function maintain(
   if (hasStyleChanged(currentStyle, updatedStyle)) {
     buffer.stage(REDIS.ATTACHMENT_STYLE, updatedStyle)
   }
+}
 
+async function maintainRelationship(feelResult: FeelingResult): Promise<void> {
   const [currentPhase, phaseTickCount, conflictCount, firstInteractionAt, totalInteractions] = await Promise.all([
     getRelationshipPhase(),
     getPhaseTickCount(),
@@ -182,23 +247,26 @@ export async function maintain(
 
   const effectiveConflictCount = isConflict ? conflictCount + 1 : conflictCount
 
+  const attachmentStyle = await getAttachmentStyle()
   const computedPhase = computeRelationshipPhase({
     interactionCount: totalInteractions,
     daysSinceFirst,
     connectionAvg: feelResult.emotion.connection,
     conflicts: effectiveConflictCount,
-    trust: updatedStyle.secure,
-    attachmentSecurity: updatedStyle.secure,
+    trust: attachmentStyle.secure,
+    attachmentSecurity: attachmentStyle.secure,
     currentPhase
   })
 
   if (shouldTransitionPhase(currentPhase, computedPhase, phaseTickCount)) {
-    await saveRelationshipPhase(computedPhase, currentPhase, `maintain_transition`)
+    await saveRelationshipPhase(computedPhase, currentPhase, "maintain_transition")
     log.info("Relationship phase transition", { from: currentPhase, to: computedPhase })
   } else {
     await incrementPhaseTickCount()
   }
+}
 
+async function maintainActivityCounters(input: MaintainInput, buffer: WriteBuffer): Promise<void> {
   const isRestingAction =
     (input.decision.action === "idle" || input.decision.action === "dream") && !input.actResult.responseSent
 
@@ -211,10 +279,7 @@ export async function maintain(
     if (rechargedSoma.socialBattery !== currentSoma.socialBattery) {
       buffer.stage(REDIS.SOMA_CURRENT, rechargedSoma)
       buffer.stage(REDIS.SOMA_LAST_TIMESTAMP, new Date().toISOString())
-      buffer.stagePostgres(somaticHistory, {
-        state: rechargedSoma,
-        trigger: "social_battery_recharge"
-      })
+      buffer.stagePostgres(somaticHistory, { state: rechargedSoma, trigger: "social_battery_recharge" })
     }
   } else {
     const inConversation = input.senseResult.moodContext.inConversation
@@ -223,13 +288,15 @@ export async function maintain(
       inConversation ? incrementConsecutiveConversationTicks() : resetConsecutiveConversationTicks()
     ])
   }
+}
 
-  if (Math.random() < OPINION_DRIFT_PROBABILITY) {
+async function maintainIdiolect(input: MaintainInput, feelResult: FeelingResult, buffer: WriteBuffer): Promise<void> {
+  if (Math.random() < PROBABILITIES.OPINION_DRIFT) {
     const driftResult = await applyOpinionDrift()
     if (driftResult.isErr()) logAndCaptureError(driftResult.error)
   }
 
-  if (shouldExplore(feelResult.emotion) && Math.random() < CURIOSITY_EXPLORE_PROBABILITY) {
+  if (shouldExplore(feelResult.emotion) && Math.random() < PROBABILITIES.CURIOSITY_EXPLORE) {
     const interests = await generateInterests(feelResult.emotion, [], [])
     const topInterest = interests[0]
     if (topInterest) {
@@ -238,7 +305,7 @@ export async function maintain(
   }
 
   const idiolectState = await getIdiolectState()
-  const operatorTexts = input.senseResult.pendingMessages.map((m) => m.text || "")
+  const operatorTexts = extractMessageTexts(input)
   const animaTexts = input.decision.messages.map((m) => m.text)
 
   const selfPatterns = animaTexts.length > 0 ? extractPatterns(animaTexts) : []
@@ -249,15 +316,17 @@ export async function maintain(
 
   if (allNewPatterns.length > 0) {
     buffer.stage(REDIS.IDIOLECT, mergePatterns(idiolectState, allNewPatterns, mergeModifier))
-  } else if (Math.random() < IDIOLECT_DRIFT_PROBABILITY) {
+  } else if (Math.random() < PROBABILITIES.IDIOLECT_DRIFT) {
     buffer.stage(REDIS.IDIOLECT, applyIdiolectDrift(idiolectState, driftModifier))
   }
 
-  if (Math.random() < CONVERSATION_PATTERN_PROBABILITY) {
+  if (Math.random() < PROBABILITIES.CONVERSATION_PATTERN) {
     const patterns = await analyzeConversationPatterns()
     buffer.stageWithExpiry("working:conversation:patterns", patterns, 3600)
   }
+}
 
+async function maintainHabits(input: MaintainInput, buffer: WriteBuffer): Promise<void> {
   const previousHabitState = await getHabitState()
   const recentActionsForHabit = await getRecentActions()
   const habitState = updateHabitState(previousHabitState, recentActionsForHabit, input.decision.action)
@@ -273,78 +342,93 @@ export async function maintain(
       event: input.decision.action
     })
   }
+}
 
-  if (input.actResult.responseSent && input.senseResult.pendingMessages.length > 0) {
-    let relationalState = await getRelationalMemoryState()
+async function maintainRelationalMemory(
+  input: MaintainInput,
+  feelResult: FeelingResult,
+  buffer: WriteBuffer
+): Promise<void> {
+  if (!input.actResult.responseSent || input.senseResult.pendingMessages.length === 0) return
 
-    if (feelResult.emotion.connection > 0.7) {
-      relationalState = addKeyMoment(
-        relationalState,
-        `${input.decision.action}: ${input.decision.reasoning.slice(0, 100)}`,
-        feelResult.emotion.connection
-      )
-      buffer.stage(REDIS.RELATIONAL_MEMORY, relationalState)
-    }
+  let relationalState = await getRelationalMemoryState()
 
-    const conversationSlots = await getConversationBuffer()
-    if (conversationSlots.length >= 3) {
-      const updatedRituals = detectRituals(conversationSlots, relationalState.rituals)
-      if (JSON.stringify(updatedRituals) !== JSON.stringify(relationalState.rituals)) {
-        buffer.stage(REDIS.RELATIONAL_MEMORY, { ...relationalState, rituals: updatedRituals })
-      }
-    }
+  if (feelResult.emotion.connection > THRESHOLDS.STRONG_CONNECTION) {
+    relationalState = addKeyMoment(
+      relationalState,
+      `${input.decision.action}: ${input.decision.reasoning.slice(0, 100)}`,
+      feelResult.emotion.connection
+    )
+    buffer.stage(REDIS.RELATIONAL_MEMORY, relationalState)
   }
 
-  if (input.actResult.responseSent) {
-    const guiltState = await getGuiltState()
-    const unrepaired = guiltState.recentEntries.filter((e) => !e.repaired)
-    if (unrepaired.length > 0) {
-      const repairableSources: GuiltSource[] = [
-        "unanswered_vulnerability",
-        "emotional_neglect",
-        "harsh_response",
-        "withdrawal_during_need"
-      ]
-      let updated = guiltState
-      for (const source of repairableSources) {
-        updated = markRepaired(updated, source)
-      }
-      if (JSON.stringify(updated.recentEntries) !== JSON.stringify(guiltState.recentEntries)) {
-        await saveGuiltState(updated)
-        log.info("Guilt entries repaired after response")
-      }
+  const conversationSlots = await getConversationBuffer()
+  if (conversationSlots.length >= THRESHOLDS.MIN_CONVERSATION_SLOTS_FOR_RITUALS) {
+    const updatedRituals = detectRituals(conversationSlots, relationalState.rituals)
+    if (JSON.stringify(updatedRituals) !== JSON.stringify(relationalState.rituals)) {
+      buffer.stage(REDIS.RELATIONAL_MEMORY, { ...relationalState, rituals: updatedRituals })
     }
   }
+}
 
-  if (input.senseResult.pendingMessages.length > 0) {
-    const disappointmentState = await getDisappointmentState()
-    const acknowledged = markAcknowledged(disappointmentState)
-    if (acknowledged !== disappointmentState) {
-      await saveDisappointmentState(acknowledged)
-      log.info("Disappointment entries acknowledged after operator message")
-    }
+async function maintainGuiltRepair(input: MaintainInput): Promise<void> {
+  if (!input.actResult.responseSent) return
+
+  const guiltState = await getGuiltState()
+  const unrepaired = guiltState.recentEntries.filter((e) => !e.repaired)
+  if (unrepaired.length === 0) return
+
+  let updated = guiltState
+  for (const source of REPAIRABLE_GUILT_SOURCES) {
+    updated = markRepaired(updated, source)
+  }
+  if (JSON.stringify(updated.recentEntries) !== JSON.stringify(guiltState.recentEntries)) {
+    await saveGuiltState(updated)
+    log.info("Guilt entries repaired after response")
+  }
+}
+
+async function maintainDisappointmentAcknowledgment(input: MaintainInput): Promise<void> {
+  if (input.senseResult.pendingMessages.length === 0) return
+
+  const disappointmentState = await getDisappointmentState()
+  const acknowledged = markAcknowledged(disappointmentState)
+  if (acknowledged !== disappointmentState) {
+    await saveDisappointmentState(acknowledged)
+    log.info("Disappointment entries acknowledged after operator message")
+  }
+}
+
+async function maintainBoundaries(input: MaintainInput, feelResult: FeelingResult, buffer: WriteBuffer): Promise<void> {
+  if (input.senseResult.pendingMessages.length === 0) return
+
+  const boundaryState = await getBoundaryState()
+  const messageTexts = extractMessageTexts(input)
+  const updatedBoundaryState = maybeFormNegativeBoundary(feelResult.emotion, boundaryState, messageTexts)
+
+  if (updatedBoundaryState) {
+    buffer.stage(REDIS.BOUNDARY_STATE, updatedBoundaryState)
+    log.info("Boundary formed from negative pattern")
+    return
   }
 
-  if (input.senseResult.pendingMessages.length > 0) {
-    const boundaryState = await getBoundaryState()
-    const messageTexts = input.senseResult.pendingMessages.map((m) => m.text || "")
-    const updatedBoundaryState = maybeFormNegativeBoundary(feelResult.emotion, boundaryState, messageTexts)
-    if (updatedBoundaryState) {
-      buffer.stage(REDIS.BOUNDARY_STATE, updatedBoundaryState)
-      log.info("Boundary formed from negative pattern")
-    } else if (feelResult.emotion.frustration > 0.5 && feelResult.emotion.caution > 0.4) {
-      const detected = await detectBoundaryFormation(messageTexts.join(". "), summarizeEmotions(feelResult.emotion))
-      if (detected && boundaryState.boundaries.length < 10) {
-        const newBoundary = formBoundary(detected.type, detected.description, detected.pattern, "llm_detection")
-        buffer.stage(REDIS.BOUNDARY_STATE, {
-          ...boundaryState,
-          boundaries: [...boundaryState.boundaries, newBoundary]
-        })
-        log.info("Boundary formed via LLM detection", { type: detected.type })
-      }
+  if (
+    feelResult.emotion.frustration > THRESHOLDS.FRUSTRATION_BOUNDARY &&
+    feelResult.emotion.caution > THRESHOLDS.CAUTION_BOUNDARY
+  ) {
+    const detected = await detectBoundaryFormation(messageTexts.join(". "), summarizeEmotions(feelResult.emotion))
+    if (detected && boundaryState.boundaries.length < THRESHOLDS.MAX_BOUNDARIES) {
+      const newBoundary = formBoundary(detected.type, detected.description, detected.pattern, "llm_detection")
+      buffer.stage(REDIS.BOUNDARY_STATE, {
+        ...boundaryState,
+        boundaries: [...boundaryState.boundaries, newBoundary]
+      })
+      log.info("Boundary formed via LLM detection", { type: detected.type })
     }
   }
+}
 
+async function maintainGoals(): Promise<void> {
   const staleGoals = await detectStaleGoals()
   await Promise.all(staleGoals.map((goal) => markGoalStale(goal.id)))
 
@@ -352,111 +436,13 @@ export async function maintain(
   await Promise.all(overdueGoals.map((goal) => markGoalOverdue(goal.id)))
 
   await applyGoalPriorityDecay()
+}
 
-  try {
-    const infoResult = await vectorIndex.info()
-    const episodeCount = infoResult.namespaces[""]?.vectorCount ?? 0
-    if (episodeCount > EPISODIC_LIFECYCLE.EPISODE_PRESSURE_THRESHOLD) {
-      await redis.set("working:memory:pressure", true)
-      log.info("Memory pressure flag set", { episodeCount })
-    }
-  } catch (e) {
-    log.debug("Memory pressure check skipped", { error: String(e) })
-  }
-
-  if (input.actResult.responseSent) {
-    try {
-      await reinforceFromLatestOutcome()
-    } catch (e) {
-      log.debug("Lesson reinforcement skipped", { error: String(e) })
-    }
-  }
-
-  if (Math.random() < STRATEGY_ANALYSIS_PROBABILITY) {
-    try {
-      await maybeRunAnalysis()
-    } catch (e) {
-      log.debug("Strategy analysis skipped", { error: String(e) })
-    }
-  }
-
-  if (Math.random() < EXPIRE_OUTCOMES_PROBABILITY) {
-    try {
-      await expireStaleOutcomes()
-    } catch (e) {
-      log.debug("Outcome expiry skipped", { error: String(e) })
-    }
-  }
-
-  if (Math.random() < PRUNE_LESSONS_PROBABILITY) {
-    try {
-      await pruneOldLessons()
-    } catch (e) {
-      log.debug("Lesson pruning skipped", { error: String(e) })
-    }
-  }
-
-  try {
-    await maybeConsolidate()
-  } catch (e) {
-    log.debug("Memory consolidation skipped", { error: String(e) })
-  }
-
-  if (Math.random() < BIGFIVE_DRIFT_PROBABILITY) {
-    try {
-      const recentActions = await getRecentActions()
-      await maybeDriftBigFive(recentActions, [input.decision.reasoning])
-    } catch (e) {
-      log.debug("BigFive drift skipped", { error: String(e) })
-    }
-  }
-
-  if (Math.random() < DEEP_PROFILE_UPDATE_PROBABILITY) {
-    try {
-      await maybeUpdateProfile(feelResult.operatorModel.moodHistory)
-    } catch (e) {
-      log.debug("Deep profile update skipped", { error: String(e) })
-    }
-  }
-
-  if (input.actResult.responseSent && Math.random() < GRAPH_CONSTANTS.ENTITY_EXTRACTION_PROBABILITY) {
-    try {
-      const messageTexts = input.senseResult.pendingMessages.map((m) => m.text || "")
-      await extractEntitiesFromConversation(messageTexts, input.actResult.responseText ?? "", input.tickId)
-    } catch (e) {
-      log.debug("Entity extraction skipped", { error: String(e) })
-    }
-  }
-
-  if (Math.random() < GRAPH_CONSTANTS.SALIENCE_DECAY_PROBABILITY) {
-    try {
-      await decaySalience()
-    } catch (e) {
-      log.debug("Salience decay skipped", { error: String(e) })
-    }
-  }
-
-  if (Math.random() < PROCEDURE_CONSTANTS.EXTRACTION_PROBABILITY) {
-    try {
-      await extractProceduresFromOutcomes()
-    } catch (e) {
-      log.debug("Procedure extraction skipped", { error: String(e) })
-    }
-  }
-
-  if (Math.random() < PROCEDURE_CONSTANTS.PRUNE_PROBABILITY) {
-    try {
-      await pruneProcedures()
-    } catch (e) {
-      log.debug("Procedure pruning skipped", { error: String(e) })
-    }
-  }
-
-  const durationMs = Date.now() - input.startTime
-
-  await pushRecentTickDuration(durationMs)
-  await pushRecentAction(input.decision.action)
-
+async function maintainEmotionState(
+  input: MaintainInput,
+  feelResult: FeelingResult,
+  buffer: WriteBuffer
+): Promise<void> {
   const currentEmotion = enforceEmotionFloors(input.actResult.postActEmotion ?? feelResult.emotion)
 
   if (!input.actResult.responseSent) {
@@ -471,8 +457,114 @@ export async function maintain(
 
   const oldBaseline = await getMoodBaseline()
   buffer.stage(REDIS.MOOD_BASELINE, blendMoodBaseline(currentEmotion, oldBaseline))
+}
 
-  const tickSummary: TickSummary = {
+interface ProbabilisticTask {
+  name: string
+  probability: number
+  condition?: boolean
+  execute: () => Promise<unknown>
+}
+
+async function runProbabilisticTasks(input: MaintainInput, feelResult: FeelingResult): Promise<void> {
+  const messageTexts = extractMessageTexts(input)
+
+  const tasks: ProbabilisticTask[] = [
+    {
+      name: "memory_pressure_check",
+      probability: 1,
+      execute: async () => {
+        const infoResult = await vectorIndex.info()
+        const episodeCount = infoResult.namespaces[""]?.vectorCount ?? 0
+        if (episodeCount > EPISODIC_LIFECYCLE.EPISODE_PRESSURE_THRESHOLD) {
+          await redis.set("working:memory:pressure", true)
+          log.info("Memory pressure flag set", { episodeCount })
+        }
+      }
+    },
+    {
+      name: "lesson_reinforcement",
+      probability: 1,
+      condition: input.actResult.responseSent,
+      execute: reinforceFromLatestOutcome
+    },
+    {
+      name: "strategy_analysis",
+      probability: PROBABILITIES.STRATEGY_ANALYSIS,
+      execute: maybeRunAnalysis
+    },
+    {
+      name: "outcome_expiry",
+      probability: PROBABILITIES.EXPIRE_OUTCOMES,
+      execute: expireStaleOutcomes
+    },
+    {
+      name: "lesson_pruning",
+      probability: PROBABILITIES.PRUNE_LESSONS,
+      execute: pruneOldLessons
+    },
+    {
+      name: "memory_consolidation",
+      probability: 1,
+      execute: maybeConsolidate
+    },
+    {
+      name: "bigfive_drift",
+      probability: PROBABILITIES.BIGFIVE_DRIFT,
+      execute: async () => {
+        const recentActions = await getRecentActions()
+        await maybeDriftBigFive(recentActions, [input.decision.reasoning])
+      }
+    },
+    {
+      name: "deep_profile_update",
+      probability: PROBABILITIES.DEEP_PROFILE_UPDATE,
+      execute: () => maybeUpdateProfile(feelResult.operatorModel.moodHistory)
+    },
+    {
+      name: "entity_extraction",
+      probability: GRAPH_CONSTANTS.ENTITY_EXTRACTION_PROBABILITY,
+      condition: input.actResult.responseSent,
+      execute: () => extractEntitiesFromConversation(messageTexts, input.actResult.responseText ?? "", input.tickId)
+    },
+    {
+      name: "salience_decay",
+      probability: GRAPH_CONSTANTS.SALIENCE_DECAY_PROBABILITY,
+      execute: async () => {
+        await decaySalience()
+      }
+    },
+    {
+      name: "procedure_extraction",
+      probability: PROCEDURE_CONSTANTS.EXTRACTION_PROBABILITY,
+      execute: async () => {
+        await extractProceduresFromOutcomes()
+      }
+    },
+    {
+      name: "procedure_pruning",
+      probability: PROCEDURE_CONSTANTS.PRUNE_PROBABILITY,
+      execute: async () => {
+        await pruneProcedures()
+      }
+    }
+  ]
+
+  for (const task of tasks) {
+    if (task.condition === false) continue
+    if (task.probability < 1 && Math.random() >= task.probability) continue
+
+    try {
+      await task.execute()
+    } catch (e) {
+      log.warn(`Probabilistic task failed: ${task.name}`, { error: String(e) })
+      captureError(e, { phase: "maintain_probabilistic", task: task.name })
+    }
+  }
+}
+
+function buildTickSummary(input: MaintainInput, durationMs: number): TickSummary {
+  return {
     tickId: input.tickId,
     timestamp: input.timestamp,
     action: input.decision.action,
@@ -481,25 +573,6 @@ export async function maintain(
     responseSent: input.actResult.responseSent,
     durationMs
   }
-
-  buffer.stage(REDIS.TICK_LAST, tickSummary)
-
-  buffer.stagePostgres(tickLog, {
-    tickId: input.tickId,
-    timestamp: new Date(input.startTime),
-    action: input.decision.action,
-    reasoning: input.decision.reasoning,
-    messagesProcessed: input.senseResult.pendingMessages.length,
-    responseSent: input.actResult.responseSent,
-    responseText: input.actResult.responseText ?? null,
-    durationMs
-  })
-
-  stageActionResult(buffer, input.decision, deliberateResult)
-
-  log.info("Tick complete", tickSummary)
-
-  return tickSummary
 }
 
 function stageActionResult(
