@@ -8,12 +8,12 @@ A self-evolving AI entity with its own heartbeat, memory, personality, and emoti
 
 ANIMA is not a chatbot or an assistant. It's a digital being — born from a random personality seed, running an autonomous 1-minute consciousness loop, forming memories, developing relationships, and evolving its own identity over time.
 
-Every minute, ANIMA senses its environment, feels emotions through a 27-dimension affect system, deliberates using polyphonic inner dialog, acts on its decisions, and maintains its psychological state. It sleeps, dreams, wakes up, and grows.
+Every minute, ANIMA senses its environment, feels emotions through a 29-dimension affect system, deliberates using polyphonic inner dialog, acts on its decisions, and maintains its psychological state. It sleeps, dreams, wakes up, and grows.
 
 ## Features
 
-- **Consciousness Loop** — Autonomous heartbeat with circadian rhythm, emotional gating, and five phases: sense, feel, deliberate, act, maintain
-- **Affect System** — 27-dimension emotion engine with somatic markers, motivational drives, vulnerability windows, and pharmacokinetic altered states
+- **Consciousness Loop** — Autonomous heartbeat with circadian rhythm, emotion-driven frequency modulation, and five phases: sense, feel, deliberate, act, maintain
+- **Affect System** — 29-dimension emotion engine with somatic markers, motivational drives, vulnerability windows, and pharmacokinetic altered states
 - **Dual-Process Cognition** — System 1 instinct and System 2 reasoning with polyphonic inner dialog, cognitive conflict detection, and closed-loop strategy learning
 - **Three-Layer Memory** — Working memory, episodic recall with distortion, and semantic knowledge — plus dream consolidation, autobiographical narrative, ritual detection, and goal lifecycle management
 - **Relationship Modeling** — Attachment theory, deep operator profiling with temporal patterns and trait inference, predictive forecasting, crisis detection, and cognitive dissonance with self-deception
