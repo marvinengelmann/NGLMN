@@ -15,8 +15,8 @@ import { redis } from "@/infra/integrations/redis.ts"
 import { getAutobiography } from "@/memory/autobiography.ts"
 import { queryRelatedWithDistortion, queryRelationshipHistory } from "@/memory/episodic.ts"
 import { getGoalsByPriority } from "@/memory/goals.ts"
-import { getRelationalMemoryState } from "@/memory/relational.ts"
 import { getEntitySubgraph, getRelevantEntities } from "@/memory/graph/query.ts"
+import { getRelationalMemoryState } from "@/memory/relational.ts"
 import { getKnowledge, getOperatorLanguage } from "@/memory/semantic.ts"
 import {
   getConsecutiveIdleTicks,
@@ -27,6 +27,7 @@ import {
 import { getAttachmentStyle, getRelationshipPhase } from "@/relational/attachment/state.ts"
 import { getDeepOperatorProfile } from "@/relational/mind/profiling.ts"
 import { getAllTrustLevels } from "@/relational/trust/compute.ts"
+import { getActiveLifeEventMeta } from "@/self/lifecycle.ts"
 import { getExistentialQuestions } from "@/self/psyche/questions.ts"
 import { getGrowthArcs, getIdentityStatements, getRecentNarratives, getSelfConcept } from "@/self/psyche/state.ts"
 import type { SenseData } from "../types.ts"
@@ -63,7 +64,8 @@ export async function preloadContextState(senseData: SenseData, emotion: Emotion
     dreamAfterglow,
     alteredState,
     idiolectState,
-    relationalMemoryState
+    relationalMemoryState,
+    activeLifeEventMeta
   ] = await Promise.all([
     getLastTickSummary(),
     getConversationBuffer(),
@@ -98,11 +100,11 @@ export async function preloadContextState(senseData: SenseData, emotion: Emotion
     getDreamAfterglow(),
     getActiveAlteredState(),
     getIdiolectState(),
-    getRelationalMemoryState()
+    getRelationalMemoryState(),
+    getActiveLifeEventMeta()
   ])
 
-  const messageText =
-    senseData.pendingMessages.length > 0 ? senseData.pendingMessages.map((m) => m.text).join(" ") : ""
+  const messageText = senseData.pendingMessages.length > 0 ? senseData.pendingMessages.map((m) => m.text).join(" ") : ""
 
   const [
     recentTickDurations,
@@ -195,6 +197,7 @@ export async function preloadContextState(senseData: SenseData, emotion: Emotion
     deepOperatorProfile,
     graphEntities: graphSubgraph.entities,
     graphRelations: graphSubgraph.relations,
-    procedures: proceduresResult.unwrapOr([])
+    procedures: proceduresResult.unwrapOr([]),
+    activeLifeEventMeta
   }
 }

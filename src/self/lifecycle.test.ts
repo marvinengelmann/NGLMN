@@ -1,4 +1,3 @@
-import { err, ok } from "neverthrow"
 import { describe, expect, it, vi } from "vitest"
 
 vi.mock("@/infra/integrations/redis.ts", () => ({
@@ -17,48 +16,12 @@ vi.mock("@/infra/lib/logger.ts", () => ({
   log: { info: vi.fn(), debug: vi.fn(), warn: vi.fn(), error: vi.fn() }
 }))
 
-vi.mock("@/infra/config/env.ts", () => ({
-  env: () => ({ OPERATOR_PREFERRED_LANGUAGE: "German" })
-}))
-
-vi.mock("@/core/intelligence.ts", () => ({
-  callIntelligence: vi.fn().mockResolvedValue(ok({ respond: true, text: "one sec~" }))
-}))
-
-vi.mock("@/affect/emotion/state.ts", () => ({
-  getEmotionalState: vi.fn().mockResolvedValue({ valence: 0.6, arousal: 0.4, dominance: 0.5 })
-}))
-
-vi.mock("@/infra/integrations/telegram.ts", () => ({
-  sendToOperator: vi.fn().mockResolvedValue(42)
-}))
-
 vi.mock("@/expression/dream/state.ts", () => ({
   getDreamLastRun: vi.fn().mockResolvedValue(null)
 }))
 
-vi.mock("@/expression/communication/state.ts", () => ({
-  pushToActiveConversation: vi.fn().mockResolvedValue(undefined),
-  getActiveConversation: vi.fn().mockResolvedValue({
-    id: "conv-1",
-    messages: [
-      { role: "operator", text: "Hey, what are you up to?", timestamp: "2026-03-06T11:55:00Z", messageId: 1 }
-    ],
-    startedAt: "2026-03-06T11:55:00Z",
-    lastActivityAt: "2026-03-06T11:55:00Z"
-  })
-}))
-
 vi.mock("@/memory/episodic.ts", () => ({
   storeEpisode: vi.fn().mockResolvedValue("episode-id")
-}))
-
-vi.mock("@/infra/lib/sentry.ts", () => ({
-  captureError: vi.fn()
-}))
-
-vi.mock("@/prompts/personality.ts", () => ({
-  getPersonalityPrompt: vi.fn().mockResolvedValue("Test personality prompt")
 }))
 
 vi.mock("@/infra/lib/time.ts", () => ({
@@ -66,18 +29,15 @@ vi.mock("@/infra/lib/time.ts", () => ({
   nowLocal: vi.fn().mockReturnValue(new Date(2026, 2, 6, 12, 0, 0))
 }))
 
-import { callIntelligence } from "@/core/intelligence.ts"
-import { pushToActiveConversation } from "@/expression/communication/state.ts"
 import { getValidatedRedis, redis } from "@/infra/integrations/redis.ts"
-import { sendToOperator } from "@/infra/integrations/telegram.ts"
-import { storeEpisode } from "@/memory/episodic.ts"
 import { nowLocal } from "@/infra/lib/time.ts"
+import { storeEpisode } from "@/memory/episodic.ts"
 import {
   getActiveLifeEvent,
   getAvailableLifeEvents,
-  handleMidEventCheck,
   isLifeEventActive,
   maybeStoreLifecycleEpisode,
+  rollMidEventNotification,
   startChosenLifeEvent
 } from "./lifecycle.ts"
 
@@ -102,23 +62,27 @@ describe("getActiveLifeEvent", () => {
   it("returns event meta for a known event type", async () => {
     vi.mocked(redis.get).mockResolvedValue("walk")
     const event = await getActiveLifeEvent()
-    expect(event).toEqual(expect.objectContaining({
-      type: "walk",
-      minHours: 0.25,
-      maxHours: 1.25,
-      notifyProbability: 0.65
-    }))
+    expect(event).toEqual(
+      expect.objectContaining({
+        type: "walk",
+        minHours: 0.25,
+        maxHours: 1.25,
+        notifyProbability: 0.65
+      })
+    )
   })
 
   it("returns event meta for gaming", async () => {
     vi.mocked(redis.get).mockResolvedValue("gaming")
     const event = await getActiveLifeEvent()
-    expect(event).toEqual(expect.objectContaining({
-      type: "gaming",
-      minHours: 0.5,
-      maxHours: 3,
-      notifyProbability: 0.5
-    }))
+    expect(event).toEqual(
+      expect.objectContaining({
+        type: "gaming",
+        minHours: 0.5,
+        maxHours: 3,
+        notifyProbability: 0.5
+      })
+    )
   })
 
   it("returns null for unknown event type", async () => {
@@ -129,12 +93,14 @@ describe("getActiveLifeEvent", () => {
   it("returns sleep event with very low probability", async () => {
     vi.mocked(redis.get).mockResolvedValue("sleep")
     const event = await getActiveLifeEvent()
-    expect(event).toEqual(expect.objectContaining({
-      type: "sleep",
-      minHours: 5,
-      maxHours: 7,
-      notifyProbability: 0.03
-    }))
+    expect(event).toEqual(
+      expect.objectContaining({
+        type: "sleep",
+        minHours: 5,
+        maxHours: 7,
+        notifyProbability: 0.03
+      })
+    )
   })
 
   it("returns null for dream event", async () => {
@@ -143,100 +109,66 @@ describe("getActiveLifeEvent", () => {
   })
 })
 
-describe("handleMidEventCheck", () => {
-  it("sends a response when probability passes and LLM decides to respond", async () => {
+describe("rollMidEventNotification", () => {
+  it("returns true when probability passes", async () => {
     vi.spyOn(Math, "random").mockReturnValue(0)
     vi.mocked(redis.get).mockResolvedValue(null)
-    vi.mocked(getValidatedRedis).mockResolvedValue(null)
-    vi.mocked(callIntelligence).mockResolvedValueOnce(ok({ respond: true, text: "one sec~" }))
 
-    await handleMidEventCheck({ type: "walk", minHours: 0.5, maxHours: 2, notifyProbability: 0.35 }, 100)
-
-    expect(callIntelligence).toHaveBeenCalledWith(
-      expect.objectContaining({
-        schema: expect.anything(),
-        maxTokens: 256,
-        reasoning: false
-      })
+    const result = await rollMidEventNotification(
+      { type: "walk", minHours: 0.5, maxHours: 2, notifyProbability: 0.35 },
+      100
     )
-    expect(sendToOperator).toHaveBeenCalledWith("one sec~")
-    expect(pushToActiveConversation).toHaveBeenCalledWith([
-      expect.objectContaining({
-        role: "anima",
-        text: "one sec~",
-        messageId: 42
-      })
-    ])
+
+    expect(result).toBe(true)
+    expect(redis.set).toHaveBeenCalledWith("working:lifecycle:lastRolledUpdateId", 100)
 
     vi.restoreAllMocks()
   })
 
-  it("does not call LLM when probability gate blocks", async () => {
+  it("returns false when probability gate blocks", async () => {
     vi.spyOn(Math, "random").mockReturnValue(0.99)
     vi.mocked(redis.get).mockResolvedValue(null)
-    vi.mocked(callIntelligence).mockClear()
 
-    await handleMidEventCheck({ type: "sleep", minHours: 5, maxHours: 7, notifyProbability: 0.03 }, 100)
+    const result = await rollMidEventNotification(
+      { type: "sleep", minHours: 5, maxHours: 7, notifyProbability: 0.03 },
+      100
+    )
 
-    expect(callIntelligence).not.toHaveBeenCalled()
-    expect(sendToOperator).not.toHaveBeenCalled()
-
-    vi.restoreAllMocks()
-  })
-
-  it("does not send when LLM decides not to respond", async () => {
-    vi.spyOn(Math, "random").mockReturnValue(0)
-    vi.mocked(redis.get).mockResolvedValue(null)
-    vi.mocked(callIntelligence).mockResolvedValueOnce(ok({ respond: false, text: null }))
-    vi.mocked(sendToOperator).mockClear()
-
-    await handleMidEventCheck({ type: "walk", minHours: 0.5, maxHours: 2, notifyProbability: 0.35 }, 100)
-
-    expect(callIntelligence).toHaveBeenCalled()
-    expect(sendToOperator).not.toHaveBeenCalled()
+    expect(result).toBe(false)
 
     vi.restoreAllMocks()
   })
 
-  it("does not send when LLM returns an error", async () => {
-    vi.spyOn(Math, "random").mockReturnValue(0)
-    vi.mocked(redis.get).mockResolvedValue(null)
-    vi.mocked(callIntelligence).mockResolvedValueOnce(err({ tag: "LLM_ERROR" as const, message: "fail" }))
-    vi.mocked(sendToOperator).mockClear()
+  it("returns false when maxUpdateId is null", async () => {
+    const result = await rollMidEventNotification(
+      { type: "walk", minHours: 0.5, maxHours: 2, notifyProbability: 0.35 },
+      null
+    )
 
-    await handleMidEventCheck({ type: "walk", minHours: 0.5, maxHours: 2, notifyProbability: 0.35 }, 100)
-
-    expect(sendToOperator).not.toHaveBeenCalled()
-
-    vi.restoreAllMocks()
+    expect(result).toBe(false)
   })
 
-  it("skips when maxUpdateId is null", async () => {
-    vi.mocked(callIntelligence).mockClear()
-
-    await handleMidEventCheck({ type: "walk", minHours: 0.5, maxHours: 2, notifyProbability: 0.35 }, null)
-
-    expect(callIntelligence).not.toHaveBeenCalled()
-  })
-
-  it("skips when already rolled for this message batch", async () => {
+  it("returns false when already rolled for this message batch", async () => {
     vi.mocked(redis.get).mockResolvedValue(100)
-    vi.mocked(callIntelligence).mockClear()
 
-    await handleMidEventCheck({ type: "walk", minHours: 0.5, maxHours: 2, notifyProbability: 0.35 }, 100)
+    const result = await rollMidEventNotification(
+      { type: "walk", minHours: 0.5, maxHours: 2, notifyProbability: 0.35 },
+      100
+    )
 
-    expect(callIntelligence).not.toHaveBeenCalled()
+    expect(result).toBe(false)
   })
 
   it("rolls again when new messages arrive (higher updateId)", async () => {
     vi.spyOn(Math, "random").mockReturnValue(0)
     vi.mocked(redis.get).mockResolvedValue(100)
-    vi.mocked(getValidatedRedis).mockResolvedValue(null)
-    vi.mocked(callIntelligence).mockResolvedValueOnce(ok({ respond: true, text: "hey~" }))
 
-    await handleMidEventCheck({ type: "walk", minHours: 0.5, maxHours: 2, notifyProbability: 0.35 }, 200)
+    const result = await rollMidEventNotification(
+      { type: "walk", minHours: 0.5, maxHours: 2, notifyProbability: 0.35 },
+      200
+    )
 
-    expect(callIntelligence).toHaveBeenCalled()
+    expect(result).toBe(true)
     expect(redis.set).toHaveBeenCalledWith("working:lifecycle:lastRolledUpdateId", 200)
 
     vi.restoreAllMocks()

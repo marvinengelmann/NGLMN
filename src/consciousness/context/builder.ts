@@ -22,6 +22,7 @@ import {
   RHYTHM_PROMPT
 } from "@/prompts/consciousness.ts"
 import { getIdentityPrompt } from "@/prompts/identity.ts"
+import { buildActiveEventPrompt } from "@/prompts/lifecycle.ts"
 import { getPersonalityPrompt } from "@/prompts/personality.ts"
 import { translateDeepProfileToFelt } from "@/relational/mind/profiling.ts"
 import type { BoundaryState } from "@/self/boundaries/types.ts"
@@ -168,6 +169,10 @@ export async function buildContext(
   const deepProfileSection = translateDeepProfileToFelt(preloaded.deepOperatorProfile)
   if (deepProfileSection) {
     sections.push(`# Operator Patterns\n${deepProfileSection}`)
+  }
+
+  if (preloaded.activeLifeEventMeta) {
+    sections.push(buildActiveEventPrompt(preloaded.activeLifeEventMeta))
   }
 
   if (senseData.pendingMessages.length > 0) {

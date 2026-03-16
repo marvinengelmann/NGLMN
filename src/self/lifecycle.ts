@@ -1,18 +1,10 @@
 import { differenceInHours, getDay, getHours, parseISO } from "date-fns"
 import { z } from "zod"
-import { getEmotionalState } from "@/affect/emotion/state.ts"
-import { callIntelligence } from "@/core/intelligence.ts"
-import { getActiveConversation, pushToActiveConversation } from "@/expression/communication/state.ts"
 import { getDreamLastRun } from "@/expression/dream/state.ts"
-import { env } from "@/infra/config/env.ts"
 import { getValidatedRedis, redis } from "@/infra/integrations/redis.ts"
-import { sendToOperator } from "@/infra/integrations/telegram.ts"
 import { log } from "@/infra/lib/logger.ts"
-import { captureError } from "@/infra/lib/sentry.ts"
 import { nowISO, nowLocal } from "@/infra/lib/time.ts"
 import { storeEpisode } from "@/memory/episodic.ts"
-import { LIFECYCLE_MID_EVENT_PROMPT } from "@/prompts/lifecycle.ts"
-import { getPersonalityPrompt } from "@/prompts/personality.ts"
 import { LIFECYCLE } from "./constants.ts"
 
 const LIFECYCLE_EVENT_KEY = "working:lifecycle:event"
@@ -132,9 +124,7 @@ export async function getAvailableLifeEvents(options: AvailableLifeEventsOptions
 
   const history = await getLifeEventHistory()
   const cooldownCutoff = new Date(Date.now() - LIFECYCLE.EVENT_COOLDOWN_HOURS * 3600 * 1000)
-  const recentTypes = new Set(
-    history.filter((e) => parseISO(e.startedAt) > cooldownCutoff).map((e) => e.type)
-  )
+  const recentTypes = new Set(history.filter((e) => parseISO(e.startedAt) > cooldownCutoff).map((e) => e.type))
 
   return EVENT_TYPES.filter((event) => {
     if (event.weekendOnly && !isWeekend) return false
@@ -223,15 +213,16 @@ export async function maybeStoreLifecycleEpisode(): Promise<void> {
 }
 
 /**
- * Mid-event phone check: roll probability once per new message batch,
- * then let the LLM decide whether and what to reply.
+ * Roll the probability gate for mid-event phone check.
+ * Returns true if ANIMA "noticed" the notification (probability passed).
+ * Ensures each message batch is only rolled once.
  */
-export async function handleMidEventCheck(event: EventType, maxUpdateId: number | null): Promise<void> {
-  if (maxUpdateId == null) return
+export async function rollMidEventNotification(event: EventType, maxUpdateId: number | null): Promise<boolean> {
+  if (maxUpdateId == null) return false
 
   const lastRolled = await redis.get<number>(LIFECYCLE_LAST_ROLLED_KEY)
   if (lastRolled != null && maxUpdateId <= lastRolled) {
-    return
+    return false
   }
 
   if (Math.random() >= event.notifyProbability) {
@@ -239,71 +230,28 @@ export async function handleMidEventCheck(event: EventType, maxUpdateId: number 
       type: event.type,
       probability: event.notifyProbability
     })
-    return
+    return false
   }
 
   await redis.set(LIFECYCLE_LAST_ROLLED_KEY, maxUpdateId)
-
-  try {
-    const [emotion, meta, conversation, personalityPrompt] = await Promise.all([
-      getEmotionalState(),
-      getValidatedRedis(LIFECYCLE_EVENT_META_KEY, EventMetaData),
-      getActiveConversation(),
-      getPersonalityPrompt()
-    ])
-
-    const recentMessages = conversation?.messages.slice(-15) ?? []
-
-    const contextData = {
-      operatorLanguage: env().OPERATOR_PREFERRED_LANGUAGE,
-      activity: event.type,
-      activityDetail: meta?.detail ?? null,
-      currentMood: emotion,
-      recentConversation: recentMessages
-    }
-
-    const system = `${personalityPrompt}\n\n${LIFECYCLE_MID_EVENT_PROMPT}`
-
-    const result = await callIntelligence({
-      system,
-      userMessage: JSON.stringify(contextData),
-      schema: MidEventResponse,
-      maxTokens: 256,
-      reasoning: false
-    })
-
-    if (result.isErr()) {
-      captureError(result.error.cause, { phase: "lifecycle_mid_event", eventType: event.type })
-      return
-    }
-
-    if (!result.value.respond || !result.value.text) {
-      log.info("Mid-event phone check — LLM chose not to respond", { type: event.type })
-      return
-    }
-
-    const sentMessageId = await sendToOperator(result.value.text)
-
-    await pushToActiveConversation([
-      {
-        role: "anima",
-        text: result.value.text,
-        timestamp: nowISO(),
-        messageId: sentMessageId
-      }
-    ])
-
-    log.info("Mid-event response sent", { type: event.type, text: result.value.text })
-  } catch (e) {
-    log.error("Failed to handle mid-event check", { error: String(e), eventType: event.type })
-    captureError(e, { phase: "lifecycle_mid_event" })
-  }
+  log.info("Mid-event phone check passed", { type: event.type, probability: event.notifyProbability })
+  return true
 }
 
-const MidEventResponse = z.object({
-  respond: z.boolean(),
-  text: z.string().nullable()
-})
+export interface ActiveLifeEventMeta {
+  type: string
+  detail: string
+  startedAt: string
+  durationHours: number
+}
+
+/**
+ * Get the metadata of the currently active life event, or null if none.
+ */
+export async function getActiveLifeEventMeta(): Promise<ActiveLifeEventMeta | null> {
+  if (!(await isLifeEventActive())) return null
+  return getValidatedRedis(LIFECYCLE_EVENT_META_KEY, EventMetaData)
+}
 
 /**
  * Store event metadata in Redis (no TTL) for episode tracking.

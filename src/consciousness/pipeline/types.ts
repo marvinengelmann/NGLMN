@@ -20,6 +20,7 @@ import type { DistortedMemory } from "@/perception/distortion/types.ts"
 import type { AttachmentStyle, RelationshipPhase } from "@/relational/attachment/types.ts"
 import type { DeepOperatorProfile } from "@/relational/mind/types.ts"
 import type { ActionType } from "@/relational/trust/types.ts"
+import type { ActiveLifeEventMeta } from "@/self/lifecycle.ts"
 import type { GrowthArc, NarrativeEntry, SelfConcept } from "@/self/psyche/types.ts"
 import type { FeelingResult, SenseResult, TickSummary } from "../types.ts"
 
@@ -82,4 +83,5 @@ export interface PreloadedState {
   graphEntities: EntitySelect[]
   graphRelations: EntityRelationSelect[]
   procedures: ProcedureSelect[]
+  activeLifeEventMeta: ActiveLifeEventMeta | null
 }

@@ -9,9 +9,9 @@ import { log } from "@/infra/lib/logger.ts"
 import { forceExpireStaleBusy, isBusy, touchProcessAlive } from "@/memory/working.ts"
 import {
   getActiveLifeEvent,
-  handleMidEventCheck,
   isLifeEventActive,
-  maybeStoreLifecycleEpisode
+  maybeStoreLifecycleEpisode,
+  rollMidEventNotification
 } from "@/self/lifecycle.ts"
 
 export const heartbeatTask = schedules.task({
@@ -43,7 +43,14 @@ export const heartbeatTask = schedules.task({
       if (event) {
         const peek = await fetchNewMessages(0)
         if (peek.messages.length > 0) {
-          await handleMidEventCheck(event, peek.maxUpdateId)
+          const noticed = await rollMidEventNotification(event, peek.maxUpdateId)
+          if (noticed) {
+            log.info("Mid-event phone check passed — running full heartbeat", {
+              type: event.type,
+              messages: peek.messages.length
+            })
+            return runHeartbeat()
+          }
         }
       }
       log.info("Heartbeat skipped — life event active")
