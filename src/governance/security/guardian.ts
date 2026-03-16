@@ -8,6 +8,7 @@ import { sendDriftAlert, sendGuardianAlert } from "@/infra/integrations/telegram
 import { log } from "@/infra/lib/logger.ts"
 import { addBreadcrumb } from "@/infra/lib/sentry.ts"
 import { nowISO } from "@/infra/lib/time.ts"
+import { recordEvent } from "@/memory/events.ts"
 import { getRecentActions, getRecentTickDurations, setDriftThrottle } from "@/memory/working.ts"
 import { detectInjection } from "./defense.ts"
 import type { DriftReport, DriftSignal, GuardianResult } from "./types.ts"
@@ -33,6 +34,7 @@ export async function handleGuardianVerdict(
       "guardian_block",
       contextId
     )
+    await recordEvent({ type: "guardian_blocked", detail: guardianResult.reasons.join("; ") })
     return { blocked: true }
   }
 
@@ -43,6 +45,7 @@ export async function handleGuardianVerdict(
       "guardian_warning",
       contextId
     )
+    await recordEvent({ type: "guardian_warned", detail: guardianResult.reasons.join("; ") })
   }
 
   return { blocked: false }

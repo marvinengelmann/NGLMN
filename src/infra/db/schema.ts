@@ -619,3 +619,23 @@ export const episodeLinks = pgTable(
 
 export type EpisodeLinkInsert = typeof episodeLinks.$inferInsert
 export type EpisodeLinkSelect = typeof episodeLinks.$inferSelect
+
+export const events = pgTable(
+  "events",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    type: text("type").notNull(),
+    detail: text("detail"),
+    metadata: jsonb("metadata").$type<Record<string, unknown>>(),
+    tickId: text("tick_id"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow()
+  },
+  (table) => [
+    index("idx_events_type").on(table.type),
+    index("idx_events_created").on(table.createdAt),
+    index("idx_events_tick_id").on(table.tickId)
+  ]
+)
+
+export type EventInsert = typeof events.$inferInsert
+export type EventSelect = typeof events.$inferSelect

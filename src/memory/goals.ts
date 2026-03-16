@@ -11,6 +11,7 @@ import { log } from "@/infra/lib/logger.ts"
 import type { AnimaResultAsync } from "@/infra/lib/result.ts"
 import { trySafe } from "@/infra/lib/result.ts"
 import { nowISO } from "@/infra/lib/time.ts"
+import { recordEvent } from "@/memory/events.ts"
 import { refreshGoalPriority } from "@/memory/goals/lifecycle.ts"
 import type { GoalSource } from "@/memory/types.ts"
 import { GoalStatus } from "@/memory/types.ts"
@@ -105,6 +106,8 @@ export function createGoal(
     } catch (e) {
       log.warn("Goal vector upsert failed", { error: String(e) })
     }
+
+    await recordEvent({ type: "goal_created", detail: title, metadata: { goalId: first.id, source } })
 
     return first.id
   })
@@ -249,6 +252,7 @@ export async function executeGoalUpdate(decision: AnimaDecision): Promise<void> 
       { trigger: "goal_completed", intensity: TRIGGER_INTENSITY.GOAL_COMPLETED },
       "goal_completed"
     )
+    await recordEvent({ type: "goal_completed", metadata: { goalId } })
 
     const goal = await db.select().from(goals).where(eq(goals.id, goalId)).limit(1)
     const parentId = goal[0]?.parentGoalId
@@ -261,9 +265,11 @@ export async function executeGoalUpdate(decision: AnimaDecision): Promise<void> 
           { trigger: "goal_completed", intensity: TRIGGER_INTENSITY.GOAL_COMPLETED },
           "goal_completed"
         )
+        await recordEvent({ type: "goal_completed", metadata: { goalId: parentId } })
       }
     }
   } else if (parsed.data === "failed") {
     await processEmotionTrigger({ trigger: "goal_failed", intensity: TRIGGER_INTENSITY.GOAL_FAILED }, "goal_failed")
+    await recordEvent({ type: "goal_failed", metadata: { goalId } })
   }
 }

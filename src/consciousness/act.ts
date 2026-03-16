@@ -35,6 +35,7 @@ import { log } from "@/infra/lib/logger.ts"
 import { logAndCaptureError, trySafe } from "@/infra/lib/result.ts"
 import { nowISO, nowLocal, sleep } from "@/infra/lib/time.ts"
 import { storeEpisode, storeHumorEpisode, storeRelationshipEpisode } from "@/memory/episodic.ts"
+import { recordEvent } from "@/memory/events.ts"
 import { executeGoalUpdate } from "@/memory/goals.ts"
 import { storeKnowledge } from "@/memory/semantic.ts"
 import { getLastTickSummary } from "@/memory/working.ts"
@@ -89,7 +90,7 @@ export async function act(
     }
   }
 
-  await executeAction(deliberateResult, feelResult)
+  await executeAction(deliberateResult, feelResult, tickId)
 
   if (deliberateResult.calendarChecked) {
     await setCalendarLastCheck(nowISO())
@@ -241,7 +242,11 @@ export async function act(
   return { responseSent, responseText, actionExecuted: decision.action, interrupted, postActEmotion }
 }
 
-async function executeAction(deliberateResult: DeliberateResult, feelResult: FeelingResult): Promise<void> {
+async function executeAction(
+  deliberateResult: DeliberateResult,
+  feelResult: FeelingResult,
+  tickId?: string
+): Promise<void> {
   const { decision } = deliberateResult
 
   switch (decision.action) {
@@ -253,7 +258,10 @@ async function executeAction(deliberateResult: DeliberateResult, feelResult: Fee
       if (reflectionOutput) {
         const result = await trySafe("REFLECTION_ERROR", () => executeReflection(reflectionOutput))
         if (result.isErr()) logAndCaptureError(result.error, { phase: "act_reflect" })
-        else log.info("Reflection completed")
+        else {
+          log.info("Reflection completed")
+          await recordEvent({ type: "reflection_completed", detail: reflectionOutput.insights[0], tickId })
+        }
       }
       break
     }
@@ -274,6 +282,14 @@ async function executeAction(deliberateResult: DeliberateResult, feelResult: Fee
         logAndCaptureError(evolveResult.error, { phase: "act_evolve" })
       } else {
         log.info("Evolution cycle completed", { action: evolveResult.value.action })
+        await recordEvent({
+          type: "evolution_applied",
+          detail: evolveResult.value.action,
+          tickId,
+          metadata: {
+            evolutionType: decision.actionPayload?.evolutionType
+          }
+        })
       }
       break
     }
@@ -281,10 +297,12 @@ async function executeAction(deliberateResult: DeliberateResult, feelResult: Fee
     case "dream": {
       const dreamResult = deliberateResult.dreamResult
       if (dreamResult) {
+        await recordEvent({ type: "dream_started", tickId })
         const result = await trySafe("DREAM_ERROR", () => executeDream(dreamResult))
         if (result.isErr()) logAndCaptureError(result.error, { phase: "act_dream" })
         else {
           log.info("Dream cycle completed")
+          await recordEvent({ type: "dream_ended", tickId })
           await startSleepEvent()
         }
       }
@@ -300,6 +318,7 @@ async function executeAction(deliberateResult: DeliberateResult, feelResult: Fee
           await setDreamState("idle")
         } else {
           log.info("Morning routine completed")
+          await recordEvent({ type: "woke_up", tickId })
         }
       }
       break
@@ -311,6 +330,7 @@ async function executeAction(deliberateResult: DeliberateResult, feelResult: Fee
         await startChosenLifeEvent(lifeEventType, lifeEventDetail, lifeEventDurationHours)
         if (alteredEventType) {
           await startAlteredState(alteredEventType, lifeEventType)
+          await recordEvent({ type: "altered_state_started", tickId, metadata: { alteredEventType, lifeEventType } })
         }
       }
       break
@@ -350,6 +370,14 @@ async function executeAction(deliberateResult: DeliberateResult, feelResult: Fee
           relevanceScore: 0.7,
           valence: computeValence(feelResult.emotion)
         })
+        await recordEvent({
+          type: "creative_output",
+          detail: creativeResult.value.slice(0, 200),
+          tickId,
+          metadata: {
+            mode: feelResult.creativeUrge.preferredMode
+          }
+        })
         log.info("Creative output generated", { mode: feelResult.creativeUrge.preferredMode })
       }
       break
@@ -379,6 +407,7 @@ async function executeAction(deliberateResult: DeliberateResult, feelResult: Fee
             relevanceScore: 0.6,
             valence: 0.3
           })
+          await recordEvent({ type: "posted_to_x", detail: xPostText, tickId, metadata: { url: postResult.value.url } })
           log.info("Posted to X", { tweetId: postResult.value.id, url: postResult.value.url })
         }
       }

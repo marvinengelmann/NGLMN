@@ -24,6 +24,10 @@ vi.mock("@/memory/episodic.ts", () => ({
   storeEpisode: vi.fn().mockResolvedValue("episode-id")
 }))
 
+vi.mock("@/memory/events.ts", () => ({
+  recordEvent: vi.fn().mockResolvedValue(undefined)
+}))
+
 vi.mock("@/infra/lib/time.ts", () => ({
   nowISO: vi.fn().mockReturnValue("2026-03-06T12:00:00.000Z"),
   nowLocal: vi.fn().mockReturnValue(new Date(2026, 2, 6, 12, 0, 0))

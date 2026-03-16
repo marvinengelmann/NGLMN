@@ -25,6 +25,7 @@ import { log } from "@/infra/lib/logger.ts"
 import { clamp } from "@/infra/lib/math.ts"
 import { trySafe } from "@/infra/lib/result.ts"
 import { nowISO, sleep } from "@/infra/lib/time.ts"
+import { recordEvent } from "@/memory/events.ts"
 import { getActiveGoals } from "@/memory/goals.ts"
 import { getKnowledge } from "@/memory/semantic.ts"
 import { detectPerceptionGoals } from "@/perception/goals.ts"
@@ -96,12 +97,15 @@ export async function sense(options?: SenseOptions): Promise<SenseResult> {
           if (activeSlot.messages.length > 0) {
             const emotionForArchive = await getEmotionalState()
             await trySafe("ARCHIVE_ERROR", () => archiveConversation(activeSlot, emotionForArchive))
+            await recordEvent({ type: "conversation_ended", metadata: { messageCount: activeSlot.messages.length } })
           }
           await startNewConversation()
+          await recordEvent({ type: "conversation_started" })
         }
       }
     } else {
       await startNewConversation()
+      await recordEvent({ type: "conversation_started" })
     }
 
     await pushToActiveConversation(

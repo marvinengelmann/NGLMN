@@ -5,6 +5,7 @@ import { getValidatedRedis, redis } from "@/infra/integrations/redis.ts"
 import { log } from "@/infra/lib/logger.ts"
 import { nowISO, nowLocal } from "@/infra/lib/time.ts"
 import { storeEpisode } from "@/memory/episodic.ts"
+import { recordEvent } from "@/memory/events.ts"
 import { LIFECYCLE } from "./constants.ts"
 
 const LIFECYCLE_EVENT_KEY = "working:lifecycle:event"
@@ -184,6 +185,7 @@ export async function startSleepEvent(): Promise<void> {
   const ttlSeconds = Math.round(durationHours * 3600)
 
   await redis.set(LIFECYCLE_EVENT_KEY, "sleep", { ex: ttlSeconds })
+  await recordEvent({ type: "sleep_started", metadata: { durationHours } })
   log.info("Sleep event started", { durationHours: durationHours.toFixed(1) })
 }
 
@@ -206,6 +208,11 @@ export async function maybeStoreLifecycleEpisode(): Promise<void> {
 
   const summary = buildActivitySummary(meta)
   await storeEpisode(summary, "activity", { relevanceScore: 0.6 })
+  await recordEvent({
+    type: "lifecycle_ended",
+    detail: meta.detail,
+    metadata: { eventType: meta.type, durationHours: meta.durationHours }
+  })
   await redis.del(LIFECYCLE_EVENT_META_KEY)
   await redis.del(LIFECYCLE_LAST_ROLLED_KEY)
 
@@ -288,7 +295,15 @@ export async function startChosenLifeEvent(type: string, detail?: string, chosen
   if (result !== "OK") return
 
   const resolvedDetail = detail ?? event.type
-  await Promise.all([storeEventMeta(event, resolvedDetail, durationHours), pushLifeEventHistory(event.type)])
+  await Promise.all([
+    storeEventMeta(event, resolvedDetail, durationHours),
+    pushLifeEventHistory(event.type),
+    recordEvent({
+      type: "lifecycle_started",
+      detail: resolvedDetail,
+      metadata: { eventType: event.type, durationHours }
+    })
+  ])
 
   log.info("Life event started", { type: event.type, detail: resolvedDetail, durationHours: durationHours.toFixed(1) })
 }
