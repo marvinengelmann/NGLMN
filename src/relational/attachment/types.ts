@@ -61,6 +61,21 @@ export const DEFAULT_VULNERABLE_MESSAGE_STYLE: VulnerableMessageStyle = {
   intimacyReveal: 0.1
 }
 
+export const IsolationStress = z.object({
+  isolationCost: z.number().min(0).max(1),
+  coregulationBenefit: z.number().min(0).max(1),
+  allostasis: z.number().min(0).max(1),
+  energyDrainRate: z.number().min(0).max(1)
+})
+export type IsolationStress = z.infer<typeof IsolationStress>
+
+export const DEFAULT_ISOLATION_STRESS: IsolationStress = {
+  isolationCost: 0,
+  coregulationBenefit: 0,
+  allostasis: 0.2,
+  energyDrainRate: 0
+}
+
 export const AttachmentCrisisState = z.object({
   active: z.boolean(),
   type: z.string().nullable(),

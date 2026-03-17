@@ -10,6 +10,7 @@ import {
   type SecondaryEmotionState
 } from "@/affect/emotion/types.ts"
 import { InteroceptivePrediction, SomaticState, VagalConstraints, VagalState } from "@/affect/soma/types.ts"
+import { BiasState } from "@/cognition/bias/types.ts"
 import { InnerDialog } from "@/cognition/polyphony/types.ts"
 import { AttentionState, CognitiveConflict, InstinctImpression, MetacognitiveState } from "@/cognition/types.ts"
 import { AnimaDecision } from "@/core/types.ts"
@@ -25,10 +26,11 @@ import { AnticipatoryState } from "@/perception/anticipation/types.ts"
 import type { ProustFlashback } from "@/perception/proust.ts"
 import { SubjectiveTimeState } from "@/perception/time/types.ts"
 import { PerceptionSummary } from "@/perception/types.ts"
-import { AttachmentDynamics, VulnerabilityState } from "@/relational/attachment/types.ts"
+import { AttachmentDynamics, IsolationStress, VulnerabilityState } from "@/relational/attachment/types.ts"
 import { OperatorModel } from "@/relational/mind/types.ts"
 import { BoundaryState } from "@/self/boundaries/types.ts"
 import { CoherenceState } from "@/self/coherence/types.ts"
+import { DefenseState } from "@/self/defense/types.ts"
 import { DissonanceState } from "@/self/dissonance/types.ts"
 import { HeldBackBuffer } from "@/self/psyche/heldback.ts"
 import { SelfConcept } from "@/self/psyche/types.ts"
@@ -96,7 +98,11 @@ export const FeelingResult = z.object({
   vagalState: VagalState,
   vagalConstraints: VagalConstraints,
   interoceptivePrediction: InteroceptivePrediction.nullable().default(null),
-  appraisalResults: z.array(AppraisalResult).default([])
+  appraisalResults: z.array(AppraisalResult).default([]),
+  isolationStress: IsolationStress,
+  defenseState: DefenseState,
+  defenseExpressionModifiers: z.string().nullable().default(null),
+  biasState: BiasState
 })
 export type FeelingResult = z.infer<typeof FeelingResult>
 

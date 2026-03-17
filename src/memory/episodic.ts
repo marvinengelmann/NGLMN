@@ -266,10 +266,29 @@ export async function queryRelatedWithDistortion(
   text: string,
   topK: number,
   emotionIntensity: number,
-  filter?: string
+  filter?: string,
+  repressionMap?: Map<string, number>
 ): Promise<DistortedMemory[]> {
   const episodes = await queryRelated(text, topK, filter)
-  return applyDistortions(episodes, emotionIntensity)
+  let distorted = await applyDistortions(episodes, emotionIntensity)
+
+  if (repressionMap && repressionMap.size > 0) {
+    distorted = distorted.map((memory) => {
+      const content = (memory.data ?? "").toLowerCase()
+      let suppressionTotal = 0
+      for (const [query, factor] of repressionMap) {
+        if (content.includes(query.toLowerCase())) {
+          suppressionTotal += factor
+        }
+      }
+      if (suppressionTotal > 0) {
+        return { ...memory, score: Math.max(0, memory.score * (1 - Math.min(1, suppressionTotal))) }
+      }
+      return memory
+    })
+  }
+
+  return distorted
 }
 
 /**

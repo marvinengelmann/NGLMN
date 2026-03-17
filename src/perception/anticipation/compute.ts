@@ -1,4 +1,5 @@
 import type { EmotionUpdateEvent } from "@/affect/emotion/types.ts"
+import { applyOptimismBias } from "@/cognition/bias/compute.ts"
 import { ANTICIPATION_SYSTEM } from "./constants.ts"
 import type { AnticipatoryState, Expectation, ExpectationViolation } from "./types.ts"
 
@@ -96,7 +97,11 @@ export function checkExpectationViolations(
 /**
  * Generate emotion triggers from anticipatory state.
  */
-export function computeAnticipationEmotionTriggers(state: AnticipatoryState): EmotionUpdateEvent[] {
+export function computeAnticipationEmotionTriggers(
+  state: AnticipatoryState,
+  optimismBiasStrength: number = 0.4,
+  serotoninLevel: number = 0.5
+): EmotionUpdateEvent[] {
   const triggers: EmotionUpdateEvent[] = []
 
   const positiveExpectations = state.activeExpectations.filter((e) => e.valence > 0)
@@ -112,9 +117,10 @@ export function computeAnticipationEmotionTriggers(state: AnticipatoryState): Em
   const negativeExpectations = state.activeExpectations.filter((e) => e.valence < 0)
   if (negativeExpectations.length > 0) {
     const avgValence = negativeExpectations.reduce((s, e) => s + Math.abs(e.valence), 0) / negativeExpectations.length
+    const biasedValence = Math.abs(applyOptimismBias(-avgValence, optimismBiasStrength, serotoninLevel))
     triggers.push({
       trigger: "expectation_violated",
-      intensity: avgValence * ANTICIPATION_SYSTEM.NEGATIVE_ANTICIPATION_CAUTION,
+      intensity: biasedValence * ANTICIPATION_SYSTEM.NEGATIVE_ANTICIPATION_CAUTION,
       detail: `dreading: ${negativeExpectations[0]?.content}`
     })
   }

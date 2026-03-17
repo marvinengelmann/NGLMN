@@ -14,6 +14,8 @@ import type {
 } from "@/affect/emotion/types.ts"
 import type { NeuromodulatoryState } from "@/affect/neuromodulation/types.ts"
 import type { InteroceptivePrediction, SomaticState, VagalConstraints, VagalState } from "@/affect/soma/types.ts"
+import type { BiasState } from "@/cognition/bias/types.ts"
+import type { AssociationActivation } from "@/cognition/learning/association/types.ts"
 import type { AttentionState, InstinctImpression, MetacognitiveState } from "@/cognition/types.ts"
 import type { CommunicationRegister, ConversationSlot } from "@/expression/communication/types.ts"
 import type { CreativeUrgeState } from "@/expression/creativity/types.ts"
@@ -26,6 +28,7 @@ import type { SubjectiveTimeState } from "@/perception/time/types.ts"
 import type {
   AttachmentDynamics,
   AttachmentStyle,
+  IsolationStress,
   VulnerabilityState,
   VulnerableMessageStyle
 } from "@/relational/attachment/types.ts"
@@ -33,6 +36,7 @@ import type { OperatorModel, RelationalPatternLibrary } from "@/relational/mind/
 import type { BoundaryState, BoundaryViolation } from "@/self/boundaries/types.ts"
 import type { CoherenceState } from "@/self/coherence/types.ts"
 import type { DeceptionState } from "@/self/deception/types.ts"
+import type { DefenseState } from "@/self/defense/types.ts"
 import type { DissonanceState } from "@/self/dissonance/types.ts"
 import type { HeldBackBuffer } from "@/self/psyche/heldback.ts"
 import type { GrowthArc, SelfConcept } from "@/self/psyche/types.ts"
@@ -75,6 +79,9 @@ export interface FeelPrefetch {
   interoceptiveAccuracy: number
   recentSomaHistory: SomaticState[]
   previousNeuromodulatoryState: NeuromodulatoryState
+  previousIsolationStress: IsolationStress
+  previousBiasState: BiasState
+  previousDefenseState: DefenseState
 }
 
 export interface EmotionChainResult {
@@ -113,6 +120,8 @@ export interface ParallelFanResult {
   boundaryState: BoundaryState
   newBoundaryViolations: BoundaryViolation[]
   boundaryEmotionEvents: EmotionUpdateEvent[]
+  isolationStress: IsolationStress
+  implicitAssociations: AssociationActivation[]
 }
 
 export interface VulnerabilityChainResult {
@@ -143,4 +152,7 @@ export interface FinalFanResult {
   selfConceptWithMomentum: SelfConcept
   communicationSimplification: number
   hedgingLevel: number
+  defenseState: DefenseState
+  defenseExpressionModifiers: string | null
+  biasState: BiasState
 }

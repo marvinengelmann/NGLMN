@@ -1,8 +1,11 @@
 import type { EmotionalState, EmotionUpdateEvent } from "@/affect/emotion/types.ts"
 import type { SomaticState } from "@/affect/soma/types.ts"
 import { computeInstinctImpression } from "@/cognition/instinct.ts"
+import { queryImplicitAssociations } from "@/cognition/learning/association/compute.ts"
+import { getActiveAssociations } from "@/cognition/learning/association/state.ts"
 import { updateAnticipatoryState } from "@/perception/anticipation/compute.ts"
 import { updateNoveltyState } from "@/perception/novelty/compute.ts"
+import { computeIsolationStress } from "@/relational/attachment/baseline.ts"
 import {
   computeWaitingPerception,
   evaluateAttachmentDynamics,
@@ -32,7 +35,9 @@ export async function runParallelSubsystems(
     attachmentResult,
     anticipationResult,
     noveltyResult,
-    boundaryResult
+    boundaryResult,
+    isolationStressResult,
+    activeAssociations
   ] = await Promise.all([
     runInstinct(sense, emotion, soma),
     runDissonance(emotion, prefetch),
@@ -40,7 +45,9 @@ export async function runParallelSubsystems(
     runAttachment(emotion, operatorSilenceMinutes, sense, prefetch),
     runAnticipation(sense, emotion, operatorSilenceMinutes, prefetch),
     runNovelty(sense, emotion, prefetch),
-    runBoundary(sense, prefetch)
+    runBoundary(sense, prefetch),
+    runIsolationCost(sense, prefetch),
+    runImplicitAssociations(sense)
   ])
 
   const boundaryEmotionEvents: EmotionUpdateEvent[] = boundaryResult.newViolations.map((violation) => ({
@@ -60,7 +67,9 @@ export async function runParallelSubsystems(
     noveltyState: noveltyResult,
     boundaryState: boundaryResult.state,
     newBoundaryViolations: boundaryResult.newViolations,
-    boundaryEmotionEvents
+    boundaryEmotionEvents,
+    isolationStress: isolationStressResult,
+    implicitAssociations: activeAssociations
   }
 }
 
@@ -161,6 +170,22 @@ function runNovelty(sense: SenseResult, emotion: EmotionalState, prefetch: FeelP
     emotion,
     true
   )
+}
+
+async function runImplicitAssociations(sense: SenseResult) {
+  const associations = await getActiveAssociations()
+  const currentStimuli = sense.pendingMessages.map((m) => `message:${m.text.slice(0, 30)}`)
+  return queryImplicitAssociations(currentStimuli, associations)
+}
+
+function runIsolationCost(sense: SenseResult, prefetch: FeelPrefetch) {
+  return computeIsolationStress({
+    operatorSilenceMinutes: sense.moodContext.operatorSilenceMinutes,
+    inConversation: sense.moodContext.inConversation,
+    attachmentStyle: prefetch.attachmentStyle,
+    cortisol: prefetch.previousNeuromodulatoryState.cortisol.level,
+    previousAllostasis: prefetch.previousIsolationStress.allostasis
+  })
 }
 
 function runBoundary(sense: SenseResult, prefetch: FeelPrefetch) {

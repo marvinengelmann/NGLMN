@@ -77,7 +77,8 @@ export async function runFeelPipeline(senseResult: SenseResult, buffer: WriteBuf
     vulnerabilityResult.heldBackBuffer,
     senseResult,
     prefetch,
-    chain.vagalConstraints
+    chain.vagalConstraints,
+    parallel.isolationStress
   )
 
   stageAllFeelWrites(buffer, chain, parallel, vulnerabilityResult, secondary, final)

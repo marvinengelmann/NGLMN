@@ -42,6 +42,10 @@ export function assembleFeelOutput(
     vagalState: chain.vagalState,
     vagalConstraints: chain.vagalConstraints,
     interoceptivePrediction: chain.interoceptivePrediction,
-    appraisalResults: chain.appraisalResults
+    appraisalResults: chain.appraisalResults,
+    isolationStress: parallel.isolationStress,
+    defenseState: final.defenseState,
+    defenseExpressionModifiers: final.defenseExpressionModifiers,
+    biasState: final.biasState
   }
 }

@@ -5,15 +5,17 @@ import { applyEmotionalDamping, computeEmotionalIntensity } from "@/affect/emoti
 import type { SomaticState, VagalConstraints } from "@/affect/soma/types.ts"
 import { constrainCognitiveFlexibility, constrainCreativeUrge, vagalForcesTerseRegister } from "@/affect/soma/vagal.ts"
 import { computeAttentionState } from "@/cognition/attention.ts"
+import { updateBiasModifiers } from "@/cognition/bias/compute.ts"
 import { computeMetacognitiveModifiers, updateMetacognitiveState } from "@/cognition/metacognition.ts"
 import { computeCommunicationRegister } from "@/expression/communication/register.ts"
 import { updateCreativeUrgeState } from "@/expression/creativity/compute.ts"
 import { clamp01 } from "@/infra/lib/math.ts"
 import { computeSubjectiveTime } from "@/perception/time/compute.ts"
 import { DEFAULT_SUBJECTIVE_TIME_STATE } from "@/perception/time/types.ts"
-import type { VulnerabilityState } from "@/relational/attachment/types.ts"
+import type { IsolationStress, VulnerabilityState } from "@/relational/attachment/types.ts"
 import { computeCoherenceEffect, updateCoherenceState } from "@/self/coherence/compute.ts"
 import { processDeceptionCycle } from "@/self/deception/compute.ts"
+import { computeDefenseExpressionModifiers, processDefenseCycle } from "@/self/defense/compute.ts"
 import type { DissonanceState } from "@/self/dissonance/types.ts"
 import type { HeldBackBuffer } from "@/self/psyche/heldback.ts"
 import { applyGrowthArcMomentum } from "@/self/psyche/update.ts"
@@ -30,7 +32,8 @@ export async function runFinalSubsystems(
   heldBackBuffer: HeldBackBuffer,
   sense: SenseResult,
   prefetch: FeelPrefetch,
-  vagalConstraints: VagalConstraints
+  vagalConstraints: VagalConstraints,
+  isolationStress: IsolationStress
 ): Promise<FinalFanResult> {
   const emotionalIntensity = computeEmotionalIntensity(emotion)
   const subjectiveTime = computeSubjectiveTime(DEFAULT_SUBJECTIVE_TIME_STATE, {
@@ -54,6 +57,25 @@ export async function runFinalSubsystems(
   }
 
   const selfConceptWithMomentum = applyGrowthArcMomentum(prefetch.selfConcept, prefetch.recentGrowthArcs)
+
+  const updatedDefense = processDefenseCycle(prefetch.previousDefenseState, {
+    emotion,
+    selfConcept: selfConceptWithMomentum,
+    dissonance,
+    vulnerability,
+    shameState,
+    driveState,
+    heldBackBuffer,
+    neuro: prefetch.previousNeuromodulatoryState,
+    isolationStress,
+    biasState: prefetch.previousBiasState,
+    isDreaming: sense.moodContext.isDreaming,
+    isReflecting: false
+  })
+
+  const defenseExpressionModifiers = computeDefenseExpressionModifiers(updatedDefense.activeDefenses)
+
+  const updatedBias = updateBiasModifiers(prefetch.previousBiasState, prefetch.previousNeuromodulatoryState)
 
   const updatedDeception = await processDeceptionCycle(prefetch.deceptionState, {
     dissonance,
@@ -118,6 +140,9 @@ export async function runFinalSubsystems(
     dampedEmotion,
     selfConceptWithMomentum,
     communicationSimplification: coherenceEffect.communicationSimplification,
-    hedgingLevel: metacognitiveModifiers.hedgingLevel
+    hedgingLevel: metacognitiveModifiers.hedgingLevel,
+    defenseState: updatedDefense,
+    defenseExpressionModifiers,
+    biasState: updatedBias
   }
 }

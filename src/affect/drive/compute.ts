@@ -22,6 +22,7 @@ interface DriveUpdateContext {
   blocked: Set<DriveType>
   satisfied: Set<DriveType>
   dopamineModulation?: number
+  isolationCost?: number
 }
 
 /**
@@ -51,6 +52,10 @@ export function computeDriveUpdate(context: DriveUpdateContext): DriveState {
         frustration = Math.min(1, frustration + DRIVES.FRUSTRATION_GROWTH * consecutiveBlockedTicks)
       } else {
         frustration = frustration * DRIVES.FRUSTRATION_DECAY
+      }
+
+      if (drive === "connection" && (context.isolationCost ?? 0) > 0.3) {
+        frustration = Math.min(1, frustration + (context.isolationCost ?? 0) * DRIVES.FRUSTRATION_GROWTH)
       }
 
       const salience = computeSalience(satiation, frustration)

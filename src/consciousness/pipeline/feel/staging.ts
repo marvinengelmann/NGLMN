@@ -3,6 +3,7 @@ import { DREAM_AFTERGLOW } from "@/expression/dream/constants.ts"
 import {
   boundaryLog,
   coherenceLog,
+  defenseLog,
   heldBackLog,
   neuromodulatoryHistory,
   operatorModelLog,
@@ -18,6 +19,9 @@ import type {
 } from "./types.ts"
 
 const REDIS = {
+  ISOLATION_STRESS: "working:attachment:isolation",
+  BIAS_STATE: "working:cognition:bias",
+  DEFENSE_STATE: "working:defense:state",
   EMOTION_CURRENT: "working:emotion:current",
   EMOTION_MOMENTUM: "working:emotion:momentum",
   EMOTION_AFTERGLOW: "working:emotion:afterglow",
@@ -105,6 +109,8 @@ function stageParallelWrites(buffer: WriteBuffer, parallel: ParallelFanResult): 
   buffer.stage(REDIS.NOVELTY_STATE, parallel.noveltyState)
   buffer.stage(REDIS.BOUNDARY_STATE, parallel.boundaryState)
 
+  buffer.stage(REDIS.ISOLATION_STRESS, parallel.isolationStress)
+
   if (parallel.relationalPatterns) {
     buffer.stage(REDIS.RELATIONAL_PATTERNS, parallel.relationalPatterns)
   }
@@ -155,6 +161,8 @@ function stageSecondaryWrites(buffer: WriteBuffer, result: SecondaryResult): voi
 }
 
 function stageFinalWrites(buffer: WriteBuffer, final: FinalFanResult): void {
+  buffer.stage(REDIS.DEFENSE_STATE, final.defenseState)
+  buffer.stage(REDIS.BIAS_STATE, final.biasState)
   buffer.stage(REDIS.DECEPTION_CURRENT, final.deceptionState)
   buffer.stage(REDIS.COMMUNICATION_REGISTER, final.register)
   buffer.stage(REDIS.ATTENTION_STATE, final.attentionState)
@@ -167,6 +175,15 @@ function stageFinalWrites(buffer: WriteBuffer, final: FinalFanResult): void {
     fragmentationSources: final.coherenceState.fragmentationSources,
     regressionActive: final.coherenceState.regressionActive
   })
+
+  for (const defense of final.defenseState.activeDefenses) {
+    buffer.stagePostgres(defenseLog, {
+      type: defense.type,
+      trigger: defense.trigger,
+      intensity: defense.intensity,
+      breakthrough: false
+    })
+  }
 }
 
 export function stageAllFeelWrites(

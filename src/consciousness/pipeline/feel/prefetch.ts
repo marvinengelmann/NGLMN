@@ -18,6 +18,7 @@ import {
   getVagalState
 } from "@/affect/soma/state.ts"
 import { getMetacognitiveState } from "@/cognition/awareness.ts"
+import { getBiasState } from "@/cognition/bias/state.ts"
 import { getActiveConversation } from "@/expression/communication/state.ts"
 import { getCreativeUrgeState } from "@/expression/creativity/state.ts"
 import { getDreamAfterglow } from "@/expression/dream/state.ts"
@@ -25,13 +26,14 @@ import { getKnowledge } from "@/memory/semantic.ts"
 import { getConsecutiveConversationTicks, getConsecutiveIdleTicks, getRecentActions } from "@/memory/working.ts"
 import { getAnticipatoryState } from "@/perception/anticipation/state.ts"
 import { getNoveltyState } from "@/perception/novelty/state.ts"
-import { getAttachmentStyle } from "@/relational/attachment/state.ts"
+import { getAttachmentStyle, getIsolationStress } from "@/relational/attachment/state.ts"
 import { getVulnerabilityPrevLevel } from "@/relational/attachment/store.ts"
 import { getOperatorModel, getRelationalPatterns } from "@/relational/mind/state.ts"
 import { getAggregateTrustExperience } from "@/relational/trust/compute.ts"
 import { getBoundaryState } from "@/self/boundaries/state.ts"
 import { getCoherenceState } from "@/self/coherence/state.ts"
 import { getDeceptionState } from "@/self/deception/state.ts"
+import { getDefenseState } from "@/self/defense/state.ts"
 import { getGenesisDNA } from "@/self/genesis/state.ts"
 import { getHeldBackBuffer } from "@/self/psyche/heldback.ts"
 import { getGrowthArcs, getSelfConcept } from "@/self/psyche/state.ts"
@@ -75,7 +77,10 @@ export async function prefetchFeelState(): Promise<FeelPrefetch> {
     previousVagalState,
     interoceptiveAccuracy,
     recentSomaHistory,
-    previousNeuromodulatoryState
+    previousNeuromodulatoryState,
+    previousIsolationStress,
+    previousBiasState,
+    previousDefenseState
   ] = await Promise.all([
     getGenesisDNA(),
     getEmotionalState(),
@@ -113,7 +118,10 @@ export async function prefetchFeelState(): Promise<FeelPrefetch> {
     getVagalState(),
     getInteroceptiveAccuracy(),
     getRecentSomaHistory(),
-    getNeuromodulatoryState()
+    getNeuromodulatoryState(),
+    getIsolationStress(),
+    getBiasState(),
+    getDefenseState()
   ])
 
   return {
@@ -153,6 +161,9 @@ export async function prefetchFeelState(): Promise<FeelPrefetch> {
     previousVagalState,
     interoceptiveAccuracy,
     recentSomaHistory,
-    previousNeuromodulatoryState
+    previousNeuromodulatoryState,
+    previousIsolationStress,
+    previousBiasState,
+    previousDefenseState
   }
 }

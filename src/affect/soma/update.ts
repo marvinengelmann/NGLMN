@@ -133,6 +133,7 @@ interface SomaticUpdateOptions {
   elapsedMinutes: number
   hourOfDay: number
   memories?: SomaticState[]
+  isolationEnergyDrain?: number
 }
 
 /**
@@ -143,12 +144,20 @@ export function computeSomaticUpdate({
   emotion,
   elapsedMinutes,
   hourOfDay,
-  memories
+  memories,
+  isolationEnergyDrain
 }: SomaticUpdateOptions): SomaticState {
   const target = computeSomaticTarget(emotion, hourOfDay)
   let result = applySomaticHysteresis(current, target, elapsedMinutes)
   if (memories && memories.length > 0) {
     result = applySomaticMemory(result, memories)
+  }
+  if (isolationEnergyDrain && isolationEnergyDrain > 0) {
+    result = clampState({
+      ...result,
+      gravity: clamp01(result.gravity + isolationEnergyDrain * 0.5),
+      openness: clamp01(result.openness - isolationEnergyDrain * 0.3)
+    })
   }
   return result
 }

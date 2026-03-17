@@ -4,10 +4,29 @@ import type { GuiltSource } from "@/affect/emotion/guilt.ts"
 import { getGuiltState, markRepaired, saveGuiltState } from "@/affect/emotion/guilt.ts"
 import { getMoodBaseline } from "@/affect/emotion/state.ts"
 import { blendMoodBaseline, enforceEmotionFloors, summarizeEmotions } from "@/affect/emotion/update.ts"
+import { getNeuromodulatoryState } from "@/affect/neuromodulation/state.ts"
 import { getSomaticState } from "@/affect/soma/state.ts"
 import { rechargeSocialBattery } from "@/affect/soma/update.ts"
+import { decayAnchors, incrementExposure, updateBiasModifiers } from "@/cognition/bias/compute.ts"
+import { getBiasState, saveBiasState } from "@/cognition/bias/state.ts"
 import { updateHabitState } from "@/cognition/habit.ts"
 import { getHabitState } from "@/cognition/habits.ts"
+import {
+  extractEmotionLabels,
+  processHebbianCycle,
+  pruneWeakAssociations
+} from "@/cognition/learning/association/compute.ts"
+import { HEBBIAN } from "@/cognition/learning/association/constants.ts"
+import {
+  getRecentStimuliHistory,
+  pushStimuliHistory,
+  saveActiveAssociations
+} from "@/cognition/learning/association/state.ts"
+import {
+  batchUpsertAssociations,
+  deleteWeakAssociations,
+  getAllAssociations
+} from "@/cognition/learning/association/store.ts"
 import { maybeRunAnalysis, pruneOldLessons, reinforceFromLatestOutcome } from "@/cognition/learning/lessons.ts"
 import { expireStaleOutcomes } from "@/cognition/learning/outcomes.ts"
 import { extractProceduresFromOutcomes, pruneProcedures } from "@/cognition/learning/procedures/store.ts"
@@ -546,6 +565,70 @@ async function runProbabilisticTasks(input: MaintainInput, feelResult: FeelingRe
       probability: PROCEDURE_CONSTANTS.PRUNE_PROBABILITY,
       execute: async () => {
         await pruneProcedures()
+      }
+    },
+    {
+      name: "hebbian_update",
+      probability: HEBBIAN.EXTRACTION_PROBABILITY,
+      execute: async () => {
+        const emotionLabels = extractEmotionLabels(feelResult.emotion)
+        const stimuli = [
+          ...emotionLabels.map((l) => `emotion:${l}`),
+          ...messageTexts.slice(0, 2).map((t) => `topic:${t.slice(0, 30)}`)
+        ]
+        if (stimuli.length < 2) return
+        const history = await getRecentStimuliHistory()
+        const associations = await getAllAssociations()
+        const updated = processHebbianCycle(associations, stimuli, history)
+        await batchUpsertAssociations(updated)
+        await pushStimuliHistory(stimuli)
+        await saveActiveAssociations(updated)
+      }
+    },
+    {
+      name: "hebbian_prune",
+      probability: HEBBIAN.PRUNE_PROBABILITY,
+      execute: async () => {
+        await deleteWeakAssociations(HEBBIAN.MIN_STRENGTH)
+        const all = await getAllAssociations()
+        const pruned = pruneWeakAssociations(all)
+        await saveActiveAssociations(pruned)
+      }
+    },
+    {
+      name: "bias_update",
+      probability: 1,
+      execute: async () => {
+        const biasState = await getBiasState()
+        const neuro = await getNeuromodulatoryState()
+        const updated = updateBiasModifiers(biasState, neuro)
+        await saveBiasState(updated)
+      }
+    },
+    {
+      name: "anchor_decay",
+      probability: 0.1,
+      execute: async () => {
+        const biasState = await getBiasState()
+        const decayed = decayAnchors(biasState.anchorPoints, 0.5)
+        if (decayed.length !== biasState.anchorPoints.length) {
+          await saveBiasState({ ...biasState, anchorPoints: decayed })
+        }
+      }
+    },
+    {
+      name: "exposure_tracking",
+      probability: 1,
+      condition: input.actResult.responseSent,
+      execute: async () => {
+        const biasState = await getBiasState()
+        const entities = messageTexts.flatMap((t) => t.match(/\b[A-Z][a-z]+\b/g) ?? [])
+        if (entities.length === 0) return
+        let counts = biasState.exposureCounts
+        for (const entity of entities.slice(0, 5)) {
+          counts = incrementExposure(counts, entity)
+        }
+        await saveBiasState({ ...biasState, exposureCounts: counts })
       }
     }
   ]

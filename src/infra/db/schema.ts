@@ -702,3 +702,38 @@ export const visualReferences = pgTable(
 
 export type VisualReferenceInsert = typeof visualReferences.$inferInsert
 export type VisualReferenceSelect = typeof visualReferences.$inferSelect
+
+export const hebbianAssociations = pgTable(
+  "hebbian_associations",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    stimulusA: text("stimulus_a").notNull(),
+    stimulusB: text("stimulus_b").notNull(),
+    strength: real("strength").notNull().default(0.1),
+    coactivationCount: integer("coactivation_count").notNull().default(1),
+    lastCoactivatedAt: timestamp("last_coactivated_at", { withTimezone: true }).notNull().defaultNow(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow()
+  },
+  (table) => [
+    uniqueIndex("uq_hebbian_pair").on(table.stimulusA, table.stimulusB),
+    index("idx_hebbian_stimulus_a").on(table.stimulusA),
+    index("idx_hebbian_strength").on(table.strength)
+  ]
+)
+export type HebbianAssociationInsert = typeof hebbianAssociations.$inferInsert
+export type HebbianAssociationSelect = typeof hebbianAssociations.$inferSelect
+
+export const defenseLog = pgTable(
+  "defense_log",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    type: text("type").notNull(),
+    trigger: text("trigger").notNull(),
+    intensity: real("intensity").notNull(),
+    breakthrough: boolean("breakthrough").notNull().default(false),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow()
+  },
+  (table) => [index("idx_defense_log_created").on(table.createdAt)]
+)
+export type DefenseLogInsert = typeof defenseLog.$inferInsert
+export type DefenseLogSelect = typeof defenseLog.$inferSelect
