@@ -1,5 +1,6 @@
 import { differenceInMinutes, getHours, parseISO } from "date-fns"
 import { startAlteredState } from "@/affect/altered/state.ts"
+import { createNeutralAppraisalContext } from "@/affect/emotion/appraisal.ts"
 import { EMOTIONAL_THRESHOLDS, TRIGGER_INTENSITY } from "@/affect/emotion/constants.ts"
 import type { EmotionalState } from "@/affect/emotion/types.ts"
 import {
@@ -114,11 +115,15 @@ export async function act(
 
   let postActEmotion: EmotionalState | undefined
   if (responseSent) {
-    const outcomeEmotion = enforceEmotionFloors(
-      computeEmotionalUpdate(feelResult.emotion, [
-        { trigger: "message_sent", intensity: TRIGGER_INTENSITY.MESSAGE_SENT }
-      ])
+    const outcomeResult = computeEmotionalUpdate(
+      feelResult.emotion,
+      [{ trigger: "message_sent", intensity: TRIGGER_INTENSITY.MESSAGE_SENT }],
+      senseResult.moodContext,
+      0,
+      {},
+      { appraisalContext: createNeutralAppraisalContext() }
     )
+    const outcomeEmotion = enforceEmotionFloors(outcomeResult.state)
     postActEmotion = outcomeEmotion
     buffer.stage("working:emotion:current", outcomeEmotion)
     buffer.stagePostgres(emotionHistory, {

@@ -1,5 +1,6 @@
 import type { SecondaryEmotionState } from "@/affect/emotion/types.ts"
 import { applyEvent } from "@/affect/emotion/update.ts"
+import { constrainVulnerabilityLevel } from "@/affect/soma/vagal.ts"
 import { log } from "@/infra/lib/logger.ts"
 import { isOperatorReturning } from "@/relational/attachment/update.ts"
 import type { FeelingResult, SenseResult } from "../../types.ts"
@@ -33,6 +34,12 @@ export async function runFeelPipeline(senseResult: SenseResult, buffer: WriteBuf
     parallel,
     prefetch
   )
+
+  vulnerabilityResult.vulnerability = {
+    ...vulnerabilityResult.vulnerability,
+    level: constrainVulnerabilityLevel(vulnerabilityResult.vulnerability.level, chain.vagalConstraints),
+    windowOpen: vulnerabilityResult.vulnerability.windowOpen && chain.vagalConstraints.vulnerabilityAccess > 0.3
+  }
 
   const operatorSilenceMinutes = senseResult.moodContext.operatorSilenceMinutes
   const operatorJustReturned = isOperatorReturning(senseResult.pendingMessages.length, operatorSilenceMinutes)
@@ -69,7 +76,8 @@ export async function runFeelPipeline(senseResult: SenseResult, buffer: WriteBuf
     vulnerabilityResult.shameState,
     vulnerabilityResult.heldBackBuffer,
     senseResult,
-    prefetch
+    prefetch,
+    chain.vagalConstraints
   )
 
   stageAllFeelWrites(buffer, chain, parallel, vulnerabilityResult, secondary, final)

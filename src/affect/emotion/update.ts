@@ -1,5 +1,6 @@
 import {
   type AfterglowEntry,
+  type AppraisalResult,
   DEFAULT_EMOTIONAL_MOMENTUM,
   DEFAULT_EMOTIONAL_STATE,
   type EmotionalMomentum,
@@ -9,7 +10,9 @@ import {
   type MoodContext
 } from "@/affect/emotion/types.ts"
 import { clamp01, halfLifeDecay } from "@/infra/lib/math.ts"
+import { applyAppraisedEvents } from "./appraisal.ts"
 import { CONTRADICTION, EMOTION, MOMENTUM, MOOD_BASELINE, MOOD_CONTAGION } from "./constants.ts"
+import type { AppraisalContext } from "./types.ts"
 
 export const EMOTION_FLOORS: Partial<Record<keyof EmotionalState, number>> = {
   energy: 0.05,
@@ -377,62 +380,55 @@ export function applyTrustModifiers(state: EmotionalState, trustExperience: numb
   return clampState(result)
 }
 
-interface EmotionalUpdateOptions {
+export interface EmotionalUpdateOptions {
   dnaBaseline?: EmotionalState
   isIdle?: boolean
   trustExperience?: number
+  appraisalContext: AppraisalContext
+}
+
+export interface EmotionalUpdateResult {
+  state: EmotionalState
+  appraisals: AppraisalResult[]
 }
 
 /**
  * Compute a new emotional state from current state, events, context, and timing.
- * 1. Compute dynamic mood baseline from context
- * 2. Apply time-based drift towards baseline
- * 3. Apply DNA baseline gravity (if provided)
- * 4. Apply each event with novelty scaling
- * 5. Apply cross-coupling consistency rules
- * 6. Clamp to [0,1]
+ * Every event passes through the 5-check appraisal pipeline (Scherer's Component Process Model).
+ * Returns both the final state and all appraisal results for metacognitive introspection.
  */
 export function computeEmotionalUpdate(
   current: EmotionalState,
   events: EmotionUpdateEvent[],
-  moodContext?: MoodContext,
-  elapsedMinutes?: number,
-  triggerTimestamps?: Record<string, number>,
-  options?: EmotionalUpdateOptions
-): EmotionalState {
-  const context = moodContext ?? {
-    operatorSilenceMinutes: 0,
-    inConversation: false,
-    systemHealthy: true,
-    budgetOk: true,
-    hasActiveGoals: false,
-    isDreaming: false,
-    operatorMood: "unknown" as const,
-    connectionLevel: 0.5,
-    attachmentAvoidance: 0.15
-  }
-  const elapsed = elapsedMinutes ?? 1
+  moodContext: MoodContext,
+  elapsedMinutes: number,
+  triggerTimestamps: Record<string, number>,
+  options: EmotionalUpdateOptions
+): EmotionalUpdateResult {
+  const baseline = computeMoodBaseline(moodContext)
+  let state = applyDrift(current, baseline, elapsedMinutes)
 
-  const baseline = computeMoodBaseline(context)
-  let state = applyDrift(current, baseline, elapsed)
-
-  if (options?.dnaBaseline) {
+  if (options.dnaBaseline) {
     state = applyBaselineGravity(state, options.dnaBaseline, options.isIdle ?? false)
   }
 
-  state = events.reduce((acc, event) => {
-    const lastSimilar = triggerTimestamps?.[event.trigger]
-    return applyEvent(acc, event, lastSimilar)
-  }, state)
+  const { state: appraisedState, appraisals } = applyAppraisedEvents(
+    state,
+    events,
+    options.appraisalContext,
+    TRIGGER_EFFECTS,
+    triggerTimestamps
+  )
+  state = appraisedState
 
   state = applyCrossCoupling(state)
   state = applyContradictionBudget(state)
 
-  if (options?.trustExperience !== undefined) {
+  if (options.trustExperience !== undefined) {
     state = applyTrustModifiers(state, options.trustExperience)
   }
 
-  return clampState(state)
+  return { state: clampState(state), appraisals }
 }
 
 const EMOTION_DIMENSIONS: (keyof EmotionalState)[] = [

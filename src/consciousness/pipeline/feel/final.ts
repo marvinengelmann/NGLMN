@@ -2,7 +2,8 @@ import type { DriveState } from "@/affect/drive/types.ts"
 import type { ShameState } from "@/affect/emotion/shame.ts"
 import type { EmotionalState } from "@/affect/emotion/types.ts"
 import { applyEmotionalDamping, computeEmotionalIntensity } from "@/affect/emotion/update.ts"
-import type { SomaticState } from "@/affect/soma/types.ts"
+import type { SomaticState, VagalConstraints } from "@/affect/soma/types.ts"
+import { constrainCognitiveFlexibility, constrainCreativeUrge, vagalForcesTerseRegister } from "@/affect/soma/vagal.ts"
 import { computeAttentionState } from "@/cognition/attention.ts"
 import { computeMetacognitiveModifiers, updateMetacognitiveState } from "@/cognition/metacognition.ts"
 import { computeCommunicationRegister } from "@/expression/communication/register.ts"
@@ -28,7 +29,8 @@ export async function runFinalSubsystems(
   shameState: ShameState,
   heldBackBuffer: HeldBackBuffer,
   sense: SenseResult,
-  prefetch: FeelPrefetch
+  prefetch: FeelPrefetch,
+  vagalConstraints: VagalConstraints
 ): Promise<FinalFanResult> {
   const emotionalIntensity = computeEmotionalIntensity(emotion)
   const subjectiveTime = computeSubjectiveTime(DEFAULT_SUBJECTIVE_TIME_STATE, {
@@ -40,12 +42,16 @@ export async function runFinalSubsystems(
     emotionalIntensity
   })
 
-  const creativeUrge = updateCreativeUrgeState(prefetch.previousCreativeUrge, {
+  const rawCreativeUrge = updateCreativeUrgeState(prefetch.previousCreativeUrge, {
     emotion,
     driveState,
     heldBackBuffer,
     consecutiveIdleTicks: prefetch.consecutiveIdleTicks
   })
+  const creativeUrge = {
+    ...rawCreativeUrge,
+    level: constrainCreativeUrge(rawCreativeUrge.level, vagalConstraints)
+  }
 
   const selfConceptWithMomentum = applyGrowthArcMomentum(prefetch.selfConcept, prefetch.recentGrowthArcs)
 
@@ -78,14 +84,19 @@ export async function runFinalSubsystems(
   })
 
   const metacognitiveModifiers = computeMetacognitiveModifiers(metacognitiveState)
-  if (Math.abs(metacognitiveModifiers.confidenceModifier) > 0.01) {
+  const constrainedConfidenceModifier = constrainCognitiveFlexibility(
+    metacognitiveModifiers.confidenceModifier,
+    vagalConstraints
+  )
+  if (Math.abs(constrainedConfidenceModifier) > 0.01) {
     dampedEmotion = {
       ...dampedEmotion,
-      confidence: clamp01(dampedEmotion.confidence + metacognitiveModifiers.confidenceModifier)
+      confidence: clamp01(dampedEmotion.confidence + constrainedConfidenceModifier)
     }
   }
 
-  const register = computeCommunicationRegister(dampedEmotion, soma, vulnerability, shameState, coherenceState)
+  const computedRegister = computeCommunicationRegister(dampedEmotion, soma, vulnerability, shameState, coherenceState)
+  const register = vagalForcesTerseRegister(vagalConstraints) ? ("terse" as typeof computedRegister) : computedRegister
 
   const conversationMessageCount = prefetch.activeConversation?.messages.length ?? 0
   const attentionState = computeAttentionState(

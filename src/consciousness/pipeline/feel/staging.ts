@@ -40,7 +40,11 @@ const REDIS = {
   CREATIVE_URGE: "working:creativity:urge",
   COHERENCE_STATE: "working:coherence:state",
   METACOGNITION_STATE: "working:metacognition:state",
-  DEFERRED_QUEUE: "working:emotion:deferred_queue"
+  DEFERRED_QUEUE: "working:emotion:deferred_queue",
+  VAGAL_STATE: "working:soma:vagal",
+  INTEROCEPTIVE_ACCURACY: "working:soma:interoceptiveAccuracy",
+  LAST_PREDICTION: "working:soma:lastPrediction",
+  LAST_APPRAISALS: "working:emotion:lastAppraisals"
 } as const
 
 function stageEmotionChainWrites(buffer: WriteBuffer, chain: EmotionChainResult): void {
@@ -64,6 +68,13 @@ function stageEmotionChainWrites(buffer: WriteBuffer, chain: EmotionChainResult)
   }
 
   buffer.stage(REDIS.DEFERRED_QUEUE, chain.updatedDeferredQueue)
+  buffer.stage(REDIS.VAGAL_STATE, chain.vagalState)
+  buffer.stage(REDIS.LAST_APPRAISALS, chain.appraisalResults)
+
+  if (chain.interoceptivePrediction) {
+    buffer.stage(REDIS.INTEROCEPTIVE_ACCURACY, chain.interoceptivePrediction.accuracy)
+    buffer.stage(REDIS.LAST_PREDICTION, chain.interoceptivePrediction)
+  }
 
   buffer.stagePostgres(somaticHistory, {
     state: chain.soma,

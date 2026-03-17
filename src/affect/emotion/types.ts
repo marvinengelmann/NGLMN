@@ -119,6 +119,32 @@ export type SecondaryEmotionState = z.infer<typeof SecondaryEmotionState>
 
 export type EmotionEffect = Partial<Record<keyof EmotionalState, number>>
 
+export const AppraisalContext = z.object({
+  noveltyLevel: z.number().min(0).max(1),
+  hasActiveGoals: z.boolean(),
+  confidence: z.number().min(0).max(1),
+  energy: z.number().min(0).max(1),
+  vagalZone: z.enum(["ventral", "sympathetic", "dorsal"]),
+  selfConcept: z.object({
+    selfEfficacy: z.number().min(0).max(1),
+    selfWorth: z.number().min(0).max(1),
+    selfContinuity: z.number().min(0).max(1),
+    agency: z.number().min(0).max(1),
+    authenticity: z.number().min(0).max(1)
+  })
+})
+export type AppraisalContext = z.infer<typeof AppraisalContext>
+
+export const AppraisalResult = z.object({
+  novelty: z.number().min(0).max(1),
+  pleasantness: z.number().min(-1).max(1),
+  goalRelevance: z.number().min(0).max(1),
+  copingPotential: z.number().min(0).max(1),
+  normCompatibility: z.number().min(-1).max(1),
+  overallModulation: z.number().min(0).max(2)
+})
+export type AppraisalResult = z.infer<typeof AppraisalResult>
+
 export const MetricsSnapshot = z.object({
   errorRate: z.number(),
   successRate: z.number(),

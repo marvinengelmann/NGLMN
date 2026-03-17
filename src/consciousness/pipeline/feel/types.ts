@@ -1,21 +1,22 @@
 import type { ActiveAlteredEvent } from "@/affect/altered/types.ts"
 import type { DriveState } from "@/affect/drive/types.ts"
+import type { DeferredEmotionalEvent, DeferredQueue } from "@/affect/emotion/deferred.ts"
 import type { ShameState } from "@/affect/emotion/shame.ts"
 import type {
   AfterglowEntry,
+  AppraisalResult,
   EmotionalMomentum,
   EmotionalState,
   EmotionTrigger,
   EmotionUpdateEvent,
   SecondaryEmotionState
 } from "@/affect/emotion/types.ts"
-import type { SomaticState } from "@/affect/soma/types.ts"
+import type { InteroceptivePrediction, SomaticState, VagalConstraints, VagalState } from "@/affect/soma/types.ts"
 import type { AttentionState, InstinctImpression, MetacognitiveState } from "@/cognition/types.ts"
 import type { CommunicationRegister, ConversationSlot } from "@/expression/communication/types.ts"
 import type { CreativeUrgeState } from "@/expression/creativity/types.ts"
 import type { DreamAfterglow } from "@/expression/dream/types.ts"
 import type { SemanticMemorySelect } from "@/infra/db/schema.ts"
-import type { DeferredEmotionalEvent, DeferredQueue } from "@/affect/emotion/deferred.ts"
 import type { AnticipatoryState } from "@/perception/anticipation/types.ts"
 import type { NoveltyState } from "@/perception/novelty/types.ts"
 import type { ProustFlashback } from "@/perception/proust.ts"
@@ -68,6 +69,9 @@ export interface FeelPrefetch {
   selfInsights: SemanticMemorySelect[]
   relationalPatterns: RelationalPatternLibrary
   deferredQueue: DeferredQueue
+  previousVagalState: VagalState
+  interoceptiveAccuracy: number
+  recentSomaHistory: SomaticState[]
 }
 
 export interface EmotionChainResult {
@@ -86,6 +90,10 @@ export interface EmotionChainResult {
   proustFlashback: ProustFlashback | null
   maturedDeferredEvents: DeferredEmotionalEvent[]
   updatedDeferredQueue: DeferredQueue
+  vagalState: VagalState
+  vagalConstraints: VagalConstraints
+  interoceptivePrediction: InteroceptivePrediction | null
+  appraisalResults: AppraisalResult[]
 }
 
 export interface ParallelFanResult {

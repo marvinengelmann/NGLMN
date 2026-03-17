@@ -8,7 +8,7 @@ import {
 } from "@/affect/drive/compute.ts"
 import { checkMaturedEvents, maturedEventToTrigger, storeDeferredEvent } from "@/affect/emotion/deferred.ts"
 import { detectNostalgia } from "@/affect/emotion/nostalgia.ts"
-import { detectProustFlashback } from "@/perception/proust.ts"
+import type { AppraisalContext } from "@/affect/emotion/types.ts"
 import {
   applyAfterglow,
   applyEvent,
@@ -17,18 +17,42 @@ import {
   computeEmotionalUpdate,
   detectAfterglow
 } from "@/affect/emotion/update.ts"
+import {
+  assembleInteroceptivePrediction,
+  computeInteroceptiveEmotionTriggers,
+  computeSomaticTrajectory,
+  predictSomaticState
+} from "@/affect/soma/prediction.ts"
 import { querySomaticMemories } from "@/affect/soma/state.ts"
 import { computeSomaticUpdate } from "@/affect/soma/update.ts"
+import {
+  applyVagalEmotionConstraints,
+  computeNeuroception,
+  computeVagalConstraints,
+  computeVagalTransition
+} from "@/affect/soma/vagal.ts"
 import { DREAM_AFTERGLOW } from "@/expression/dream/constants.ts"
 import { applyClampedDeltas } from "@/infra/lib/math.ts"
 import { setEmotionContext } from "@/infra/lib/sentry.ts"
 import { elapsedMinutesSince, nowISO, nowLocal } from "@/infra/lib/time.ts"
 import { queryRelated } from "@/memory/episodic.ts"
+import { detectProustFlashback } from "@/perception/proust.ts"
 import type { SenseResult } from "../../types.ts"
 import type { EmotionChainResult, FeelPrefetch } from "./types.ts"
 
 export async function runEmotionChain(sense: SenseResult, prefetch: FeelPrefetch): Promise<EmotionChainResult> {
-  const computed = computeEmotionalUpdate(
+  const hourOfDay = getHours(nowLocal())
+
+  const appraisalContext: AppraisalContext = {
+    noveltyLevel: prefetch.previousNovelty.level,
+    hasActiveGoals: sense.moodContext.hasActiveGoals,
+    confidence: prefetch.currentEmotion.confidence,
+    energy: prefetch.currentEmotion.energy,
+    vagalZone: prefetch.previousVagalState.zone,
+    selfConcept: prefetch.selfConcept
+  }
+
+  const { state: computed, appraisals: appraisalResults } = computeEmotionalUpdate(
     prefetch.currentEmotion,
     sense.rawTriggers,
     sense.moodContext,
@@ -37,7 +61,8 @@ export async function runEmotionChain(sense: SenseResult, prefetch: FeelPrefetch
     {
       dnaBaseline: prefetch.dnaBaseline ?? undefined,
       isIdle: prefetch.consecutiveIdleTicks > 0,
-      trustExperience: prefetch.trustExperience
+      trustExperience: prefetch.trustExperience,
+      appraisalContext
     }
   )
 
@@ -110,6 +135,16 @@ export async function runEmotionChain(sense: SenseResult, prefetch: FeelPrefetch
   const driveTriggers = computeDriveEmotionTriggers(driveState)
   emotion = driveTriggers.reduce((acc, trigger) => applyEvent(acc, trigger), emotion)
 
+  const somaticTrajectory = computeSomaticTrajectory(prefetch.recentSomaHistory)
+  const predictedSoma = predictSomaticState({
+    currentSoma: prefetch.currentSoma,
+    currentEmotion: emotion,
+    moodContext: sense.moodContext,
+    vagalState: prefetch.previousVagalState,
+    trajectory: somaticTrajectory,
+    hourOfDay
+  })
+
   const elapsed = elapsedMinutesSince(prefetch.lastSomaTimestamp)
   const messageText = sense.pendingMessages.map((m) => m.text).join(" ")
   const somaticMemories = messageText ? await querySomaticMemories(messageText) : []
@@ -118,13 +153,33 @@ export async function runEmotionChain(sense: SenseResult, prefetch: FeelPrefetch
     current: prefetch.currentSoma,
     emotion,
     elapsedMinutes: elapsed,
-    hourOfDay: getHours(nowLocal()),
+    hourOfDay,
     memories: somaticMemories
   })
   if (alteredState && !isExpired(alteredState)) {
     const somaMods = computeSomaModifiers(alteredState)
     soma = applyClampedDeltas(soma, somaMods, new Set(["socialBattery"]))
   }
+
+  const interoceptivePrediction = assembleInteroceptivePrediction(
+    predictedSoma,
+    soma,
+    prefetch.interoceptiveAccuracy,
+    prefetch.previousVagalState.zone
+  )
+
+  const interoceptiveTriggers = computeInteroceptiveEmotionTriggers(interoceptivePrediction)
+  emotion = interoceptiveTriggers.reduce((acc, t) => applyEvent(acc, t), emotion)
+
+  const neuroception = computeNeuroception({
+    soma,
+    emotion,
+    operatorPresent: sense.moodContext.inConversation
+  })
+  const vagalState = computeVagalTransition(prefetch.previousVagalState, neuroception, sense.moodContext.inConversation)
+  const vagalConstraints = computeVagalConstraints(vagalState)
+
+  emotion = applyVagalEmotionConstraints(emotion, vagalConstraints)
 
   let deferredQueue = prefetch.deferredQueue
   for (const trigger of sense.rawTriggers) {
@@ -164,6 +219,10 @@ export async function runEmotionChain(sense: SenseResult, prefetch: FeelPrefetch
     emotionTrigger,
     proustFlashback,
     maturedDeferredEvents,
-    updatedDeferredQueue
+    updatedDeferredQueue,
+    vagalState,
+    vagalConstraints,
+    interoceptivePrediction,
+    appraisalResults
   }
 }

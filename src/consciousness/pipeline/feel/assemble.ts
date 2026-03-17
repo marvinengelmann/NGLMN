@@ -38,6 +38,10 @@ export function assembleFeelOutput(
     communicationSimplification: final.communicationSimplification,
     hedgingLevel: final.hedgingLevel,
     proustFlashback: chain.proustFlashback,
-    maturedDeferredEvents: chain.maturedDeferredEvents
+    maturedDeferredEvents: chain.maturedDeferredEvents,
+    vagalState: chain.vagalState,
+    vagalConstraints: chain.vagalConstraints,
+    interoceptivePrediction: chain.interoceptivePrediction,
+    appraisalResults: chain.appraisalResults
   }
 }

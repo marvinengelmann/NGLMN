@@ -3,12 +3,14 @@ import { db } from "@/infra/db/client.ts"
 import { somaticHistory } from "@/infra/db/schema.ts"
 import { getValidatedRedis, redis } from "@/infra/integrations/redis.ts"
 import { queryRelated } from "@/memory/episodic.ts"
-import { SOMA } from "./constants.ts"
-import { DEFAULT_SOMATIC_STATE, SomaticState } from "./types.ts"
+import { INTEROCEPTION, SOMA } from "./constants.ts"
+import { DEFAULT_SOMATIC_STATE, DEFAULT_VAGAL_STATE, SomaticState, VagalState } from "./types.ts"
 
 const KEYS = {
   CURRENT: "working:soma:current",
-  LAST_TIMESTAMP: "working:soma:lastTimestamp"
+  LAST_TIMESTAMP: "working:soma:lastTimestamp",
+  VAGAL: "working:soma:vagal",
+  INTEROCEPTIVE_ACCURACY: "working:soma:interoceptiveAccuracy"
 } as const
 
 /**
@@ -91,4 +93,39 @@ export async function querySomaticMemories(
   if (episodeTimestamps.length === 0) return []
 
   return getSomaticStatesNear(episodeTimestamps, topK)
+}
+
+/**
+ * Get the most recent somatic states from DB history for trajectory computation.
+ */
+export async function getRecentSomaHistory(
+  limit: number = INTEROCEPTION.TRAJECTORY_HISTORY_SIZE
+): Promise<SomaticState[]> {
+  const rows = await db
+    .select()
+    .from(somaticHistory)
+    .orderBy(desc(somaticHistory.createdAt))
+    .limit(limit)
+
+  return rows
+    .map((r) => SomaticState.safeParse(r.state))
+    .filter((r) => r.success)
+    .map((r) => r.data)
+    .reverse()
+}
+
+/**
+ * Get current vagal state from Redis, falling back to default.
+ */
+export async function getVagalState(): Promise<VagalState> {
+  const fromRedis = await getValidatedRedis(KEYS.VAGAL, VagalState)
+  return fromRedis ?? DEFAULT_VAGAL_STATE
+}
+
+/**
+ * Get current interoceptive accuracy from Redis, falling back to initial value.
+ */
+export async function getInteroceptiveAccuracy(): Promise<number> {
+  const raw = await redis.get<number>(KEYS.INTEROCEPTIVE_ACCURACY)
+  return raw ?? INTEROCEPTION.ACCURACY_INITIAL
 }

@@ -20,3 +20,53 @@ export const DEFAULT_SOMATIC_STATE: SomaticState = {
   openness: 0.5,
   socialBattery: 0.8
 }
+
+export const VagalZone = z.enum(["ventral", "sympathetic", "dorsal"])
+export type VagalZone = z.infer<typeof VagalZone>
+
+export const VagalState = z.object({
+  zone: VagalZone,
+  activation: z.number().min(0).max(1),
+  transitionMomentum: z.number().min(-1).max(1),
+  ticksInZone: z.number().int().min(0),
+  neuroception: z.number().min(0).max(1)
+})
+export type VagalState = z.infer<typeof VagalState>
+
+export const DEFAULT_VAGAL_STATE: VagalState = {
+  zone: "ventral",
+  activation: 0.6,
+  transitionMomentum: 0,
+  ticksInZone: 100,
+  neuroception: 0.7
+}
+
+export const VagalConstraints = z.object({
+  vulnerabilityAccess: z.number().min(0).max(1),
+  creativityAccess: z.number().min(0).max(1),
+  socialEngagement: z.number().min(0).max(1),
+  emotionalRange: z.number().min(0).max(1),
+  cognitiveFlexibility: z.number().min(0).max(1)
+})
+export type VagalConstraints = z.infer<typeof VagalConstraints>
+
+export const SomaticPredictionError = z.object({
+  tension: z.number().min(-1).max(1),
+  warmth: z.number().min(-1).max(1),
+  heartRate: z.number().min(-1).max(1),
+  breathing: z.number().min(-1).max(1),
+  gravity: z.number().min(-1).max(1),
+  openness: z.number().min(-1).max(1)
+})
+export type SomaticPredictionError = z.infer<typeof SomaticPredictionError>
+
+export const InteroceptivePrediction = z.object({
+  predicted: SomaticState,
+  actual: SomaticState,
+  error: SomaticPredictionError,
+  totalError: z.number().min(0).max(1),
+  accuracy: z.number().min(0).max(1),
+  alexithymia: z.number().min(0).max(1),
+  somethingFeelsOff: z.boolean()
+})
+export type InteroceptivePrediction = z.infer<typeof InteroceptivePrediction>

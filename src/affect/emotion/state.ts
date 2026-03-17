@@ -7,6 +7,7 @@ import { getValidatedRedis, getValidatedRedisOr, redis } from "@/infra/integrati
 import { log } from "@/infra/lib/logger.ts"
 import { zodParse } from "@/infra/lib/result.ts"
 import { getGenesisDNA } from "@/self/genesis/state.ts"
+import { createNeutralAppraisalContext } from "./appraisal.ts"
 import {
   AfterglowEntry,
   DEFAULT_EMOTIONAL_MOMENTUM,
@@ -75,7 +76,29 @@ export async function processEmotionTrigger(
   tickId?: string
 ): Promise<EmotionalState> {
   const current = await getEmotionalState()
-  const updated = enforceEmotionFloors(computeEmotionalUpdate(current, Array.isArray(events) ? events : [events]))
+  const eventArray = Array.isArray(events) ? events : [events]
+  const defaultMoodContext = {
+    operatorSilenceMinutes: 0,
+    inConversation: false,
+    systemHealthy: true,
+    budgetOk: true,
+    hasActiveGoals: false,
+    isDreaming: false,
+    operatorMood: "unknown" as const,
+    connectionLevel: 0.5,
+    attachmentAvoidance: 0.15
+  }
+  const result = computeEmotionalUpdate(
+    current,
+    eventArray,
+    defaultMoodContext,
+    1,
+    {},
+    {
+      appraisalContext: createNeutralAppraisalContext()
+    }
+  )
+  const updated = enforceEmotionFloors(result.state)
   await saveEmotionalState(updated, trigger, tickId)
   return updated
 }

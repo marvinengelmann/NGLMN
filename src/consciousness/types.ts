@@ -1,8 +1,15 @@
 import * as z from "zod"
 import { DriveState } from "@/affect/drive/types.ts"
+import type { DeferredEmotionalEvent } from "@/affect/emotion/deferred.ts"
 import { ShameState } from "@/affect/emotion/shame.ts"
-import { EmotionalState, EmotionUpdateEvent, MoodContext, type SecondaryEmotionState } from "@/affect/emotion/types.ts"
-import { SomaticState } from "@/affect/soma/types.ts"
+import {
+  AppraisalResult,
+  EmotionalState,
+  EmotionUpdateEvent,
+  MoodContext,
+  type SecondaryEmotionState
+} from "@/affect/emotion/types.ts"
+import { InteroceptivePrediction, SomaticState, VagalConstraints, VagalState } from "@/affect/soma/types.ts"
 import { InnerDialog } from "@/cognition/polyphony/types.ts"
 import { AttentionState, CognitiveConflict, InstinctImpression, MetacognitiveState } from "@/cognition/types.ts"
 import { AnimaDecision } from "@/core/types.ts"
@@ -15,12 +22,11 @@ import { WorkflowDefinition } from "@/governance/workflow/types.ts"
 import { PendingMessage, WeatherData } from "@/infra/integrations/types.ts"
 import type { EnrichedTweet } from "@/infra/integrations/x.ts"
 import { AnticipatoryState } from "@/perception/anticipation/types.ts"
+import type { ProustFlashback } from "@/perception/proust.ts"
 import { SubjectiveTimeState } from "@/perception/time/types.ts"
 import { PerceptionSummary } from "@/perception/types.ts"
 import { AttachmentDynamics, VulnerabilityState } from "@/relational/attachment/types.ts"
 import { OperatorModel } from "@/relational/mind/types.ts"
-import type { DeferredEmotionalEvent } from "@/affect/emotion/deferred.ts"
-import type { ProustFlashback } from "@/perception/proust.ts"
 import { BoundaryState } from "@/self/boundaries/types.ts"
 import { CoherenceState } from "@/self/coherence/types.ts"
 import { DissonanceState } from "@/self/dissonance/types.ts"
@@ -86,7 +92,11 @@ export const FeelingResult = z.object({
   communicationSimplification: z.number().min(0).max(1).default(0),
   hedgingLevel: z.number().min(0).max(1).default(0),
   proustFlashback: z.custom<ProustFlashback>().nullable().default(null),
-  maturedDeferredEvents: z.custom<DeferredEmotionalEvent[]>().default([])
+  maturedDeferredEvents: z.custom<DeferredEmotionalEvent[]>().default([]),
+  vagalState: VagalState,
+  vagalConstraints: VagalConstraints,
+  interoceptivePrediction: InteroceptivePrediction.nullable().default(null),
+  appraisalResults: z.array(AppraisalResult).default([])
 })
 export type FeelingResult = z.infer<typeof FeelingResult>
 

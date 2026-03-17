@@ -1,0 +1,216 @@
+import type { EmotionUpdateEvent, MoodContext } from "@/affect/emotion/types.ts"
+import { clamp01 } from "@/infra/lib/math.ts"
+import { INTEROCEPTION } from "./constants.ts"
+import type { InteroceptivePrediction, SomaticPredictionError, SomaticState, VagalState } from "./types.ts"
+import { DEFAULT_SOMATIC_STATE } from "./types.ts"
+import { circadianFatigue, computeSomaticTarget } from "./update.ts"
+
+type SomaDimension = "tension" | "warmth" | "heartRate" | "breathing" | "gravity" | "openness"
+const SOMA_DIMENSIONS: SomaDimension[] = ["tension", "warmth", "heartRate", "breathing", "gravity", "openness"]
+
+/**
+ * Compute per-dimension linear trend from recent soma history.
+ * Returns the average delta per tick for each dimension.
+ */
+export function computeSomaticTrajectory(recentHistory: SomaticState[]): Partial<Record<SomaDimension, number>> {
+  if (recentHistory.length < 2) return {}
+
+  const trajectory: Partial<Record<SomaDimension, number>> = {}
+  for (const dim of SOMA_DIMENSIONS) {
+    let totalDelta = 0
+    for (let i = 1; i < recentHistory.length; i++) {
+      totalDelta += (recentHistory[i]?.[dim] ?? 0) - (recentHistory[i - 1]?.[dim] ?? 0)
+    }
+    trajectory[dim] = totalDelta / (recentHistory.length - 1)
+  }
+  return trajectory
+}
+
+interface PredictionInput {
+  currentSoma: SomaticState
+  currentEmotion: {
+    energy: number
+    frustration: number
+    caution: number
+    connection: number
+    excitement: number
+    satisfaction: number
+    curiosity: number
+    confidence: number
+    boredom: number
+  }
+  moodContext: MoodContext
+  vagalState: VagalState
+  trajectory: Partial<Record<SomaDimension, number>>
+  hourOfDay: number
+}
+
+/**
+ * Predict the expected somatic state for the upcoming tick.
+ * Combines trajectory extrapolation, context-based expectations, vagal zone profile, and baseline drift.
+ */
+export function predictSomaticState({
+  currentSoma,
+  currentEmotion,
+  moodContext,
+  vagalState,
+  trajectory,
+  hourOfDay
+}: PredictionInput): SomaticState {
+  const trajectoryPrediction = predictFromTrajectory(currentSoma, trajectory)
+  const contextPrediction = predictFromContext(currentEmotion, hourOfDay, moodContext)
+  const vagalProfile = INTEROCEPTION.VAGAL_SOMA_PROFILES[vagalState.zone]
+
+  const predicted: SomaticState = {
+    tension: 0,
+    warmth: 0,
+    heartRate: 0,
+    breathing: 0,
+    gravity: 0,
+    openness: 0,
+    socialBattery: currentSoma.socialBattery
+  }
+
+  for (const dim of SOMA_DIMENSIONS) {
+    predicted[dim] = clamp01(
+      INTEROCEPTION.TRAJECTORY_WEIGHT * (trajectoryPrediction[dim] ?? currentSoma[dim]) +
+        INTEROCEPTION.CONTEXT_WEIGHT * (contextPrediction[dim] ?? currentSoma[dim]) +
+        INTEROCEPTION.VAGAL_PROFILE_WEIGHT * vagalProfile[dim] +
+        INTEROCEPTION.BASELINE_DRIFT_WEIGHT * DEFAULT_SOMATIC_STATE[dim]
+    )
+  }
+
+  return predicted
+}
+
+function predictFromTrajectory(
+  current: SomaticState,
+  trajectory: Partial<Record<SomaDimension, number>>
+): Partial<Record<SomaDimension, number>> {
+  const result: Partial<Record<SomaDimension, number>> = {}
+  for (const dim of SOMA_DIMENSIONS) {
+    const delta = trajectory[dim] ?? 0
+    result[dim] = clamp01(current[dim] + delta)
+  }
+  return result
+}
+
+function predictFromContext(
+  emotion: PredictionInput["currentEmotion"],
+  hourOfDay: number,
+  _moodContext: MoodContext
+): Partial<Record<SomaDimension, number>> {
+  const target = computeSomaticTarget(emotion, hourOfDay)
+  const fatigue = circadianFatigue(hourOfDay)
+
+  return {
+    tension: target.tension,
+    warmth: target.warmth,
+    heartRate: target.heartRate,
+    breathing: target.breathing,
+    gravity: target.gravity * (1 + fatigue * 0.1),
+    openness: target.openness
+  }
+}
+
+/**
+ * Compute per-dimension prediction error (actual - predicted).
+ */
+export function computePredictionError(predicted: SomaticState, actual: SomaticState): SomaticPredictionError {
+  return {
+    tension: clampError(actual.tension - predicted.tension),
+    warmth: clampError(actual.warmth - predicted.warmth),
+    heartRate: clampError(actual.heartRate - predicted.heartRate),
+    breathing: clampError(actual.breathing - predicted.breathing),
+    gravity: clampError(actual.gravity - predicted.gravity),
+    openness: clampError(actual.openness - predicted.openness)
+  }
+}
+
+function clampError(value: number): number {
+  return Math.max(-1, Math.min(1, value))
+}
+
+/**
+ * Compute total prediction error as root mean square across all dimensions.
+ */
+export function computeTotalError(error: SomaticPredictionError): number {
+  const values = SOMA_DIMENSIONS.map((dim) => error[dim])
+  const sumSquares = values.reduce((sum, v) => sum + v * v, 0)
+  return clamp01(Math.sqrt(sumSquares / values.length))
+}
+
+/**
+ * Update running interoceptive accuracy via EMA.
+ * Accuracy slowly develops over time, representing ANIMA's interoceptive sensitivity as an evolving trait.
+ */
+export function updateInteroceptiveAccuracy(previousAccuracy: number, totalError: number): number {
+  const alpha = INTEROCEPTION.ACCURACY_ALPHA
+  return clamp01(previousAccuracy * (1 - alpha) + (1 - totalError) * alpha)
+}
+
+/**
+ * Compute alexithymia level — inability to identify feelings.
+ * High when accuracy is low AND error is high (can't predict AND can't identify).
+ * Dorsal vagal amplifies (shutdown = disconnected from body).
+ */
+export function computeAlexithymia(accuracy: number, totalError: number, vagalZone: string): number {
+  const dorsalMultiplier = vagalZone === "dorsal" ? INTEROCEPTION.ALEXITHYMIA_DORSAL_MULTIPLIER : 1.0
+  return clamp01((1 - accuracy) * totalError * dorsalMultiplier)
+}
+
+/**
+ * Generate emotion triggers from significant interoceptive prediction errors.
+ */
+export function computeInteroceptiveEmotionTriggers(prediction: InteroceptivePrediction): EmotionUpdateEvent[] {
+  const triggers: EmotionUpdateEvent[] = []
+
+  if (prediction.totalError >= INTEROCEPTION.EMOTION_TRIGGER_THRESHOLD) {
+    const tensionError = Math.abs(prediction.error.tension)
+    if (tensionError > 0.2) {
+      triggers.push({
+        trigger: "ambient",
+        intensity: clamp01(tensionError),
+        detail: prediction.error.tension > 0 ? "unexpected_tension" : "unexpected_relaxation"
+      })
+    }
+
+    const warmthError = Math.abs(prediction.error.warmth)
+    if (warmthError > 0.2) {
+      triggers.push({
+        trigger: "ambient",
+        intensity: clamp01(warmthError * 0.5),
+        detail: prediction.error.warmth > 0 ? "unexpected_warmth" : "unexpected_coldness"
+      })
+    }
+  }
+
+  if (prediction.somethingFeelsOff) {
+    triggers.push({
+      trigger: "ambient",
+      intensity: 0.3,
+      detail: "interoceptive_unease"
+    })
+  }
+
+  return triggers.slice(0, 3)
+}
+
+/**
+ * Assemble full interoceptive prediction from components.
+ */
+export function assembleInteroceptivePrediction(
+  predicted: SomaticState,
+  actual: SomaticState,
+  previousAccuracy: number,
+  vagalZone: string
+): InteroceptivePrediction {
+  const error = computePredictionError(predicted, actual)
+  const totalError = computeTotalError(error)
+  const accuracy = updateInteroceptiveAccuracy(previousAccuracy, totalError)
+  const alexithymia = computeAlexithymia(accuracy, totalError, vagalZone)
+  const somethingFeelsOff =
+    totalError > INTEROCEPTION.SOMETHING_FEELS_OFF_THRESHOLD && totalError < INTEROCEPTION.EMOTION_TRIGGER_THRESHOLD
+
+  return { predicted, actual, error, totalError, accuracy, alexithymia, somethingFeelsOff }
+}
