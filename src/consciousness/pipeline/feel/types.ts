@@ -7,10 +7,12 @@ import type {
   AppraisalResult,
   EmotionalMomentum,
   EmotionalState,
+  EmotionConstructionResult,
   EmotionTrigger,
   EmotionUpdateEvent,
   SecondaryEmotionState
 } from "@/affect/emotion/types.ts"
+import type { NeuromodulatoryState } from "@/affect/neuromodulation/types.ts"
 import type { InteroceptivePrediction, SomaticState, VagalConstraints, VagalState } from "@/affect/soma/types.ts"
 import type { AttentionState, InstinctImpression, MetacognitiveState } from "@/cognition/types.ts"
 import type { CommunicationRegister, ConversationSlot } from "@/expression/communication/types.ts"
@@ -72,6 +74,7 @@ export interface FeelPrefetch {
   previousVagalState: VagalState
   interoceptiveAccuracy: number
   recentSomaHistory: SomaticState[]
+  previousNeuromodulatoryState: NeuromodulatoryState
 }
 
 export interface EmotionChainResult {
@@ -94,6 +97,8 @@ export interface EmotionChainResult {
   vagalConstraints: VagalConstraints
   interoceptivePrediction: InteroceptivePrediction | null
   appraisalResults: AppraisalResult[]
+  neuromodulatoryState: NeuromodulatoryState
+  constructionResults: EmotionConstructionResult[]
 }
 
 export interface ParallelFanResult {

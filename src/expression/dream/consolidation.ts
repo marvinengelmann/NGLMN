@@ -1,8 +1,12 @@
+import { getEmotionalState } from "@/affect/emotion/state.ts"
+import { getNeuromodulatoryState } from "@/affect/neuromodulation/state.ts"
 import { redis } from "@/infra/integrations/redis.ts"
 import { log } from "@/infra/lib/logger.ts"
 import { logAndCaptureError } from "@/infra/lib/result.ts"
 import { storeWithConsistencyCheck } from "@/memory/consistency.ts"
+import { RECONSOLIDATION } from "@/memory/constants.ts"
 import { downgradeEpisodes, forgetOldEpisodes, queryRelated, summarizeOldEpisodes } from "@/memory/episodic.ts"
+import { processReconsolidation } from "@/memory/reconsolidation.ts"
 import { storeRelation } from "@/memory/semantic.ts"
 import {
   type RelationType,
@@ -95,6 +99,17 @@ export async function applyConsolidationResult(output: ConsolidationOutput): Pro
     const relationResult = await storeRelation(sourceEntryId, targetEntryId, relType, conn.description)
     if (relationResult.isErr()) logAndCaptureError(relationResult.error)
   }, Promise.resolve())
+
+  const consolidationEpisodes = await queryRelated("dream consolidation memory review", 10)
+  if (consolidationEpisodes.length > 0) {
+    const [dreamEmotion, dreamNeuro] = await Promise.all([getEmotionalState(), getNeuromodulatoryState()])
+    await processReconsolidation(
+      consolidationEpisodes,
+      dreamEmotion,
+      dreamNeuro,
+      RECONSOLIDATION.DREAM_BLEND_MULTIPLIER
+    )
+  }
 
   if (output.downgradeIds.length > 0) {
     await downgradeEpisodes(output.downgradeIds)

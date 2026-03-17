@@ -6,6 +6,7 @@ import {
   inferBlockedDrives,
   inferSatisfiedDrives
 } from "@/affect/drive/compute.ts"
+import { toEpisodicContext } from "@/affect/emotion/construction.ts"
 import { checkMaturedEvents, maturedEventToTrigger, storeDeferredEvent } from "@/affect/emotion/deferred.ts"
 import { detectNostalgia } from "@/affect/emotion/nostalgia.ts"
 import type { AppraisalContext } from "@/affect/emotion/types.ts"
@@ -17,6 +18,11 @@ import {
   computeEmotionalUpdate,
   detectAfterglow
 } from "@/affect/emotion/update.ts"
+import {
+  computeCopingModulation,
+  computeLearningRateModulation,
+  computeNeuromodulatorUpdate
+} from "@/affect/neuromodulation/compute.ts"
 import {
   assembleInteroceptivePrediction,
   computeInteroceptiveEmotionTriggers,
@@ -36,12 +42,17 @@ import { applyClampedDeltas } from "@/infra/lib/math.ts"
 import { setEmotionContext } from "@/infra/lib/sentry.ts"
 import { elapsedMinutesSince, nowISO, nowLocal } from "@/infra/lib/time.ts"
 import { queryRelated } from "@/memory/episodic.ts"
+import { processReconsolidation } from "@/memory/reconsolidation.ts"
 import { detectProustFlashback } from "@/perception/proust.ts"
 import type { SenseResult } from "../../types.ts"
 import type { EmotionChainResult, FeelPrefetch } from "./types.ts"
 
 export async function runEmotionChain(sense: SenseResult, prefetch: FeelPrefetch): Promise<EmotionChainResult> {
   const hourOfDay = getHours(nowLocal())
+  const messageText = sense.pendingMessages.map((m) => m.text).join(" ")
+
+  const episodicHits = messageText ? await queryRelated(messageText, 5) : []
+  const episodicContext = toEpisodicContext(episodicHits)
 
   const appraisalContext: AppraisalContext = {
     noveltyLevel: prefetch.previousNovelty.level,
@@ -49,10 +60,15 @@ export async function runEmotionChain(sense: SenseResult, prefetch: FeelPrefetch
     confidence: prefetch.currentEmotion.confidence,
     energy: prefetch.currentEmotion.energy,
     vagalZone: prefetch.previousVagalState.zone,
-    selfConcept: prefetch.selfConcept
+    selfConcept: prefetch.selfConcept,
+    cortisolCopingModulation: computeCopingModulation(prefetch.previousNeuromodulatoryState)
   }
 
-  const { state: computed, appraisals: appraisalResults } = computeEmotionalUpdate(
+  const {
+    state: computed,
+    appraisals: appraisalResults,
+    constructions: constructionResults
+  } = computeEmotionalUpdate(
     prefetch.currentEmotion,
     sense.rawTriggers,
     sense.moodContext,
@@ -62,7 +78,10 @@ export async function runEmotionChain(sense: SenseResult, prefetch: FeelPrefetch
       dnaBaseline: prefetch.dnaBaseline ?? undefined,
       isIdle: prefetch.consecutiveIdleTicks > 0,
       trustExperience: prefetch.trustExperience,
-      appraisalContext
+      appraisalContext,
+      soma: prefetch.currentSoma,
+      episodicContext,
+      neuromodulatoryState: prefetch.previousNeuromodulatoryState
     }
   )
 
@@ -130,7 +149,8 @@ export async function runEmotionChain(sense: SenseResult, prefetch: FeelPrefetch
     current: prefetch.previousDriveState,
     elapsedMinutes: Math.max(1, sense.elapsedMinutes),
     blocked,
-    satisfied
+    satisfied,
+    dopamineModulation: computeLearningRateModulation(prefetch.previousNeuromodulatoryState)
   })
   const driveTriggers = computeDriveEmotionTriggers(driveState)
   emotion = driveTriggers.reduce((acc, trigger) => applyEvent(acc, trigger), emotion)
@@ -146,7 +166,6 @@ export async function runEmotionChain(sense: SenseResult, prefetch: FeelPrefetch
   })
 
   const elapsed = elapsedMinutesSince(prefetch.lastSomaTimestamp)
-  const messageText = sense.pendingMessages.map((m) => m.text).join(" ")
   const somaticMemories = messageText ? await querySomaticMemories(messageText) : []
 
   let soma = computeSomaticUpdate({
@@ -190,7 +209,6 @@ export async function runEmotionChain(sense: SenseResult, prefetch: FeelPrefetch
     emotion = applyEvent(emotion, maturedEventToTrigger(maturedEvent))
   }
 
-  const episodicHits = messageText ? await queryRelated(messageText, 5) : []
   const nostalgia = episodicHits.length > 0 ? detectNostalgia(episodicHits, new Date()) : null
   if (nostalgia) {
     emotion = applyEvent(emotion, nostalgia)
@@ -199,6 +217,17 @@ export async function runEmotionChain(sense: SenseResult, prefetch: FeelPrefetch
   const proustFlashback = episodicHits.length > 0 ? detectProustFlashback(episodicHits) : null
   if (proustFlashback) {
     emotion = applyClampedDeltas(emotion, proustFlashback.emotionSpike)
+  }
+
+  const neuromodulatoryState = computeNeuromodulatorUpdate(
+    prefetch.previousNeuromodulatoryState,
+    emotion,
+    soma,
+    Math.max(1, sense.elapsedMinutes)
+  )
+
+  if (episodicHits.length > 0) {
+    processReconsolidation(episodicHits, emotion, neuromodulatoryState).catch(() => {})
   }
 
   const emotionTrigger = nostalgia ? "nostalgia_wave" : (sense.rawTriggers[0]?.trigger ?? "ambient")
@@ -223,6 +252,8 @@ export async function runEmotionChain(sense: SenseResult, prefetch: FeelPrefetch
     vagalState,
     vagalConstraints,
     interoceptivePrediction,
-    appraisalResults
+    appraisalResults,
+    neuromodulatoryState,
+    constructionResults
   }
 }

@@ -1,8 +1,19 @@
-import type { VagalZone } from "@/affect/soma/types.ts"
+import type { NeuromodulatoryState } from "@/affect/neuromodulation/types.ts"
+import type { SomaticState, VagalZone } from "@/affect/soma/types.ts"
 import { clamp01 } from "@/infra/lib/math.ts"
 import type { SelfConcept } from "@/self/psyche/types.ts"
 import { APPRAISAL } from "./constants.ts"
-import type { AppraisalContext, AppraisalResult, EmotionalState, EmotionTrigger, EmotionUpdateEvent } from "./types.ts"
+import { constructEmotionDeltas } from "./construction.ts"
+import type {
+  AppraisalContext,
+  AppraisalResult,
+  EmotionalState,
+  EmotionConstructionResult,
+  EmotionDeltas,
+  EmotionTrigger,
+  EmotionUpdateEvent,
+  EpisodicContext
+} from "./types.ts"
 import { clampState } from "./update.ts"
 
 const TRIGGER_PLEASANTNESS: Record<EmotionTrigger, number> = {
@@ -103,13 +114,22 @@ export function appraiseGoalRelevance(event: EmotionUpdateEvent, hasActiveGoals:
   return 0.3
 }
 
-export function appraiseCopingPotential(confidence: number, energy: number, vagalZone: VagalZone): number {
+export function appraiseCopingPotential(
+  confidence: number,
+  energy: number,
+  vagalZone: VagalZone,
+  cortisolModulation?: number
+): number {
   const vagalFactor = VAGAL_COPING_FACTOR[vagalZone]
-  return clamp01(
+  const baseCoping = clamp01(
     confidence * APPRAISAL.COPING_CONFIDENCE_WEIGHT +
       energy * APPRAISAL.COPING_ENERGY_WEIGHT +
       vagalFactor * APPRAISAL.COPING_VAGAL_WEIGHT
   )
+  if (cortisolModulation !== undefined) {
+    return clamp01(baseCoping * cortisolModulation)
+  }
+  return baseCoping
 }
 
 export function appraiseNormCompatibility(event: EmotionUpdateEvent, selfConcept: SelfConcept): number {
@@ -119,9 +139,6 @@ export function appraiseNormCompatibility(event: EmotionUpdateEvent, selfConcept
   return Math.max(-1, Math.min(1, baseCompat * authenticityModifier * agencyModifier * event.intensity))
 }
 
-/**
- * Run all 5 appraisal checks on an event and compute overall modulation.
- */
 export function computeAppraisal(
   event: EmotionUpdateEvent,
   context: AppraisalContext,
@@ -130,7 +147,12 @@ export function computeAppraisal(
   const novelty = appraiseNovelty(context.noveltyLevel, minutesSinceLastSimilar)
   const pleasantness = appraisePleasantness(event)
   const goalRelevance = appraiseGoalRelevance(event, context.hasActiveGoals)
-  const copingPotential = appraiseCopingPotential(context.confidence, context.energy, context.vagalZone)
+  const copingPotential = appraiseCopingPotential(
+    context.confidence,
+    context.energy,
+    context.vagalZone,
+    context.cortisolCopingModulation
+  )
   const normCompatibility = appraiseNormCompatibility(event, context.selfConcept)
 
   let modulation = 1.0
@@ -152,81 +174,32 @@ export function computeAppraisal(
   return { novelty, pleasantness, goalRelevance, copingPotential, normCompatibility, overallModulation }
 }
 
-type EmotionDeltas = Partial<Record<keyof EmotionalState, number>>
+export interface ConstructedEmotionInput {
+  soma: SomaticState
+  episodicContext: EpisodicContext[]
+  neuromodulation: NeuromodulatoryState
+  triggerPriors: Record<EmotionTrigger, EmotionDeltas>
+}
 
-/**
- * Apply a single event with appraisal-modulated deltas.
- * Low coping + negative event shifts frustration towards caution (threat framing).
- * High coping + negative event shifts caution towards frustration (challenge framing).
- */
-export function applyAppraisedEvent(
-  state: EmotionalState,
-  event: EmotionUpdateEvent,
-  baseDeltas: EmotionDeltas,
-  appraisal: AppraisalResult
-): EmotionalState {
-  const modulatedDeltas: EmotionDeltas = {}
-
-  for (const [key, baseDelta] of Object.entries(baseDeltas)) {
-    const dim = key as keyof EmotionalState
-    let delta = baseDelta * event.intensity * appraisal.overallModulation
-
-    if (
-      dim === "frustration" &&
-      appraisal.pleasantness < 0 &&
-      appraisal.copingPotential < APPRAISAL.THREAT_COPING_THRESHOLD
-    ) {
-      delta *= 1 - APPRAISAL.COPING_THREAT_SHIFT
-    }
-    if (
-      dim === "caution" &&
-      appraisal.pleasantness < 0 &&
-      appraisal.copingPotential < APPRAISAL.THREAT_COPING_THRESHOLD
-    ) {
-      delta += Math.abs(baseDelta) * APPRAISAL.COPING_THREAT_SHIFT * event.intensity
-    }
-
-    if (
-      dim === "frustration" &&
-      appraisal.pleasantness < 0 &&
-      appraisal.copingPotential > APPRAISAL.SAVORING_COPING_THRESHOLD
-    ) {
-      delta += Math.abs(baseDelta) * APPRAISAL.COPING_THREAT_SHIFT * event.intensity * 0.5
-    }
-    if (
-      dim === "caution" &&
-      appraisal.pleasantness < 0 &&
-      appraisal.copingPotential > APPRAISAL.SAVORING_COPING_THRESHOLD
-    ) {
-      delta *= 1 - APPRAISAL.COPING_THREAT_SHIFT
-    }
-
-    if (appraisal.goalRelevance > 0.5 && (dim === "satisfaction" || dim === "frustration")) {
-      delta *= 1 + APPRAISAL.GOAL_RELEVANCE_BOOST
-    }
-
-    if (appraisal.normCompatibility < -0.5 && dim === "caution") {
-      delta += APPRAISAL.NORM_VIOLATION_CAUTION_BOOST * event.intensity
-    }
-
-    const clampedDelta = Math.max(-0.2, Math.min(0.2, delta))
-    modulatedDeltas[dim] = (state[dim] ?? 0) + clampedDelta
-  }
-
-  return clampState({ ...state, ...modulatedDeltas })
+export interface ConstructedEventsResult {
+  state: EmotionalState
+  appraisals: AppraisalResult[]
+  constructions: EmotionConstructionResult[]
 }
 
 /**
- * Apply multiple events with appraisal, returning both the final state and all appraisal results.
+ * Construct emotions from the intersection of soma, memory, appraisal, trigger prior, and neurochemistry.
+ * Replaces the old trigger→lookup→modulate approach with Barrett's Constructed Emotion Theory.
  */
-export function applyAppraisedEvents(
+export function applyConstructedEvents(
   state: EmotionalState,
   events: EmotionUpdateEvent[],
   context: AppraisalContext,
-  triggerDeltas: Record<EmotionTrigger, EmotionDeltas>,
+  input: ConstructedEmotionInput,
   triggerTimestamps?: Record<string, number>
-): { state: EmotionalState; appraisals: AppraisalResult[] } {
+): ConstructedEventsResult {
   const appraisals: AppraisalResult[] = []
+  const constructions: EmotionConstructionResult[] = []
   let current = state
 
   for (const event of events) {
@@ -234,17 +207,28 @@ export function applyAppraisedEvents(
     const appraisal = computeAppraisal(event, context, lastSimilar)
     appraisals.push(appraisal)
 
-    const baseDeltas = triggerDeltas[event.trigger] ?? {}
-    current = applyAppraisedEvent(current, event, baseDeltas, appraisal)
+    const triggerPrior = input.triggerPriors[event.trigger] ?? {}
+    const construction = constructEmotionDeltas(
+      event,
+      input.soma,
+      input.episodicContext,
+      appraisal,
+      input.neuromodulation,
+      triggerPrior
+    )
+    constructions.push(construction)
+
+    const updated: Partial<EmotionalState> = {}
+    for (const [dim, delta] of Object.entries(construction.deltas)) {
+      const key = dim as keyof EmotionalState
+      updated[key] = (current[key] ?? 0) + (delta ?? 0)
+    }
+    current = clampState({ ...current, ...updated })
   }
 
-  return { state: current, appraisals }
+  return { state: current, appraisals, constructions }
 }
 
-/**
- * Create a neutral appraisal context for simple emotion updates outside the main pipeline.
- * Uses default values that produce near-unity modulation (minimal appraisal effect).
- */
 export function createNeutralAppraisalContext(): AppraisalContext {
   return {
     noveltyLevel: 0.5,

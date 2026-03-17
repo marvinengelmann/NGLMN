@@ -49,7 +49,10 @@ export const EpisodeMetadata = z.object({
   valence: z.number().min(-1).max(1).optional(),
   confidenceNote: z.string().optional(),
   sourceConfused: z.boolean().optional(),
-  sourceLabel: z.string().optional()
+  sourceLabel: z.string().optional(),
+  reconsolidationCount: z.number().int().min(0).optional(),
+  lastReconsolidatedAt: z.string().optional(),
+  originalValence: z.number().min(-1).max(1).optional()
 })
 export type EpisodeMetadata = z.infer<typeof EpisodeMetadata>
 

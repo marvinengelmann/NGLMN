@@ -5,12 +5,18 @@ import {
   DEFAULT_EMOTIONAL_STATE,
   type EmotionalMomentum,
   type EmotionalState,
+  type EmotionConstructionResult,
+  type EmotionDeltas,
   type EmotionTrigger,
   type EmotionUpdateEvent,
+  type EpisodicContext,
   type MoodContext
 } from "@/affect/emotion/types.ts"
+import { computeMoodBaselineModulation } from "@/affect/neuromodulation/compute.ts"
+import type { NeuromodulatoryState } from "@/affect/neuromodulation/types.ts"
+import type { SomaticState } from "@/affect/soma/types.ts"
 import { clamp01, halfLifeDecay } from "@/infra/lib/math.ts"
-import { applyAppraisedEvents } from "./appraisal.ts"
+import { applyConstructedEvents, type ConstructedEmotionInput } from "./appraisal.ts"
 import { CONTRADICTION, EMOTION, MOMENTUM, MOOD_BASELINE, MOOD_CONTAGION } from "./constants.ts"
 import type { AppraisalContext } from "./types.ts"
 
@@ -29,8 +35,6 @@ export function enforceEmotionFloors(state: EmotionalState): EmotionalState {
   }
   return result
 }
-
-type EmotionDeltas = Partial<Record<keyof EmotionalState, number>>
 
 const TRIGGER_EFFECTS: Record<EmotionTrigger, EmotionDeltas> = {
   message_received: { connection: 0.1, boredom: -0.1, excitement: 0.05, energy: 0.03 },
@@ -83,7 +87,10 @@ export function clampState(state: EmotionalState): EmotionalState {
  * Compute a dynamic mood baseline based on current context.
  * Each dimension starts at 0.5 and is shifted by contextual factors.
  */
-export function computeMoodBaseline(context: MoodContext): EmotionalState {
+export function computeMoodBaseline(
+  context: MoodContext,
+  neuroModulation?: Partial<Record<keyof EmotionalState, number>>
+): EmotionalState {
   const base = { ...DEFAULT_EMOTIONAL_STATE }
 
   const silenceRatio = Math.min(1, context.operatorSilenceMinutes / 60 / MOOD_BASELINE.SILENCE_HOURS_FULL_EFFECT)
@@ -119,6 +126,15 @@ export function computeMoodBaseline(context: MoodContext): EmotionalState {
         base[key] += Math.max(-MOOD_CONTAGION.MAX_EFFECT, Math.min(MOOD_CONTAGION.MAX_EFFECT, delta * strength))
       }
     })
+  }
+
+  if (neuroModulation) {
+    for (const [dim, shift] of Object.entries(neuroModulation)) {
+      const key = dim as keyof EmotionalState
+      if (key in base && shift) {
+        base[key] += shift
+      }
+    }
   }
 
   return clampState(base)
@@ -385,17 +401,21 @@ export interface EmotionalUpdateOptions {
   isIdle?: boolean
   trustExperience?: number
   appraisalContext: AppraisalContext
+  soma?: SomaticState
+  episodicContext?: EpisodicContext[]
+  neuromodulatoryState?: NeuromodulatoryState
 }
 
 export interface EmotionalUpdateResult {
   state: EmotionalState
   appraisals: AppraisalResult[]
+  constructions: EmotionConstructionResult[]
 }
 
 /**
- * Compute a new emotional state from current state, events, context, and timing.
- * Every event passes through the 5-check appraisal pipeline (Scherer's Component Process Model).
- * Returns both the final state and all appraisal results for metacognitive introspection.
+ * Compute a new emotional state using Constructed Emotion Theory (Barrett).
+ * Emotions emerge from the intersection of somatic state, episodic memory,
+ * appraisal evaluation, trigger priors, and neuromodulatory coloring.
  */
 export function computeEmotionalUpdate(
   current: EmotionalState,
@@ -405,21 +425,43 @@ export function computeEmotionalUpdate(
   triggerTimestamps: Record<string, number>,
   options: EmotionalUpdateOptions
 ): EmotionalUpdateResult {
-  const baseline = computeMoodBaseline(moodContext)
+  const neuroBaselineModulation = options.neuromodulatoryState
+    ? computeMoodBaselineModulation(options.neuromodulatoryState)
+    : undefined
+  const baseline = computeMoodBaseline(moodContext, neuroBaselineModulation)
   let state = applyDrift(current, baseline, elapsedMinutes)
 
   if (options.dnaBaseline) {
     state = applyBaselineGravity(state, options.dnaBaseline, options.isIdle ?? false)
   }
 
-  const { state: appraisedState, appraisals } = applyAppraisedEvents(
-    state,
-    events,
-    options.appraisalContext,
-    TRIGGER_EFFECTS,
-    triggerTimestamps
-  )
-  state = appraisedState
+  const constructionInput: ConstructedEmotionInput | undefined =
+    options.soma && options.neuromodulatoryState
+      ? {
+          soma: options.soma,
+          episodicContext: options.episodicContext ?? [],
+          neuromodulation: options.neuromodulatoryState,
+          triggerPriors: TRIGGER_EFFECTS
+        }
+      : undefined
+
+  let appraisals: AppraisalResult[]
+  let constructions: EmotionConstructionResult[]
+
+  if (constructionInput) {
+    const result = applyConstructedEvents(state, events, options.appraisalContext, constructionInput, triggerTimestamps)
+    state = result.state
+    appraisals = result.appraisals
+    constructions = result.constructions
+  } else {
+    appraisals = []
+    constructions = []
+    for (const event of events) {
+      const effects = TRIGGER_EFFECTS[event.trigger]
+      state = applyEvent(state, event)
+      void effects
+    }
+  }
 
   state = applyCrossCoupling(state)
   state = applyContradictionBudget(state)
@@ -428,7 +470,7 @@ export function computeEmotionalUpdate(
     state = applyTrustModifiers(state, options.trustExperience)
   }
 
-  return { state: clampState(state), appraisals }
+  return { state: clampState(state), appraisals, constructions }
 }
 
 const EMOTION_DIMENSIONS: (keyof EmotionalState)[] = [

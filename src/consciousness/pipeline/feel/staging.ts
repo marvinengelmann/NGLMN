@@ -1,6 +1,13 @@
 import { getRegisteredEmotions } from "@/affect/emotion/registry.ts"
 import { DREAM_AFTERGLOW } from "@/expression/dream/constants.ts"
-import { boundaryLog, coherenceLog, heldBackLog, operatorModelLog, somaticHistory } from "@/infra/db/schema.ts"
+import {
+  boundaryLog,
+  coherenceLog,
+  heldBackLog,
+  neuromodulatoryHistory,
+  operatorModelLog,
+  somaticHistory
+} from "@/infra/db/schema.ts"
 import type { WriteBuffer } from "../persistence.ts"
 import type {
   EmotionChainResult,
@@ -44,7 +51,8 @@ const REDIS = {
   VAGAL_STATE: "working:soma:vagal",
   INTEROCEPTIVE_ACCURACY: "working:soma:interoceptiveAccuracy",
   LAST_PREDICTION: "working:soma:lastPrediction",
-  LAST_APPRAISALS: "working:emotion:lastAppraisals"
+  LAST_APPRAISALS: "working:emotion:lastAppraisals",
+  NEUROMODULATORY_STATE: "working:affect:neuromodulation"
 } as const
 
 function stageEmotionChainWrites(buffer: WriteBuffer, chain: EmotionChainResult): void {
@@ -78,6 +86,12 @@ function stageEmotionChainWrites(buffer: WriteBuffer, chain: EmotionChainResult)
 
   buffer.stagePostgres(somaticHistory, {
     state: chain.soma,
+    trigger: "feel_phase"
+  })
+
+  buffer.stage(REDIS.NEUROMODULATORY_STATE, chain.neuromodulatoryState)
+  buffer.stagePostgres(neuromodulatoryHistory, {
+    state: chain.neuromodulatoryState,
     trigger: "feel_phase"
   })
 }

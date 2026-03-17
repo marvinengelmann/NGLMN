@@ -556,3 +556,39 @@ export const APPRAISAL = {
   GOAL_RELEVANCE_BOOST: 0.1,
   NORM_VIOLATION_CAUTION_BOOST: 0.05
 } as const
+
+export const CONSTRUCTION = {
+  WEIGHTS: {
+    SOMATIC: 0.25,
+    MEMORY: 0.2,
+    APPRAISAL: 0.25,
+    PRIOR: 0.2,
+    NEURO: 0.1
+  },
+  SOMATIC_SIGNAL: {
+    AROUSAL: {
+      tension: 0.3,
+      heartRate: 0.25
+    },
+    APPROACH: {
+      warmth: 0.3,
+      openness: 0.25
+    },
+    WITHDRAWAL: {
+      gravity: 0.2,
+      openness: -0.25
+    }
+  },
+  MEMORY_SIGNAL: {
+    RECENCY_HALF_LIFE_DAYS: 7,
+    RELEVANCE_WEIGHT: 0.7,
+    VALENCE_SCALE: 0.15,
+    MIN_EPISODES_FOR_SIGNAL: 1
+  },
+  NEURO_COLORING: {
+    DOPAMINE_POSITIVE_AMP: 0.2,
+    CORTISOL_NEGATIVE_AMP: 0.2,
+    SEROTONIN_BIAS: 0.1
+  },
+  MAX_DELTA: 0.2
+} as const

@@ -243,6 +243,21 @@ export const somaticHistory = pgTable(
 export type SomaticHistoryInsert = typeof somaticHistory.$inferInsert
 export type SomaticHistorySelect = typeof somaticHistory.$inferSelect
 
+export const neuromodulatoryHistory = pgTable(
+  "neuromodulatory_history",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    state: jsonb("state").notNull(),
+    trigger: text("trigger").notNull(),
+    tickId: text("tick_id"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow()
+  },
+  (table) => [index("idx_neuromodulatory_history_created").on(table.createdAt)]
+)
+
+export type NeuromodulatoryHistoryInsert = typeof neuromodulatoryHistory.$inferInsert
+export type NeuromodulatoryHistorySelect = typeof neuromodulatoryHistory.$inferSelect
+
 export const psycheSnapshots = pgTable(
   "psyche_snapshots",
   {

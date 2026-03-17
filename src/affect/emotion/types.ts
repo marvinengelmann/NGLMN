@@ -131,7 +131,8 @@ export const AppraisalContext = z.object({
     selfContinuity: z.number().min(0).max(1),
     agency: z.number().min(0).max(1),
     authenticity: z.number().min(0).max(1)
-  })
+  }),
+  cortisolCopingModulation: z.number().min(0).max(1).optional()
 })
 export type AppraisalContext = z.infer<typeof AppraisalContext>
 
@@ -144,6 +145,29 @@ export const AppraisalResult = z.object({
   overallModulation: z.number().min(0).max(2)
 })
 export type AppraisalResult = z.infer<typeof AppraisalResult>
+
+export const EpisodicContext = z.object({
+  valence: z.number().min(-1).max(1),
+  recency: z.number().min(0).max(1),
+  relevanceScore: z.number().min(0).max(1),
+  emotionalState: z.string().optional()
+})
+export type EpisodicContext = z.infer<typeof EpisodicContext>
+
+export type EmotionDeltas = Partial<Record<keyof EmotionalState, number>>
+
+export interface EmotionConstructionSources {
+  somatic: EmotionDeltas
+  memory: EmotionDeltas
+  appraisal: EmotionDeltas
+  prior: EmotionDeltas
+  neuro: EmotionDeltas
+}
+
+export interface EmotionConstructionResult {
+  deltas: EmotionDeltas
+  sources: EmotionConstructionSources
+}
 
 export const MetricsSnapshot = z.object({
   errorRate: z.number(),

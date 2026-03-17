@@ -9,6 +9,7 @@ import {
   getEmotionalState,
   getRawTriggerTimestamps
 } from "@/affect/emotion/state.ts"
+import { getNeuromodulatoryState } from "@/affect/neuromodulation/state.ts"
 import {
   getInteroceptiveAccuracy,
   getRecentSomaHistory,
@@ -73,7 +74,8 @@ export async function prefetchFeelState(): Promise<FeelPrefetch> {
     deferredQueue,
     previousVagalState,
     interoceptiveAccuracy,
-    recentSomaHistory
+    recentSomaHistory,
+    previousNeuromodulatoryState
   ] = await Promise.all([
     getGenesisDNA(),
     getEmotionalState(),
@@ -110,7 +112,8 @@ export async function prefetchFeelState(): Promise<FeelPrefetch> {
     getDeferredQueue(),
     getVagalState(),
     getInteroceptiveAccuracy(),
-    getRecentSomaHistory()
+    getRecentSomaHistory(),
+    getNeuromodulatoryState()
   ])
 
   return {
@@ -149,6 +152,7 @@ export async function prefetchFeelState(): Promise<FeelPrefetch> {
     deferredQueue,
     previousVagalState,
     interoceptiveAccuracy,
-    recentSomaHistory
+    recentSomaHistory,
+    previousNeuromodulatoryState
   }
 }

@@ -21,6 +21,7 @@ interface DriveUpdateContext {
   elapsedMinutes: number
   blocked: Set<DriveType>
   satisfied: Set<DriveType>
+  dopamineModulation?: number
 }
 
 /**
@@ -38,7 +39,8 @@ export function computeDriveUpdate(context: DriveUpdateContext): DriveState {
       let lastSatisfiedAt = level.lastSatisfiedAt
 
       if (satisfied.has(drive)) {
-        satiation = Math.min(1, satiation + DRIVES.SATISFACTION_AMOUNTS[drive])
+        const dopamineScale = context.dopamineModulation ?? 1.0
+        satiation = Math.min(1, satiation + DRIVES.SATISFACTION_AMOUNTS[drive] * dopamineScale)
         frustration = Math.max(0, frustration - DRIVES.SATISFACTION_FRUSTRATION_RELIEF)
         consecutiveBlockedTicks = 0
         lastSatisfiedAt = now
