@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest"
-import { DEFAULT_VAGAL_STATE } from "./types.ts"
 import type { SomaticState, VagalState } from "./types.ts"
+import { DEFAULT_VAGAL_STATE } from "./types.ts"
 import {
   applyVagalEmotionConstraints,
   computeNeuroception,
@@ -126,7 +126,13 @@ describe("computeVagalConstraints", () => {
   })
 
   it("returns restricted access in dorsal zone", () => {
-    const state: VagalState = { zone: "dorsal", activation: 1.0, transitionMomentum: -0.5, ticksInZone: 10, neuroception: 0.1 }
+    const state: VagalState = {
+      zone: "dorsal",
+      activation: 1.0,
+      transitionMomentum: -0.5,
+      ticksInZone: 10,
+      neuroception: 0.1
+    }
     const constraints = computeVagalConstraints(state)
     expect(constraints.vulnerabilityAccess).toBe(0.0)
     expect(constraints.creativityAccess).toBeLessThan(0.2)
@@ -134,7 +140,13 @@ describe("computeVagalConstraints", () => {
   })
 
   it("sympathetic zone has moderate restrictions", () => {
-    const state: VagalState = { zone: "sympathetic", activation: 1.0, transitionMomentum: 0, ticksInZone: 5, neuroception: 0.4 }
+    const state: VagalState = {
+      zone: "sympathetic",
+      activation: 1.0,
+      transitionMomentum: 0,
+      ticksInZone: 5,
+      neuroception: 0.4
+    }
     const constraints = computeVagalConstraints(state)
     expect(constraints.vulnerabilityAccess).toBeGreaterThan(0)
     expect(constraints.vulnerabilityAccess).toBeLessThan(0.5)
@@ -144,14 +156,26 @@ describe("computeVagalConstraints", () => {
 
 describe("applyVagalEmotionConstraints", () => {
   it("does not modify emotions when emotionalRange is 1.0", () => {
-    const constraints = { vulnerabilityAccess: 1, creativityAccess: 1, socialEngagement: 1, emotionalRange: 1, cognitiveFlexibility: 1 }
+    const constraints = {
+      vulnerabilityAccess: 1,
+      creativityAccess: 1,
+      socialEngagement: 1,
+      emotionalRange: 1,
+      cognitiveFlexibility: 1
+    }
     const result = applyVagalEmotionConstraints(baseEmotion, constraints)
     expect(result).toEqual(baseEmotion)
   })
 
   it("dampens emotions towards neutral in dorsal vagal", () => {
     const emotion = { ...baseEmotion, excitement: 0.9, frustration: 0.8 }
-    const constraints = { vulnerabilityAccess: 0, creativityAccess: 0.1, socialEngagement: 0.15, emotionalRange: 0.3, cognitiveFlexibility: 0.2 }
+    const constraints = {
+      vulnerabilityAccess: 0,
+      creativityAccess: 0.1,
+      socialEngagement: 0.15,
+      emotionalRange: 0.3,
+      cognitiveFlexibility: 0.2
+    }
     const result = applyVagalEmotionConstraints(emotion, constraints)
 
     expect(result.excitement).toBeLessThan(emotion.excitement)
@@ -161,7 +185,13 @@ describe("applyVagalEmotionConstraints", () => {
 
   it("preserves energy regardless of emotional range", () => {
     const emotion = { ...baseEmotion, energy: 0.9 }
-    const constraints = { vulnerabilityAccess: 0, creativityAccess: 0, socialEngagement: 0, emotionalRange: 0.3, cognitiveFlexibility: 0 }
+    const constraints = {
+      vulnerabilityAccess: 0,
+      creativityAccess: 0,
+      socialEngagement: 0,
+      emotionalRange: 0.3,
+      cognitiveFlexibility: 0
+    }
     const result = applyVagalEmotionConstraints(emotion, constraints)
     expect(result.energy).toBe(0.9)
   })

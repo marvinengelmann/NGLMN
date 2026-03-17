@@ -101,11 +101,7 @@ export async function querySomaticMemories(
 export async function getRecentSomaHistory(
   limit: number = INTEROCEPTION.TRAJECTORY_HISTORY_SIZE
 ): Promise<SomaticState[]> {
-  const rows = await db
-    .select()
-    .from(somaticHistory)
-    .orderBy(desc(somaticHistory.createdAt))
-    .limit(limit)
+  const rows = await db.select().from(somaticHistory).orderBy(desc(somaticHistory.createdAt)).limit(limit)
 
   return rows
     .map((r) => SomaticState.safeParse(r.state))

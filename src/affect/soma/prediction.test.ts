@@ -1,6 +1,4 @@
 import { describe, expect, it } from "vitest"
-import { DEFAULT_SOMATIC_STATE } from "./types.ts"
-import type { SomaticState } from "./types.ts"
 import {
   assembleInteroceptivePrediction,
   computeAlexithymia,
@@ -10,6 +8,8 @@ import {
   computeTotalError,
   updateInteroceptiveAccuracy
 } from "./prediction.ts"
+import type { SomaticState } from "./types.ts"
+import { DEFAULT_SOMATIC_STATE } from "./types.ts"
 
 const baseSoma: SomaticState = {
   tension: 0.3,
@@ -161,7 +161,15 @@ describe("computeInteroceptiveEmotionTriggers", () => {
 
   it("returns at most 3 triggers", () => {
     const predicted = { ...DEFAULT_SOMATIC_STATE }
-    const actual: SomaticState = { tension: 1, warmth: 0, heartRate: 1, breathing: 0, gravity: 1, openness: 0, socialBattery: 0.8 }
+    const actual: SomaticState = {
+      tension: 1,
+      warmth: 0,
+      heartRate: 1,
+      breathing: 0,
+      gravity: 1,
+      openness: 0,
+      socialBattery: 0.8
+    }
     const prediction = assembleInteroceptivePrediction(predicted, actual, 0.5, "ventral")
     const triggers = computeInteroceptiveEmotionTriggers(prediction)
     expect(triggers.length).toBeLessThanOrEqual(3)

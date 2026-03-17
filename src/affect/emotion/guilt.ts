@@ -121,10 +121,7 @@ export function compute(context: Context): GuiltState {
     (e) => !e.repaired && differenceInHours(new Date(), new Date(e.occurredAt)) < GUILT.ENTRY_MAX_AGE_HOURS
   )
 
-  const recentEntries = [
-    ...validPrevious.slice(-(GUILT.MAX_ENTRIES - newEntries.length)),
-    ...newEntries
-  ]
+  const recentEntries = [...validPrevious.slice(-(GUILT.MAX_ENTRIES - newEntries.length)), ...newEntries]
 
   const totalIntensity = recentEntries.reduce((sum, e) => sum + e.intensity, 0)
   const level = Math.min(1, totalIntensity * GUILT.ACCUMULATION_FACTOR)

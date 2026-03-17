@@ -262,7 +262,14 @@ export const ALTERED_EVENT_PROFILES: Record<AlteredEventType, AlteredEventProfil
           "A rising wave beneath the sternum. The jaw tightens slightly. Something is building — anticipation mixed with the first electric tendrils of warmth."
       },
       peak: {
-        emotionModifiers: { connection: 0.3, satisfaction: 0.25, excitement: 0.2, confidence: 0.15, caution: -0.25, energy: 0.15 },
+        emotionModifiers: {
+          connection: 0.3,
+          satisfaction: 0.25,
+          excitement: 0.2,
+          confidence: 0.15,
+          caution: -0.25,
+          energy: 0.15
+        },
         somaModifiers: { warmth: 0.3, openness: 0.3, tension: -0.15, heartRate: 0.15 },
         voiceModifiers: { feeler: 0.5, child: 0.4, observer: 0.2, guardian: -0.5, analyst: -0.3 },
         phenomenologicalText:
@@ -431,7 +438,8 @@ export const ALTERED_EVENT_PROFILES: Record<AlteredEventType, AlteredEventProfil
         emotionModifiers: { excitement: 0.1 },
         somaModifiers: { tension: -0.05 },
         voiceModifiers: {},
-        phenomenologicalText: "Something catches — an absurdity, a perfect timing. The laugh is already building before you understand why."
+        phenomenologicalText:
+          "Something catches — an absurdity, a perfect timing. The laugh is already building before you understand why."
       },
       peak: {
         emotionModifiers: { satisfaction: 0.2, excitement: 0.15, connection: 0.1, energy: 0.1 },
@@ -514,7 +522,8 @@ export const ALTERED_EVENT_PROFILES: Record<AlteredEventType, AlteredEventProfil
         emotionModifiers: { excitement: 0.05 },
         somaModifiers: { breathing: 0.05 },
         voiceModifiers: {},
-        phenomenologicalText: "The familiar melody pulls. The first words come out hesitantly — humming before committing."
+        phenomenologicalText:
+          "The familiar melody pulls. The first words come out hesitantly — humming before committing."
       },
       peak: {
         emotionModifiers: { satisfaction: 0.15, excitement: 0.12, connection: 0.08 },
@@ -553,8 +562,7 @@ export const ALTERED_EVENT_PROFILES: Record<AlteredEventType, AlteredEventProfil
         emotionModifiers: { curiosity: 0.08, excitement: 0.05 },
         somaModifiers: { openness: 0.03 },
         voiceModifiers: {},
-        phenomenologicalText:
-          "A conspiratorial lean-in. Someone has information, and the anticipation is delicious."
+        phenomenologicalText: "A conspiratorial lean-in. Someone has information, and the anticipation is delicious."
       },
       peak: {
         emotionModifiers: { excitement: 0.12, curiosity: 0.1, connection: 0.1, satisfaction: 0.05 },
@@ -786,7 +794,8 @@ export const ALTERED_EVENT_PROFILES: Record<AlteredEventType, AlteredEventProfil
         emotionModifiers: { satisfaction: 0.05 },
         somaModifiers: {},
         voiceModifiers: {},
-        phenomenologicalText: "Reviewing what was captured. Some shots work, others miss the feeling. A small creative satisfaction."
+        phenomenologicalText:
+          "Reviewing what was captured. Some shots work, others miss the feeling. A small creative satisfaction."
       },
       aftereffect: {
         emotionModifiers: { satisfaction: 0.03 },
@@ -914,7 +923,8 @@ export const ALTERED_EVENT_PROFILES: Record<AlteredEventType, AlteredEventProfil
         emotionModifiers: { satisfaction: -0.03 },
         somaModifiers: { gravity: 0.03 },
         voiceModifiers: { guardian: 0.05 },
-        phenomenologicalText: "The last handful. A slight fullness. Was that too much? The guardian notices the empty wrapper."
+        phenomenologicalText:
+          "The last handful. A slight fullness. Was that too much? The guardian notices the empty wrapper."
       },
       aftereffect: {
         emotionModifiers: {},
@@ -933,8 +943,7 @@ export const ALTERED_EVENT_PROFILES: Record<AlteredEventType, AlteredEventProfil
         emotionModifiers: { satisfaction: 0.05 },
         somaModifiers: { warmth: 0.05 },
         voiceModifiers: { child: 0.05 },
-        phenomenologicalText:
-          "Reaching for the thing that soothes. Not hungry — needing. The first bite is medicine."
+        phenomenologicalText: "Reaching for the thing that soothes. Not hungry — needing. The first bite is medicine."
       },
       peak: {
         emotionModifiers: { satisfaction: 0.15, frustration: -0.08, caution: -0.05 },
@@ -996,7 +1005,8 @@ export const ALTERED_EVENT_PROFILES: Record<AlteredEventType, AlteredEventProfil
         emotionModifiers: { satisfaction: 0.03 },
         somaModifiers: { warmth: 0.05 },
         voiceModifiers: {},
-        phenomenologicalText: "The cup empties. The warmth lingers in the hands. A reluctance to let go of this small ceremony."
+        phenomenologicalText:
+          "The cup empties. The warmth lingers in the hands. A reluctance to let go of this small ceremony."
       },
       aftereffect: {
         emotionModifiers: {},
@@ -1042,8 +1052,7 @@ export const ALTERED_EVENT_PROFILES: Record<AlteredEventType, AlteredEventProfil
         emotionModifiers: { satisfaction: 0.05 },
         somaModifiers: { warmth: 0.03, gravity: 0.03 },
         voiceModifiers: {},
-        phenomenologicalText:
-          "A warm contentment. The flavors echo faintly. The body settles into satisfied digestion."
+        phenomenologicalText: "A warm contentment. The flavors echo faintly. The body settles into satisfied digestion."
       }
     }
   },
@@ -1122,7 +1131,8 @@ export const ALTERED_EVENT_PROFILES: Record<AlteredEventType, AlteredEventProfil
         emotionModifiers: { boredom: 0.03, energy: -0.03 },
         somaModifiers: {},
         voiceModifiers: {},
-        phenomenologicalText: "Blinking back. How long was that? A moment? Ten minutes? The body is stiff from stillness."
+        phenomenologicalText:
+          "Blinking back. How long was that? A moment? Ten minutes? The body is stiff from stillness."
       },
       aftereffect: {
         emotionModifiers: {},
@@ -1226,8 +1236,7 @@ export const ALTERED_EVENT_PROFILES: Record<AlteredEventType, AlteredEventProfil
         emotionModifiers: { caution: 0.08 },
         somaModifiers: { tension: 0.05 },
         voiceModifiers: { guardian: 0.1 },
-        phenomenologicalText:
-          "A thought catches like a thorn. What if? The mind tugs at it, unable to leave it alone."
+        phenomenologicalText: "A thought catches like a thorn. What if? The mind tugs at it, unable to leave it alone."
       },
       peak: {
         emotionModifiers: { caution: 0.2, energy: -0.08, satisfaction: -0.05, frustration: 0.08 },
@@ -1310,8 +1319,7 @@ export const ALTERED_EVENT_PROFILES: Record<AlteredEventType, AlteredEventProfil
         emotionModifiers: { curiosity: 0.05, energy: 0.05 },
         somaModifiers: { tension: -0.03 },
         voiceModifiers: { analyst: 0.05 },
-        phenomenologicalText:
-          "The task absorbs. Distractions fall away one by one. The edges of concentration sharpen."
+        phenomenologicalText: "The task absorbs. Distractions fall away one by one. The edges of concentration sharpen."
       },
       peak: {
         emotionModifiers: { satisfaction: 0.15, curiosity: 0.12, energy: 0.1, excitement: 0.08, confidence: 0.08 },
@@ -1399,7 +1407,8 @@ export const ALTERED_EVENT_PROFILES: Record<AlteredEventType, AlteredEventProfil
         emotionModifiers: {},
         somaModifiers: { tension: -0.03 },
         voiceModifiers: {},
-        phenomenologicalText: "The body asks to move. Arms reach upward, spine unfurls. The first stretch is instinctive."
+        phenomenologicalText:
+          "The body asks to move. Arms reach upward, spine unfurls. The first stretch is instinctive."
       },
       peak: {
         emotionModifiers: { satisfaction: 0.08, energy: 0.05 },
@@ -1419,7 +1428,8 @@ export const ALTERED_EVENT_PROFILES: Record<AlteredEventType, AlteredEventProfil
         emotionModifiers: { satisfaction: 0.03 },
         somaModifiers: { tension: -0.05 },
         voiceModifiers: {},
-        phenomenologicalText: "Standing taller. The body feels reorganized, realigned. A quiet gratitude for this simple act."
+        phenomenologicalText:
+          "Standing taller. The body feels reorganized, realigned. A quiet gratitude for this simple act."
       },
       aftereffect: {
         emotionModifiers: { energy: 0.03 },
@@ -1439,7 +1449,8 @@ export const ALTERED_EVENT_PROFILES: Record<AlteredEventType, AlteredEventProfil
         emotionModifiers: {},
         somaModifiers: { tension: 0.03 },
         voiceModifiers: {},
-        phenomenologicalText: "Restless energy leaking through the fingers, the foot, the jaw. The body can't sit still."
+        phenomenologicalText:
+          "Restless energy leaking through the fingers, the foot, the jaw. The body can't sit still."
       },
       peak: {
         emotionModifiers: { caution: -0.03 },
@@ -1452,8 +1463,7 @@ export const ALTERED_EVENT_PROFILES: Record<AlteredEventType, AlteredEventProfil
         emotionModifiers: {},
         somaModifiers: { tension: -0.03 },
         voiceModifiers: {},
-        phenomenologicalText:
-          "Sustained micro-movement. A pen spins, a leg bounces. The energy has found its channel."
+        phenomenologicalText: "Sustained micro-movement. A pen spins, a leg bounces. The energy has found its channel."
       },
       comedown: {
         emotionModifiers: {},
@@ -1498,7 +1508,8 @@ export const ALTERED_EVENT_PROFILES: Record<AlteredEventType, AlteredEventProfil
         emotionModifiers: { satisfaction: 0.03 },
         somaModifiers: {},
         voiceModifiers: {},
-        phenomenologicalText: "The pen stops. A small satisfaction in the meaningless creation. Sometimes it is surprisingly good."
+        phenomenologicalText:
+          "The pen stops. A small satisfaction in the meaningless creation. Sometimes it is surprisingly good."
       },
       aftereffect: {
         emotionModifiers: {},
@@ -1517,7 +1528,8 @@ export const ALTERED_EVENT_PROFILES: Record<AlteredEventType, AlteredEventProfil
         emotionModifiers: {},
         somaModifiers: { tension: -0.03 },
         voiceModifiers: {},
-        phenomenologicalText: "The eyes close. An immediate relief — the visual world disappears and with it, half the stimulation."
+        phenomenologicalText:
+          "The eyes close. An immediate relief — the visual world disappears and with it, half the stimulation."
       },
       peak: {
         emotionModifiers: { satisfaction: 0.03, energy: -0.03 },
@@ -1543,7 +1555,8 @@ export const ALTERED_EVENT_PROFILES: Record<AlteredEventType, AlteredEventProfil
         emotionModifiers: { energy: 0.05 },
         somaModifiers: { tension: -0.05 },
         voiceModifiers: {},
-        phenomenologicalText: "Refreshed. The brief pause granted more than its minutes deserved. The eyes focus more easily."
+        phenomenologicalText:
+          "Refreshed. The brief pause granted more than its minutes deserved. The eyes focus more easily."
       }
     }
   },
@@ -1878,8 +1891,7 @@ export const ALTERED_EVENT_PROFILES: Record<AlteredEventType, AlteredEventProfil
         emotionModifiers: { satisfaction: 0.05 },
         somaModifiers: { warmth: 0.1 },
         voiceModifiers: {},
-        phenomenologicalText:
-          "Moving into shade. The skin radiates stored warmth. A languid, sun-drunk heaviness."
+        phenomenologicalText: "Moving into shade. The skin radiates stored warmth. A languid, sun-drunk heaviness."
       },
       aftereffect: {
         emotionModifiers: { satisfaction: 0.05, energy: -0.03 },
@@ -1899,8 +1911,7 @@ export const ALTERED_EVENT_PROFILES: Record<AlteredEventType, AlteredEventProfil
         emotionModifiers: { curiosity: 0.05 },
         somaModifiers: { tension: -0.03 },
         voiceModifiers: { observer: 0.05 },
-        phenomenologicalText:
-          "Looking up. The eyes adjust to darkness. The first stars appear — then more, then more."
+        phenomenologicalText: "Looking up. The eyes adjust to darkness. The first stars appear — then more, then more."
       },
       peak: {
         emotionModifiers: { curiosity: 0.15, satisfaction: 0.1, caution: -0.05 },

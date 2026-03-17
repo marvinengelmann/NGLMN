@@ -18,11 +18,7 @@ function computeSaturationDamping(emotion: EmotionalState): number {
 
 const SECONDARY_EFFECT_CAP = 0.15
 
-function capSecondaryEffects(
-  pre: EmotionalState,
-  post: EmotionalState,
-  cap: number
-): EmotionalState {
+function capSecondaryEffects(pre: EmotionalState, post: EmotionalState, cap: number): EmotionalState {
   const result = { ...post }
   for (const key of Object.keys(pre) as (keyof EmotionalState)[]) {
     const delta = result[key] - pre[key]

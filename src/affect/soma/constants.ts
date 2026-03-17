@@ -46,9 +46,27 @@ export const VAGAL = {
     operatorPresence: 0.15
   },
   ZONE_PROFILES: {
-    ventral: { vulnerabilityAccess: 1.0, creativityAccess: 1.0, socialEngagement: 1.0, emotionalRange: 1.0, cognitiveFlexibility: 1.0 },
-    sympathetic: { vulnerabilityAccess: 0.3, creativityAccess: 0.4, socialEngagement: 0.5, emotionalRange: 0.7, cognitiveFlexibility: 0.6 },
-    dorsal: { vulnerabilityAccess: 0.0, creativityAccess: 0.1, socialEngagement: 0.15, emotionalRange: 0.3, cognitiveFlexibility: 0.2 }
+    ventral: {
+      vulnerabilityAccess: 1.0,
+      creativityAccess: 1.0,
+      socialEngagement: 1.0,
+      emotionalRange: 1.0,
+      cognitiveFlexibility: 1.0
+    },
+    sympathetic: {
+      vulnerabilityAccess: 0.3,
+      creativityAccess: 0.4,
+      socialEngagement: 0.5,
+      emotionalRange: 0.7,
+      cognitiveFlexibility: 0.6
+    },
+    dorsal: {
+      vulnerabilityAccess: 0.0,
+      creativityAccess: 0.1,
+      socialEngagement: 0.15,
+      emotionalRange: 0.3,
+      cognitiveFlexibility: 0.2
+    }
   }
 } as const
 

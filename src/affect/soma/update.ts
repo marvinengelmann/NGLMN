@@ -11,9 +11,7 @@ const { CIRCADIAN } = SOMA
  */
 export function circadianFatigue(hourOfDay: number): number {
   const primary = Math.cos((2 * Math.PI * (hourOfDay - CIRCADIAN.PEAK_HOUR)) / 24)
-  const postLunchDip = Math.exp(
-    -0.5 * ((hourOfDay - CIRCADIAN.POST_LUNCH_CENTER) / CIRCADIAN.POST_LUNCH_WIDTH) ** 2
-  )
+  const postLunchDip = Math.exp(-0.5 * ((hourOfDay - CIRCADIAN.POST_LUNCH_CENTER) / CIRCADIAN.POST_LUNCH_WIDTH) ** 2)
   const alertness = 0.55 + 0.4 * primary - CIRCADIAN.POST_LUNCH_DEPTH * postLunchDip
   return clamp01(1 - alertness)
 }
@@ -40,10 +38,18 @@ export function computeSomaticTarget(emotion: EmotionalState, hourOfDay: number)
     tension: 0.3 + 0.4 * emotion.frustration + 0.2 * emotion.caution - 0.2 * emotion.satisfaction,
     warmth: 0.3 + 0.4 * emotion.connection + 0.2 * emotion.satisfaction - 0.2 * emotion.caution,
     heartRate:
-      0.3 + 0.3 * emotion.excitement + 0.2 * emotion.frustration + 0.1 * emotion.energy - CIRCADIAN.HEART_RATE_WEIGHT * fatigue,
+      0.3 +
+      0.3 * emotion.excitement +
+      0.2 * emotion.frustration +
+      0.1 * emotion.energy -
+      CIRCADIAN.HEART_RATE_WEIGHT * fatigue,
     breathing: 0.6 - 0.3 * emotion.caution - 0.2 * emotion.frustration + 0.2 * emotion.satisfaction,
     gravity:
-      0.5 - 0.3 * emotion.energy + 0.2 * emotion.boredom - 0.1 * emotion.excitement + CIRCADIAN.GRAVITY_WEIGHT * fatigue,
+      0.5 -
+      0.3 * emotion.energy +
+      0.2 * emotion.boredom -
+      0.1 * emotion.excitement +
+      CIRCADIAN.GRAVITY_WEIGHT * fatigue,
     openness:
       0.3 + 0.3 * emotion.connection + 0.2 * emotion.curiosity + 0.1 * emotion.confidence - 0.3 * emotion.caution,
     socialBattery: 0.8
