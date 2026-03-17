@@ -4,35 +4,37 @@ import { IMAGE } from "@/infra/integrations/constants.ts"
 import type { AnimaResultAsync } from "@/infra/lib/result.ts"
 import { trySafe } from "@/infra/lib/result.ts"
 import { buildImagePrompt } from "@/prompts/image.ts"
-import { getReferenceImage } from "./references.ts"
-
-const COST_PER_IMAGE = 0.07
+import { resolveReferenceCategories } from "./context.ts"
+import { ensureReferences } from "./references.ts"
 
 /**
- * Generate an image using xAI Grok Imagine via the AI Gateway.
- * When includesSelf is true, reference images are passed for visual consistency.
- * @param prompt - English image generation prompt.
- * @param includesSelf - Whether the image includes ANIMA's appearance.
- * @param aspectRatio - Aspect ratio for the generated image.
+ * Generate an image using FLUX 2 Max via the AI Gateway.
+ * Automatically resolves visual references from imageContext for multi-reference consistency.
  */
 export function generateAnimaImage(
   prompt: string,
   includesSelf: boolean,
-  aspectRatio: "1:1" | "16:9" | "9:16" = "1:1"
+  aspectRatio: "1:1" | "16:9" | "9:16" = "1:1",
+  imageContext: string[] = []
 ): AnimaResultAsync<Buffer> {
-  return trySafe("LLM_ERROR", async () => {
+  return trySafe("IMAGE_ERROR", async () => {
+    const categories = resolveReferenceCategories(imageContext, includesSelf)
+    const refsResult = await ensureReferences(categories)
+    const referenceUrls = refsResult.isOk() ? refsResult.value : []
+
     const fullPrompt = await buildImagePrompt(prompt, includesSelf)
 
     const result = await generateImage({
       model: IMAGE.MODEL,
-      prompt: includesSelf ? { text: fullPrompt, images: [await getReferenceImage()] } : fullPrompt,
+      prompt: referenceUrls.length > 0 ? { text: fullPrompt, images: referenceUrls } : fullPrompt,
       aspectRatio
     })
 
     const image = result.images[0]
     if (!image) throw new Error("No image returned from generation")
 
-    await trackApiCost(COST_PER_IMAGE)
+    const cost = IMAGE.BASE_COST + referenceUrls.length * IMAGE.REFERENCE_COST
+    await trackApiCost(cost)
 
     return Buffer.from(image.base64, "base64")
   })

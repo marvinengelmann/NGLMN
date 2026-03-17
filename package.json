@@ -30,6 +30,7 @@
     "@trigger.dev/sdk": "4.4.3",
     "@upstash/redis": "^1.36.3",
     "@upstash/vector": "^1.2.2",
+    "@vercel/blob": "^2.3.1",
     "ai": "^6.0.114",
     "date-fns": "^4.1.0",
     "drizzle-orm": "^0.45.1",

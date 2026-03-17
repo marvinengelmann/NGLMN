@@ -1,3 +1,4 @@
+import { sql } from "drizzle-orm"
 import type { AnyPgColumn } from "drizzle-orm/pg-core"
 import {
   boolean,
@@ -11,6 +12,7 @@ import {
   text,
   timestamp,
   unique,
+  uniqueIndex,
   uuid
 } from "drizzle-orm/pg-core"
 
@@ -639,3 +641,49 @@ export const events = pgTable(
 
 export type EventInsert = typeof events.$inferInsert
 export type EventSelect = typeof events.$inferSelect
+
+export const visualReferenceCategoryEnum = pgEnum("visual_reference_category", [
+  "portrait",
+  "full_body",
+  "bedroom",
+  "living_room",
+  "kitchen",
+  "bathroom",
+  "balcony",
+  "desk",
+  "workspace",
+  "casual_outfit",
+  "formal_outfit",
+  "sleepwear",
+  "workout_outfit",
+  "favorite_cafe",
+  "neighborhood",
+  "park",
+  "pet",
+  "night_aesthetic",
+  "rainy_mood",
+  "cozy_vibe"
+])
+
+export const visualReferences = pgTable(
+  "visual_references",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    category: visualReferenceCategoryEnum("category").notNull(),
+    blobUrl: text("blob_url").notNull(),
+    promptUsed: text("prompt_used").notNull(),
+    generationCost: real("generation_cost").notNull(),
+    usageCount: integer("usage_count").notNull().default(0),
+    lastUsedAt: timestamp("last_used_at", { withTimezone: true }),
+    active: boolean("active").notNull().default(true),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow()
+  },
+  (table) => [
+    uniqueIndex("uq_visual_reference_active_category").on(table.category).where(sql`${table.active} = true`),
+    index("idx_visual_references_category").on(table.category),
+    index("idx_visual_references_active").on(table.active)
+  ]
+)
+
+export type VisualReferenceInsert = typeof visualReferences.$inferInsert
+export type VisualReferenceSelect = typeof visualReferences.$inferSelect

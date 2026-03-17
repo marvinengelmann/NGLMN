@@ -1,37 +1,169 @@
 import { experimental_generateImage as generateImage } from "ai"
+import { and, eq, inArray, sql } from "drizzle-orm"
+import { trackApiCost } from "@/core/budget.ts"
+import { db } from "@/infra/db/client.ts"
+import { visualReferences } from "@/infra/db/schema.ts"
+import { deleteVisualReference, uploadVisualReference } from "@/infra/integrations/blob.ts"
 import { IMAGE } from "@/infra/integrations/constants.ts"
-import { redis } from "@/infra/integrations/redis.ts"
 import { log } from "@/infra/lib/logger.ts"
-import { getIdentityPortraitPrompt } from "@/prompts/image.ts"
+import type { AnimaResultAsync } from "@/infra/lib/result.ts"
+import { logAndCaptureError, trySafe } from "@/infra/lib/result.ts"
+import { getReferencePrompt } from "@/prompts/image.ts"
+import type { VisualReferenceCategory } from "./types.ts"
 
-let cached: Buffer | null = null
+const PERSON_DEPENDENT_CATEGORIES: VisualReferenceCategory[] = [
+  "full_body",
+  "casual_outfit",
+  "formal_outfit",
+  "sleepwear",
+  "workout_outfit"
+]
 
 /**
- * Load ANIMAs reference image for visual consistency.
- * Resolution order: memory cache → Redis → generate fresh.
+ * Get active visual reference URLs for the given categories.
+ * Updates usage tracking (count + timestamp) as a side effect.
  */
-export async function getReferenceImage(): Promise<Buffer> {
-  if (cached) return cached
+export function getActiveReferences(
+  categories: VisualReferenceCategory[]
+): AnimaResultAsync<Map<VisualReferenceCategory, string>> {
+  return trySafe("DB_ERROR", async () => {
+    if (categories.length === 0) return new Map()
 
-  const stored = await redis.get<string>(IMAGE.REFERENCE_KEY)
-  if (stored) {
-    cached = Buffer.from(stored, "base64")
-    return cached
-  }
+    const rows = await db
+      .select({ category: visualReferences.category, blobUrl: visualReferences.blobUrl, id: visualReferences.id })
+      .from(visualReferences)
+      .where(and(inArray(visualReferences.category, categories), eq(visualReferences.active, true)))
 
-  log.info("Generating initial reference image")
+    if (rows.length > 0) {
+      const ids = rows.map((r) => r.id)
+      await db
+        .update(visualReferences)
+        .set({
+          usageCount: sql`${visualReferences.usageCount} + 1`,
+          lastUsedAt: new Date()
+        })
+        .where(inArray(visualReferences.id, ids))
+    }
 
-  const result = await generateImage({
-    model: IMAGE.MODEL,
-    prompt: await getIdentityPortraitPrompt(),
-    aspectRatio: "1:1"
+    const result = new Map<VisualReferenceCategory, string>()
+    for (const row of rows) {
+      result.set(row.category as VisualReferenceCategory, row.blobUrl)
+    }
+    return result
   })
+}
 
-  const image = result.images[0]
-  if (!image) throw new Error("Failed to generate reference image")
+/**
+ * Ensure all requested reference categories exist, generating missing ones on-the-fly.
+ * Returns blob URLs for all categories (existing + newly generated), capped at MAX_REFERENCES.
+ */
+export function ensureReferences(categories: VisualReferenceCategory[]): AnimaResultAsync<string[]> {
+  return trySafe("IMAGE_ERROR", async () => {
+    if (categories.length === 0) return []
 
-  cached = Buffer.from(image.base64, "base64")
-  await redis.set(IMAGE.REFERENCE_KEY, image.base64)
+    const existingResult = await getActiveReferences(categories)
+    if (existingResult.isErr()) {
+      logAndCaptureError(existingResult.error, { phase: "visual_reference_lookup" })
+      return []
+    }
 
-  return cached
+    const existing = existingResult.value
+    const missing = categories.filter((c) => !existing.has(c))
+
+    if (missing.length > 0) {
+      ensurePortraitFirst(missing, existing)
+
+      for (const category of missing) {
+        const genResult = await generateReference(category, existing)
+        if (genResult.isOk()) {
+          existing.set(category, genResult.value)
+          log.info("Generated visual reference", { category })
+        } else {
+          logAndCaptureError(genResult.error, { phase: "visual_reference_generation", category })
+        }
+      }
+    }
+
+    const urls = categories.flatMap((c) => {
+      const url = existing.get(c)
+      return url ? [url] : []
+    })
+
+    return urls.slice(0, IMAGE.MAX_REFERENCES)
+  })
+}
+
+/**
+ * Reorder missing categories so portrait is generated first when needed by dependent categories.
+ */
+function ensurePortraitFirst(missing: VisualReferenceCategory[], existing: Map<VisualReferenceCategory, string>): void {
+  const needsPortrait = missing.some((c) => PERSON_DEPENDENT_CATEGORIES.includes(c))
+  const portraitIdx = missing.indexOf("portrait")
+
+  if (needsPortrait && !existing.has("portrait") && portraitIdx === -1) {
+    missing.unshift("portrait")
+  } else if (portraitIdx > 0) {
+    missing.splice(portraitIdx, 1)
+    missing.unshift("portrait")
+  }
+}
+
+/**
+ * Generate a new visual reference for a category.
+ * Uploads to Blob Store, replaces old reference in DB, and cleans up stale blobs.
+ */
+function generateReference(
+  category: VisualReferenceCategory,
+  existingRefs: Map<VisualReferenceCategory, string>
+): AnimaResultAsync<string> {
+  return trySafe("IMAGE_ERROR", async () => {
+    const prompt = await getReferencePrompt(category)
+    const referenceImages: string[] = []
+
+    if (PERSON_DEPENDENT_CATEGORIES.includes(category)) {
+      const portraitUrl = existingRefs.get("portrait")
+      if (portraitUrl) referenceImages.push(portraitUrl)
+    }
+
+    const result = await generateImage({
+      model: IMAGE.MODEL,
+      prompt: referenceImages.length > 0 ? { text: prompt, images: referenceImages } : prompt,
+      aspectRatio: "1:1"
+    })
+
+    const image = result.images[0]
+    if (!image) throw new Error(`No image returned for reference: ${category}`)
+
+    const buffer = Buffer.from(image.base64, "base64")
+    const blobUrl = await uploadVisualReference(category, buffer)
+
+    const cost = IMAGE.BASE_COST + referenceImages.length * IMAGE.REFERENCE_COST
+    await trackApiCost(cost)
+
+    const oldRefs = await db
+      .select({ id: visualReferences.id, blobUrl: visualReferences.blobUrl })
+      .from(visualReferences)
+      .where(and(eq(visualReferences.category, category), eq(visualReferences.active, true)))
+
+    await db
+      .update(visualReferences)
+      .set({ active: false })
+      .where(and(eq(visualReferences.category, category), eq(visualReferences.active, true)))
+
+    await db.insert(visualReferences).values({
+      category,
+      blobUrl,
+      promptUsed: prompt,
+      generationCost: cost,
+      active: true
+    })
+
+    for (const oldRef of oldRefs) {
+      deleteVisualReference(oldRef.blobUrl).catch((e) => {
+        log.warn("Failed to delete old visual reference blob", { blobUrl: oldRef.blobUrl, error: String(e) })
+      })
+    }
+
+    return blobUrl
+  })
 }

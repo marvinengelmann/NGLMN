@@ -19,6 +19,8 @@ export const CALENDAR = {
 } as const
 
 export const IMAGE = {
-  REFERENCE_KEY: "working:image:reference",
-  MODEL: "xai/grok-imagine-image"
+  MODEL: "bfl/flux-2-max",
+  MAX_REFERENCES: 4,
+  BASE_COST: 0.07,
+  REFERENCE_COST: 0.03
 } as const

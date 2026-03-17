@@ -91,7 +91,8 @@ export const AnimaDecision = z.object({
       withImage: z.boolean().default(false),
       imagePrompt: z.string().optional(),
       imageSelf: z.boolean().default(false),
-      imageAspectRatio: z.enum(["1:1", "16:9", "9:16"]).default("1:1")
+      imageAspectRatio: z.enum(["1:1", "16:9", "9:16"]).default("1:1"),
+      imageContext: z.array(z.string()).default([])
     })
   ),
   expectsReply: z.boolean(),

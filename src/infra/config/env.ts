@@ -32,6 +32,8 @@ const EnvSchema = z.object({
 
   CONTEXT7_API_KEY: z.string().optional(),
 
+  BLOB_READ_WRITE_TOKEN: z.string(),
+
   ELEVENLABS_API_KEY: z.string().optional(),
   ELEVENLABS_VOICE_ID: z.string().default("9GYSBtwJVgyLbYO5E3Ld"),
 

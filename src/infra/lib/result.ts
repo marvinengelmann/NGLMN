@@ -46,6 +46,7 @@ export type AnimaErrorTag =
   | "ARCHIVE_ERROR"
   | "GRAPH_ERROR"
   | "PROCEDURE_ERROR"
+  | "IMAGE_ERROR"
   | "UNKNOWN_ERROR"
 
 export interface AnimaError {

@@ -69,7 +69,12 @@ export async function sendMessages(decision: AnimaDecision, context?: MessagingC
     if (message.withImage && message.imagePrompt) {
       try {
         await sendUploadPhotoAction()
-        const imageResult = await generateAnimaImage(message.imagePrompt, message.imageSelf, message.imageAspectRatio)
+        const imageResult = await generateAnimaImage(
+          message.imagePrompt,
+          message.imageSelf,
+          message.imageAspectRatio,
+          message.imageContext
+        )
 
         if (imageResult.isOk()) {
           const sentId = await sendPhotoToOperator(imageResult.value, message.text || undefined, message.replyTo)
