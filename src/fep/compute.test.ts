@@ -45,11 +45,11 @@ describe("computeAccuracyTerm", () => {
 })
 
 describe("computeComplexityTerm", () => {
-  it("returns 0 for a perfectly coherent, non-defensive system", () => {
+  it("returns 0 for a perfectly coherent system with no active strategies", () => {
     const result = computeComplexityTerm({
       coherenceScore: 1,
       dissonanceScore: 0,
-      activeDefenseCount: 0,
+      activeStrategyCount: 0,
       forecastAccuracy: 1
     })
     expect(result).toBe(0)
@@ -59,26 +59,26 @@ describe("computeComplexityTerm", () => {
     const result = computeComplexityTerm({
       coherenceScore: 0,
       dissonanceScore: 1,
-      activeDefenseCount: 8,
+      activeStrategyCount: 8,
       forecastAccuracy: 0
     })
     expect(result).toBeCloseTo(1, 1)
   })
 
-  it("defense count contributes proportionally", () => {
-    const noDefense = computeComplexityTerm({
+  it("strategy count contributes proportionally", () => {
+    const noStrategies = computeComplexityTerm({
       coherenceScore: 0.7,
       dissonanceScore: 0.2,
-      activeDefenseCount: 0,
+      activeStrategyCount: 0,
       forecastAccuracy: 0.5
     })
-    const withDefense = computeComplexityTerm({
+    const withStrategies = computeComplexityTerm({
       coherenceScore: 0.7,
       dissonanceScore: 0.2,
-      activeDefenseCount: 4,
+      activeStrategyCount: 4,
       forecastAccuracy: 0.5
     })
-    expect(withDefense).toBeGreaterThan(noDefense)
+    expect(withStrategies).toBeGreaterThan(noStrategies)
   })
 })
 
@@ -88,7 +88,7 @@ describe("computeFreeEnergyDecomposition", () => {
     const result = computeFreeEnergyDecomposition(channels, {
       coherenceScore: 0.5,
       dissonanceScore: 0.3,
-      activeDefenseCount: 2,
+      activeStrategyCount: 2,
       forecastAccuracy: 0.6
     })
     expect(result.accuracy).toBeGreaterThan(0)

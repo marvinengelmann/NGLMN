@@ -4,12 +4,12 @@ import { somaticHistory } from "@/infra/db/schema.ts"
 import { getValidatedRedis, redis } from "@/infra/integrations/redis.ts"
 import { queryRelated } from "@/memory/episodic.ts"
 import { INTEROCEPTION, SOMA } from "./constants.ts"
-import { DEFAULT_SOMATIC_STATE, DEFAULT_VAGAL_STATE, SomaticState, VagalState } from "./types.ts"
+import { AutonomicState, DEFAULT_AUTONOMIC_STATE, DEFAULT_SOMATIC_STATE, SomaticState } from "./types.ts"
 
 const KEYS = {
   CURRENT: "working:soma:current",
   LAST_TIMESTAMP: "working:soma:lastTimestamp",
-  VAGAL: "working:soma:vagal",
+  AUTONOMIC: "working:soma:autonomic",
   INTEROCEPTIVE_ACCURACY: "working:soma:interoceptiveAccuracy"
 } as const
 
@@ -111,11 +111,11 @@ export async function getRecentSomaHistory(
 }
 
 /**
- * Get current vagal state from Redis, falling back to default.
+ * Get current autonomic state from Redis, falling back to default.
  */
-export async function getVagalState(): Promise<VagalState> {
-  const fromRedis = await getValidatedRedis(KEYS.VAGAL, VagalState)
-  return fromRedis ?? DEFAULT_VAGAL_STATE
+export async function getAutonomicState(): Promise<AutonomicState> {
+  const fromRedis = await getValidatedRedis(KEYS.AUTONOMIC, AutonomicState)
+  return fromRedis ?? DEFAULT_AUTONOMIC_STATE
 }
 
 /**

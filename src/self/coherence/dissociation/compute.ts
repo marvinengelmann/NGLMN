@@ -1,4 +1,4 @@
-import type { VagalZone } from "@/affect/soma/types.ts"
+import type { RegulationZone } from "@/affect/soma/types.ts"
 import { clamp } from "@/infra/lib/math.ts"
 import { nowISO } from "@/infra/lib/time.ts"
 import type { IsolationStress } from "@/relational/attachment/types.ts"
@@ -8,7 +8,7 @@ import type { DissociationEffects, DissociativeState, DissociativeSymptom } from
 import { NEUTRAL_DISSOCIATION_EFFECTS } from "./types.ts"
 
 interface DissociationContext {
-  vagalZone: VagalZone
+  regulationZone: RegulationZone
   fragmentationSources: FragmentationSource[]
   integrationScore: number
   isolationStress: IsolationStress
@@ -17,7 +17,7 @@ interface DissociationContext {
 
 export function checkDissociationTriggers(context: DissociationContext): boolean {
   return (
-    context.vagalZone === "dorsal" &&
+    context.regulationZone === "collapsed" &&
     context.fragmentationSources.length >= DISSOCIATION.FRAGMENTATION_THRESHOLD &&
     context.integrationScore < DISSOCIATION.COHERENCE_CEILING &&
     context.isolationStress.isolationCost > DISSOCIATION.ISOLATION_STRESS_THRESHOLD &&
@@ -116,5 +116,5 @@ function generatePhenomenologicalText(depth: number, symptoms: DissociativeSympt
     return `Deep dissociative state: ${descriptions.join(". ")}.`
   }
 
-  return descriptions.join(". ") + "."
+  return `${descriptions.join(". ")}.`
 }

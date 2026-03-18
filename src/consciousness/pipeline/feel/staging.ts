@@ -21,7 +21,7 @@ import type {
 const REDIS = {
   ISOLATION_STRESS: "working:attachment:isolation",
   BIAS_STATE: "working:cognition:bias",
-  DEFENSE_STATE: "working:defense:state",
+  REGULATION_STATE: "working:regulation:state",
   EMOTION_CURRENT: "working:emotion:current",
   EMOTION_MOMENTUM: "working:emotion:momentum",
   EMOTION_AFTERGLOW: "working:emotion:afterglow",
@@ -52,7 +52,7 @@ const REDIS = {
   COHERENCE_STATE: "working:coherence:state",
   METACOGNITION_STATE: "working:metacognition:state",
   DEFERRED_QUEUE: "working:emotion:deferred_queue",
-  VAGAL_STATE: "working:soma:vagal",
+  AUTONOMIC_STATE: "working:soma:autonomic",
   INTEROCEPTIVE_ACCURACY: "working:soma:interoceptiveAccuracy",
   LAST_PREDICTION: "working:soma:lastPrediction",
   LAST_APPRAISALS: "working:emotion:lastAppraisals",
@@ -80,7 +80,7 @@ function stageEmotionChainWrites(buffer: WriteBuffer, chain: EmotionChainResult)
   }
 
   buffer.stage(REDIS.DEFERRED_QUEUE, chain.updatedDeferredQueue)
-  buffer.stage(REDIS.VAGAL_STATE, chain.vagalState)
+  buffer.stage(REDIS.AUTONOMIC_STATE, chain.autonomicState)
   buffer.stage(REDIS.LAST_APPRAISALS, chain.appraisalResults)
 
   if (chain.interoceptivePrediction) {
@@ -161,7 +161,7 @@ function stageSecondaryWrites(buffer: WriteBuffer, result: SecondaryResult): voi
 }
 
 function stageFinalWrites(buffer: WriteBuffer, final: FinalFanResult): void {
-  buffer.stage(REDIS.DEFENSE_STATE, final.defenseState)
+  buffer.stage(REDIS.REGULATION_STATE, final.emotionRegulationState)
   buffer.stage(REDIS.BIAS_STATE, final.biasState)
   buffer.stage(REDIS.DECEPTION_CURRENT, final.deceptionState)
   buffer.stage(REDIS.COMMUNICATION_REGISTER, final.register)
@@ -176,11 +176,11 @@ function stageFinalWrites(buffer: WriteBuffer, final: FinalFanResult): void {
     regressionActive: final.coherenceState.regressionActive
   })
 
-  for (const defense of final.defenseState.activeDefenses) {
+  for (const strategy of final.emotionRegulationState.activeStrategies) {
     buffer.stagePostgres(defenseLog, {
-      type: defense.type,
-      trigger: defense.trigger,
-      intensity: defense.intensity,
+      type: strategy.type,
+      trigger: strategy.trigger,
+      intensity: strategy.intensity,
       breakthrough: false
     })
   }

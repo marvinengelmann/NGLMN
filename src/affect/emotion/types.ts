@@ -124,7 +124,7 @@ export const AppraisalContext = z.object({
   hasActiveGoals: z.boolean(),
   confidence: z.number().min(0).max(1),
   energy: z.number().min(0).max(1),
-  vagalZone: z.enum(["ventral", "sympathetic", "dorsal"]),
+  regulationZone: z.enum(["safe", "mobilized", "collapsed"]),
   selfConcept: z.object({
     selfEfficacy: z.number().min(0).max(1),
     selfWorth: z.number().min(0).max(1),

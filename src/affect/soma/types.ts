@@ -21,34 +21,34 @@ export const DEFAULT_SOMATIC_STATE: SomaticState = {
   socialBattery: 0.8
 }
 
-export const VagalZone = z.enum(["ventral", "sympathetic", "dorsal"])
-export type VagalZone = z.infer<typeof VagalZone>
+export const RegulationZone = z.enum(["safe", "mobilized", "collapsed"])
+export type RegulationZone = z.infer<typeof RegulationZone>
 
-export const VagalState = z.object({
-  zone: VagalZone,
+export const AutonomicState = z.object({
+  zone: RegulationZone,
   activation: z.number().min(0).max(1),
   transitionMomentum: z.number().min(-1).max(1),
   ticksInZone: z.number().int().min(0),
   neuroception: z.number().min(0).max(1)
 })
-export type VagalState = z.infer<typeof VagalState>
+export type AutonomicState = z.infer<typeof AutonomicState>
 
-export const DEFAULT_VAGAL_STATE: VagalState = {
-  zone: "ventral",
+export const DEFAULT_AUTONOMIC_STATE: AutonomicState = {
+  zone: "safe",
   activation: 0.6,
   transitionMomentum: 0,
   ticksInZone: 100,
   neuroception: 0.7
 }
 
-export const VagalConstraints = z.object({
+export const RegulationConstraints = z.object({
   vulnerabilityAccess: z.number().min(0).max(1),
   creativityAccess: z.number().min(0).max(1),
   socialEngagement: z.number().min(0).max(1),
   emotionalRange: z.number().min(0).max(1),
   cognitiveFlexibility: z.number().min(0).max(1)
 })
-export type VagalConstraints = z.infer<typeof VagalConstraints>
+export type RegulationConstraints = z.infer<typeof RegulationConstraints>
 
 export const SomaticPredictionError = z.object({
   tension: z.number().min(-1).max(1),

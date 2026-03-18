@@ -1,6 +1,6 @@
 import type { SecondaryEmotionState } from "@/affect/emotion/types.ts"
 import { applyEvent } from "@/affect/emotion/update.ts"
-import { constrainVulnerabilityLevel } from "@/affect/soma/vagal.ts"
+import { constrainVulnerabilityLevel } from "@/affect/soma/autonomic.ts"
 import { assembleFreeEnergyState } from "@/fep/compute.ts"
 import { computeFEEmotionModulation } from "@/fep/effects.ts"
 import { log } from "@/infra/lib/logger.ts"
@@ -44,8 +44,8 @@ export async function runFeelPipeline(senseResult: SenseResult, buffer: WriteBuf
 
   vulnerabilityResult.vulnerability = {
     ...vulnerabilityResult.vulnerability,
-    level: constrainVulnerabilityLevel(vulnerabilityResult.vulnerability.level, chain.vagalConstraints),
-    windowOpen: vulnerabilityResult.vulnerability.windowOpen && chain.vagalConstraints.vulnerabilityAccess > 0.3
+    level: constrainVulnerabilityLevel(vulnerabilityResult.vulnerability.level, chain.regulationConstraints),
+    windowOpen: vulnerabilityResult.vulnerability.windowOpen && chain.regulationConstraints.vulnerabilityAccess > 0.3
   }
 
   const operatorSilenceMinutes = senseResult.moodContext.operatorSilenceMinutes
@@ -84,7 +84,7 @@ export async function runFeelPipeline(senseResult: SenseResult, buffer: WriteBuf
     vulnerabilityResult.heldBackBuffer,
     senseResult,
     prefetch,
-    chain.vagalConstraints,
+    chain.regulationConstraints,
     parallel.isolationStress
   )
 
@@ -98,7 +98,7 @@ export async function runFeelPipeline(senseResult: SenseResult, buffer: WriteBuf
   result.freeEnergyState = await assembleFreeEnergyState({
     interoceptiveTotalError: result.interoceptivePrediction?.totalError ?? 0,
     interoceptiveAccuracy: result.interoceptivePrediction?.accuracy ?? 0.5,
-    vagalZone: result.vagalState.zone,
+    regulationZone: result.autonomicState.zone,
     anticipatoryViolations: result.anticipatoryState.recentViolations,
     patternConfidence: result.anticipatoryState.patternConfidence,
     surpriseLevel: surpriseState?.level ?? 0,
@@ -116,7 +116,7 @@ export async function runFeelPipeline(senseResult: SenseResult, buffer: WriteBuf
     forecastErrorLevel: forecastState?.level ?? 0.3,
     metacognitiveClarity: result.metacognitiveState.cognitiveClarity,
     cognitiveFatigue: result.metacognitiveState.cognitiveFatigue,
-    activeDefenseCount: result.defenseState.activeDefenses.length,
+    activeStrategyCount: result.emotionRegulationState.activeStrategies.length,
     neuromodulatoryState: result.neuromodulatoryState
   })
 

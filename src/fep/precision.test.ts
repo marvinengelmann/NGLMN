@@ -5,10 +5,10 @@ import { applyNeuromodulatorPrecisionEffects, computeBasePrecisionWeights } from
 import { DEFAULT_PRECISION_WEIGHTS } from "./types.ts"
 
 describe("computeBasePrecisionWeights", () => {
-  it("produces higher interoceptive precision in ventral vagal", () => {
-    const ventral = computeBasePrecisionWeights({
+  it("produces higher interoceptive precision in safe zone", () => {
+    const safe = computeBasePrecisionWeights({
       interoceptiveAccuracy: 0.8,
-      vagalZone: "ventral",
+      regulationZone: "safe",
       patternConfidence: 0.5,
       metacognitiveClarity: 0.7,
       operatorModelConfidence: 0.5,
@@ -16,9 +16,9 @@ describe("computeBasePrecisionWeights", () => {
       cognitiveFatigue: 0.2,
       forecastAccuracy: 0.5
     })
-    const dorsal = computeBasePrecisionWeights({
+    const collapsed = computeBasePrecisionWeights({
       interoceptiveAccuracy: 0.8,
-      vagalZone: "dorsal",
+      regulationZone: "collapsed",
       patternConfidence: 0.5,
       metacognitiveClarity: 0.7,
       operatorModelConfidence: 0.5,
@@ -26,13 +26,13 @@ describe("computeBasePrecisionWeights", () => {
       cognitiveFatigue: 0.2,
       forecastAccuracy: 0.5
     })
-    expect(ventral.interoceptive).toBeGreaterThan(dorsal.interoceptive)
+    expect(safe.interoceptive).toBeGreaterThan(collapsed.interoceptive)
   })
 
   it("drive precision decreases with cognitive fatigue", () => {
     const fresh = computeBasePrecisionWeights({
       interoceptiveAccuracy: 0.5,
-      vagalZone: "ventral",
+      regulationZone: "safe",
       patternConfidence: 0.5,
       metacognitiveClarity: 0.5,
       operatorModelConfidence: 0.5,
@@ -42,7 +42,7 @@ describe("computeBasePrecisionWeights", () => {
     })
     const fatigued = computeBasePrecisionWeights({
       interoceptiveAccuracy: 0.5,
-      vagalZone: "ventral",
+      regulationZone: "safe",
       patternConfidence: 0.5,
       metacognitiveClarity: 0.5,
       operatorModelConfidence: 0.5,
@@ -56,7 +56,7 @@ describe("computeBasePrecisionWeights", () => {
   it("all precisions are within [0, 1]", () => {
     const result = computeBasePrecisionWeights({
       interoceptiveAccuracy: 1,
-      vagalZone: "ventral",
+      regulationZone: "safe",
       patternConfidence: 1,
       metacognitiveClarity: 1,
       operatorModelConfidence: 1,
@@ -144,6 +144,8 @@ describe("applyNeuromodulatorPrecisionEffects", () => {
       oxytocin: { level: 1, productionRate: 1, reuptakeRate: 0 },
       cortisol: { level: 1, productionRate: 1, reuptakeRate: 0 },
       endorphins: { level: 1, productionRate: 1, reuptakeRate: 0 },
+      gaba: { level: 0.5, productionRate: 0.5, reuptakeRate: 0.5 },
+      dopamineDetail: { tonicLevel: 0.45, phasicLevel: 0.05 },
       lastUpdatedAt: new Date().toISOString()
     }
     const result = applyNeuromodulatorPrecisionEffects(DEFAULT_PRECISION_WEIGHTS, extremeNeuro)

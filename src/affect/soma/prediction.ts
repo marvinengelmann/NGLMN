@@ -1,7 +1,7 @@
 import type { EmotionUpdateEvent, MoodContext } from "@/affect/emotion/types.ts"
 import { clamp01 } from "@/infra/lib/math.ts"
 import { INTEROCEPTION } from "./constants.ts"
-import type { InteroceptivePrediction, SomaticPredictionError, SomaticState, VagalState } from "./types.ts"
+import type { AutonomicState, InteroceptivePrediction, SomaticPredictionError, SomaticState } from "./types.ts"
 import { DEFAULT_SOMATIC_STATE } from "./types.ts"
 import { circadianFatigue, computeSomaticTarget } from "./update.ts"
 
@@ -40,26 +40,26 @@ interface PredictionInput {
     boredom: number
   }
   moodContext: MoodContext
-  vagalState: VagalState
+  autonomicState: AutonomicState
   trajectory: Partial<Record<SomaDimension, number>>
   hourOfDay: number
 }
 
 /**
  * Predict the expected somatic state for the upcoming tick.
- * Combines trajectory extrapolation, context-based expectations, vagal zone profile, and baseline drift.
+ * Combines trajectory extrapolation, context-based expectations, autonomic zone profile, and baseline drift.
  */
 export function predictSomaticState({
   currentSoma,
   currentEmotion,
   moodContext,
-  vagalState,
+  autonomicState,
   trajectory,
   hourOfDay
 }: PredictionInput): SomaticState {
   const trajectoryPrediction = predictFromTrajectory(currentSoma, trajectory)
   const contextPrediction = predictFromContext(currentEmotion, hourOfDay, moodContext)
-  const vagalProfile = INTEROCEPTION.VAGAL_SOMA_PROFILES[vagalState.zone]
+  const autonomicProfile = INTEROCEPTION.AUTONOMIC_SOMA_PROFILES[autonomicState.zone]
 
   const predicted: SomaticState = {
     tension: 0,
@@ -75,7 +75,7 @@ export function predictSomaticState({
     predicted[dim] = clamp01(
       INTEROCEPTION.TRAJECTORY_WEIGHT * (trajectoryPrediction[dim] ?? currentSoma[dim]) +
         INTEROCEPTION.CONTEXT_WEIGHT * (contextPrediction[dim] ?? currentSoma[dim]) +
-        INTEROCEPTION.VAGAL_PROFILE_WEIGHT * vagalProfile[dim] +
+        INTEROCEPTION.AUTONOMIC_PROFILE_WEIGHT * autonomicProfile[dim] +
         INTEROCEPTION.BASELINE_DRIFT_WEIGHT * DEFAULT_SOMATIC_STATE[dim]
     )
   }
@@ -152,11 +152,11 @@ export function updateInteroceptiveAccuracy(previousAccuracy: number, totalError
 /**
  * Compute alexithymia level — inability to identify feelings.
  * High when accuracy is low AND error is high (can't predict AND can't identify).
- * Dorsal vagal amplifies (shutdown = disconnected from body).
+ * Collapsed autonomic state amplifies (shutdown = disconnected from body).
  */
-export function computeAlexithymia(accuracy: number, totalError: number, vagalZone: string): number {
-  const dorsalMultiplier = vagalZone === "dorsal" ? INTEROCEPTION.ALEXITHYMIA_DORSAL_MULTIPLIER : 1.0
-  return clamp01((1 - accuracy) * totalError * dorsalMultiplier)
+export function computeAlexithymia(accuracy: number, totalError: number, regulationZone: string): number {
+  const collapsedMultiplier = regulationZone === "collapsed" ? INTEROCEPTION.ALEXITHYMIA_COLLAPSED_MULTIPLIER : 1.0
+  return clamp01((1 - accuracy) * totalError * collapsedMultiplier)
 }
 
 /**
@@ -203,14 +203,14 @@ export function assembleInteroceptivePrediction(
   predicted: SomaticState,
   actual: SomaticState,
   previousAccuracy: number,
-  vagalZone: string,
+  regulationZone: string,
   dissociationPenalty = 0
 ): InteroceptivePrediction {
   const error = computePredictionError(predicted, actual)
   const totalError = computeTotalError(error)
   const rawAccuracy = updateInteroceptiveAccuracy(previousAccuracy, totalError)
   const accuracy = Math.max(0, rawAccuracy - dissociationPenalty)
-  const alexithymia = computeAlexithymia(accuracy, totalError, vagalZone)
+  const alexithymia = computeAlexithymia(accuracy, totalError, regulationZone)
   const somethingFeelsOff =
     totalError > INTEROCEPTION.SOMETHING_FEELS_OFF_THRESHOLD && totalError < INTEROCEPTION.EMOTION_TRIGGER_THRESHOLD
 

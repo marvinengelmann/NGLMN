@@ -1,6 +1,7 @@
 import { clamp01 } from "@/infra/lib/math.ts"
 import { nowISO } from "@/infra/lib/time.ts"
 import { FEP } from "./constants.ts"
+import { applyHierarchicalPrecisionModulation } from "./hierarchy.ts"
 import { applyNeuromodulatorPrecisionEffects, computeBasePrecisionWeights } from "./precision.ts"
 import { getFreeEnergyHistory, getFreeEnergyState } from "./state.ts"
 import {
@@ -15,14 +16,14 @@ import {
 interface ComplexityInput {
   coherenceScore: number
   dissonanceScore: number
-  activeDefenseCount: number
+  activeStrategyCount: number
   forecastAccuracy: number
 }
 
 export interface FreeEnergyInput {
   interoceptiveTotalError: number
   interoceptiveAccuracy: number
-  vagalZone: "ventral" | "sympathetic" | "dorsal"
+  regulationZone: "safe" | "mobilized" | "collapsed"
   anticipatoryViolations: Array<{ surpriseIntensity: number }>
   patternConfidence: number
   surpriseLevel: number
@@ -34,7 +35,7 @@ export interface FreeEnergyInput {
   forecastErrorLevel: number
   metacognitiveClarity: number
   cognitiveFatigue: number
-  activeDefenseCount: number
+  activeStrategyCount: number
   neuromodulatoryState: {
     dopamine: { level: number }
     serotonin: { level: number }
@@ -104,7 +105,7 @@ export function computeComplexityTerm(input: ComplexityInput): number {
   return clamp01(
     W.COHERENCE * (1 - input.coherenceScore) +
       W.DISSONANCE * input.dissonanceScore +
-      W.DEFENSE * (input.activeDefenseCount / FEP.MAX_DEFENSE_COUNT) +
+      W.STRATEGY * (input.activeStrategyCount / FEP.MAX_STRATEGY_COUNT) +
       W.FORECAST_MISCALIBRATION * (1 - input.forecastAccuracy)
   )
 }
@@ -179,7 +180,7 @@ export async function assembleFreeEnergyState(input: FreeEnergyInput): Promise<F
 
   const basePrecisions = computeBasePrecisionWeights({
     interoceptiveAccuracy: input.interoceptiveAccuracy,
-    vagalZone: input.vagalZone,
+    regulationZone: input.regulationZone,
     patternConfidence: input.patternConfidence,
     metacognitiveClarity: input.metacognitiveClarity,
     operatorModelConfidence: input.operatorModelConfidence,
@@ -195,12 +196,14 @@ export async function assembleFreeEnergyState(input: FreeEnergyInput): Promise<F
       )
     : basePrecisions
 
-  const channels = extractPredictionErrorChannels(input, precisionWeights)
+  const rawChannels = extractPredictionErrorChannels(input, precisionWeights)
+  const hierarchicalPrecision = applyHierarchicalPrecisionModulation(rawChannels, precisionWeights)
+  const channels = extractPredictionErrorChannels(input, hierarchicalPrecision)
 
   const decomposition = computeFreeEnergyDecomposition(channels, {
     coherenceScore: input.coherenceIntegrationScore,
     dissonanceScore: input.activeDissonance,
-    activeDefenseCount: input.activeDefenseCount,
+    activeStrategyCount: input.activeStrategyCount,
     forecastAccuracy
   })
 

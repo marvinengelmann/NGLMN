@@ -24,6 +24,12 @@ import {
   computeNeuromodulatorUpdate
 } from "@/affect/neuromodulation/compute.ts"
 import {
+  applyRegulationEmotionConstraints,
+  computeAutonomicTransition,
+  computeRegulationConstraints,
+  computeThreatAppraisal
+} from "@/affect/soma/autonomic.ts"
+import {
   assembleInteroceptivePrediction,
   computeInteroceptiveEmotionTriggers,
   computeSomaticTrajectory,
@@ -31,12 +37,6 @@ import {
 } from "@/affect/soma/prediction.ts"
 import { querySomaticMemories } from "@/affect/soma/state.ts"
 import { computeSomaticUpdate } from "@/affect/soma/update.ts"
-import {
-  applyVagalEmotionConstraints,
-  computeNeuroception,
-  computeVagalConstraints,
-  computeVagalTransition
-} from "@/affect/soma/vagal.ts"
 import { computeForecastAnticipation } from "@/cognition/forecasting/compute.ts"
 import { DREAM_AFTERGLOW } from "@/expression/dream/constants.ts"
 import { getFreeEnergyState } from "@/fep/state.ts"
@@ -63,7 +63,7 @@ export async function runEmotionChain(sense: SenseResult, prefetch: FeelPrefetch
     hasActiveGoals: sense.moodContext.hasActiveGoals,
     confidence: prefetch.currentEmotion.confidence,
     energy: prefetch.currentEmotion.energy,
-    vagalZone: prefetch.previousVagalState.zone,
+    regulationZone: prefetch.previousAutonomicState.zone,
     selfConcept: prefetch.selfConcept,
     cortisolCopingModulation: computeCopingModulation(prefetch.previousNeuromodulatoryState)
   }
@@ -103,7 +103,11 @@ export async function runEmotionChain(sense: SenseResult, prefetch: FeelPrefetch
 
   let emotion = afterglowState
 
-  const ultradianState = updateUltradianState(prefetch.previousUltradian, new Date())
+  const ultradianState = updateUltradianState(
+    prefetch.previousUltradian,
+    new Date(),
+    prefetch.previousMetacognition.cognitiveFatigue
+  )
   const ultradianModulation = computeUltradianModulation(ultradianState.phase, ultradianState.restDepth)
   if (Object.keys(ultradianModulation.emotionBaselineShift).length > 0) {
     emotion = applyClampedDeltas(emotion, ultradianModulation.emotionBaselineShift)
@@ -175,7 +179,7 @@ export async function runEmotionChain(sense: SenseResult, prefetch: FeelPrefetch
     currentSoma: prefetch.currentSoma,
     currentEmotion: emotion,
     moodContext: sense.moodContext,
-    vagalState: prefetch.previousVagalState,
+    autonomicState: prefetch.previousAutonomicState,
     trajectory: somaticTrajectory,
     hourOfDay
   })
@@ -203,22 +207,26 @@ export async function runEmotionChain(sense: SenseResult, prefetch: FeelPrefetch
     predictedSoma,
     soma,
     prefetch.interoceptiveAccuracy,
-    prefetch.previousVagalState.zone,
+    prefetch.previousAutonomicState.zone,
     dissociationPenalty
   )
 
   const interoceptiveTriggers = computeInteroceptiveEmotionTriggers(interoceptivePrediction)
   emotion = interoceptiveTriggers.reduce((acc, t) => applyEvent(acc, t), emotion)
 
-  const neuroception = computeNeuroception({
+  const threatAppraisal = computeThreatAppraisal({
     soma,
     emotion,
     operatorPresent: sense.moodContext.inConversation
   })
-  const vagalState = computeVagalTransition(prefetch.previousVagalState, neuroception, sense.moodContext.inConversation)
-  const vagalConstraints = computeVagalConstraints(vagalState)
+  const autonomicState = computeAutonomicTransition(
+    prefetch.previousAutonomicState,
+    threatAppraisal,
+    sense.moodContext.inConversation
+  )
+  const regulationConstraints = computeRegulationConstraints(autonomicState)
 
-  emotion = applyVagalEmotionConstraints(emotion, vagalConstraints)
+  emotion = applyRegulationEmotionConstraints(emotion, regulationConstraints)
 
   let deferredQueue = prefetch.deferredQueue
   for (const trigger of sense.rawTriggers) {
@@ -271,8 +279,8 @@ export async function runEmotionChain(sense: SenseResult, prefetch: FeelPrefetch
     proustFlashback,
     maturedDeferredEvents,
     updatedDeferredQueue,
-    vagalState,
-    vagalConstraints,
+    autonomicState,
+    regulationConstraints,
     interoceptivePrediction,
     appraisalResults,
     neuromodulatoryState,

@@ -13,11 +13,11 @@ import {
 } from "@/affect/emotion/state.ts"
 import { getNeuromodulatoryState } from "@/affect/neuromodulation/state.ts"
 import {
+  getAutonomicState,
   getInteroceptiveAccuracy,
   getRecentSomaHistory,
   getSomaticLastTimestamp,
-  getSomaticState,
-  getVagalState
+  getSomaticState
 } from "@/affect/soma/state.ts"
 import { getMetacognitiveState } from "@/cognition/awareness.ts"
 import { getBiasState } from "@/cognition/bias/state.ts"
@@ -39,7 +39,7 @@ import { getBoundaryState } from "@/self/boundaries/state.ts"
 import { getDissociativeState } from "@/self/coherence/dissociation/state.ts"
 import { getCoherenceState } from "@/self/coherence/state.ts"
 import { getDeceptionState } from "@/self/deception/state.ts"
-import { getDefenseState } from "@/self/defense/state.ts"
+import { getEmotionRegulationState } from "@/self/defense/state.ts"
 import { getGenesisDNA } from "@/self/genesis/state.ts"
 import { getHeldBackBuffer } from "@/self/psyche/heldback.ts"
 import { getGrowthArcs, getSelfConcept } from "@/self/psyche/state.ts"
@@ -80,13 +80,13 @@ export async function prefetchFeelState(): Promise<FeelPrefetch> {
     selfInsightsResult,
     relationalPatterns,
     deferredQueue,
-    previousVagalState,
+    previousAutonomicState,
     interoceptiveAccuracy,
     recentSomaHistory,
     previousNeuromodulatoryState,
     previousIsolationStress,
     previousBiasState,
-    previousDefenseState
+    previousEmotionRegulationState
   ] = await Promise.all([
     getGenesisDNA(),
     getEmotionalState(),
@@ -121,13 +121,13 @@ export async function prefetchFeelState(): Promise<FeelPrefetch> {
     getKnowledge({ category: "insight", scope: "self" }),
     getRelationalPatterns(),
     getDeferredQueue(),
-    getVagalState(),
+    getAutonomicState(),
     getInteroceptiveAccuracy(),
     getRecentSomaHistory(),
     getNeuromodulatoryState(),
     getIsolationStress(),
     getBiasState(),
-    getDefenseState()
+    getEmotionRegulationState()
   ])
 
   const [
@@ -180,13 +180,13 @@ export async function prefetchFeelState(): Promise<FeelPrefetch> {
     selfInsights: selfInsightsResult.unwrapOr([]),
     relationalPatterns,
     deferredQueue,
-    previousVagalState,
+    previousAutonomicState,
     interoceptiveAccuracy,
     recentSomaHistory,
     previousNeuromodulatoryState,
     previousIsolationStress,
     previousBiasState,
-    previousDefenseState,
+    previousEmotionRegulationState,
     previousGranularity,
     previousForecastingState,
     previousUltradian,

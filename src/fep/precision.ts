@@ -1,12 +1,12 @@
 import type { NeuromodulatoryState } from "@/affect/neuromodulation/types.ts"
-import type { VagalZone } from "@/affect/soma/types.ts"
+import type { RegulationZone } from "@/affect/soma/types.ts"
 import { clamp, clamp01 } from "@/infra/lib/math.ts"
 import { FEP } from "./constants.ts"
 import type { PrecisionWeights } from "./types.ts"
 
 interface BasePrecisionInput {
   interoceptiveAccuracy: number
-  vagalZone: VagalZone
+  regulationZone: RegulationZone
   patternConfidence: number
   metacognitiveClarity: number
   operatorModelConfidence: number
@@ -19,10 +19,10 @@ interface BasePrecisionInput {
  * Derive base precision weights from existing confidence/accuracy signals across subsystems.
  */
 export function computeBasePrecisionWeights(input: BasePrecisionInput): PrecisionWeights {
-  const vagalGain = FEP.VAGAL_PRECISION_GAIN[input.vagalZone] ?? 1.0
+  const regulationGain = FEP.REGULATION_PRECISION_GAIN[input.regulationZone] ?? 1.0
 
   return {
-    interoceptive: clamp01(input.interoceptiveAccuracy * vagalGain),
+    interoceptive: clamp01(input.interoceptiveAccuracy * regulationGain),
     anticipatory: clamp01(input.patternConfidence),
     novelty: clamp01(input.metacognitiveClarity * 0.8),
     relational: clamp01(input.operatorModelConfidence),
@@ -48,6 +48,7 @@ export function applyNeuromodulatorPrecisionEffects(
   const serotonin = neuro.serotonin.level
   const oxy = neuro.oxytocin.level
   const endo = neuro.endorphins.level
+  const gaba = neuro.gaba.level
 
   const P = FEP.NEURO_PRECISION
   const globalArousal = clamp(P.NOREPINEPHRINE_BASE + ne * P.NOREPINEPHRINE_SCALE, 0.7, 1.3)
@@ -57,8 +58,9 @@ export function applyNeuromodulatorPrecisionEffects(
   const serotoninFloor = serotonin < P.SEROTONIN_VOLATILITY_THRESHOLD ? 0.7 + serotonin : 1.0
   const oxytocinBoost = clamp(P.OXYTOCIN_BASE + oxy * P.OXYTOCIN_SCALE, 0.9, 1.2)
   const endorphinDampen = clamp(P.ENDORPHIN_BASE - endo * P.ENDORPHIN_SCALE, 0.7, 1.1)
+  const gabaDampen = clamp(1.1 - gaba * 0.3, 0.7, 1.1)
 
-  const globalScale = globalArousal * serotoninFloor * endorphinDampen
+  const globalScale = globalArousal * serotoninFloor * endorphinDampen * gabaDampen
 
   const result: PrecisionWeights = {
     interoceptive: base.interoceptive * globalScale * threatGain,

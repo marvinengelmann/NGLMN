@@ -10,7 +10,7 @@ import {
   type SecondaryEmotionState
 } from "@/affect/emotion/types.ts"
 import { NeuromodulatoryState } from "@/affect/neuromodulation/types.ts"
-import { InteroceptivePrediction, SomaticState, VagalConstraints, VagalState } from "@/affect/soma/types.ts"
+import { AutonomicState, InteroceptivePrediction, RegulationConstraints, SomaticState } from "@/affect/soma/types.ts"
 import { BiasState } from "@/cognition/bias/types.ts"
 import { InnerDialog } from "@/cognition/polyphony/types.ts"
 import { AttentionState, CognitiveConflict, InstinctImpression, MetacognitiveState } from "@/cognition/types.ts"
@@ -34,7 +34,7 @@ import { TransferenceEvent } from "@/relational/transference/types.ts"
 import { BoundaryState } from "@/self/boundaries/types.ts"
 import { DissociativeState } from "@/self/coherence/dissociation/types.ts"
 import { CoherenceState } from "@/self/coherence/types.ts"
-import { DefenseState } from "@/self/defense/types.ts"
+import { EmotionRegulationState } from "@/self/defense/types.ts"
 import { DissonanceState } from "@/self/dissonance/types.ts"
 import { HeldBackBuffer } from "@/self/psyche/heldback.ts"
 import { SelfConcept } from "@/self/psyche/types.ts"
@@ -99,13 +99,13 @@ export const FeelingResult = z.object({
   hedgingLevel: z.number().min(0).max(1).default(0),
   proustFlashback: z.custom<ProustFlashback>().nullable().default(null),
   maturedDeferredEvents: z.custom<DeferredEmotionalEvent[]>().default([]),
-  vagalState: VagalState,
-  vagalConstraints: VagalConstraints,
+  autonomicState: AutonomicState,
+  regulationConstraints: RegulationConstraints,
   interoceptivePrediction: InteroceptivePrediction.nullable().default(null),
   appraisalResults: z.array(AppraisalResult).default([]),
   isolationStress: IsolationStress,
-  defenseState: DefenseState,
-  defenseExpressionModifiers: z.string().nullable().default(null),
+  emotionRegulationState: EmotionRegulationState,
+  regulationExpressionModifiers: z.string().nullable().default(null),
   biasState: BiasState,
   microExpressionInstructions: z.string().nullable().default(null),
   dissociativeState: DissociativeState.optional(),

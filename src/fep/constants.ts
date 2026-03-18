@@ -6,20 +6,20 @@ export const FEP = {
   COMPLEXITY_WEIGHTS: {
     COHERENCE: 0.3,
     DISSONANCE: 0.3,
-    DEFENSE: 0.2,
+    STRATEGY: 0.2,
     FORECAST_MISCALIBRATION: 0.2
   },
 
-  MAX_DEFENSE_COUNT: 8,
+  MAX_STRATEGY_COUNT: 8,
 
   HISTORY_LENGTH: 20,
 
   TREND_WINDOW: 5,
 
-  VAGAL_PRECISION_GAIN: {
-    ventral: 1.0,
-    sympathetic: 0.7,
-    dorsal: 0.4
+  REGULATION_PRECISION_GAIN: {
+    safe: 1.0,
+    mobilized: 0.7,
+    collapsed: 0.4
   } as Record<string, number>,
 
   NEURO_PRECISION: {
@@ -136,5 +136,12 @@ export const FEP = {
     LOW_FE_CONFIDENCE: 0.02
   },
 
-  ALLOSTATIC_CORTISOL_SCALE: 0.15
+  ALLOSTATIC_CORTISOL_SCALE: 0.15,
+
+  HIERARCHY: {
+    TOP_DOWN_WEIGHT: 0.2,
+    NARRATIVE_TO_SOCIAL: 0.15,
+    SOCIAL_TO_AFFECTIVE: 0.12,
+    AFFECTIVE_TO_INTEROCEPTIVE: 0.1
+  }
 } as const

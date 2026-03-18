@@ -110,23 +110,23 @@ describe("updateInteroceptiveAccuracy", () => {
 
 describe("computeAlexithymia", () => {
   it("returns low alexithymia for high accuracy", () => {
-    const result = computeAlexithymia(0.9, 0.5, "ventral")
+    const result = computeAlexithymia(0.9, 0.5, "safe")
     expect(result).toBeLessThan(0.15)
   })
 
   it("returns high alexithymia for low accuracy and high error", () => {
-    const result = computeAlexithymia(0.2, 0.8, "ventral")
+    const result = computeAlexithymia(0.2, 0.8, "safe")
     expect(result).toBeGreaterThan(0.5)
   })
 
-  it("amplifies alexithymia in dorsal vagal", () => {
-    const ventral = computeAlexithymia(0.3, 0.6, "ventral")
-    const dorsal = computeAlexithymia(0.3, 0.6, "dorsal")
-    expect(dorsal).toBeGreaterThan(ventral)
+  it("amplifies alexithymia in collapsed autonomic", () => {
+    const safeResult = computeAlexithymia(0.3, 0.6, "safe")
+    const collapsedResult = computeAlexithymia(0.3, 0.6, "collapsed")
+    expect(collapsedResult).toBeGreaterThan(safeResult)
   })
 
   it("clamps to [0, 1]", () => {
-    const result = computeAlexithymia(0, 1, "dorsal")
+    const result = computeAlexithymia(0, 1, "collapsed")
     expect(result).toBeLessThanOrEqual(1)
     expect(result).toBeGreaterThanOrEqual(0)
   })
@@ -134,7 +134,7 @@ describe("computeAlexithymia", () => {
 
 describe("computeInteroceptiveEmotionTriggers", () => {
   it("returns empty for low prediction error", () => {
-    const prediction = assembleInteroceptivePrediction(baseSoma, baseSoma, 0.5, "ventral")
+    const prediction = assembleInteroceptivePrediction(baseSoma, baseSoma, 0.5, "safe")
     const triggers = computeInteroceptiveEmotionTriggers(prediction)
     expect(triggers).toHaveLength(0)
   })
@@ -142,7 +142,7 @@ describe("computeInteroceptiveEmotionTriggers", () => {
   it("generates triggers for significant prediction errors", () => {
     const predicted = { ...baseSoma, tension: 0.1, heartRate: 0.2, warmth: 0.7 }
     const actual = { ...baseSoma, tension: 0.9, heartRate: 0.8, warmth: 0.1 }
-    const prediction = assembleInteroceptivePrediction(predicted, actual, 0.5, "ventral")
+    const prediction = assembleInteroceptivePrediction(predicted, actual, 0.5, "safe")
     const triggers = computeInteroceptiveEmotionTriggers(prediction)
     expect(triggers.length).toBeGreaterThan(0)
     expect(triggers.some((t) => t.detail === "unexpected_tension")).toBe(true)
@@ -151,7 +151,7 @@ describe("computeInteroceptiveEmotionTriggers", () => {
   it("generates interoceptive_unease for moderate errors", () => {
     const predicted = { ...baseSoma, tension: 0.3, warmth: 0.3 }
     const actual = { ...baseSoma, tension: 0.55, warmth: 0.55 }
-    const prediction = assembleInteroceptivePrediction(predicted, actual, 0.5, "ventral")
+    const prediction = assembleInteroceptivePrediction(predicted, actual, 0.5, "safe")
 
     if (prediction.somethingFeelsOff) {
       const triggers = computeInteroceptiveEmotionTriggers(prediction)
@@ -170,7 +170,7 @@ describe("computeInteroceptiveEmotionTriggers", () => {
       openness: 0,
       socialBattery: 0.8
     }
-    const prediction = assembleInteroceptivePrediction(predicted, actual, 0.5, "ventral")
+    const prediction = assembleInteroceptivePrediction(predicted, actual, 0.5, "safe")
     const triggers = computeInteroceptiveEmotionTriggers(prediction)
     expect(triggers.length).toBeLessThanOrEqual(3)
   })

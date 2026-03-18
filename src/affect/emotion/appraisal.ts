@@ -1,5 +1,5 @@
 import type { NeuromodulatoryState } from "@/affect/neuromodulation/types.ts"
-import type { SomaticState, VagalZone } from "@/affect/soma/types.ts"
+import type { RegulationZone, SomaticState } from "@/affect/soma/types.ts"
 import { clamp01 } from "@/infra/lib/math.ts"
 import type { SelfConcept } from "@/self/psyche/types.ts"
 import { APPRAISAL } from "./constants.ts"
@@ -89,10 +89,10 @@ const NORM_COMPATIBILITY: Record<EmotionTrigger, number> = {
   ambient: 0.0
 }
 
-const VAGAL_COPING_FACTOR: Record<VagalZone, number> = {
-  ventral: 0.9,
-  sympathetic: 0.5,
-  dorsal: 0.1
+const REGULATION_COPING_FACTOR: Record<RegulationZone, number> = {
+  safe: 0.9,
+  mobilized: 0.5,
+  collapsed: 0.1
 }
 
 export function appraiseNovelty(noveltyLevel: number, minutesSinceLastSimilar: number | undefined): number {
@@ -117,14 +117,14 @@ export function appraiseGoalRelevance(event: EmotionUpdateEvent, hasActiveGoals:
 export function appraiseCopingPotential(
   confidence: number,
   energy: number,
-  vagalZone: VagalZone,
+  regulationZone: RegulationZone,
   cortisolModulation?: number
 ): number {
-  const vagalFactor = VAGAL_COPING_FACTOR[vagalZone]
+  const regulationFactor = REGULATION_COPING_FACTOR[regulationZone]
   const baseCoping = clamp01(
     confidence * APPRAISAL.COPING_CONFIDENCE_WEIGHT +
       energy * APPRAISAL.COPING_ENERGY_WEIGHT +
-      vagalFactor * APPRAISAL.COPING_VAGAL_WEIGHT
+      regulationFactor * APPRAISAL.COPING_REGULATION_WEIGHT
   )
   if (cortisolModulation !== undefined) {
     return clamp01(baseCoping * cortisolModulation)
@@ -150,7 +150,7 @@ export function computeAppraisal(
   const copingPotential = appraiseCopingPotential(
     context.confidence,
     context.energy,
-    context.vagalZone,
+    context.regulationZone,
     context.cortisolCopingModulation
   )
   const normCompatibility = appraiseNormCompatibility(event, context.selfConcept)
@@ -235,7 +235,7 @@ export function createNeutralAppraisalContext(): AppraisalContext {
     hasActiveGoals: false,
     confidence: 0.5,
     energy: 0.5,
-    vagalZone: "ventral",
+    regulationZone: "safe",
     selfConcept: { selfEfficacy: 0.5, selfWorth: 0.5, selfContinuity: 0.7, agency: 0.5, authenticity: 0.6 }
   }
 }

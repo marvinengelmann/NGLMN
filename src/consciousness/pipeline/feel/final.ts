@@ -5,8 +5,12 @@ import type { DriveState } from "@/affect/drive/types.ts"
 import type { ShameState } from "@/affect/emotion/shame.ts"
 import type { EmotionalState } from "@/affect/emotion/types.ts"
 import { applyEmotionalDamping, computeEmotionalIntensity } from "@/affect/emotion/update.ts"
-import type { SomaticState, VagalConstraints } from "@/affect/soma/types.ts"
-import { constrainCognitiveFlexibility, constrainCreativeUrge, vagalForcesTerseRegister } from "@/affect/soma/vagal.ts"
+import {
+  constrainCognitiveFlexibility,
+  constrainCreativeUrge,
+  regulationForcesTerseRegister
+} from "@/affect/soma/autonomic.ts"
+import type { RegulationConstraints, SomaticState } from "@/affect/soma/types.ts"
 import { computeAttentionState } from "@/cognition/attention.ts"
 import { updateBiasModifiers } from "@/cognition/bias/compute.ts"
 import { computeMetacognitiveModifiers, updateMetacognitiveState } from "@/cognition/metacognition.ts"
@@ -25,7 +29,7 @@ import {
   computeDissociativeState
 } from "@/self/coherence/dissociation/compute.ts"
 import { processDeceptionCycle } from "@/self/deception/compute.ts"
-import { computeDefenseExpressionModifiers, processDefenseCycle } from "@/self/defense/compute.ts"
+import { computeRegulationExpressionModifiers, processRegulationCycle } from "@/self/defense/compute.ts"
 import type { DissonanceState } from "@/self/dissonance/types.ts"
 import type { HeldBackBuffer } from "@/self/psyche/heldback.ts"
 import { applyGrowthArcMomentum } from "@/self/psyche/update.ts"
@@ -42,7 +46,7 @@ export async function runFinalSubsystems(
   heldBackBuffer: HeldBackBuffer,
   sense: SenseResult,
   prefetch: FeelPrefetch,
-  vagalConstraints: VagalConstraints,
+  regulationConstraints: RegulationConstraints,
   isolationStress: IsolationStress
 ): Promise<FinalFanResult> {
   const emotionalIntensity = computeEmotionalIntensity(emotion)
@@ -63,12 +67,12 @@ export async function runFinalSubsystems(
   })
   const creativeUrge = {
     ...rawCreativeUrge,
-    level: constrainCreativeUrge(rawCreativeUrge.level, vagalConstraints)
+    level: constrainCreativeUrge(rawCreativeUrge.level, regulationConstraints)
   }
 
   const selfConceptWithMomentum = applyGrowthArcMomentum(prefetch.selfConcept, prefetch.recentGrowthArcs)
 
-  const updatedDefense = processDefenseCycle(prefetch.previousDefenseState, {
+  const updatedRegulation = processRegulationCycle(prefetch.previousEmotionRegulationState, {
     emotion,
     selfConcept: selfConceptWithMomentum,
     dissonance,
@@ -83,7 +87,7 @@ export async function runFinalSubsystems(
     isReflecting: false
   })
 
-  const defenseExpressionModifiers = computeDefenseExpressionModifiers(updatedDefense.activeDefenses)
+  const regulationExpressionModifiers = computeRegulationExpressionModifiers(updatedRegulation.activeStrategies)
 
   const updatedBias = updateBiasModifiers(prefetch.previousBiasState, prefetch.previousNeuromodulatoryState)
 
@@ -107,7 +111,7 @@ export async function runFinalSubsystems(
   let dampedEmotion = applyEmotionalDamping(emotion, coherenceEffect.emotionalDamping)
 
   const dissociationTriggered = checkDissociationTriggers({
-    vagalZone: prefetch.previousVagalState.zone,
+    regulationZone: prefetch.previousAutonomicState.zone,
     fragmentationSources: coherenceState.fragmentationSources,
     integrationScore: coherenceState.integrationScore,
     isolationStress,
@@ -132,7 +136,7 @@ export async function runFinalSubsystems(
   const metacognitiveModifiers = computeMetacognitiveModifiers(metacognitiveState)
   const constrainedConfidenceModifier = constrainCognitiveFlexibility(
     metacognitiveModifiers.confidenceModifier,
-    vagalConstraints
+    regulationConstraints
   )
   if (Math.abs(constrainedConfidenceModifier) > 0.01) {
     dampedEmotion = {
@@ -142,7 +146,9 @@ export async function runFinalSubsystems(
   }
 
   const computedRegister = computeCommunicationRegister(dampedEmotion, soma, vulnerability, shameState, coherenceState)
-  const register = vagalForcesTerseRegister(vagalConstraints) ? ("terse" as typeof computedRegister) : computedRegister
+  const register = regulationForcesTerseRegister(regulationConstraints)
+    ? ("terse" as typeof computedRegister)
+    : computedRegister
 
   const conversationMessageCount = prefetch.activeConversation?.messages.length ?? 0
   const attentionState = computeAttentionState(
@@ -171,7 +177,7 @@ export async function runFinalSubsystems(
     emotion: dampedEmotion,
     soma,
     coherenceState,
-    defenseState: updatedDefense,
+    emotionRegulationState: updatedRegulation,
     granularityLevel: prefetch.previousGranularity.level
   })
 
@@ -187,8 +193,8 @@ export async function runFinalSubsystems(
     selfConceptWithMomentum,
     communicationSimplification: coherenceEffect.communicationSimplification,
     hedgingLevel: metacognitiveModifiers.hedgingLevel,
-    defenseState: updatedDefense,
-    defenseExpressionModifiers,
+    emotionRegulationState: updatedRegulation,
+    regulationExpressionModifiers,
     biasState: updatedBias,
     microExpressionInstructions,
     dissociativeState,

@@ -14,7 +14,12 @@ import type {
   SecondaryEmotionState
 } from "@/affect/emotion/types.ts"
 import type { NeuromodulatoryState } from "@/affect/neuromodulation/types.ts"
-import type { InteroceptivePrediction, SomaticState, VagalConstraints, VagalState } from "@/affect/soma/types.ts"
+import type {
+  AutonomicState,
+  InteroceptivePrediction,
+  RegulationConstraints,
+  SomaticState
+} from "@/affect/soma/types.ts"
 import type { BiasState } from "@/cognition/bias/types.ts"
 import type { ForecastingState } from "@/cognition/forecasting/types.ts"
 import type { AssociationActivation } from "@/cognition/learning/association/types.ts"
@@ -41,7 +46,7 @@ import type { BoundaryState, BoundaryViolation } from "@/self/boundaries/types.t
 import type { DissociativeState } from "@/self/coherence/dissociation/types.ts"
 import type { CoherenceState } from "@/self/coherence/types.ts"
 import type { DeceptionState } from "@/self/deception/types.ts"
-import type { DefenseState } from "@/self/defense/types.ts"
+import type { EmotionRegulationState } from "@/self/defense/types.ts"
 import type { DissonanceState } from "@/self/dissonance/types.ts"
 import type { HeldBackBuffer } from "@/self/psyche/heldback.ts"
 import type { GrowthArc, SelfConcept } from "@/self/psyche/types.ts"
@@ -80,13 +85,13 @@ export interface FeelPrefetch {
   selfInsights: SemanticMemorySelect[]
   relationalPatterns: RelationalPatternLibrary
   deferredQueue: DeferredQueue
-  previousVagalState: VagalState
+  previousAutonomicState: AutonomicState
   interoceptiveAccuracy: number
   recentSomaHistory: SomaticState[]
   previousNeuromodulatoryState: NeuromodulatoryState
   previousIsolationStress: IsolationStress
   previousBiasState: BiasState
-  previousDefenseState: DefenseState
+  previousEmotionRegulationState: EmotionRegulationState
   previousGranularity: GranularityState
   previousForecastingState: ForecastingState
   previousUltradian: UltradianState
@@ -111,8 +116,8 @@ export interface EmotionChainResult {
   proustFlashback: ProustFlashback | null
   maturedDeferredEvents: DeferredEmotionalEvent[]
   updatedDeferredQueue: DeferredQueue
-  vagalState: VagalState
-  vagalConstraints: VagalConstraints
+  autonomicState: AutonomicState
+  regulationConstraints: RegulationConstraints
   interoceptivePrediction: InteroceptivePrediction | null
   appraisalResults: AppraisalResult[]
   neuromodulatoryState: NeuromodulatoryState
@@ -165,8 +170,8 @@ export interface FinalFanResult {
   selfConceptWithMomentum: SelfConcept
   communicationSimplification: number
   hedgingLevel: number
-  defenseState: DefenseState
-  defenseExpressionModifiers: string | null
+  emotionRegulationState: EmotionRegulationState
+  regulationExpressionModifiers: string | null
   biasState: BiasState
   microExpressionInstructions: string | null
   dissociativeState: DissociativeState

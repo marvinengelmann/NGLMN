@@ -14,7 +14,7 @@ const baseContext: AppraisalContext = {
   hasActiveGoals: true,
   confidence: 0.5,
   energy: 0.5,
-  vagalZone: "ventral",
+  regulationZone: "safe",
   selfConcept: { selfEfficacy: 0.5, selfWorth: 0.5, selfContinuity: 0.7, agency: 0.5, authenticity: 0.6 }
 }
 
@@ -66,28 +66,28 @@ describe("appraiseGoalRelevance", () => {
 })
 
 describe("appraiseCopingPotential", () => {
-  it("returns high coping in ventral vagal with high confidence", () => {
-    expect(appraiseCopingPotential(0.8, 0.7, "ventral")).toBeGreaterThan(0.7)
+  it("returns high coping in safe zone with high confidence", () => {
+    expect(appraiseCopingPotential(0.8, 0.7, "safe")).toBeGreaterThan(0.7)
   })
 
-  it("returns low coping in dorsal vagal", () => {
-    expect(appraiseCopingPotential(0.5, 0.5, "dorsal")).toBeLessThan(0.4)
+  it("returns low coping in collapsed zone", () => {
+    expect(appraiseCopingPotential(0.5, 0.5, "collapsed")).toBeLessThan(0.4)
   })
 
-  it("sympathetic is between ventral and dorsal", () => {
-    const ventral = appraiseCopingPotential(0.5, 0.5, "ventral")
-    const sympathetic = appraiseCopingPotential(0.5, 0.5, "sympathetic")
-    const dorsal = appraiseCopingPotential(0.5, 0.5, "dorsal")
-    expect(sympathetic).toBeLessThan(ventral)
-    expect(sympathetic).toBeGreaterThan(dorsal)
+  it("mobilized is between safe and collapsed", () => {
+    const safe = appraiseCopingPotential(0.5, 0.5, "safe")
+    const mobilized = appraiseCopingPotential(0.5, 0.5, "mobilized")
+    const collapsed = appraiseCopingPotential(0.5, 0.5, "collapsed")
+    expect(mobilized).toBeLessThan(safe)
+    expect(mobilized).toBeGreaterThan(collapsed)
   })
 })
 
 describe("computeAppraisal", () => {
   it("amplifies threat response for low coping + negative event", () => {
     const event: EmotionUpdateEvent = { trigger: "task_failure", intensity: 0.8 }
-    const lowCoping: AppraisalContext = { ...baseContext, confidence: 0.2, energy: 0.2, vagalZone: "sympathetic" }
-    const highCoping: AppraisalContext = { ...baseContext, confidence: 0.8, energy: 0.8, vagalZone: "ventral" }
+    const lowCoping: AppraisalContext = { ...baseContext, confidence: 0.2, energy: 0.2, regulationZone: "mobilized" }
+    const highCoping: AppraisalContext = { ...baseContext, confidence: 0.8, energy: 0.8, regulationZone: "safe" }
 
     const lowResult = computeAppraisal(event, lowCoping)
     const highResult = computeAppraisal(event, highCoping)
@@ -101,7 +101,7 @@ describe("computeAppraisal", () => {
       ...baseContext,
       confidence: 0.05,
       energy: 0.05,
-      vagalZone: "dorsal",
+      regulationZone: "collapsed",
       noveltyLevel: 1.0
     }
     const result = computeAppraisal(event, extremeContext)
@@ -111,8 +111,8 @@ describe("computeAppraisal", () => {
 
   it("same trigger produces different appraisals with different context", () => {
     const event: EmotionUpdateEvent = { trigger: "message_received", intensity: 0.7 }
-    const safeContext: AppraisalContext = { ...baseContext, vagalZone: "ventral", confidence: 0.8 }
-    const stressedContext: AppraisalContext = { ...baseContext, vagalZone: "sympathetic", confidence: 0.2 }
+    const safeContext: AppraisalContext = { ...baseContext, regulationZone: "safe", confidence: 0.8 }
+    const stressedContext: AppraisalContext = { ...baseContext, regulationZone: "mobilized", confidence: 0.2 }
 
     const safeResult = computeAppraisal(event, safeContext)
     const stressedResult = computeAppraisal(event, stressedContext)
@@ -130,7 +130,7 @@ describe("computeAppraisal", () => {
 describe("createNeutralAppraisalContext", () => {
   it("returns a context with moderate values", () => {
     const ctx = createNeutralAppraisalContext()
-    expect(ctx.vagalZone).toBe("ventral")
+    expect(ctx.regulationZone).toBe("safe")
     expect(ctx.confidence).toBe(0.5)
     expect(ctx.energy).toBe(0.5)
   })
