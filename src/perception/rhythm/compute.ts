@@ -3,10 +3,32 @@ import { ULTRADIAN } from "./constants.ts"
 import type { BRACPhase, UltradianModulation, UltradianState } from "./types.ts"
 import { NEUTRAL_MODULATION } from "./types.ts"
 
-export function computeCyclePosition(cycleStartedAt: string, now: Date, varianceSeed: number): number {
+/**
+ * Compute position within the current BRAC cycle [0, 1].
+ * Cycle duration adapts to cognitive load: high load shortens cycles (fatigue faster),
+ * low load allows longer sustained focus.
+ */
+export function computeCyclePosition(
+  cycleStartedAt: string,
+  now: Date,
+  varianceSeed: number,
+  cognitiveLoad = 0.5
+): number {
   const elapsed = differenceInMinutes(now, parseISO(cycleStartedAt))
   const variance = (varianceSeed - 0.5) * 2 * ULTRADIAN.NATURAL_VARIANCE_MINUTES
-  const effectiveDuration = ULTRADIAN.CYCLE_DURATION_MINUTES + variance
+
+  const loadAdjustment =
+    (1 - cognitiveLoad) *
+    (ULTRADIAN.MAX_CYCLE_DURATION_MINUTES - ULTRADIAN.CYCLE_DURATION_MINUTES) *
+    ULTRADIAN.COGNITIVE_LOAD_SENSITIVITY
+  const baseDuration =
+    ULTRADIAN.CYCLE_DURATION_MINUTES -
+    cognitiveLoad *
+      (ULTRADIAN.CYCLE_DURATION_MINUTES - ULTRADIAN.MIN_CYCLE_DURATION_MINUTES) *
+      ULTRADIAN.COGNITIVE_LOAD_SENSITIVITY +
+    loadAdjustment
+
+  const effectiveDuration = baseDuration + variance
   if (effectiveDuration <= 0) return 1
   return Math.min(1, Math.max(0, elapsed / effectiveDuration))
 }
@@ -71,9 +93,9 @@ export function computeUltradianModulation(phase: BRACPhase, restDepth: number):
   }
 }
 
-export function updateUltradianState(previous: UltradianState, now: Date): UltradianState {
+export function updateUltradianState(previous: UltradianState, now: Date, cognitiveLoad = 0.5): UltradianState {
   const varianceSeed = seededRandom(previous.cycleCount)
-  const position = computeCyclePosition(previous.cycleStartedAt, now, varianceSeed)
+  const position = computeCyclePosition(previous.cycleStartedAt, now, varianceSeed, cognitiveLoad)
 
   if (position >= 1) {
     const newCycleCount = previous.cycleCount + 1
