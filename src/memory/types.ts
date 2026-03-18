@@ -12,7 +12,7 @@ export type SemanticCategory = z.infer<typeof SemanticCategory>
 export const SemanticScope = z.enum(["self", "operator", "world"])
 export type SemanticScope = z.infer<typeof SemanticScope>
 
-export const SemanticSource = z.enum(["operator", "observation", "dream", "reflection"])
+export const SemanticSource = z.enum(["operator", "observation", "dream", "reflection", "genesis"])
 export type SemanticSource = z.infer<typeof SemanticSource>
 
 export const RelationType = z.enum([

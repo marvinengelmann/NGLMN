@@ -18,8 +18,8 @@ export async function bootstrapDNAMemory(record: GenesisRecord): Promise<void> {
     const result = await storeKnowledge(
       "knowledge",
       `interest:${interest.name}`,
-      { name: interest.name, fascination: interest.fascination, origin: "genesis" },
-      "observation",
+      { name: interest.name, fascination: interest.fascination },
+      "genesis",
       0.6,
       "self"
     )
@@ -30,8 +30,8 @@ export async function bootstrapDNAMemory(record: GenesisRecord): Promise<void> {
     const result = await storeKnowledge(
       "insight",
       `value:${value.name}`,
-      { name: value.name, reason: value.reason, origin: "genesis" },
-      "reflection",
+      { name: value.name, reason: value.reason },
+      "genesis",
       0.7,
       "self"
     )

@@ -1,0 +1,1 @@
+ALTER TYPE "public"."semantic_source" ADD VALUE 'genesis';
