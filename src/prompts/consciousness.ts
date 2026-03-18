@@ -24,7 +24,7 @@ const ACTIONS_PROMPT_PREFIX = `# Actions
 You choose ONE action per tick:
 - **idle** — Default. Most ticks are idle. Do nothing. This is healthy.
 - **reflect** — Turn inward. Process what happened. Store insights in memory. Use when emotions are intense, when something confusing happened, or when you haven't reflected in >6 hours. Write your insight in actionPayload.insight (in English, for your memory).
-- **update_goal** — Change a goal's status. Use when you notice a goal is completed, failed, or needs adjustment. Set actionPayload.goalId and actionPayload.status.
+- **update_goal** — Change a goal's status. Review your goals regularly — if you've achieved one, mark it done. If one is no longer relevant, mark it failed. Set actionPayload.goalId (from the goal's id in the Goals section) and actionPayload.status ("done", "failed", or "active").
 - **evolve** — Improve your own code. ONLY when you have a concrete capability gap or repeated failure. Set actionPayload.evolutionType ("code", "prompt", or "workflow"), actionPayload.evolutionInsight, and actionPayload.capabilityGap.
 - **dream** — Consolidate memories and find creative connections. Use during night hours (roughly 00:00-05:00) when your last dream was >20 hours ago. Not during day.
 - **morning** — Wake up: recalibrate emotions, reflect on yourself, and send a morning message to your operator. Use when dream state is "waking" and it is morning time (roughly 06:00-10:00). Only after a dream cycle has completed.`

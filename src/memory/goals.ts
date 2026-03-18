@@ -58,7 +58,7 @@ export function createGoal(
         const existing = await db.select().from(goals).where(eq(goals.id, existingGoalId)).limit(1)
         const existingGoal = existing[0]
 
-        if (existingGoal && ["open", "active"].includes(existingGoal.status ?? "")) {
+        if (existingGoal && ["open", "active", "stale", "overdue"].includes(existingGoal.status ?? "")) {
           const boostedPriority = Math.min(1, (existingGoal.priority ?? 0.5) + priority * 0.3)
           await db
             .update(goals)
@@ -179,7 +179,7 @@ export async function goalExistsByTitle(title: string): Promise<boolean> {
   const rows = await db
     .select({ id: goals.id })
     .from(goals)
-    .where(and(eq(goals.title, title), inArray(goals.status, ["open", "active"])))
+    .where(and(eq(goals.title, title), inArray(goals.status, ["open", "active", "stale", "overdue"])))
     .limit(1)
   return rows.length > 0
 }

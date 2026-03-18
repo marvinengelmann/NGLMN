@@ -28,7 +28,7 @@ import { nowISO, sleep } from "@/infra/lib/time.ts"
 import { recordEvent } from "@/memory/events.ts"
 import { getActiveGoals } from "@/memory/goals.ts"
 import { getKnowledge } from "@/memory/semantic.ts"
-import { detectPerceptionGoals } from "@/perception/goals.ts"
+import { detectPerceptionGoals, resolvePerceptionGoals } from "@/perception/goals.ts"
 import { readGitActivity, readOwnState, readTelegramActivity, readWeatherData } from "@/perception/sensors.ts"
 import {
   clearOperatorSilentFlag,
@@ -273,11 +273,15 @@ export async function sense(options?: SenseOptions): Promise<SenseResult> {
   }
   await setPerceptionSummary(perception)
 
-  const perceptionGoalResult = await trySafe("PERCEPTION_ERROR", () =>
-    detectPerceptionGoals(perception, currentEmotion)
-  )
+  const [perceptionGoalResult, resolveResult] = await Promise.all([
+    trySafe("PERCEPTION_ERROR", () => detectPerceptionGoals(perception, currentEmotion)),
+    trySafe("PERCEPTION_ERROR", () => resolvePerceptionGoals(perception))
+  ])
   if (perceptionGoalResult.isErr()) {
     log.warn("Perception goal detection failed", { error: perceptionGoalResult.error.message })
+  }
+  if (resolveResult.isErr()) {
+    log.warn("Perception goal resolution failed", { error: resolveResult.error.message })
   }
 
   let conversationState: ConversationState | null = null

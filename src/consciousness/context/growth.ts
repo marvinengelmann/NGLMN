@@ -113,7 +113,7 @@ export function buildGrowthSections(
         const statusTag =
           goal.status === "stale" ? `[stale]` : goal.status === "overdue" ? `[overdue]` : `[${goal.status ?? "open"}]`
         const lines = [
-          `  - ${statusTag} ${goal.title} (priority: ${(goal.priority ?? 0.5).toFixed(2)})${goal.description ? ` — ${goal.description}` : ""}`
+          `  - ${statusTag} ${goal.title} (id: ${goal.id}, priority: ${(goal.priority ?? 0.5).toFixed(2)})${goal.description ? ` — ${goal.description}` : ""}`
         ]
 
         const children = childrenByParent.get(goal.id) ?? []
