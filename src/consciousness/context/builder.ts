@@ -336,7 +336,7 @@ interface SystemPromptOptions {
   hedgingLevel?: number
   operatorSilenceMinutes: number
   hasNewCommits: boolean
-  defenseExpressionModifiers?: string | null
+  regulationExpressionModifiers?: string | null
 }
 
 export async function buildSystemPrompt(contextSections: string, options: SystemPromptOptions): Promise<string> {
@@ -366,8 +366,8 @@ export async function buildSystemPrompt(contextSections: string, options: System
         : "# Hedging\nYou feel some uncertainty. Occasionally hedge your statements. Use softeners like 'perhaps' or 'it seems'."
     )
   }
-  if (options.defenseExpressionModifiers) {
-    modifierSections.push(`# Unconscious Dynamics\n${options.defenseExpressionModifiers}`)
+  if (options.regulationExpressionModifiers) {
+    modifierSections.push(`# Unconscious Dynamics\n${options.regulationExpressionModifiers}`)
   }
 
   return [

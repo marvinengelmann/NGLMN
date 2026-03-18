@@ -55,10 +55,10 @@ export function computeFEAttentionBias(
 }
 
 /**
- * Compute pressure to resolve active defense mechanisms.
- * Each defense increases complexity cost → subtle push toward authenticity.
+ * Compute pressure to resolve active regulation strategies.
+ * Each strategy increases complexity cost → subtle push toward authenticity.
  */
-export function computeDefenseCostPressure(activeDefenseCount: number, complexityCost: number): number {
-  if (activeDefenseCount === 0) return 0
-  return Math.min(1, (activeDefenseCount / FEP.MAX_DEFENSE_COUNT) * complexityCost * 2)
+export function computeRegulationCostPressure(activeStrategyCount: number, complexityCost: number): number {
+  if (activeStrategyCount === 0) return 0
+  return Math.min(1, (activeStrategyCount / FEP.MAX_STRATEGY_COUNT) * complexityCost * 2)
 }

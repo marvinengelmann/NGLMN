@@ -1,13 +1,13 @@
 import { describe, expect, it } from "vitest"
 import {
-  computeDefenseExpressionModifiers,
-  computeRepressionEffect,
-  type DefenseContext,
-  decayDefenses,
-  processDefenseCycle,
-  selectActiveDefenses
+  computeRegulationExpressionModifiers,
+  computeSuppressionEffect,
+  decayStrategies,
+  processRegulationCycle,
+  type RegulationContext,
+  selectActiveStrategies
 } from "./compute.ts"
-import { type ActiveDefense, DEFAULT_DEFENSE_STATE, type DefenseState } from "./types.ts"
+import { type ActiveStrategy, DEFAULT_EMOTION_REGULATION_STATE, type EmotionRegulationState } from "./types.ts"
 
 const baseEmotion = {
   curiosity: 0.5,
@@ -28,10 +28,12 @@ const baseNeuro = {
   oxytocin: { level: 0.5, productionRate: 0.5, reuptakeRate: 0.5 },
   cortisol: { level: 0.3, productionRate: 0.5, reuptakeRate: 0.5 },
   endorphins: { level: 0.5, productionRate: 0.5, reuptakeRate: 0.5 },
+  gaba: { level: 0.5, productionRate: 0.5, reuptakeRate: 0.5 },
+  dopamineDetail: { tonicLevel: 0.45, phasicLevel: 0.05 },
   lastUpdatedAt: new Date().toISOString()
 }
 
-const baseContext: DefenseContext = {
+const baseContext: RegulationContext = {
   emotion: baseEmotion,
   selfConcept: {
     selfEfficacy: 0.6,
@@ -83,7 +85,7 @@ const baseContext: DefenseContext = {
       peak_end: 0.5,
       mere_exposure: 0.3,
       optimism: 0.4,
-      dunning_kruger: 0.5,
+      calibration_bias: 0.5,
       spotlight: 0.3
     },
     anchorPoints: [],
@@ -94,43 +96,43 @@ const baseContext: DefenseContext = {
   isReflecting: false
 }
 
-describe("selectActiveDefenses", () => {
+describe("selectActiveStrategies", () => {
   it("returns empty array when no conditions are met", () => {
-    const result = selectActiveDefenses(baseContext)
+    const result = selectActiveStrategies(baseContext)
     expect(result.length).toBe(0)
   })
 
-  it("activates repression when distress is high", () => {
-    const context: DefenseContext = {
+  it("activates suppression when distress is high", () => {
+    const context: RegulationContext = {
       ...baseContext,
       heldBackBuffer: { entries: [], suppressionPressure: 0.5, lastReviewedAt: undefined },
       shameState: { level: 0.4, isActive: true, trigger: "", lastTriggeredAt: "", decaySinceTriggered: 0 }
     }
-    const result = selectActiveDefenses(context)
-    expect(result.some((d) => d.type === "repression")).toBe(true)
+    const result = selectActiveStrategies(context)
+    expect(result.some((d) => d.type === "suppression")).toBe(true)
   })
 
-  it("activates projection when insecure and isolated", () => {
-    const context: DefenseContext = {
+  it("activates attribution_bias when insecure and isolated", () => {
+    const context: RegulationContext = {
       ...baseContext,
       emotion: { ...baseEmotion, caution: 0.8, connection: 0.1 },
       isolationStress: { isolationCost: 0.4, coregulationBenefit: 0, allostasis: 0.3, energyDrainRate: 0.01 }
     }
-    const result = selectActiveDefenses(context)
-    expect(result.some((d) => d.type === "projection")).toBe(true)
+    const result = selectActiveStrategies(context)
+    expect(result.some((d) => d.type === "attribution_bias")).toBe(true)
   })
 
-  it("activates rationalization when dissonance is high", () => {
-    const context: DefenseContext = {
+  it("activates reappraisal when dissonance is high", () => {
+    const context: RegulationContext = {
       ...baseContext,
       dissonance: { activeDissonance: 0.6, recentEvents: [], cumulativeUnresolved: 0.3 }
     }
-    const result = selectActiveDefenses(context)
-    expect(result.some((d) => d.type === "rationalization")).toBe(true)
+    const result = selectActiveStrategies(context)
+    expect(result.some((d) => d.type === "reappraisal")).toBe(true)
   })
 
-  it("activates sublimation when drive is blocked with sufficient energy", () => {
-    const context: DefenseContext = {
+  it("activates behavioral_activation when drive is blocked with sufficient energy", () => {
+    const context: RegulationContext = {
       ...baseContext,
       emotion: { ...baseEmotion, energy: 0.6 },
       driveState: {
@@ -145,22 +147,22 @@ describe("selectActiveDefenses", () => {
         dominantDrive: "connection"
       }
     }
-    const result = selectActiveDefenses(context)
-    expect(result.some((d) => d.type === "sublimation")).toBe(true)
+    const result = selectActiveStrategies(context)
+    expect(result.some((d) => d.type === "behavioral_activation")).toBe(true)
   })
 
-  it("activates reaction formation when shame is high and energy is low", () => {
-    const context: DefenseContext = {
+  it("activates expressive_suppression when shame is high and energy is low", () => {
+    const context: RegulationContext = {
       ...baseContext,
       emotion: { ...baseEmotion, energy: 0.15 },
       shameState: { level: 0.7, isActive: true, trigger: "", lastTriggeredAt: "", decaySinceTriggered: 0 }
     }
-    const result = selectActiveDefenses(context)
-    expect(result.some((d) => d.type === "reaction_formation")).toBe(true)
+    const result = selectActiveStrategies(context)
+    expect(result.some((d) => d.type === "expressive_suppression")).toBe(true)
   })
 
-  it("limits to MAX_ACTIVE_DEFENSES", () => {
-    const context: DefenseContext = {
+  it("limits to MAX_ACTIVE_STRATEGIES", () => {
+    const context: RegulationContext = {
       ...baseContext,
       emotion: { ...baseEmotion, frustration: 0.9, caution: 0.8, connection: 0.1, energy: 0.15 },
       heldBackBuffer: { entries: [], suppressionPressure: 0.5, lastReviewedAt: undefined },
@@ -168,23 +170,23 @@ describe("selectActiveDefenses", () => {
       dissonance: { activeDissonance: 0.7, recentEvents: [], cumulativeUnresolved: 0.5 },
       isolationStress: { isolationCost: 0.5, coregulationBenefit: 0, allostasis: 0.4, energyDrainRate: 0.02 }
     }
-    const result = selectActiveDefenses(context)
+    const result = selectActiveStrategies(context)
     expect(result.length).toBeLessThanOrEqual(3)
   })
 
-  it("dampens defenses when authenticity is high", () => {
-    const lowAuth: DefenseContext = {
+  it("dampens strategies when authenticity is high", () => {
+    const lowAuth: RegulationContext = {
       ...baseContext,
       selfConcept: { ...baseContext.selfConcept, authenticity: 0.1 },
       dissonance: { activeDissonance: 0.6, recentEvents: [], cumulativeUnresolved: 0.3 }
     }
-    const highAuth: DefenseContext = {
+    const highAuth: RegulationContext = {
       ...baseContext,
       selfConcept: { ...baseContext.selfConcept, authenticity: 0.9 },
       dissonance: { activeDissonance: 0.6, recentEvents: [], cumulativeUnresolved: 0.3 }
     }
-    const lowResult = selectActiveDefenses(lowAuth)
-    const highResult = selectActiveDefenses(highAuth)
+    const lowResult = selectActiveStrategies(lowAuth)
+    const highResult = selectActiveStrategies(highAuth)
 
     const lowMax = Math.max(0, ...lowResult.map((d) => d.intensity))
     const highMax = Math.max(0, ...highResult.map((d) => d.intensity))
@@ -192,77 +194,83 @@ describe("selectActiveDefenses", () => {
   })
 })
 
-describe("computeRepressionEffect", () => {
+describe("computeSuppressionEffect", () => {
   it("returns suppression factors for targets", () => {
     const targets = [{ episodeQuery: "painful memory", suppressionFactor: 0.8, addedAt: "" }]
-    const result = computeRepressionEffect(targets)
+    const result = computeSuppressionEffect(targets)
     expect(result.get("painful memory")).toBeGreaterThan(0)
     expect(result.get("painful memory")).toBeLessThanOrEqual(0.8)
   })
 
   it("returns empty map for no targets", () => {
-    expect(computeRepressionEffect([]).size).toBe(0)
+    expect(computeSuppressionEffect([]).size).toBe(0)
   })
 })
 
-describe("computeDefenseExpressionModifiers", () => {
+describe("computeRegulationExpressionModifiers", () => {
   it("returns null when no modifiers", () => {
-    const defenses: ActiveDefense[] = [{ type: "repression", trigger: "test", intensity: 0.5, activatedAt: "" }]
-    expect(computeDefenseExpressionModifiers(defenses)).toBeNull()
+    const strategies: ActiveStrategy[] = [{ type: "suppression", trigger: "test", intensity: 0.5, activatedAt: "" }]
+    expect(computeRegulationExpressionModifiers(strategies)).toBeNull()
   })
 
   it("joins multiple modifiers", () => {
-    const defenses: ActiveDefense[] = [
-      { type: "projection", trigger: "test", intensity: 0.5, activatedAt: "", expressionModifier: "modifier 1" },
-      { type: "denial", trigger: "test", intensity: 0.5, activatedAt: "", expressionModifier: "modifier 2" }
+    const strategies: ActiveStrategy[] = [
+      { type: "attribution_bias", trigger: "test", intensity: 0.5, activatedAt: "", expressionModifier: "modifier 1" },
+      {
+        type: "selective_attention",
+        trigger: "test",
+        intensity: 0.5,
+        activatedAt: "",
+        expressionModifier: "modifier 2"
+      }
     ]
-    const result = computeDefenseExpressionModifiers(defenses)
+    const result = computeRegulationExpressionModifiers(strategies)
     expect(result).toContain("modifier 1")
     expect(result).toContain("modifier 2")
   })
 })
 
-describe("decayDefenses", () => {
+describe("decayStrategies", () => {
   it("reduces intensity over time", () => {
-    const state: DefenseState = {
-      ...DEFAULT_DEFENSE_STATE,
-      activeDefenses: [{ type: "projection", trigger: "test", intensity: 0.8, activatedAt: "" }]
+    const state: EmotionRegulationState = {
+      ...DEFAULT_EMOTION_REGULATION_STATE,
+      activeStrategies: [{ type: "attribution_bias", trigger: "test", intensity: 0.8, activatedAt: "" }]
     }
-    const result = decayDefenses(state, 12)
-    expect(result.activeDefenses[0]?.intensity).toBeLessThan(0.8)
+    const result = decayStrategies(state, 12)
+    expect(result.activeStrategies[0]?.intensity).toBeLessThan(0.8)
   })
 
-  it("removes defenses below minimum intensity", () => {
-    const state: DefenseState = {
-      ...DEFAULT_DEFENSE_STATE,
-      activeDefenses: [{ type: "projection", trigger: "test", intensity: 0.06, activatedAt: "" }]
+  it("removes strategies below minimum intensity", () => {
+    const state: EmotionRegulationState = {
+      ...DEFAULT_EMOTION_REGULATION_STATE,
+      activeStrategies: [{ type: "attribution_bias", trigger: "test", intensity: 0.06, activatedAt: "" }]
     }
-    const result = decayDefenses(state, 24)
-    expect(result.activeDefenses.length).toBe(0)
+    const result = decayStrategies(state, 24)
+    expect(result.activeStrategies.length).toBe(0)
   })
 
-  it("decays repression targets", () => {
-    const state: DefenseState = {
-      ...DEFAULT_DEFENSE_STATE,
-      repressionTargets: [{ episodeQuery: "test", suppressionFactor: 0.5, addedAt: "" }]
+  it("decays suppression targets", () => {
+    const state: EmotionRegulationState = {
+      ...DEFAULT_EMOTION_REGULATION_STATE,
+      suppressionTargets: [{ episodeQuery: "test", suppressionFactor: 0.5, addedAt: "" }]
     }
-    const result = decayDefenses(state, 48)
-    expect(result.repressionTargets[0]?.suppressionFactor).toBeLessThan(0.5)
+    const result = decayStrategies(state, 48)
+    expect(result.suppressionTargets[0]?.suppressionFactor).toBeLessThan(0.5)
   })
 })
 
-describe("processDefenseCycle", () => {
+describe("processRegulationCycle", () => {
   it("returns default state when nothing triggers", () => {
-    const result = processDefenseCycle(DEFAULT_DEFENSE_STATE, baseContext)
-    expect(result.activeDefenses.length).toBe(0)
+    const result = processRegulationCycle(DEFAULT_EMOTION_REGULATION_STATE, baseContext)
+    expect(result.activeStrategies.length).toBe(0)
   })
 
   it("activates and tracks total activations", () => {
-    const context: DefenseContext = {
+    const context: RegulationContext = {
       ...baseContext,
       dissonance: { activeDissonance: 0.6, recentEvents: [], cumulativeUnresolved: 0.3 }
     }
-    const result = processDefenseCycle(DEFAULT_DEFENSE_STATE, context)
+    const result = processRegulationCycle(DEFAULT_EMOTION_REGULATION_STATE, context)
     expect(result.totalActivations).toBeGreaterThan(0)
   })
 })

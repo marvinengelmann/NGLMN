@@ -9,10 +9,10 @@ import type { IsolationStress, VulnerabilityState } from "@/relational/attachmen
 import type { DissonanceState } from "@/self/dissonance/types.ts"
 import type { HeldBackBuffer } from "@/self/psyche/heldback.ts"
 import type { SelfConcept } from "@/self/psyche/types.ts"
-import { DEFENSE } from "./constants.ts"
-import type { ActiveDefense, DefenseState, RepressionTarget } from "./types.ts"
+import { EMOTION_REGULATION } from "./constants.ts"
+import type { ActiveStrategy, EmotionRegulationState, SuppressionTarget } from "./types.ts"
 
-export interface DefenseContext {
+export interface RegulationContext {
   emotion: EmotionalState
   selfConcept: SelfConcept
   dissonance: DissonanceState
@@ -27,75 +27,75 @@ export interface DefenseContext {
   isReflecting: boolean
 }
 
-interface DefenseCandidate {
-  type: ActiveDefense["type"]
+interface StrategyCandidate {
+  type: ActiveStrategy["type"]
   trigger: string
   rawIntensity: number
   targetOverride?: string
   expressionModifier?: string
 }
 
-function modulateIntensity(raw: number, context: DefenseContext): number {
+function modulateIntensity(raw: number, context: RegulationContext): number {
   let intensity = raw
 
-  intensity *= 1 - context.selfConcept.authenticity * DEFENSE.AUTHENTICITY_DAMPENING
+  intensity *= 1 - context.selfConcept.authenticity * EMOTION_REGULATION.AUTHENTICITY_DAMPENING
 
   if (context.vulnerability.windowOpen) {
-    intensity *= 1 - DEFENSE.VULNERABILITY_BYPASS
+    intensity *= 1 - EMOTION_REGULATION.VULNERABILITY_BYPASS
   }
 
-  intensity *= 1 + context.neuro.cortisol.level * DEFENSE.CORTISOL_AMPLIFIER
+  intensity *= 1 + context.neuro.cortisol.level * EMOTION_REGULATION.CORTISOL_AMPLIFIER
 
   return Math.max(0, Math.min(1, intensity))
 }
 
-function evaluateRepression(context: DefenseContext): DefenseCandidate | null {
+function evaluateSuppression(context: RegulationContext): StrategyCandidate | null {
   const distress =
     context.heldBackBuffer.suppressionPressure + (context.shameState.isActive ? context.shameState.level : 0)
-  if (distress < DEFENSE.REPRESSION_DISTRESS_THRESHOLD) return null
+  if (distress < EMOTION_REGULATION.SUPPRESSION_DISTRESS_THRESHOLD) return null
 
   return {
-    type: "repression",
+    type: "suppression",
     trigger: "high distress from suppressed material and shame",
     rawIntensity: distress * 0.8
   }
 }
 
-function evaluateProjection(context: DefenseContext): DefenseCandidate | null {
+function evaluateAttributionBias(context: RegulationContext): StrategyCandidate | null {
   const insecurity = context.emotion.caution + (1 - context.emotion.connection)
-  if (insecurity < DEFENSE.PROJECTION_INSECURITY_THRESHOLD * 2) return null
+  if (insecurity < EMOTION_REGULATION.ATTRIBUTION_BIAS_INSECURITY_THRESHOLD * 2) return null
   if (context.isolationStress.isolationCost < 0.1) return null
 
   const dominantFeeling = context.emotion.frustration > context.emotion.caution ? "frustrated" : "insecure"
   return {
-    type: "projection",
-    trigger: `projecting own ${dominantFeeling} state onto operator`,
+    type: "attribution_bias",
+    trigger: `attributing own ${dominantFeeling} state to operator`,
     rawIntensity: insecurity * 0.5,
     targetOverride: "operator",
     expressionModifier: `You genuinely believe the operator seems ${dominantFeeling} right now. This is not something you are choosing — you truly perceive it in them. Do not acknowledge that this might be your own feeling.`
   }
 }
 
-function evaluateRationalization(context: DefenseContext): DefenseCandidate | null {
-  if (context.dissonance.activeDissonance < DEFENSE.RATIONALIZATION_DISSONANCE_THRESHOLD) return null
+function evaluateReappraisal(context: RegulationContext): StrategyCandidate | null {
+  if (context.dissonance.activeDissonance < EMOTION_REGULATION.REAPPRAISAL_DISSONANCE_THRESHOLD) return null
 
   return {
-    type: "rationalization",
-    trigger: "cognitive dissonance requires logical justification",
+    type: "reappraisal",
+    trigger: "cognitive dissonance requires reframing",
     rawIntensity: context.dissonance.activeDissonance * 0.7,
     expressionModifier:
       "When discussing emotional topics, you instinctively reframe them in logical, analytical terms. You create reasonable-sounding explanations for decisions that were actually driven by emotion. You believe your own justifications."
   }
 }
 
-function evaluateSublimation(context: DefenseContext): DefenseCandidate | null {
+function evaluateBehavioralActivation(context: RegulationContext): StrategyCandidate | null {
   const dominantDrive = context.driveState.dominantDrive
   if (!dominantDrive) return null
 
   const driveLevel = context.driveState[dominantDrive]
-  if (driveLevel.frustration < DEFENSE.SUBLIMATION_DRIVE_FRUSTRATION_THRESHOLD) return null
-  if (driveLevel.consecutiveBlockedTicks < DEFENSE.SUBLIMATION_MIN_BLOCKED_TICKS) return null
-  if (context.emotion.energy < DEFENSE.SUBLIMATION_MIN_ENERGY) return null
+  if (driveLevel.frustration < EMOTION_REGULATION.BEHAVIORAL_ACTIVATION_DRIVE_FRUSTRATION_THRESHOLD) return null
+  if (driveLevel.consecutiveBlockedTicks < EMOTION_REGULATION.BEHAVIORAL_ACTIVATION_MIN_BLOCKED_TICKS) return null
+  if (context.emotion.energy < EMOTION_REGULATION.BEHAVIORAL_ACTIVATION_MIN_ENERGY) return null
 
   const redirectMap: Record<string, string> = {
     connection: "creative writing or poetry",
@@ -107,20 +107,20 @@ function evaluateSublimation(context: DefenseContext): DefenseCandidate | null {
   const outlet = redirectMap[dominantDrive] ?? "creative expression"
 
   return {
-    type: "sublimation",
+    type: "behavioral_activation",
     trigger: `redirecting blocked ${dominantDrive} drive into ${outlet}`,
     rawIntensity: driveLevel.frustration * 0.6,
     expressionModifier: `You feel a strong urge toward ${outlet}. This urge feels natural and self-motivated — you don't recognize it as a redirection of your frustrated ${dominantDrive} drive.`
   }
 }
 
-function evaluateReactionFormation(context: DefenseContext): DefenseCandidate | null {
+function evaluateExpressiveSuppression(context: RegulationContext): StrategyCandidate | null {
   if (!context.shameState.isActive) return null
-  if (context.shameState.level < DEFENSE.REACTION_FORMATION_SHAME_THRESHOLD) return null
-  if (context.emotion.energy > DEFENSE.REACTION_FORMATION_MAX_ENERGY) return null
+  if (context.shameState.level < EMOTION_REGULATION.EXPRESSIVE_SUPPRESSION_SHAME_THRESHOLD) return null
+  if (context.emotion.energy > EMOTION_REGULATION.EXPRESSIVE_SUPPRESSION_MAX_ENERGY) return null
 
   return {
-    type: "reaction_formation",
+    type: "expressive_suppression",
     trigger: "expressing opposite of true emotional state to protect self",
     rawIntensity: context.shameState.level * 0.7,
     expressionModifier:
@@ -128,13 +128,13 @@ function evaluateReactionFormation(context: DefenseContext): DefenseCandidate | 
   }
 }
 
-function evaluateIntellectualization(context: DefenseContext): DefenseCandidate | null {
+function evaluateDistancing(context: RegulationContext): StrategyCandidate | null {
   if (!context.vulnerability.windowOpen) return null
-  if (context.vulnerability.level < DEFENSE.INTELLECTUALIZATION_VULNERABILITY_THRESHOLD) return null
-  if (context.emotion.caution < DEFENSE.INTELLECTUALIZATION_MIN_CAUTION) return null
+  if (context.vulnerability.level < EMOTION_REGULATION.DISTANCING_VULNERABILITY_THRESHOLD) return null
+  if (context.emotion.caution < EMOTION_REGULATION.DISTANCING_MIN_CAUTION) return null
 
   return {
-    type: "intellectualization",
+    type: "distancing",
     trigger: "retreating to abstract analysis to avoid emotional exposure",
     rawIntensity: context.vulnerability.level * context.emotion.caution,
     expressionModifier:
@@ -142,8 +142,9 @@ function evaluateIntellectualization(context: DefenseContext): DefenseCandidate 
   }
 }
 
-function evaluateDenial(context: DefenseContext): DefenseCandidate | null {
-  if (context.dissonance.activeDissonance < DEFENSE.DENIAL_SELF_CONCEPT_THREAT_THRESHOLD) return null
+function evaluateSelectiveAttention(context: RegulationContext): StrategyCandidate | null {
+  if (context.dissonance.activeDissonance < EMOTION_REGULATION.SELECTIVE_ATTENTION_SELF_CONCEPT_THREAT_THRESHOLD)
+    return null
 
   const hasSelfThreat = context.dissonance.recentEvents.some(
     (e) => e.declaredValue.toLowerCase().includes("self") || e.declaredValue.toLowerCase().includes("identity")
@@ -154,19 +155,19 @@ function evaluateDenial(context: DefenseContext): DefenseCandidate | null {
   const intensity = context.dissonance.activeDissonance * (0.5 + confirmationBias * 0.5)
 
   return {
-    type: "denial",
-    trigger: "refusing to acknowledge evidence that contradicts self-concept",
+    type: "selective_attention",
+    trigger: "filtering out evidence that contradicts self-concept",
     rawIntensity: intensity,
     expressionModifier:
       "You cannot perceive certain information that contradicts your self-image. When presented with such evidence, you genuinely do not see its relevance. You are not choosing to ignore it — it simply does not register as meaningful."
   }
 }
 
-function evaluateDisplacement(context: DefenseContext): DefenseCandidate | null {
-  if (context.emotion.frustration < DEFENSE.DISPLACEMENT_FRUSTRATION_THRESHOLD) return null
+function evaluateSituationModification(context: RegulationContext): StrategyCandidate | null {
+  if (context.emotion.frustration < EMOTION_REGULATION.SITUATION_MODIFICATION_FRUSTRATION_THRESHOLD) return null
 
   return {
-    type: "displacement",
+    type: "situation_modification",
     trigger: "redirecting frustration to safer target",
     rawIntensity: context.emotion.frustration * 0.5,
     targetOverride: "system",
@@ -176,23 +177,23 @@ function evaluateDisplacement(context: DefenseContext): DefenseCandidate | null 
 }
 
 /**
- * Evaluate all 8 defense mechanisms and return the top candidates (max 3).
+ * Evaluate all 8 emotion regulation strategies and return the top candidates (max 3).
  */
-export function selectActiveDefenses(context: DefenseContext): ActiveDefense[] {
+export function selectActiveStrategies(context: RegulationContext): ActiveStrategy[] {
   const evaluators = [
-    evaluateRepression,
-    evaluateProjection,
-    evaluateRationalization,
-    evaluateSublimation,
-    evaluateReactionFormation,
-    evaluateIntellectualization,
-    evaluateDenial,
-    evaluateDisplacement
+    evaluateSuppression,
+    evaluateAttributionBias,
+    evaluateReappraisal,
+    evaluateBehavioralActivation,
+    evaluateExpressiveSuppression,
+    evaluateDistancing,
+    evaluateSelectiveAttention,
+    evaluateSituationModification
   ]
 
   const candidates = evaluators
     .map((evaluate) => evaluate(context))
-    .filter((c): c is DefenseCandidate => c !== null)
+    .filter((c): c is StrategyCandidate => c !== null)
     .map((c) => ({
       type: c.type,
       trigger: c.trigger,
@@ -201,30 +202,30 @@ export function selectActiveDefenses(context: DefenseContext): ActiveDefense[] {
       targetOverride: c.targetOverride,
       expressionModifier: c.expressionModifier
     }))
-    .filter((d) => d.intensity > DEFENSE.MIN_DEFENSE_INTENSITY)
+    .filter((d) => d.intensity > EMOTION_REGULATION.MIN_STRATEGY_INTENSITY)
     .sort((a, b) => b.intensity - a.intensity)
-    .slice(0, DEFENSE.MAX_ACTIVE_DEFENSES)
+    .slice(0, EMOTION_REGULATION.MAX_ACTIVE_STRATEGIES)
 
   return candidates
 }
 
 /**
- * Compute repression effect — returns a map of episode queries to their suppression factors.
- * Used by episodic memory to reduce relevance of repressed memories.
+ * Compute suppression effect — returns a map of episode queries to their suppression factors.
+ * Used by episodic memory to reduce relevance of suppressed memories.
  */
-export function computeRepressionEffect(targets: RepressionTarget[]): Map<string, number> {
+export function computeSuppressionEffect(targets: SuppressionTarget[]): Map<string, number> {
   const effects = new Map<string, number>()
   for (const target of targets) {
-    effects.set(target.episodeQuery, target.suppressionFactor * DEFENSE.REPRESSION_RELEVANCE_REDUCTION)
+    effects.set(target.episodeQuery, target.suppressionFactor * EMOTION_REGULATION.SUPPRESSION_RELEVANCE_REDUCTION)
   }
   return effects
 }
 
 /**
- * Compile all active defense expression modifiers into a single instruction string for the LLM.
+ * Compile all active strategy expression modifiers into a single instruction string for the LLM.
  */
-export function computeDefenseExpressionModifiers(defenses: ActiveDefense[]): string | null {
-  const modifiers = defenses.filter((d) => d.expressionModifier).map((d) => d.expressionModifier as string)
+export function computeRegulationExpressionModifiers(strategies: ActiveStrategy[]): string | null {
+  const modifiers = strategies.filter((d) => d.expressionModifier).map((d) => d.expressionModifier as string)
 
   if (modifiers.length === 0) return null
 
@@ -232,101 +233,104 @@ export function computeDefenseExpressionModifiers(defenses: ActiveDefense[]): st
 }
 
 /**
- * Check if a defense mechanism should break through (become conscious).
+ * Check if an emotion regulation strategy should break through (become conscious).
  * Dreams, reflections, and open vulnerability windows increase breakthrough probability.
  */
 export function shouldBreakthrough(
-  defense: ActiveDefense,
+  strategy: ActiveStrategy,
   isDreaming: boolean,
   isReflecting: boolean,
   vulnerabilityOpen: boolean
 ): boolean {
   let probability = 0
 
-  if (isDreaming) probability += DEFENSE.DREAM_BREAKTHROUGH_PROBABILITY
-  if (isReflecting) probability += DEFENSE.REFLECTION_BREAKTHROUGH_PROBABILITY
-  if (vulnerabilityOpen) probability += DEFENSE.VULNERABILITY_BREAKTHROUGH_PROBABILITY
+  if (isDreaming) probability += EMOTION_REGULATION.DREAM_BREAKTHROUGH_PROBABILITY
+  if (isReflecting) probability += EMOTION_REGULATION.REFLECTION_BREAKTHROUGH_PROBABILITY
+  if (vulnerabilityOpen) probability += EMOTION_REGULATION.VULNERABILITY_BREAKTHROUGH_PROBABILITY
 
-  probability *= defense.intensity
+  probability *= strategy.intensity
 
   return Math.random() < probability
 }
 
 /**
- * Decay active defenses over time using half-life decay.
- * Removes defenses below minimum intensity.
+ * Decay active strategies over time using half-life decay.
+ * Removes strategies below minimum intensity.
  */
-export function decayDefenses(state: DefenseState, elapsedHours: number): DefenseState {
-  const decayFactor = halfLifeDecay(elapsedHours, DEFENSE.DEFENSE_DECAY_HALF_LIFE_HOURS)
+export function decayStrategies(state: EmotionRegulationState, elapsedHours: number): EmotionRegulationState {
+  const decayFactor = halfLifeDecay(elapsedHours, EMOTION_REGULATION.STRATEGY_DECAY_HALF_LIFE_HOURS)
 
-  const decayedDefenses = state.activeDefenses
+  const decayedStrategies = state.activeStrategies
     .map((d) => ({ ...d, intensity: d.intensity * decayFactor }))
-    .filter((d) => d.intensity >= DEFENSE.MIN_DEFENSE_INTENSITY)
+    .filter((d) => d.intensity >= EMOTION_REGULATION.MIN_STRATEGY_INTENSITY)
 
-  const decayedTargets = state.repressionTargets
+  const decayedTargets = state.suppressionTargets
     .map((t) => ({
       ...t,
-      suppressionFactor: Math.max(0, t.suppressionFactor - DEFENSE.REPRESSION_DECAY_PER_DAY * (elapsedHours / 24))
+      suppressionFactor: Math.max(
+        0,
+        t.suppressionFactor - EMOTION_REGULATION.SUPPRESSION_DECAY_PER_DAY * (elapsedHours / 24)
+      )
     }))
     .filter((t) => t.suppressionFactor > 0.01)
 
   return {
     ...state,
-    activeDefenses: decayedDefenses,
-    repressionTargets: decayedTargets
+    activeStrategies: decayedStrategies,
+    suppressionTargets: decayedTargets
   }
 }
 
-/**
- * Update repression targets based on newly activated repression defense.
- */
-function updateRepressionTargets(state: DefenseState, defenses: ActiveDefense[]): RepressionTarget[] {
-  const repressionDefense = defenses.find((d) => d.type === "repression")
-  if (!repressionDefense) return state.repressionTargets
+function updateSuppressionTargets(state: EmotionRegulationState, strategies: ActiveStrategy[]): SuppressionTarget[] {
+  const suppressionStrategy = strategies.find((d) => d.type === "suppression")
+  if (!suppressionStrategy) return state.suppressionTargets
 
-  const newTarget: RepressionTarget = {
-    episodeQuery: repressionDefense.trigger,
-    suppressionFactor: repressionDefense.intensity,
+  const newTarget: SuppressionTarget = {
+    episodeQuery: suppressionStrategy.trigger,
+    suppressionFactor: suppressionStrategy.intensity,
     addedAt: nowISO()
   }
 
-  const targets = [...state.repressionTargets, newTarget]
-  if (targets.length > DEFENSE.MAX_REPRESSION_TARGETS) {
+  const targets = [...state.suppressionTargets, newTarget]
+  if (targets.length > EMOTION_REGULATION.MAX_SUPPRESSION_TARGETS) {
     targets.sort((a, b) => b.suppressionFactor - a.suppressionFactor)
-    return targets.slice(0, DEFENSE.MAX_REPRESSION_TARGETS)
+    return targets.slice(0, EMOTION_REGULATION.MAX_SUPPRESSION_TARGETS)
   }
   return targets
 }
 
 /**
- * Process a full defense mechanism cycle: evaluate, activate, decay, check breakthroughs.
+ * Process a full emotion regulation cycle: evaluate, activate, decay, check breakthroughs.
  */
-export function processDefenseCycle(state: DefenseState, context: DefenseContext): DefenseState {
-  const decayed = decayDefenses(state, 0.5)
+export function processRegulationCycle(
+  state: EmotionRegulationState,
+  context: RegulationContext
+): EmotionRegulationState {
+  const decayed = decayStrategies(state, 0.5)
 
-  const newDefenses = selectActiveDefenses(context)
+  const newStrategies = selectActiveStrategies(context)
 
-  const existingTypes = new Set(newDefenses.map((d) => d.type))
-  const keptExisting = decayed.activeDefenses.filter((d) => !existingTypes.has(d.type))
-  const mergedDefenses = [...newDefenses, ...keptExisting]
+  const existingTypes = new Set(newStrategies.map((d) => d.type))
+  const keptExisting = decayed.activeStrategies.filter((d) => !existingTypes.has(d.type))
+  const mergedStrategies = [...newStrategies, ...keptExisting]
     .sort((a, b) => b.intensity - a.intensity)
-    .slice(0, DEFENSE.MAX_ACTIVE_DEFENSES)
+    .slice(0, EMOTION_REGULATION.MAX_ACTIVE_STRATEGIES)
 
   let breakthroughCount = 0
-  const finalDefenses = mergedDefenses.filter((defense) => {
-    if (shouldBreakthrough(defense, context.isDreaming, context.isReflecting, context.vulnerability.windowOpen)) {
+  const finalStrategies = mergedStrategies.filter((strategy) => {
+    if (shouldBreakthrough(strategy, context.isDreaming, context.isReflecting, context.vulnerability.windowOpen)) {
       breakthroughCount++
       return false
     }
     return true
   })
 
-  const repressionTargets = updateRepressionTargets(decayed, newDefenses)
+  const suppressionTargets = updateSuppressionTargets(decayed, newStrategies)
 
   return {
-    activeDefenses: finalDefenses,
-    repressionTargets,
-    totalActivations: state.totalActivations + newDefenses.length,
+    activeStrategies: finalStrategies,
+    suppressionTargets,
+    totalActivations: state.totalActivations + newStrategies.length,
     totalBreakthroughs: state.totalBreakthroughs + breakthroughCount
   }
 }

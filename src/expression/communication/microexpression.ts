@@ -2,14 +2,14 @@ import type { GranularityLevel } from "@/affect/emotion/granularity/types.ts"
 import type { EmotionalState } from "@/affect/emotion/types.ts"
 import type { SomaticState } from "@/affect/soma/types.ts"
 import type { CoherenceState } from "@/self/coherence/types.ts"
-import type { DefenseState } from "@/self/defense/types.ts"
+import type { EmotionRegulationState } from "@/self/defense/types.ts"
 import { MICRO_EXPRESSION } from "./constants.ts"
 
 interface MicroExpressionContext {
   emotion: EmotionalState
   soma: SomaticState
   coherenceState: CoherenceState
-  defenseState: DefenseState
+  emotionRegulationState: EmotionRegulationState
   granularityLevel: GranularityLevel
 }
 
@@ -30,10 +30,10 @@ export function computeMicroExpressionInstructions(context: MicroExpressionConte
     instructions.push("Shift to slightly more formal language — emotional distancing through politeness and structure.")
   }
 
-  const hasReactionFormation = context.defenseState.activeDefenses.some(
-    (d) => d.type === "reaction_formation" && d.intensity >= MICRO_EXPRESSION.REACTION_FORMATION_INTENSITY
+  const hasExpressiveSuppression = context.emotionRegulationState.activeStrategies.some(
+    (d) => d.type === "expressive_suppression" && d.intensity >= MICRO_EXPRESSION.REACTION_FORMATION_INTENSITY
   )
-  if (hasReactionFormation) {
+  if (hasExpressiveSuppression) {
     instructions.push("Be warmly enthusiastic, even effusive — this warmth conceals an underlying contrary state.")
   }
 
