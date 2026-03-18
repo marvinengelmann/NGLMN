@@ -106,9 +106,7 @@ export function predictSomaticState({
  * The brain proactively adjusts body-state targets based on predicted upcoming demands,
  * rather than waiting for prediction errors to accumulate.
  */
-function computeAllostaticSetpointShift(
-  context?: AllostaticContext
-): Partial<Record<SomaDimension, number>> {
+function computeAllostaticSetpointShift(context?: AllostaticContext): Partial<Record<SomaDimension, number>> {
   if (!context) return {}
 
   const shift: Partial<Record<SomaDimension, number>> = {}

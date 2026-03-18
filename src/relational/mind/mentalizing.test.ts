@@ -1,9 +1,5 @@
 import { describe, expect, it } from "vitest"
-import {
-  computeMentalizingModulation,
-  computeMentalizingState,
-  DEFAULT_MENTALIZING_STATE
-} from "./mentalizing.ts"
+import { computeMentalizingModulation, computeMentalizingState, DEFAULT_MENTALIZING_STATE } from "./mentalizing.ts"
 
 function makeInput(overrides: Record<string, number | boolean | string> = {}) {
   return {

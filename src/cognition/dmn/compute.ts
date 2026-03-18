@@ -59,9 +59,7 @@ export function computeDMNState(previous: DefaultModeNetworkState, input: DMNInp
 
   const selfReferentialIntensity = clamp01(activation * DMN.SELF_REFERENTIAL_SCALE)
 
-  const mentalTimeTravel = clamp01(
-    activation * DMN.MENTAL_TIME_TRAVEL_SCALE * (input.ruminationDetected ? 0.5 : 1)
-  )
+  const mentalTimeTravel = clamp01(activation * DMN.MENTAL_TIME_TRAVEL_SCALE * (input.ruminationDetected ? 0.5 : 1))
 
   const spontaneousRetrievalProbability = clamp01(
     DMN.SPONTANEOUS_RETRIEVAL_BASE + activation * DMN.SPONTANEOUS_RETRIEVAL_DMN_SCALE

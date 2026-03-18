@@ -32,6 +32,7 @@ import {
 } from "@/infra/integrations/cooldowns.ts"
 import { sendMessageWithReply } from "@/infra/integrations/telegram.ts"
 import { postToX } from "@/infra/integrations/x.ts"
+import type { WriteBuffer } from "@/infra/lib/buffer.ts"
 import { log } from "@/infra/lib/logger.ts"
 import { logAndCaptureError, trySafe } from "@/infra/lib/result.ts"
 import { nowISO, nowLocal, sleep } from "@/infra/lib/time.ts"
@@ -46,7 +47,6 @@ import { buildNarrativeSummary, generateNarrativeEntry } from "@/self/psyche/nar
 import { getGrowthArcs, getRecentNarratives } from "@/self/psyche/state.ts"
 import { detectGrowthArc, updateSelfConcept } from "@/self/psyche/update.ts"
 import { recordActiveTick } from "./gating.ts"
-import type { WriteBuffer } from "@/infra/lib/buffer.ts"
 import type { ActResult, DeliberateResult, FeelingResult, SenseResult } from "./types.ts"
 
 /**

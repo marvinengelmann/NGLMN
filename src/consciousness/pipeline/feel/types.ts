@@ -21,6 +21,7 @@ import type {
   SomaticState
 } from "@/affect/soma/types.ts"
 import type { BiasState } from "@/cognition/bias/types.ts"
+import type { DefaultModeNetworkState } from "@/cognition/dmn/types.ts"
 import type { ForecastingState } from "@/cognition/forecasting/types.ts"
 import type { AssociationActivation } from "@/cognition/learning/association/types.ts"
 import type { AttentionState, InstinctImpression, MetacognitiveState } from "@/cognition/types.ts"
@@ -40,11 +41,10 @@ import type {
   VulnerabilityState,
   VulnerableMessageStyle
 } from "@/relational/attachment/types.ts"
+import type { MentalizingState } from "@/relational/mind/mentalizing.ts"
 import type { OperatorModel, RelationalPatternLibrary } from "@/relational/mind/types.ts"
 import type { PatternActivationEvent, RelationalPatternState } from "@/relational/patterns/types.ts"
 import type { BoundaryState, BoundaryViolation } from "@/self/boundaries/types.ts"
-import type { DefaultModeNetworkState } from "@/cognition/dmn/types.ts"
-import type { MentalizingState } from "@/relational/mind/mentalizing.ts"
 import type { DissociativeState } from "@/self/coherence/dissociation/types.ts"
 import type { CoherenceState } from "@/self/coherence/types.ts"
 import type { DeceptionState } from "@/self/deception/types.ts"

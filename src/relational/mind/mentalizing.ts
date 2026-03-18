@@ -122,11 +122,7 @@ export function computeMentalizingModulation(mentalizing: MentalizingState): {
   const nuanceAvailable = mentalizing.mode === "reflective"
 
   const projectionRisk =
-    mentalizing.mode === "psychic_equivalence"
-      ? 0.6
-      : mentalizing.mode === "teleological"
-        ? 0.3
-        : 0.1
+    mentalizing.mode === "psychic_equivalence" ? 0.6 : mentalizing.mode === "teleological" ? 0.3 : 0.1
 
   return { confidenceModifier, nuanceAvailable, projectionRisk }
 }

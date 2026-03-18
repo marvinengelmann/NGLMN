@@ -1,5 +1,5 @@
-import type { WriteBuffer } from "@/infra/lib/buffer.ts"
 import { redis } from "@/infra/integrations/redis.ts"
+import type { WriteBuffer } from "@/infra/lib/buffer.ts"
 import { DEFAULT_DMN_STATE, DefaultModeNetworkState, type DefaultModeNetworkState as DMNStateT } from "./types.ts"
 
 const REDIS_KEY = "working:cognition:dmn"

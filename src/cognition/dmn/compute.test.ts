@@ -45,9 +45,7 @@ describe("computeDMNState", () => {
       neuroticism: 0.5,
       inConversation: false
     })
-    expect(result.spontaneousRetrievalProbability).toBeGreaterThan(
-      DEFAULT_DMN_STATE.spontaneousRetrievalProbability
-    )
+    expect(result.spontaneousRetrievalProbability).toBeGreaterThan(DEFAULT_DMN_STATE.spontaneousRetrievalProbability)
   })
 
   it("penalizes activation during rumination", () => {

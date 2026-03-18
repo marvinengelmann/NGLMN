@@ -1,9 +1,9 @@
 import type { EmotionalState, EmotionUpdateEvent } from "@/affect/emotion/types.ts"
-import { clamp01 } from "@/infra/lib/math.ts"
 import type { SomaticState } from "@/affect/soma/types.ts"
 import { computeInstinctImpression } from "@/cognition/instinct.ts"
 import { queryImplicitAssociations } from "@/cognition/learning/association/compute.ts"
 import { getActiveAssociations } from "@/cognition/learning/association/state.ts"
+import { clamp01 } from "@/infra/lib/math.ts"
 import { updateAnticipatoryState } from "@/perception/anticipation/compute.ts"
 import { updateNoveltyState } from "@/perception/novelty/compute.ts"
 import { computeIsolationStress } from "@/relational/attachment/baseline.ts"
@@ -12,8 +12,8 @@ import {
   evaluateAttachmentDynamics,
   isOperatorReturning
 } from "@/relational/attachment/update.ts"
-import { extractSignals, learnFromObservation } from "@/relational/mind/triggers.ts"
 import { computeMentalizingModulation, computeMentalizingState } from "@/relational/mind/mentalizing.ts"
+import { extractSignals, learnFromObservation } from "@/relational/mind/triggers.ts"
 import { detectModelCorrection, updateOperatorModel } from "@/relational/mind/update.ts"
 import { activatePattern, computePatternModulation, matchRelationalPattern } from "@/relational/patterns/compute.ts"
 import { updateBoundaryState } from "@/self/boundaries/compute.ts"

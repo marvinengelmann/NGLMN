@@ -4,11 +4,11 @@ import { constrainVulnerabilityLevel } from "@/affect/soma/autonomic.ts"
 import { assembleFreeEnergyState } from "@/fep/compute.ts"
 import { computeFEEmotionModulation } from "@/fep/effects.ts"
 import { savePriorSnapshots } from "@/fep/state.ts"
+import type { WriteBuffer } from "@/infra/lib/buffer.ts"
 import { log } from "@/infra/lib/logger.ts"
 import { applyClampedDeltas } from "@/infra/lib/math.ts"
 import { isOperatorReturning } from "@/relational/attachment/update.ts"
 import type { FeelingResult, SenseResult } from "../../types.ts"
-import type { WriteBuffer } from "@/infra/lib/buffer.ts"
 import { assembleFeelOutput } from "./assemble.ts"
 import { runEmotionChain } from "./chain.ts"
 import { runFinalSubsystems } from "./final.ts"
@@ -123,10 +123,7 @@ export async function runFeelPipeline(senseResult: SenseResult, buffer: WriteBuf
     currentSoma: result.soma as Record<string, number>
   })
 
-  savePriorSnapshots(
-    result.emotion as Record<string, number>,
-    result.soma as Record<string, number>
-  ).catch(() => {})
+  savePriorSnapshots(result.emotion as Record<string, number>, result.soma as Record<string, number>).catch(() => {})
 
   if (result.freeEnergyState) {
     const feEmotionDeltas = computeFEEmotionModulation(

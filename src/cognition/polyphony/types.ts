@@ -1,13 +1,6 @@
 import * as z from "zod"
 
-export const InnerVoice = z.enum([
-  "seeking",
-  "fear",
-  "care",
-  "executive",
-  "play",
-  "monitoring"
-])
+export const InnerVoice = z.enum(["seeking", "fear", "care", "executive", "play", "monitoring"])
 export type InnerVoice = z.infer<typeof InnerVoice>
 
 export const VoiceUtterance = z.object({

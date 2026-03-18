@@ -228,9 +228,10 @@ function applyOpportunityCostPrioritization(strategies: ActiveStrategy[]): Activ
 
   return scored.map(({ strategy, utility }) => {
     const relativePriority = utility / maxUtility
-    const attenuation = relativePriority < EMOTION_REGULATION.OPPORTUNITY_COST_THRESHOLD
-      ? relativePriority / EMOTION_REGULATION.OPPORTUNITY_COST_THRESHOLD
-      : 1
+    const attenuation =
+      relativePriority < EMOTION_REGULATION.OPPORTUNITY_COST_THRESHOLD
+        ? relativePriority / EMOTION_REGULATION.OPPORTUNITY_COST_THRESHOLD
+        : 1
     return { ...strategy, intensity: strategy.intensity * attenuation }
   })
 }

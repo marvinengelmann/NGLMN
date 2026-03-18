@@ -2,8 +2,8 @@ import { describe, expect, it } from "vitest"
 import {
   addAnchor,
   applyAvailabilityBias,
-  applyMetacognitiveMiscalibration,
   applyConfirmationBias,
+  applyMetacognitiveMiscalibration,
   applyNegativityBias,
   applyOptimismBias,
   applyPeakEndRule,
@@ -173,7 +173,9 @@ describe("updateBiasModifiers", () => {
       ...baseNeuro,
       dopamine: { ...baseNeuro.dopamine, level: 0.9 }
     })
-    expect(result.activeModifiers.metacognitive_miscalibration).toBeGreaterThan(DEFAULT_BIAS_STATE.activeModifiers.metacognitive_miscalibration)
+    expect(result.activeModifiers.metacognitive_miscalibration).toBeGreaterThan(
+      DEFAULT_BIAS_STATE.activeModifiers.metacognitive_miscalibration
+    )
   })
 
   it("increases spotlight bias with high cortisol", () => {

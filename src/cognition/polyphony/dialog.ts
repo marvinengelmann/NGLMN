@@ -24,7 +24,8 @@ export async function generateInnerDialog(context: DialogContext): Promise<Inner
     care: "CARE — attachment and nurturing system, registering connection needs, separation distress, relational signals (Panksepp)",
     executive: "Executive — prefrontal executive function seeking clarity, logic, structure before action",
     play: "PLAY — responds with wonder, social joy, playfulness, or spontaneous delight (Panksepp)",
-    monitoring: "Monitoring — metacognitive process observing without judgment, noticing patterns, holding contradiction"
+    monitoring:
+      "Monitoring — metacognitive process observing without judgment, noticing patterns, holding contradiction"
   }
 
   const voiceList = context.activeVoices.map((v) => voiceDescriptions[v]).join("\n")

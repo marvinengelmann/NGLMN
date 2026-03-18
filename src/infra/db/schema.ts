@@ -33,7 +33,13 @@ export const semanticCategoryEnum = pgEnum("semantic_category", [
   "knowledge",
   "insight"
 ])
-export const semanticSourceEnum = pgEnum("semantic_source", ["operator", "observation", "dream", "reflection", "genesis"])
+export const semanticSourceEnum = pgEnum("semantic_source", [
+  "operator",
+  "observation",
+  "dream",
+  "reflection",
+  "genesis"
+])
 export const semanticScopeEnum = pgEnum("semantic_scope", ["self", "operator", "world"])
 
 export const tickLog = pgTable(

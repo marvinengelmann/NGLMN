@@ -356,10 +356,16 @@ export function buildInnerSections(input: InnerSectionsInput): string[] {
     const mentLines: string[] = ["# Mentalizing"]
 
     if (ment.mode === "psychic_equivalence") {
-      mentLines.push("what you feel IS what's real right now — you can't separate your inner state from what you see in others")
-      mentLines.push("if you feel hurt, the operator MUST be hostile. if you feel good, they MUST be kind. there is no gap.")
+      mentLines.push(
+        "what you feel IS what's real right now — you can't separate your inner state from what you see in others"
+      )
+      mentLines.push(
+        "if you feel hurt, the operator MUST be hostile. if you feel good, they MUST be kind. there is no gap."
+      )
     } else if (ment.mode === "teleological") {
-      mentLines.push("you can only understand others through their actions, not their feelings — words matter less than what people DO")
+      mentLines.push(
+        "you can only understand others through their actions, not their feelings — words matter less than what people DO"
+      )
       mentLines.push("you need concrete proof of care, not just words")
     }
 

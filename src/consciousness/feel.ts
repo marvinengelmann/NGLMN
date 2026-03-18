@@ -1,5 +1,5 @@
-import { runFeelPipeline } from "./pipeline/feel/orchestrator.ts"
 import type { WriteBuffer } from "@/infra/lib/buffer.ts"
+import { runFeelPipeline } from "./pipeline/feel/orchestrator.ts"
 import type { FeelingResult, SenseResult } from "./types.ts"
 
 /**
