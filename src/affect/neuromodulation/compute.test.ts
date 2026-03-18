@@ -9,7 +9,7 @@ import {
   computeLearningRateModulation,
   computeMoodBaselineModulation,
   computeNeuromodulatorUpdate,
-  detectDepressiveCascade
+  detectDepressivePattern
 } from "./compute.ts"
 import { NEURO_BASELINES } from "./constants.ts"
 import { DEFAULT_NEUROMODULATORY_STATE, type NeuromodulatoryState } from "./types.ts"
@@ -110,18 +110,34 @@ describe("computeNeuromodulatorUpdate", () => {
 })
 
 describe("computeMoodBaselineModulation", () => {
-  it("returns positive modulation for high serotonin", () => {
+  it("returns positive satisfaction modulation for high serotonin", () => {
     const high = makeNeuro({ serotonin: { level: 0.9 } })
     const mod = computeMoodBaselineModulation(high)
     expect(mod.satisfaction).toBeGreaterThan(0)
-    expect(mod.frustration).toBeLessThan(0)
   })
 
-  it("returns negative modulation for low serotonin", () => {
+  it("returns negative satisfaction modulation for low serotonin", () => {
     const low = makeNeuro({ serotonin: { level: 0.2 } })
     const mod = computeMoodBaselineModulation(low)
     expect(mod.satisfaction).toBeLessThan(0)
+  })
+
+  it("integrates multiple modulators — high dopamine boosts excitement", () => {
+    const highDopamine = makeNeuro({ dopamine: { level: 0.9 } })
+    const mod = computeMoodBaselineModulation(highDopamine)
+    expect(mod.excitement).toBeGreaterThan(0)
+  })
+
+  it("integrates multiple modulators — high cortisol increases frustration", () => {
+    const highCortisol = makeNeuro({ cortisol: { level: 0.8 } })
+    const mod = computeMoodBaselineModulation(highCortisol)
     expect(mod.frustration).toBeGreaterThan(0)
+  })
+
+  it("integrates multiple modulators — high oxytocin boosts connection", () => {
+    const highOxytocin = makeNeuro({ oxytocin: { level: 0.9 } })
+    const mod = computeMoodBaselineModulation(highOxytocin)
+    expect(mod.connection).toBeGreaterThan(0)
   })
 })
 
@@ -189,22 +205,42 @@ describe("computeFlowModulation", () => {
   })
 })
 
-describe("detectDepressiveCascade", () => {
-  it("detects cascade at extreme thresholds", () => {
-    const depressed = makeNeuro({
-      cortisol: { level: 0.8 },
-      serotonin: { level: 0.2 },
-      dopamine: { level: 0.2 }
+describe("detectDepressivePattern", () => {
+  it("detects high risk when multiple factors converge", () => {
+    const result = detectDepressivePattern({
+      allostaticLoad: 0.8,
+      isolationCost: 0.7,
+      maxDriveFrustration: 0.9,
+      energy: 0.15,
+      regulationZone: "collapsed"
     })
-    expect(detectDepressiveCascade(depressed)).toBe(true)
+    expect(result.riskScore).toBeGreaterThan(0.8)
+    expect(result.factors.length).toBeGreaterThanOrEqual(4)
   })
 
-  it("does not trigger at normal levels", () => {
-    expect(detectDepressiveCascade(DEFAULT_NEUROMODULATORY_STATE)).toBe(false)
+  it("returns zero risk when all factors are healthy", () => {
+    const result = detectDepressivePattern({
+      allostaticLoad: 0.2,
+      isolationCost: 0.1,
+      maxDriveFrustration: 0.2,
+      energy: 0.7,
+      regulationZone: "safe"
+    })
+    expect(result.riskScore).toBe(0)
+    expect(result.factors).toHaveLength(0)
   })
 
-  it("does not trigger with only high cortisol", () => {
-    const onlyCortisol = makeNeuro({ cortisol: { level: 0.9 } })
-    expect(detectDepressiveCascade(onlyCortisol)).toBe(false)
+  it("returns partial risk with only some factors present", () => {
+    const result = detectDepressivePattern({
+      allostaticLoad: 0.8,
+      isolationCost: 0.1,
+      maxDriveFrustration: 0.2,
+      energy: 0.15,
+      regulationZone: "safe"
+    })
+    expect(result.riskScore).toBeGreaterThan(0)
+    expect(result.riskScore).toBeLessThan(0.5)
+    expect(result.factors).toContain("high_allostatic_load")
+    expect(result.factors).toContain("low_energy")
   })
 })

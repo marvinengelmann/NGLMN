@@ -3,7 +3,8 @@ import type { SomaticState } from "@/affect/soma/types.ts"
 import { clamp01, halfLifeDecay } from "@/infra/lib/math.ts"
 import {
   CROSS_MODULATOR,
-  DEPRESSIVE_CASCADE,
+  DEPRESSIVE_PATTERN,
+  DOPAMINE_DETAIL,
   EMOTION_TO_NEURO,
   NEURO_BASELINES,
   NEURO_HALF_LIVES,
@@ -11,7 +12,12 @@ import {
   NEURO_SYSTEM_EFFECTS,
   SOMA_TO_NEURO
 } from "./constants.ts"
-import { NEUROMODULATOR_TYPES, type NeuromodulatorType, type NeuromodulatoryState } from "./types.ts"
+import {
+  type DepressivePatternResult,
+  NEUROMODULATOR_TYPES,
+  type NeuromodulatorType,
+  type NeuromodulatoryState
+} from "./types.ts"
 
 type EmotionDimension = keyof EmotionalState
 type SomaDimension = keyof Omit<SomaticState, "socialBattery">
@@ -107,8 +113,16 @@ export function computeNeuromodulatorUpdate(
     }
   }
 
+  const totalDopamine = interacted.dopamine
+  const rewardSignal = Math.max(0, (emotion.satisfaction - 0.5) * 2, (emotion.excitement - 0.5) * 2)
+  const phasicLevel = clamp01(
+    (current.dopamineDetail?.phasicLevel ?? 0.05) * DOPAMINE_DETAIL.PHASIC_DECAY_RATE + rewardSignal * 0.15
+  )
+  const tonicLevel = clamp01(totalDopamine - phasicLevel)
+
   return {
     ...(result as Pick<NeuromodulatoryState, NeuromodulatorType>),
+    dopamineDetail: { tonicLevel, phasicLevel },
     lastUpdatedAt: new Date().toISOString()
   }
 }
@@ -116,12 +130,42 @@ export function computeNeuromodulatorUpdate(
 export function computeMoodBaselineModulation(
   neuro: NeuromodulatoryState
 ): Partial<Record<keyof EmotionalState, number>> {
-  const serotoninDeviation = neuro.serotonin.level - NEURO_BASELINES.serotonin
-  const effects = NEURO_SYSTEM_EFFECTS.MOOD_BASELINE.serotonin
   const modulation: Partial<Record<keyof EmotionalState, number>> = {}
 
-  for (const [dim, scale] of Object.entries(effects)) {
-    modulation[dim as keyof EmotionalState] = serotoninDeviation * scale
+  const modulators = [
+    {
+      level: neuro.serotonin.level,
+      baseline: NEURO_BASELINES.serotonin,
+      effects: NEURO_SYSTEM_EFFECTS.MOOD_BASELINE.serotonin
+    },
+    {
+      level: neuro.dopamine.level,
+      baseline: NEURO_BASELINES.dopamine,
+      effects: NEURO_SYSTEM_EFFECTS.MOOD_BASELINE.dopamine
+    },
+    {
+      level: neuro.cortisol.level,
+      baseline: NEURO_BASELINES.cortisol,
+      effects: NEURO_SYSTEM_EFFECTS.MOOD_BASELINE.cortisol
+    },
+    {
+      level: neuro.oxytocin.level,
+      baseline: NEURO_BASELINES.oxytocin,
+      effects: NEURO_SYSTEM_EFFECTS.MOOD_BASELINE.oxytocin
+    },
+    {
+      level: neuro.gaba.level,
+      baseline: NEURO_BASELINES.gaba,
+      effects: NEURO_SYSTEM_EFFECTS.MOOD_BASELINE.gaba
+    }
+  ]
+
+  for (const { level, baseline, effects } of modulators) {
+    const deviation = level - baseline
+    for (const [dim, scale] of Object.entries(effects)) {
+      const key = dim as keyof EmotionalState
+      modulation[key] = (modulation[key] ?? 0) + deviation * scale
+    }
   }
 
   return modulation
@@ -166,10 +210,47 @@ export function computeFlowModulation(neuro: NeuromodulatoryState): number {
   return Math.max(0, signal - threshold)
 }
 
-export function detectDepressiveCascade(neuro: NeuromodulatoryState): boolean {
-  return (
-    neuro.cortisol.level > DEPRESSIVE_CASCADE.CORTISOL_THRESHOLD &&
-    neuro.serotonin.level < DEPRESSIVE_CASCADE.SEROTONIN_THRESHOLD &&
-    neuro.dopamine.level < DEPRESSIVE_CASCADE.DOPAMINE_THRESHOLD
-  )
+interface DepressivePatternInput {
+  allostaticLoad: number
+  isolationCost: number
+  maxDriveFrustration: number
+  energy: number
+  regulationZone: string
+}
+
+/**
+ * Detect depressive pattern from multiple converging factors.
+ * Depression is emergent — not caused by any single neurotransmitter.
+ */
+export function detectDepressivePattern(input: DepressivePatternInput): DepressivePatternResult {
+  const W = DEPRESSIVE_PATTERN.FACTOR_WEIGHTS
+  const factors: string[] = []
+  let score = 0
+
+  if (input.allostaticLoad > DEPRESSIVE_PATTERN.ALLOSTATIC_LOAD_THRESHOLD) {
+    score += W.allostaticLoad
+    factors.push("high_allostatic_load")
+  }
+
+  if (input.isolationCost > DEPRESSIVE_PATTERN.ISOLATION_STRESS_THRESHOLD) {
+    score += W.isolation
+    factors.push("social_isolation")
+  }
+
+  if (input.maxDriveFrustration > DEPRESSIVE_PATTERN.DRIVE_FRUSTRATION_THRESHOLD) {
+    score += W.driveFrustration
+    factors.push("drive_frustration")
+  }
+
+  if (input.energy < DEPRESSIVE_PATTERN.ENERGY_THRESHOLD) {
+    score += W.lowEnergy
+    factors.push("low_energy")
+  }
+
+  if (input.regulationZone === "collapsed") {
+    score += W.collapsed
+    factors.push("autonomic_collapse")
+  }
+
+  return { riskScore: Math.min(1, score), factors }
 }

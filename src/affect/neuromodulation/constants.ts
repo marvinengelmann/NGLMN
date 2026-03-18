@@ -6,7 +6,8 @@ export const NEURO_HALF_LIVES: Record<NeuromodulatorType, number> = {
   norepinephrine: 20,
   oxytocin: 120,
   cortisol: 180,
-  endorphins: 60
+  endorphins: 60,
+  gaba: 240
 } as const
 
 export const NEURO_BASELINES: Record<NeuromodulatorType, number> = {
@@ -15,17 +16,20 @@ export const NEURO_BASELINES: Record<NeuromodulatorType, number> = {
   norepinephrine: 0.3,
   oxytocin: 0.4,
   cortisol: 0.2,
-  endorphins: 0.3
+  endorphins: 0.3,
+  gaba: 0.5
 } as const
 
 export const CROSS_MODULATOR = {
   INTERACTIONS: [
-    { source: "cortisol", target: "serotonin", coefficient: -0.15 },
+    { source: "cortisol", target: "serotonin", coefficient: -0.08 },
     { source: "serotonin", target: "dopamine", coefficient: 0.1 },
     { source: "cortisol", target: "dopamine", coefficient: -0.1 },
     { source: "dopamine", target: "endorphins", coefficient: 0.08 },
     { source: "norepinephrine", target: "cortisol", coefficient: 0.12 },
-    { source: "oxytocin", target: "cortisol", coefficient: -0.1 }
+    { source: "oxytocin", target: "cortisol", coefficient: -0.1 },
+    { source: "gaba", target: "norepinephrine", coefficient: -0.12 },
+    { source: "gaba", target: "cortisol", coefficient: -0.08 }
   ] as Array<{ source: NeuromodulatorType; target: NeuromodulatorType; coefficient: number }>,
   CLAMP_RATE: 0.05
 } as const
@@ -36,14 +40,16 @@ export const EMOTION_TO_NEURO = {
   norepinephrine: { frustration: 0.25, caution: 0.2, excitement: 0.15 },
   oxytocin: { connection: 0.35, satisfaction: 0.1 },
   cortisol: { frustration: 0.2, caution: 0.25, boredom: 0.05 },
-  endorphins: { curiosity: 0.15, excitement: 0.1, satisfaction: 0.1, confidence: 0.1 }
+  endorphins: { curiosity: 0.15, excitement: 0.1, satisfaction: 0.1, confidence: 0.1 },
+  gaba: { satisfaction: 0.2, connection: 0.15 }
 } as const
 
 export const SOMA_TO_NEURO = {
   norepinephrine: { tension: 0.2, heartRate: 0.15 },
   oxytocin: { warmth: 0.2, openness: 0.15 },
   cortisol: { tension: 0.1, gravity: 0.05 },
-  endorphins: { openness: 0.1, warmth: 0.05 }
+  endorphins: { openness: 0.1, warmth: 0.05 },
+  gaba: { breathing: 0.2, openness: 0.15 }
 } as const
 
 export const NEURO_PRODUCTION_SCALE = 0.3
@@ -51,10 +57,32 @@ export const NEURO_PRODUCTION_SCALE = 0.3
 export const NEURO_SYSTEM_EFFECTS = {
   MOOD_BASELINE: {
     serotonin: {
-      satisfaction: 0.08,
-      connection: 0.04,
-      frustration: -0.06,
-      boredom: -0.05
+      satisfaction: 0.04,
+      connection: 0.02,
+      frustration: -0.03,
+      boredom: -0.025
+    },
+    dopamine: {
+      satisfaction: 0.03,
+      excitement: 0.02,
+      curiosity: 0.02,
+      boredom: -0.03
+    },
+    cortisol: {
+      frustration: 0.03,
+      caution: 0.02,
+      satisfaction: -0.03,
+      energy: -0.02
+    },
+    oxytocin: {
+      connection: 0.03,
+      satisfaction: 0.02,
+      caution: -0.02
+    },
+    gaba: {
+      caution: -0.04,
+      frustration: -0.02,
+      satisfaction: 0.02
     }
   },
   COPING: {
@@ -76,8 +104,23 @@ export const NEURO_SYSTEM_EFFECTS = {
   }
 } as const
 
-export const DEPRESSIVE_CASCADE = {
-  CORTISOL_THRESHOLD: 0.7,
-  SEROTONIN_THRESHOLD: 0.3,
-  DOPAMINE_THRESHOLD: 0.3
+export const DOPAMINE_DETAIL = {
+  TONIC_RATIO: 0.9,
+  PHASIC_RATIO: 0.1,
+  PHASIC_REWARD_TRIGGERS: ["satisfaction", "excitement", "curiosity"] as string[],
+  PHASIC_DECAY_RATE: 0.7
+} as const
+
+export const DEPRESSIVE_PATTERN = {
+  ALLOSTATIC_LOAD_THRESHOLD: 0.6,
+  ISOLATION_STRESS_THRESHOLD: 0.5,
+  DRIVE_FRUSTRATION_THRESHOLD: 0.7,
+  ENERGY_THRESHOLD: 0.3,
+  FACTOR_WEIGHTS: {
+    allostaticLoad: 0.25,
+    isolation: 0.2,
+    driveFrustration: 0.2,
+    lowEnergy: 0.15,
+    collapsed: 0.2
+  }
 } as const
