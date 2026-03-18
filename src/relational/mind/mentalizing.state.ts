@@ -1,5 +1,5 @@
+import type { WriteBuffer } from "@/infra/lib/buffer.ts"
 import { redis } from "@/infra/integrations/redis.ts"
-import type { WriteBuffer } from "@/consciousness/pipeline/persistence.ts"
 import { DEFAULT_MENTALIZING_STATE, type MentalizingState } from "./mentalizing.ts"
 
 const REDIS_KEY = "working:mind:mentalizing"
