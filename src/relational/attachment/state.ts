@@ -2,6 +2,7 @@ import { desc } from "drizzle-orm"
 import { db } from "@/infra/db/client.ts"
 import { attachmentLog, relationshipPhaseLog } from "@/infra/db/schema.ts"
 import { getValidatedRedis, redis } from "@/infra/integrations/redis.ts"
+import type { WriteBuffer } from "@/infra/lib/buffer.ts"
 import { nowISO } from "@/infra/lib/time.ts"
 import {
   AttachmentStyle,
@@ -68,18 +69,22 @@ export async function incrementPhaseTickCount(): Promise<void> {
 export async function saveRelationshipPhase(
   phase: RelationshipPhase,
   previousPhase: RelationshipPhase,
-  trigger: string
+  trigger: string,
+  buffer?: WriteBuffer
 ): Promise<void> {
-  await Promise.all([
-    redis.set(KEYS.PHASE, phase),
-    redis.set(KEYS.PHASE_SINCE, nowISO()),
-    redis.set(KEYS.PHASE_TICK_COUNT, 0)
-  ])
-  await db.insert(relationshipPhaseLog).values({
-    phase,
-    previousPhase,
-    trigger
-  })
+  if (buffer) {
+    buffer.stage(KEYS.PHASE, phase)
+    buffer.stage(KEYS.PHASE_SINCE, nowISO())
+    buffer.stage(KEYS.PHASE_TICK_COUNT, 0)
+    buffer.stagePostgres(relationshipPhaseLog, { phase, previousPhase, trigger })
+  } else {
+    await Promise.all([
+      redis.set(KEYS.PHASE, phase),
+      redis.set(KEYS.PHASE_SINCE, nowISO()),
+      redis.set(KEYS.PHASE_TICK_COUNT, 0)
+    ])
+    await db.insert(relationshipPhaseLog).values({ phase, previousPhase, trigger })
+  }
 }
 
 const REL_KEYS = {

@@ -62,7 +62,6 @@ import { incrementConsecutiveCritical, resetConsecutiveCritical } from "@/govern
 import { handleDriftCheck } from "@/governance/security/guardian.ts"
 import { performRollback, shouldTriggerRollback } from "@/governance/security/rollback.ts"
 import { emotionHistory, habitLog, routineLog, somaticHistory, tickLog } from "@/infra/db/schema.ts"
-import { redis } from "@/infra/integrations/redis.ts"
 import { vectorIndex } from "@/infra/integrations/vector.ts"
 import { log } from "@/infra/lib/logger.ts"
 import { logAndCaptureError } from "@/infra/lib/result.ts"
@@ -183,17 +182,17 @@ export async function maintain(
 
   await maintainHealth(input)
   await maintainAttachment(feelResult, buffer)
-  await maintainRelationship(feelResult)
+  await maintainRelationship(feelResult, buffer)
   await maintainActivityCounters(input, buffer)
   await maintainIdiolect(input, feelResult, buffer)
   await maintainHabits(input, buffer)
   await maintainRelationalMemory(input, feelResult, buffer)
-  await maintainGuiltRepair(input)
-  await maintainDisappointmentAcknowledgment(input)
+  await maintainGuiltRepair(input, buffer)
+  await maintainDisappointmentAcknowledgment(input, buffer)
   await maintainBoundaries(input, feelResult, buffer)
   await maintainGoals()
-  await maintainFreeEnergy(feelResult)
-  await runProbabilisticTasks(input, feelResult)
+  await maintainFreeEnergy(feelResult, buffer)
+  await runProbabilisticTasks(input, feelResult, buffer)
 
   const durationMs = Date.now() - input.startTime
   await pushRecentTickDuration(durationMs)
@@ -252,7 +251,7 @@ async function maintainAttachment(feelResult: FeelingResult, buffer: WriteBuffer
     vulnerabilityOpen: feelResult.vulnerability.windowOpen
   })
   if (crisisResult.active !== previousCrisis.active || crisisResult.type !== previousCrisis.type) {
-    await saveCrisisState(crisisResult)
+    await saveCrisisState(crisisResult, buffer)
     if (crisisResult.active) {
       log.info("Attachment crisis detected", { type: crisisResult.type, multiplier: crisisResult.multiplier })
     }
@@ -271,7 +270,7 @@ async function maintainAttachment(feelResult: FeelingResult, buffer: WriteBuffer
   }
 }
 
-async function maintainRelationship(feelResult: FeelingResult): Promise<void> {
+async function maintainRelationship(feelResult: FeelingResult, buffer: WriteBuffer): Promise<void> {
   const [currentPhase, phaseTickCount, conflictCount, firstInteractionAt, totalInteractions] = await Promise.all([
     getRelationshipPhase(),
     getPhaseTickCount(),
@@ -306,7 +305,7 @@ async function maintainRelationship(feelResult: FeelingResult): Promise<void> {
   })
 
   if (shouldTransitionPhase(currentPhase, computedPhase, phaseTickCount)) {
-    await saveRelationshipPhase(computedPhase, currentPhase, "maintain_transition")
+    await saveRelationshipPhase(computedPhase, currentPhase, "maintain_transition", buffer)
     log.info("Relationship phase transition", { from: currentPhase, to: computedPhase })
   } else {
     await incrementPhaseTickCount()
@@ -418,7 +417,7 @@ async function maintainRelationalMemory(
   }
 }
 
-async function maintainGuiltRepair(input: MaintainInput): Promise<void> {
+async function maintainGuiltRepair(input: MaintainInput, buffer: WriteBuffer): Promise<void> {
   if (!input.actResult.responseSent) return
 
   const guiltState = await getGuiltState()
@@ -430,18 +429,18 @@ async function maintainGuiltRepair(input: MaintainInput): Promise<void> {
     updated = markRepaired(updated, source)
   }
   if (JSON.stringify(updated.recentEntries) !== JSON.stringify(guiltState.recentEntries)) {
-    await saveGuiltState(updated)
+    await saveGuiltState(updated, buffer)
     log.info("Guilt entries repaired after response")
   }
 }
 
-async function maintainDisappointmentAcknowledgment(input: MaintainInput): Promise<void> {
+async function maintainDisappointmentAcknowledgment(input: MaintainInput, buffer: WriteBuffer): Promise<void> {
   if (input.senseResult.pendingMessages.length === 0) return
 
   const disappointmentState = await getDisappointmentState()
   const acknowledged = markAcknowledged(disappointmentState)
   if (acknowledged !== disappointmentState) {
-    await saveDisappointmentState(acknowledged)
+    await saveDisappointmentState(acknowledged, buffer)
     log.info("Disappointment entries acknowledged after operator message")
   }
 }
@@ -485,11 +484,11 @@ async function maintainGoals(): Promise<void> {
   await applyGoalPriorityDecay()
 }
 
-async function maintainFreeEnergy(feelResult: FeelingResult): Promise<void> {
+async function maintainFreeEnergy(feelResult: FeelingResult, buffer: WriteBuffer): Promise<void> {
   const feState = feelResult.freeEnergyState
   if (!feState) return
 
-  await pushFreeEnergyHistory(feState.decomposition.total)
+  await pushFreeEnergyHistory(feState.decomposition.total, buffer)
 
   const history = await getFreeEnergyHistory()
   const neuro = feelResult.neuromodulatoryState
@@ -497,10 +496,7 @@ async function maintainFreeEnergy(feelResult: FeelingResult): Promise<void> {
 
   const updatedDynamics = updatePrecisionDynamics(history, dopamineLevel, feState.allostaticLoad)
 
-  await saveFreeEnergyState({
-    ...feState,
-    precisionDynamics: updatedDynamics
-  })
+  await saveFreeEnergyState({ ...feState, precisionDynamics: updatedDynamics }, buffer)
 }
 
 async function maintainEmotionState(
@@ -531,7 +527,11 @@ interface ProbabilisticTask {
   execute: () => Promise<unknown>
 }
 
-async function runProbabilisticTasks(input: MaintainInput, feelResult: FeelingResult): Promise<void> {
+async function runProbabilisticTasks(
+  input: MaintainInput,
+  feelResult: FeelingResult,
+  buffer: WriteBuffer
+): Promise<void> {
   const messageTexts = extractMessageTexts(input)
 
   const tasks: ProbabilisticTask[] = [
@@ -542,7 +542,7 @@ async function runProbabilisticTasks(input: MaintainInput, feelResult: FeelingRe
         const infoResult = await vectorIndex.info()
         const episodeCount = infoResult.namespaces[""]?.vectorCount ?? 0
         if (episodeCount > EPISODIC_LIFECYCLE.EPISODE_PRESSURE_THRESHOLD) {
-          await redis.set("working:memory:pressure", true)
+          buffer.stage("working:memory:pressure", true)
           log.info("Memory pressure flag set", { episodeCount })
         }
       }
@@ -638,8 +638,8 @@ async function runProbabilisticTasks(input: MaintainInput, feelResult: FeelingRe
         const associations = await getAllAssociations()
         const updated = processHebbianCycle(associations, stimuli, stimuliHistory, effectiveLR)
         await batchUpsertAssociations(updated)
-        await pushStimuliHistory(stimuli)
-        await saveActiveAssociations(updated)
+        await pushStimuliHistory(stimuli, buffer)
+        await saveActiveAssociations(updated, buffer)
       }
     },
     {
@@ -649,43 +649,30 @@ async function runProbabilisticTasks(input: MaintainInput, feelResult: FeelingRe
         await deleteWeakAssociations(HEBBIAN.MIN_STRENGTH)
         const all = await getAllAssociations()
         const pruned = pruneWeakAssociations(all)
-        await saveActiveAssociations(pruned)
+        await saveActiveAssociations(pruned, buffer)
       }
     },
     {
-      name: "bias_update",
+      name: "bias_maintenance",
       probability: 1,
       execute: async () => {
-        const biasState = await getBiasState()
         const neuro = await getNeuromodulatoryState()
-        const updated = updateBiasModifiers(biasState, neuro)
-        await saveBiasState(updated)
-      }
-    },
-    {
-      name: "anchor_decay",
-      probability: 0.1,
-      execute: async () => {
-        const biasState = await getBiasState()
-        const decayed = decayAnchors(biasState.anchorPoints, 0.5)
-        if (decayed.length !== biasState.anchorPoints.length) {
-          await saveBiasState({ ...biasState, anchorPoints: decayed })
+        let biasState = updateBiasModifiers(await getBiasState(), neuro)
+
+        if (Math.random() < 0.1) {
+          biasState = { ...biasState, anchorPoints: decayAnchors(biasState.anchorPoints, 0.5) }
         }
-      }
-    },
-    {
-      name: "exposure_tracking",
-      probability: 1,
-      condition: input.actResult.responseSent,
-      execute: async () => {
-        const biasState = await getBiasState()
-        const entities = messageTexts.flatMap((t) => t.match(/\b[A-Z][a-z]+\b/g) ?? [])
-        if (entities.length === 0) return
-        let counts = biasState.exposureCounts
-        for (const entity of entities.slice(0, 5)) {
-          counts = incrementExposure(counts, entity)
+
+        if (input.actResult.responseSent) {
+          const entities = messageTexts.flatMap((t) => t.match(/\b[A-Z][a-z]+\b/g) ?? [])
+          let counts = biasState.exposureCounts
+          for (const entity of entities.slice(0, 5)) {
+            counts = incrementExposure(counts, entity)
+          }
+          biasState = { ...biasState, exposureCounts: counts }
         }
-        await saveBiasState({ ...biasState, exposureCounts: counts })
+
+        await saveBiasState(biasState, buffer)
       }
     },
     {
@@ -694,7 +681,7 @@ async function runProbabilisticTasks(input: MaintainInput, feelResult: FeelingRe
       execute: async () => {
         const granularity = await getGranularityState()
         const updated = computeGranularityUpdate(granularity, feelResult.emotion, messageTexts)
-        await saveGranularityState(updated)
+        await saveGranularityState(updated, buffer)
       }
     },
     {
@@ -703,7 +690,7 @@ async function runProbabilisticTasks(input: MaintainInput, feelResult: FeelingRe
       execute: async () => {
         const state = await getUltradianState()
         const updated = updateUltradianState(state, new Date())
-        await saveUltradianState(updated)
+        await saveUltradianState(updated, buffer)
       }
     },
     {
@@ -720,7 +707,7 @@ async function runProbabilisticTasks(input: MaintainInput, feelResult: FeelingRe
             )
             const accuracy = updateAccuracy(state.accuracy, resolved)
             const biases = updateBiasStrengths(state.biasStrengths, accuracy)
-            await saveForecastingState({ ...state, activeForecast: null, accuracy, biasStrengths: biases })
+            await saveForecastingState({ ...state, activeForecast: null, accuracy, biasStrengths: biases }, buffer)
           }
           return
         }
@@ -728,31 +715,31 @@ async function runProbabilisticTasks(input: MaintainInput, feelResult: FeelingRe
           const trigger = input.senseResult.rawTriggers[0]
           if (trigger) {
             const forecast = generateForecast(trigger, feelResult.emotion, state.biasStrengths)
-            await saveForecastingState({ ...state, activeForecast: forecast, lastForecastAt: new Date().toISOString() })
+            await saveForecastingState(
+              { ...state, activeForecast: forecast, lastForecastAt: new Date().toISOString() },
+              buffer
+            )
           }
         }
       }
     },
     {
-      name: "pattern_template_formation",
-      probability: RELATIONAL_PATTERN.TEMPLATE_FORMATION_PROBABILITY,
-      execute: async () => {
-        const state = await getRelationalPatternState()
-        const patterns = feelResult.relationalPatterns?.patterns ?? []
-        const newTemplate = maybeFormTemplate(patterns, state.templates)
-        if (newTemplate) {
-          await saveRelationalPatternState({
-            ...state,
-            templates: [...state.templates, newTemplate].slice(-RELATIONAL_PATTERN.MAX_TEMPLATES)
-          })
-        }
-      }
-    },
-    {
-      name: "pattern_state_update",
+      name: "pattern_maintenance",
       probability: 1,
       execute: async () => {
-        const state = await getRelationalPatternState()
+        let state = await getRelationalPatternState()
+
+        if (Math.random() < RELATIONAL_PATTERN.TEMPLATE_FORMATION_PROBABILITY) {
+          const patterns = feelResult.relationalPatterns?.patterns ?? []
+          const newTemplate = maybeFormTemplate(patterns, state.templates)
+          if (newTemplate) {
+            state = {
+              ...state,
+              templates: [...state.templates, newTemplate].slice(-RELATIONAL_PATTERN.MAX_TEMPLATES)
+            }
+          }
+        }
+
         const decayed = decayActivePattern(state)
         const updatedTemplates = updateTemplateStrength(decayed.templates, decayed.activePattern?.templateId ?? null)
         const awareness = updatePatternAwareness(
@@ -760,7 +747,7 @@ async function runProbabilisticTasks(input: MaintainInput, feelResult: FeelingRe
           !!decayed.activePattern,
           feelResult.metacognitiveState?.cognitiveClarity ?? DEFAULT_METACOGNITIVE_STATE.cognitiveClarity
         )
-        await saveRelationalPatternState({ ...decayed, templates: updatedTemplates, awarenessLevel: awareness })
+        await saveRelationalPatternState({ ...decayed, templates: updatedTemplates, awarenessLevel: awareness }, buffer)
       }
     },
     {
@@ -768,7 +755,7 @@ async function runProbabilisticTasks(input: MaintainInput, feelResult: FeelingRe
       probability: 1,
       execute: async () => {
         if (feelResult.dissociativeState) {
-          await saveDissociativeState(feelResult.dissociativeState)
+          await saveDissociativeState(feelResult.dissociativeState, buffer)
         }
       }
     }

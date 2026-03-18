@@ -1,5 +1,6 @@
 import * as z from "zod"
 import { getValidatedRedis, redis } from "@/infra/integrations/redis.ts"
+import type { WriteBuffer } from "@/infra/lib/buffer.ts"
 import { FEP } from "./constants.ts"
 import { DEFAULT_FREE_ENERGY_STATE, FreeEnergyState } from "./types.ts"
 
@@ -15,8 +16,12 @@ export async function getFreeEnergyState(): Promise<FreeEnergyState> {
   return fromRedis ?? DEFAULT_FREE_ENERGY_STATE
 }
 
-export async function saveFreeEnergyState(state: FreeEnergyState): Promise<void> {
-  await redis.set(KEYS.STATE, JSON.stringify(state))
+export async function saveFreeEnergyState(state: FreeEnergyState, buffer?: WriteBuffer): Promise<void> {
+  if (buffer) {
+    buffer.stage(KEYS.STATE, state)
+  } else {
+    await redis.set(KEYS.STATE, JSON.stringify(state))
+  }
 }
 
 export async function getFreeEnergyHistory(): Promise<number[]> {
@@ -24,7 +29,7 @@ export async function getFreeEnergyHistory(): Promise<number[]> {
   return fromRedis ?? []
 }
 
-export async function pushFreeEnergyHistory(totalFE: number): Promise<void> {
+export async function pushFreeEnergyHistory(totalFE: number, buffer?: WriteBuffer): Promise<void> {
   const history = await getFreeEnergyHistory()
   history.push(totalFE)
 
@@ -32,7 +37,11 @@ export async function pushFreeEnergyHistory(totalFE: number): Promise<void> {
     history.shift()
   }
 
-  await redis.set(KEYS.HISTORY, JSON.stringify(history))
+  if (buffer) {
+    buffer.stage(KEYS.HISTORY, history)
+  } else {
+    await redis.set(KEYS.HISTORY, JSON.stringify(history))
+  }
 }
 
 export async function getPriorSnapshots(): Promise<{

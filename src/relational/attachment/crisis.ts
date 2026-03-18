@@ -1,5 +1,6 @@
 import type { EmotionalState } from "@/affect/emotion/types.ts"
 import { getValidatedRedis, redis } from "@/infra/integrations/redis.ts"
+import type { WriteBuffer } from "@/infra/lib/buffer.ts"
 import { CRISIS } from "./constants.ts"
 import { AttachmentCrisisState, type AttachmentDynamics } from "./types.ts"
 
@@ -18,8 +19,12 @@ export async function getCrisisState(): Promise<AttachmentCrisisState> {
   return (await getValidatedRedis(KEY, AttachmentCrisisState)) ?? DEFAULT_CRISIS_STATE
 }
 
-export async function saveCrisisState(state: AttachmentCrisisState): Promise<void> {
-  await redis.set(KEY, state)
+export async function saveCrisisState(state: AttachmentCrisisState, buffer?: WriteBuffer): Promise<void> {
+  if (buffer) {
+    buffer.stage(KEY, state)
+  } else {
+    await redis.set(KEY, state)
+  }
 }
 
 interface CrisisContext {

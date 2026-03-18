@@ -1,4 +1,5 @@
 import { redis } from "@/infra/integrations/redis.ts"
+import type { WriteBuffer } from "@/infra/lib/buffer.ts"
 import { HEBBIAN } from "./constants.ts"
 import type { HebbianAssociation } from "./types.ts"
 
@@ -18,12 +19,16 @@ export async function getActiveAssociations(): Promise<HebbianAssociation[]> {
 /**
  * Save active associations to Redis for fast pipeline access.
  */
-export async function saveActiveAssociations(associations: HebbianAssociation[]): Promise<void> {
+export async function saveActiveAssociations(associations: HebbianAssociation[], buffer?: WriteBuffer): Promise<void> {
   const top = associations
     .filter((a) => a.strength >= HEBBIAN.ACTIVATION_THRESHOLD)
     .sort((a, b) => b.strength - a.strength)
     .slice(0, 50)
-  await redis.set(KEYS.ACTIVE_ASSOCIATIONS, top)
+  if (buffer) {
+    buffer.stage(KEYS.ACTIVE_ASSOCIATIONS, top)
+  } else {
+    await redis.set(KEYS.ACTIVE_ASSOCIATIONS, top)
+  }
 }
 
 /**
@@ -37,9 +42,13 @@ export async function getRecentStimuliHistory(): Promise<string[][]> {
 /**
  * Push current tick's stimuli into the ring buffer.
  */
-export async function pushStimuliHistory(stimuli: string[]): Promise<void> {
+export async function pushStimuliHistory(stimuli: string[], buffer?: WriteBuffer): Promise<void> {
   const history = await getRecentStimuliHistory()
   history.push(stimuli)
   const trimmed = history.slice(-HEBBIAN.COACTIVATION_WINDOW_TICKS * 2)
-  await redis.set(KEYS.STIMULI_HISTORY, trimmed)
+  if (buffer) {
+    buffer.stage(KEYS.STIMULI_HISTORY, trimmed)
+  } else {
+    await redis.set(KEYS.STIMULI_HISTORY, trimmed)
+  }
 }
