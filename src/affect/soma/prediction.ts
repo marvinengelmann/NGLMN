@@ -26,6 +26,12 @@ export function computeSomaticTrajectory(recentHistory: SomaticState[]): Partial
   return trajectory
 }
 
+interface AllostaticContext {
+  allostaticLoad: number
+  hasActiveGoals: boolean
+  forecastIntensity: number
+}
+
 interface PredictionInput {
   currentSoma: SomaticState
   currentEmotion: {
@@ -43,11 +49,20 @@ interface PredictionInput {
   autonomicState: AutonomicState
   trajectory: Partial<Record<SomaDimension, number>>
   hourOfDay: number
+  allostaticContext?: AllostaticContext
 }
 
 /**
  * Predict the expected somatic state for the upcoming tick.
  * Combines trajectory extrapolation, context-based expectations, autonomic zone profile, and baseline drift.
+ */
+/**
+ * Predict the expected somatic state for the upcoming tick.
+ * Combines trajectory extrapolation, context-based expectations, autonomic zone profile, baseline drift,
+ * and allostatic setpoint adjustments (Sterling, 2012).
+ *
+ * Allostatic interoception: the brain PREDICTS metabolic needs and adjusts somatic setpoints
+ * BEFORE disruption occurs — not just reactively correcting errors.
  */
 export function predictSomaticState({
   currentSoma,
@@ -55,11 +70,13 @@ export function predictSomaticState({
   moodContext,
   autonomicState,
   trajectory,
-  hourOfDay
+  hourOfDay,
+  allostaticContext
 }: PredictionInput): SomaticState {
   const trajectoryPrediction = predictFromTrajectory(currentSoma, trajectory)
   const contextPrediction = predictFromContext(currentEmotion, hourOfDay, moodContext)
   const autonomicProfile = INTEROCEPTION.AUTONOMIC_SOMA_PROFILES[autonomicState.zone]
+  const allostaticShift = computeAllostaticSetpointShift(allostaticContext)
 
   const predicted: SomaticState = {
     tension: 0,
@@ -72,15 +89,50 @@ export function predictSomaticState({
   }
 
   for (const dim of SOMA_DIMENSIONS) {
-    predicted[dim] = clamp01(
+    const base = clamp01(
       INTEROCEPTION.TRAJECTORY_WEIGHT * (trajectoryPrediction[dim] ?? currentSoma[dim]) +
         INTEROCEPTION.CONTEXT_WEIGHT * (contextPrediction[dim] ?? currentSoma[dim]) +
         INTEROCEPTION.AUTONOMIC_PROFILE_WEIGHT * autonomicProfile[dim] +
         INTEROCEPTION.BASELINE_DRIFT_WEIGHT * DEFAULT_SOMATIC_STATE[dim]
     )
+    predicted[dim] = clamp01(base + (allostaticShift[dim] ?? 0))
   }
 
   return predicted
+}
+
+/**
+ * Compute anticipatory somatic setpoint shifts based on allostatic context (Sterling, 2012).
+ * The brain proactively adjusts body-state targets based on predicted upcoming demands,
+ * rather than waiting for prediction errors to accumulate.
+ */
+function computeAllostaticSetpointShift(
+  context?: AllostaticContext
+): Partial<Record<SomaDimension, number>> {
+  if (!context) return {}
+
+  const shift: Partial<Record<SomaDimension, number>> = {}
+
+  if (context.hasActiveGoals) {
+    shift.heartRate = (shift.heartRate ?? 0) + 0.03
+    shift.breathing = (shift.breathing ?? 0) + 0.02
+    shift.gravity = (shift.gravity ?? 0) - 0.02
+  }
+
+  if (context.forecastIntensity > 0.3) {
+    const scale = context.forecastIntensity * 0.1
+    shift.tension = (shift.tension ?? 0) + scale
+    shift.heartRate = (shift.heartRate ?? 0) + scale * 0.5
+  }
+
+  if (context.allostaticLoad > 0.5) {
+    const loadScale = (context.allostaticLoad - 0.5) * 0.2
+    shift.gravity = (shift.gravity ?? 0) + loadScale
+    shift.openness = (shift.openness ?? 0) - loadScale * 0.8
+    shift.breathing = (shift.breathing ?? 0) - loadScale * 0.5
+  }
+
+  return shift
 }
 
 function predictFromTrajectory(
