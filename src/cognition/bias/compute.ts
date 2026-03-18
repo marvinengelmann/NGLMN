@@ -116,8 +116,52 @@ export function applyOptimismBias(prediction: number, biasStrength: number, sero
 }
 
 /**
+ * Apply Dunning-Kruger effect — confidence is inflated at low familiarity,
+ * dips below true level at medium familiarity ("valley of despair"),
+ * and converges to accurate at high familiarity.
+ */
+export function applyDunningKrugerEffect(confidence: number, domainFamiliarity: number, biasStrength: number): number {
+  if (biasStrength <= 0) return confidence
+
+  const peak = BIAS.DUNNING_KRUGER_INFLATION_PEAK
+  const valleyCenter = BIAS.DUNNING_KRUGER_VALLEY_CENTER
+  const valleyDepth = BIAS.DUNNING_KRUGER_VALLEY_DEPTH
+  const valleyWidth = BIAS.DUNNING_KRUGER_VALLEY_WIDTH
+
+  let adjustment = 0
+  if (domainFamiliarity < valleyCenter - valleyWidth) {
+    const inflationCurve = 1 - domainFamiliarity / (valleyCenter - valleyWidth)
+    adjustment = peak * inflationCurve
+  } else if (Math.abs(domainFamiliarity - valleyCenter) <= valleyWidth) {
+    const distFromCenter = Math.abs(domainFamiliarity - valleyCenter) / valleyWidth
+    adjustment = -valleyDepth * (1 - distFromCenter)
+  }
+
+  return clamp01(confidence + adjustment * biasStrength)
+}
+
+/**
+ * Apply Spotlight Effect — overestimate how much the operator notices
+ * internal state changes. Returns an amplified perceived-observability score.
+ * Higher under stress (cortisol), modulated by social bonding (oxytocin).
+ */
+export function applySpotlightEffect(
+  stateChangeMagnitude: number,
+  biasStrength: number,
+  selfAwareness: number
+): number {
+  if (biasStrength <= 0 || stateChangeMagnitude <= 0) return stateChangeMagnitude
+
+  const floor = BIAS.SPOTLIGHT_SELF_AWARENESS_FLOOR
+  const amplification = BIAS.SPOTLIGHT_AMPLIFICATION
+  const awarenessScale = Math.max(floor, selfAwareness)
+  return clamp01(stateChangeMagnitude * (1 + (amplification - 1) * biasStrength * awarenessScale))
+}
+
+/**
  * Update bias modifier strengths based on neuromodulatory state.
  * Cortisol amplifies negativity bias, low serotonin weakens optimism bias, dopamine boosts confirmation bias.
+ * Dopamine amplifies Dunning-Kruger, cortisol and oxytocin amplify Spotlight Effect.
  */
 export function updateBiasModifiers(biasState: BiasState, neuro: NeuromodulatoryState): BiasState {
   const modifiers = { ...biasState.activeModifiers }
@@ -125,6 +169,10 @@ export function updateBiasModifiers(biasState: BiasState, neuro: Neuromodulatory
   modifiers.negativity = clamp01(0.4 + neuro.cortisol.level * BIAS.CORTISOL_NEGATIVITY_AMPLIFIER)
   modifiers.optimism = clamp01(0.4 + neuro.serotonin.level * BIAS.SEROTONIN_OPTIMISM_LINK)
   modifiers.confirmation = clamp01(0.3 + neuro.dopamine.level * BIAS.DOPAMINE_CONFIRMATION_LINK)
+  modifiers.dunning_kruger = clamp01(0.3 + neuro.dopamine.level * BIAS.DUNNING_KRUGER_DOPAMINE_LINK)
+  modifiers.spotlight = clamp01(
+    0.2 + neuro.cortisol.level * BIAS.SPOTLIGHT_CORTISOL_LINK + neuro.oxytocin.level * BIAS.SPOTLIGHT_OXYTOCIN_LINK
+  )
 
   return {
     ...biasState,

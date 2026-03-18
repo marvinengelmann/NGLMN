@@ -82,7 +82,9 @@ const baseContext: DefenseContext = {
       negativity: 0.6,
       peak_end: 0.5,
       mere_exposure: 0.3,
-      optimism: 0.4
+      optimism: 0.4,
+      dunning_kruger: 0.5,
+      spotlight: 0.3
     },
     anchorPoints: [],
     exposureCounts: {},

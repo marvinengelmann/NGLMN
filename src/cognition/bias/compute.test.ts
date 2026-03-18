@@ -3,9 +3,11 @@ import {
   addAnchor,
   applyAvailabilityBias,
   applyConfirmationBias,
+  applyDunningKrugerEffect,
   applyNegativityBias,
   applyOptimismBias,
   applyPeakEndRule,
+  applySpotlightEffect,
   computeMereExposureEffect,
   decayAnchors,
   getAnchorInfluence,
@@ -161,6 +163,73 @@ describe("updateBiasModifiers", () => {
       serotonin: { ...baseNeuro.serotonin, level: 0.9 }
     })
     expect(result.activeModifiers.optimism).toBeGreaterThan(DEFAULT_BIAS_STATE.activeModifiers.optimism)
+  })
+
+  it("increases dunning-kruger bias with high dopamine", () => {
+    const result = updateBiasModifiers(DEFAULT_BIAS_STATE, {
+      ...baseNeuro,
+      dopamine: { ...baseNeuro.dopamine, level: 0.9 }
+    })
+    expect(result.activeModifiers.dunning_kruger).toBeGreaterThan(DEFAULT_BIAS_STATE.activeModifiers.dunning_kruger)
+  })
+
+  it("increases spotlight bias with high cortisol", () => {
+    const result = updateBiasModifiers(DEFAULT_BIAS_STATE, {
+      ...baseNeuro,
+      cortisol: { ...baseNeuro.cortisol, level: 0.9 }
+    })
+    expect(result.activeModifiers.spotlight).toBeGreaterThan(DEFAULT_BIAS_STATE.activeModifiers.spotlight)
+  })
+})
+
+describe("applyDunningKrugerEffect", () => {
+  it("inflates confidence at low familiarity", () => {
+    const result = applyDunningKrugerEffect(0.5, 0.05, 0.5)
+    expect(result).toBeGreaterThan(0.5)
+  })
+
+  it("depresses confidence at medium familiarity (valley of despair)", () => {
+    const result = applyDunningKrugerEffect(0.5, 0.4, 0.5)
+    expect(result).toBeLessThan(0.5)
+  })
+
+  it("has minimal effect at high familiarity", () => {
+    const result = applyDunningKrugerEffect(0.5, 0.9, 0.5)
+    expect(result).toBeCloseTo(0.5, 1)
+  })
+
+  it("clamps output to [0, 1]", () => {
+    expect(applyDunningKrugerEffect(0.95, 0.01, 1.0)).toBeLessThanOrEqual(1)
+    expect(applyDunningKrugerEffect(0.05, 0.4, 1.0)).toBeGreaterThanOrEqual(0)
+  })
+
+  it("has no effect when bias strength is 0", () => {
+    expect(applyDunningKrugerEffect(0.5, 0.1, 0)).toBe(0.5)
+  })
+})
+
+describe("applySpotlightEffect", () => {
+  it("amplifies perceived state change magnitude", () => {
+    const result = applySpotlightEffect(0.3, 0.5, 0.5)
+    expect(result).toBeGreaterThan(0.3)
+  })
+
+  it("returns 0 for zero magnitude", () => {
+    expect(applySpotlightEffect(0, 0.5, 0.5)).toBe(0)
+  })
+
+  it("has no effect when bias strength is 0", () => {
+    expect(applySpotlightEffect(0.3, 0, 0.5)).toBe(0.3)
+  })
+
+  it("increases with self-awareness", () => {
+    const lowAwareness = applySpotlightEffect(0.3, 0.5, 0.2)
+    const highAwareness = applySpotlightEffect(0.3, 0.5, 0.8)
+    expect(highAwareness).toBeGreaterThan(lowAwareness)
+  })
+
+  it("clamps output to [0, 1]", () => {
+    expect(applySpotlightEffect(0.8, 1.0, 1.0)).toBeLessThanOrEqual(1)
   })
 })
 
