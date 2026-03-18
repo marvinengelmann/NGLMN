@@ -176,10 +176,9 @@ export function buildPerceptionSections(
       return `  ${idPrefix}${photoTag}${voiceTag}[${message.from}]: ${text}`
     })
 
-    const interruptNote =
-      senseData.interruptedPreviousSend
-        ? "\nNote: The operator sent additional messages while you were still responding. They may be continuing their thought, reacting to what you said, or changing topic. Respond naturally to the full conversation — don't repeat what you already said."
-        : ""
+    const interruptNote = senseData.interruptedPreviousSend
+      ? "\nNote: The operator sent additional messages while you were still responding. They may be continuing their thought, reacting to what you said, or changing topic. Respond naturally to the full conversation — don't repeat what you already said."
+      : ""
 
     sections.push(
       `# Messages\nNew messages from operator (${senseData.pendingMessages.length}):\n${messageLines.join("\n")}${interruptNote}`

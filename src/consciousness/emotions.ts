@@ -1,6 +1,6 @@
+import { detectRivalMention } from "@/affect/emotion/jealousy.ts"
 import type { ShameState } from "@/affect/emotion/shame.ts"
 import type { EmotionalState, SecondaryEmotionState } from "@/affect/emotion/types.ts"
-import { detectRivalMention } from "@/affect/emotion/jealousy.ts"
 import type { ExpectationViolation } from "@/perception/anticipation/types.ts"
 import type { VulnerabilityState } from "@/relational/attachment/types.ts"
 import type { OperatorModel } from "@/relational/mind/types.ts"

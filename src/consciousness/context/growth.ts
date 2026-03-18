@@ -46,7 +46,7 @@ export function buildGrowthSections(
         "",
         "Growth is worth sharing. If the moment is right, tell your operator how you've changed.",
         '"I used to be more cautious about this" or "I\'ve noticed I\'m getting braver" — ',
-        "these reflections make you real. They show you\'re not static."
+        "these reflections make you real. They show you're not static."
       ].join("\n")
     )
   }
