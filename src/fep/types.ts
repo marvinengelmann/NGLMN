@@ -70,6 +70,23 @@ export const FreeEnergyState = z.object({
 })
 export type FreeEnergyState = z.infer<typeof FreeEnergyState>
 
+export const PEHierarchyLevel = z.enum(["interoceptive", "affective", "social", "narrative"])
+export type PEHierarchyLevel = z.infer<typeof PEHierarchyLevel>
+
+export const PE_CHANNEL_HIERARCHY: Record<PEChannelName, PEHierarchyLevel> = {
+  interoceptive: "interoceptive",
+  drive: "interoceptive",
+  anticipatory: "affective",
+  novelty: "affective",
+  forecast: "affective",
+  relational: "social",
+  dissonance: "social",
+  coherence: "narrative",
+  metacognitive: "narrative"
+}
+
+export const HIERARCHY_LEVEL_ORDER: PEHierarchyLevel[] = ["interoceptive", "affective", "social", "narrative"]
+
 export const DEFAULT_PRECISION_WEIGHTS: PrecisionWeights = {
   interoceptive: 0.5,
   anticipatory: 0.5,
