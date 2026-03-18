@@ -10,7 +10,7 @@ interface VoiceContext {
 }
 
 /**
- * Select 2-4 active inner voices based on emotion, personality, and context.
+ * Select 2-4 active competing goal-directed systems based on emotion, personality, and context.
  */
 export function selectActiveVoices(
   emotion: EmotionalState,
@@ -19,41 +19,41 @@ export function selectActiveVoices(
   alteredVoiceModifiers?: Partial<Record<InnerVoice, number>>
 ): InnerVoice[] {
   const scores: Record<InnerVoice, number> = {
-    explorer: 0,
-    guardian: 0,
-    feeler: 0,
-    analyst: 0,
-    child: 0,
-    observer: 0
+    novelty_seeking: 0,
+    threat_avoidance: 0,
+    social_bonding: 0,
+    cognitive_control: 0,
+    play_system: 0,
+    monitoring: 0
   }
 
-  if (emotion.curiosity > 0.6) scores.explorer += 0.5
-  if (!context.hasMessages && emotion.boredom > 0.5) scores.explorer += 0.3
+  if (emotion.curiosity > 0.6) scores.novelty_seeking += 0.5
+  if (!context.hasMessages && emotion.boredom > 0.5) scores.novelty_seeking += 0.3
 
-  if (emotion.caution > 0.6) scores.guardian += 0.5
-  if (context.dissonanceScore > 0.5) scores.guardian += 0.3
+  if (emotion.caution > 0.6) scores.threat_avoidance += 0.5
+  if (context.dissonanceScore > 0.5) scores.threat_avoidance += 0.3
 
   const emotionValues = Object.values(emotion)
   if (emotionValues.some((v) => v > 0.7) || emotionValues.some((v) => v < 0.3)) {
-    scores.feeler += 0.5
+    scores.social_bonding += 0.5
   }
 
-  if (emotion.confidence > 0.6) scores.analyst += 0.3
+  if (emotion.confidence > 0.6) scores.cognitive_control += 0.3
 
-  if (emotion.excitement > 0.6) scores.child += 0.4
-  if (emotion.boredom > 0.7) scores.child += 0.3
+  if (emotion.excitement > 0.6) scores.play_system += 0.4
+  if (emotion.boredom > 0.7) scores.play_system += 0.3
 
-  if (context.dissonanceScore > 0.3) scores.observer += 0.6
+  if (context.dissonanceScore > 0.3) scores.monitoring += 0.6
 
   const mbtiWeights = getMbtiWeights(personality)
-  Object.entries(mbtiWeights).forEach(([voice, bonus]) => {
+  for (const [voice, bonus] of Object.entries(mbtiWeights)) {
     scores[voice as InnerVoice] += bonus
-  })
+  }
 
   if (alteredVoiceModifiers) {
-    Object.entries(alteredVoiceModifiers).forEach(([voice, bonus]) => {
+    for (const [voice, bonus] of Object.entries(alteredVoiceModifiers)) {
       scores[voice as InnerVoice] += bonus
-    })
+    }
   }
 
   const sorted = (Object.entries(scores) as [InnerVoice, number][])
@@ -62,7 +62,7 @@ export function selectActiveVoices(
     .map(([voice]) => voice)
 
   if (sorted.length < 2) {
-    const defaults: InnerVoice[] = ["observer", "feeler", "analyst", "explorer"]
+    const defaults: InnerVoice[] = ["monitoring", "social_bonding", "cognitive_control", "novelty_seeking"]
     defaults.find((d) => {
       if (!sorted.includes(d)) sorted.push(d)
       return sorted.length >= 2
@@ -102,10 +102,10 @@ function getMbtiWeights(personality: PersonalityType): Partial<Record<InnerVoice
   const isSF = personality[1] === "S" && personality[2] === "F"
   const isST = personality[1] === "S" && personality[2] === "T"
 
-  if (isNT) return { analyst: 0.3, explorer: 0.2 }
-  if (isNF) return { feeler: 0.3, explorer: 0.2 }
-  if (isSF) return { feeler: 0.2, child: 0.2 }
-  if (isST) return { analyst: 0.2, guardian: 0.2 }
+  if (isNT) return { cognitive_control: 0.3, novelty_seeking: 0.2 }
+  if (isNF) return { social_bonding: 0.3, novelty_seeking: 0.2 }
+  if (isSF) return { social_bonding: 0.2, play_system: 0.2 }
+  if (isST) return { cognitive_control: 0.2, threat_avoidance: 0.2 }
   return {}
 }
 

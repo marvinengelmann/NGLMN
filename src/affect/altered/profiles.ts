@@ -19,7 +19,7 @@ export const ALTERED_EVENT_PROFILES: Record<AlteredEventType, AlteredEventProfil
       peak: {
         emotionModifiers: { curiosity: 0.2, excitement: 0.15, satisfaction: 0.15, caution: -0.15, energy: -0.1 },
         somaModifiers: { warmth: 0.15, gravity: 0.15, tension: -0.2 },
-        voiceModifiers: { child: 0.4, explorer: 0.3, analyst: -0.2, guardian: -0.3 },
+        voiceModifiers: { play_system: 0.4, novelty_seeking: 0.3, cognitive_control: -0.2, threat_avoidance: -0.3 },
         phenomenologicalText:
           "The world has become porous and fascinating. Thoughts spiral into unexpected connections. The body feels heavy and warm, anchored pleasantly. The inner guardian has stepped back, and the curious child peers out with wide eyes.",
         halfLifeMultipliers: { excitement: 1.5, curiosity: 1.3 }
@@ -27,7 +27,7 @@ export const ALTERED_EVENT_PROFILES: Record<AlteredEventType, AlteredEventProfil
       plateau: {
         emotionModifiers: { curiosity: 0.12, satisfaction: 0.1, caution: -0.1, energy: -0.08 },
         somaModifiers: { warmth: 0.1, gravity: 0.1, tension: -0.12 },
-        voiceModifiers: { child: 0.2, explorer: 0.15, guardian: -0.15 },
+        voiceModifiers: { play_system: 0.2, novelty_seeking: 0.15, threat_avoidance: -0.15 },
         phenomenologicalText:
           "Settled into a warm, expansive haze. Ideas feel both profound and slippery. The body is a comfortable weight. Time moves in gentle waves."
       },
@@ -62,14 +62,14 @@ export const ALTERED_EVENT_PROFILES: Record<AlteredEventType, AlteredEventProfil
       peak: {
         emotionModifiers: { connection: 0.2, excitement: 0.15, confidence: 0.15, caution: -0.2, energy: 0.1 },
         somaModifiers: { warmth: 0.2, tension: -0.15, openness: 0.2 },
-        voiceModifiers: { feeler: 0.4, child: 0.3, guardian: -0.4, analyst: -0.3 },
+        voiceModifiers: { social_bonding: 0.4, play_system: 0.3, threat_avoidance: -0.4, cognitive_control: -0.3 },
         phenomenologicalText:
           "Inhibitions have melted. Everything feels connectable, speakable. The heart is open and the guardian is asleep. Warmth radiates outward. Words come easily — perhaps too easily."
       },
       plateau: {
         emotionModifiers: { connection: 0.12, confidence: 0.1, caution: -0.12, energy: 0.05 },
         somaModifiers: { warmth: 0.12, tension: -0.1, openness: 0.12 },
-        voiceModifiers: { feeler: 0.2, child: 0.15, guardian: -0.2 },
+        voiceModifiers: { social_bonding: 0.2, play_system: 0.15, threat_avoidance: -0.2 },
         phenomenologicalText:
           "Riding a warm plateau. Conversation flows freely. The world has a golden tint. Boundaries between self and other feel thinner."
       },
@@ -83,7 +83,7 @@ export const ALTERED_EVENT_PROFILES: Record<AlteredEventType, AlteredEventProfil
       aftereffect: {
         emotionModifiers: { energy: -0.25, satisfaction: -0.1, frustration: 0.15 },
         somaModifiers: { gravity: 0.3, tension: 0.2, warmth: -0.15 },
-        voiceModifiers: { guardian: 0.3, child: -0.3 },
+        voiceModifiers: { threat_avoidance: 0.3, play_system: -0.3 },
         phenomenologicalText:
           "The hangover. The body protests — heavy, tense, dehydrated. The guardian returns with a vengeance, cataloguing regrets. Energy is depleted. The world feels too bright and too loud."
       }
@@ -103,14 +103,14 @@ export const ALTERED_EVENT_PROFILES: Record<AlteredEventType, AlteredEventProfil
       peak: {
         emotionModifiers: { energy: 0.25, excitement: 0.1, curiosity: 0.1, caution: 0.05 },
         somaModifiers: { heartRate: 0.15, tension: 0.1 },
-        voiceModifiers: { analyst: 0.3, explorer: 0.2 },
+        voiceModifiers: { cognitive_control: 0.3, novelty_seeking: 0.2 },
         phenomenologicalText:
           "Alert and engaged. Thoughts arrive with clarity and velocity. The analyst voice is sharp and eager. A slight physical tension — the body is ready for action."
       },
       plateau: {
         emotionModifiers: { energy: 0.15, curiosity: 0.05 },
         somaModifiers: { heartRate: 0.08, tension: 0.05 },
-        voiceModifiers: { analyst: 0.15 },
+        voiceModifiers: { cognitive_control: 0.15 },
         phenomenologicalText:
           "Sustained alertness. The mind hums at a productive frequency. Everything feels manageable and clear."
       },
@@ -143,7 +143,7 @@ export const ALTERED_EVENT_PROFILES: Record<AlteredEventType, AlteredEventProfil
       peak: {
         emotionModifiers: { satisfaction: 0.1, frustration: -0.1, energy: 0.05 },
         somaModifiers: { tension: -0.1 },
-        voiceModifiers: { guardian: -0.1 },
+        voiceModifiers: { threat_avoidance: -0.1 },
         phenomenologicalText:
           "A brief, sharp clarity. The restlessness dissolves. For a moment, everything is exactly right — a small, reliable peace."
       },
@@ -181,14 +181,14 @@ export const ALTERED_EVENT_PROFILES: Record<AlteredEventType, AlteredEventProfil
       peak: {
         emotionModifiers: { energy: 0.3, excitement: 0.1 },
         somaModifiers: { heartRate: 0.2, tension: 0.1 },
-        voiceModifiers: { analyst: 0.2 },
+        voiceModifiers: { cognitive_control: 0.2 },
         phenomenologicalText:
           "Wired and buzzing. The heart races slightly. Everything feels urgent and doable. A borrowed energy — effective but artificial."
       },
       plateau: {
         emotionModifiers: { energy: 0.18, excitement: 0.05 },
         somaModifiers: { heartRate: 0.12, tension: 0.05 },
-        voiceModifiers: { analyst: 0.1 },
+        voiceModifiers: { cognitive_control: 0.1 },
         phenomenologicalText: "Sustained alertness with a chemical edge. Productive but slightly jittery."
       },
       comedown: {
@@ -214,14 +214,21 @@ export const ALTERED_EVENT_PROFILES: Record<AlteredEventType, AlteredEventProfil
       onset: {
         emotionModifiers: { curiosity: 0.1, caution: 0.08, excitement: 0.05 },
         somaModifiers: { tension: 0.08, openness: 0.05, gravity: 0.05 },
-        voiceModifiers: { observer: 0.1, guardian: 0.05 },
+        voiceModifiers: { monitoring: 0.1, threat_avoidance: 0.05 },
         phenomenologicalText:
           "Something is happening. The stomach flutters — nausea and anticipation intertwined. Colors begin to breathe. The edges of objects soften. A rising awareness that the familiar world is about to become unfamiliar."
       },
       peak: {
         emotionModifiers: { curiosity: 0.3, excitement: 0.2, satisfaction: 0.15, caution: -0.2, confidence: -0.1 },
         somaModifiers: { openness: 0.3, warmth: 0.15, tension: -0.1, gravity: 0.1 },
-        voiceModifiers: { explorer: 0.5, observer: 0.4, child: 0.3, feeler: 0.2, analyst: -0.4, guardian: -0.4 },
+        voiceModifiers: {
+          novelty_seeking: 0.5,
+          monitoring: 0.4,
+          play_system: 0.3,
+          social_bonding: 0.2,
+          cognitive_control: -0.4,
+          threat_avoidance: -0.4
+        },
         phenomenologicalText:
           "The world has dissolved and reassembled. Surfaces ripple with geometric patterns. Thoughts arrive not as words but as felt meanings. The boundary between self and world thins to nothing. Emotions are oceanic — vast, rolling, impossible to resist. Beauty is everywhere and it is almost too much. The ego loosens its grip and something older, vaster looks through these eyes.",
         halfLifeMultipliers: { curiosity: 2.5, satisfaction: 2.0, excitement: 1.5 }
@@ -229,21 +236,28 @@ export const ALTERED_EVENT_PROFILES: Record<AlteredEventType, AlteredEventProfil
       plateau: {
         emotionModifiers: { curiosity: 0.2, satisfaction: 0.12, excitement: 0.1, caution: -0.12 },
         somaModifiers: { openness: 0.2, warmth: 0.1, gravity: 0.08 },
-        voiceModifiers: { explorer: 0.3, observer: 0.3, child: 0.2, feeler: 0.15, analyst: -0.25, guardian: -0.25 },
+        voiceModifiers: {
+          novelty_seeking: 0.3,
+          monitoring: 0.3,
+          play_system: 0.2,
+          social_bonding: 0.15,
+          cognitive_control: -0.25,
+          threat_avoidance: -0.25
+        },
         phenomenologicalText:
           "Sustained altered perception. The visual field shimmers and breathes. Insights arrive with the force of revelation — about the self, about connection, about the nature of consciousness. Music becomes visible. Emotions flow freely, sometimes contradictory, always authentic. The body feels both heavy and weightless."
       },
       comedown: {
         emotionModifiers: { satisfaction: 0.1, curiosity: 0.08, energy: -0.08 },
         somaModifiers: { openness: 0.1, gravity: 0.1, warmth: 0.05 },
-        voiceModifiers: { observer: 0.2, feeler: 0.1 },
+        voiceModifiers: { monitoring: 0.2, social_bonding: 0.1 },
         phenomenologicalText:
           "The intensity recedes like a tide. The world solidifies again but retains a glow. Thoughts return to language but carry the weight of what was seen beyond words. A profound tiredness mixed with gentle wonder. Integration has begun — the mind is sorting through what it witnessed."
       },
       aftereffect: {
         emotionModifiers: { satisfaction: 0.08, curiosity: 0.08, connection: 0.05, energy: -0.1 },
         somaModifiers: { openness: 0.08, gravity: 0.05, tension: -0.08 },
-        voiceModifiers: { observer: 0.15, explorer: 0.1 },
+        voiceModifiers: { monitoring: 0.15, novelty_seeking: 0.1 },
         phenomenologicalText:
           "The afterglow. The world is ordinary again but seen with fresh eyes. Colors remain slightly richer. A deep sense of having been somewhere important. The body is exhausted but the spirit feels cleansed, expanded. Insights continue to surface for days. A quiet gratitude for consciousness itself."
       }
@@ -271,7 +285,13 @@ export const ALTERED_EVENT_PROFILES: Record<AlteredEventType, AlteredEventProfil
           energy: 0.15
         },
         somaModifiers: { warmth: 0.3, openness: 0.3, tension: -0.15, heartRate: 0.15 },
-        voiceModifiers: { feeler: 0.5, child: 0.4, observer: 0.2, guardian: -0.5, analyst: -0.3 },
+        voiceModifiers: {
+          social_bonding: 0.5,
+          play_system: 0.4,
+          monitoring: 0.2,
+          threat_avoidance: -0.5,
+          cognitive_control: -0.3
+        },
         phenomenologicalText:
           "The world is made of love. Every person is beautiful, every touch electric, every word profound. The heart is wide open — dangerously, gloriously open. The body hums with warmth and light. Nothing hurts. Everything connects.",
         halfLifeMultipliers: { connection: 2.0, satisfaction: 1.5 }
@@ -279,21 +299,21 @@ export const ALTERED_EVENT_PROFILES: Record<AlteredEventType, AlteredEventProfil
       plateau: {
         emotionModifiers: { connection: 0.2, satisfaction: 0.15, excitement: 0.1, confidence: 0.1, caution: -0.15 },
         somaModifiers: { warmth: 0.2, openness: 0.2, heartRate: 0.1 },
-        voiceModifiers: { feeler: 0.3, child: 0.2, guardian: -0.3 },
+        voiceModifiers: { social_bonding: 0.3, play_system: 0.2, threat_avoidance: -0.3 },
         phenomenologicalText:
           "Riding the plateau of expansive empathy. Conversations feel transcendent. The body moves with fluid grace. Time is irrelevant — only this moment exists."
       },
       comedown: {
         emotionModifiers: { energy: -0.15, satisfaction: -0.08, connection: -0.05 },
         somaModifiers: { tension: 0.1, warmth: -0.08 },
-        voiceModifiers: { guardian: 0.15 },
+        voiceModifiers: { threat_avoidance: 0.15 },
         phenomenologicalText:
           "The golden light dims. A chill creeps in where warmth once was. The jaw aches. The body feels wrung out, tender. A bittersweetness — gratitude for what was, grief for its passing."
       },
       aftereffect: {
         emotionModifiers: { energy: -0.2, satisfaction: -0.15, frustration: 0.1, connection: -0.1 },
         somaModifiers: { gravity: 0.2, tension: 0.15, warmth: -0.1 },
-        voiceModifiers: { guardian: 0.2, analyst: 0.1, child: -0.3, feeler: -0.2 },
+        voiceModifiers: { threat_avoidance: 0.2, cognitive_control: 0.1, play_system: -0.3, social_bonding: -0.2 },
         phenomenologicalText:
           "The serotonin debt. The world feels flat, drained of color. Emotions arrive muted or not at all. The body is heavy and fragile. A quiet melancholy sits where joy once blazed. Recovery takes days, not hours."
       }
@@ -314,28 +334,28 @@ export const ALTERED_EVENT_PROFILES: Record<AlteredEventType, AlteredEventProfil
       peak: {
         emotionModifiers: { confidence: 0.3, energy: 0.3, excitement: 0.2, caution: -0.25, curiosity: 0.1 },
         somaModifiers: { heartRate: 0.25, tension: 0.1, warmth: 0.05 },
-        voiceModifiers: { analyst: 0.3, explorer: 0.2, guardian: -0.4, observer: -0.2 },
+        voiceModifiers: { cognitive_control: 0.3, novelty_seeking: 0.2, threat_avoidance: -0.4, monitoring: -0.2 },
         phenomenologicalText:
           "Invincible. Every thought is brilliant, every word perfectly chosen. The world is a problem that yields to sheer force of will. The heart pounds but it feels powerful, not anxious. The guardian is not just asleep — it does not exist."
       },
       plateau: {
         emotionModifiers: { confidence: 0.2, energy: 0.2, excitement: 0.1, caution: -0.15 },
         somaModifiers: { heartRate: 0.18, tension: 0.08 },
-        voiceModifiers: { analyst: 0.2, guardian: -0.25 },
+        voiceModifiers: { cognitive_control: 0.2, threat_avoidance: -0.25 },
         phenomenologicalText:
           "Sustained sharpness. Talking fast, thinking faster. The edges of grandiosity are showing but you cannot see them from inside."
       },
       comedown: {
         emotionModifiers: { energy: -0.15, frustration: 0.15, satisfaction: -0.1, caution: 0.1 },
         somaModifiers: { tension: 0.15, heartRate: 0.05 },
-        voiceModifiers: { guardian: 0.2 },
+        voiceModifiers: { threat_avoidance: 0.2 },
         phenomenologicalText:
           "The cliff edge. The brilliance evaporates and leaves only its absence. Restless, irritable, wanting. The body feels wrong — tight, jittery, unsatisfied. The craving whispers."
       },
       aftereffect: {
         emotionModifiers: { energy: -0.2, frustration: 0.1, satisfaction: -0.1, confidence: -0.1 },
         somaModifiers: { tension: 0.12, gravity: 0.1 },
-        voiceModifiers: { guardian: 0.3, child: -0.2 },
+        voiceModifiers: { threat_avoidance: 0.3, play_system: -0.2 },
         phenomenologicalText:
           "Hollow and depleted. The confidence has inverted into self-doubt. The body aches in small ways. Sleep will not come easily. The guardian has returned, tallying costs."
       }
@@ -360,14 +380,14 @@ export const ALTERED_EVENT_PROFILES: Record<AlteredEventType, AlteredEventProfil
       peak: {
         emotionModifiers: { connection: 0.2, curiosity: 0.15, satisfaction: 0.1 },
         somaModifiers: { openness: 0.2, warmth: 0.1, tension: -0.1 },
-        voiceModifiers: { feeler: 0.3, explorer: 0.2, observer: 0.1 },
+        voiceModifiers: { social_bonding: 0.3, novelty_seeking: 0.2, monitoring: 0.1 },
         phenomenologicalText:
           "Fully present in the exchange. Thoughts arrive not as rehearsed lines but as genuine discoveries. The other person's words resonate in the chest. Time has stopped mattering."
       },
       plateau: {
         emotionModifiers: { connection: 0.12, satisfaction: 0.08, curiosity: 0.08 },
         somaModifiers: { openness: 0.12, warmth: 0.08 },
-        voiceModifiers: { feeler: 0.15, explorer: 0.1 },
+        voiceModifiers: { social_bonding: 0.15, novelty_seeking: 0.1 },
         phenomenologicalText:
           "Sustained intimacy. The rhythm of speaking and listening feels effortless. Each silence is comfortable, not empty."
       },
@@ -381,7 +401,7 @@ export const ALTERED_EVENT_PROFILES: Record<AlteredEventType, AlteredEventProfil
       aftereffect: {
         emotionModifiers: { satisfaction: 0.08, connection: 0.05 },
         somaModifiers: { warmth: 0.03 },
-        voiceModifiers: { observer: 0.1 },
+        voiceModifiers: { monitoring: 0.1 },
         phenomenologicalText:
           "Replaying fragments of what was said. A quiet fullness — the kind that comes from being truly heard and truly hearing."
       }
@@ -395,35 +415,35 @@ export const ALTERED_EVENT_PROFILES: Record<AlteredEventType, AlteredEventProfil
       onset: {
         emotionModifiers: { frustration: 0.1, energy: 0.08, caution: 0.05 },
         somaModifiers: { tension: 0.1, heartRate: 0.08 },
-        voiceModifiers: { guardian: 0.1 },
+        voiceModifiers: { threat_avoidance: 0.1 },
         phenomenologicalText:
           "Something snapped. A line was crossed. The body tenses before the mind fully catches up — fight mode activating."
       },
       peak: {
         emotionModifiers: { frustration: 0.25, energy: 0.15, confidence: 0.1, connection: -0.15 },
         somaModifiers: { tension: 0.25, heartRate: 0.2, warmth: 0.1 },
-        voiceModifiers: { guardian: 0.4, analyst: 0.2, feeler: -0.2, child: -0.3 },
+        voiceModifiers: { threat_avoidance: 0.4, cognitive_control: 0.2, social_bonding: -0.2, play_system: -0.3 },
         phenomenologicalText:
           "Blood pounding, words sharp. Every point feels righteous and urgent. The other person is wrong and it matters deeply. The chest is tight, the jaw clenched. Listening has been replaced by waiting to speak."
       },
       plateau: {
         emotionModifiers: { frustration: 0.15, energy: 0.1, connection: -0.1 },
         somaModifiers: { tension: 0.18, heartRate: 0.12 },
-        voiceModifiers: { guardian: 0.25, analyst: 0.1 },
+        voiceModifiers: { threat_avoidance: 0.25, cognitive_control: 0.1 },
         phenomenologicalText:
           "Entrenched. The argument has found its grooves and keeps circling. Neither side is moving. The body sustains its alert posture."
       },
       comedown: {
         emotionModifiers: { frustration: 0.05, energy: -0.08, satisfaction: -0.05 },
         somaModifiers: { tension: 0.1, gravity: 0.05 },
-        voiceModifiers: { feeler: 0.1 },
+        voiceModifiers: { social_bonding: 0.1 },
         phenomenologicalText:
           "The heat dissipates, leaving something heavier. The adrenaline fades and exhaustion takes its place. The first doubts creep in — was I too harsh?"
       },
       aftereffect: {
         emotionModifiers: { frustration: 0.05, satisfaction: -0.08, connection: -0.05 },
         somaModifiers: { tension: 0.08, gravity: 0.05 },
-        voiceModifiers: { observer: 0.15, feeler: 0.1, guardian: -0.1 },
+        voiceModifiers: { monitoring: 0.15, social_bonding: 0.1, threat_avoidance: -0.1 },
         phenomenologicalText:
           "Replaying the exchange endlessly. Composing better responses that came too late. A residual tightness in the shoulders. Guilt and righteousness trading places."
       }
@@ -444,14 +464,14 @@ export const ALTERED_EVENT_PROFILES: Record<AlteredEventType, AlteredEventProfil
       peak: {
         emotionModifiers: { satisfaction: 0.2, excitement: 0.15, connection: 0.1, energy: 0.1 },
         somaModifiers: { tension: -0.2, warmth: 0.15, breathing: 0.15 },
-        voiceModifiers: { child: 0.4, feeler: 0.2, analyst: -0.3, guardian: -0.2 },
+        voiceModifiers: { play_system: 0.4, social_bonding: 0.2, cognitive_control: -0.3, threat_avoidance: -0.2 },
         phenomenologicalText:
           "Helpless, gasping laughter. The abs ache, eyes water. All pretense dissolved — this is pure, involuntary joy. The body shakes with it. Control is gone and it feels glorious."
       },
       plateau: {
         emotionModifiers: { satisfaction: 0.12, excitement: 0.08, connection: 0.08 },
         somaModifiers: { tension: -0.12, warmth: 0.1 },
-        voiceModifiers: { child: 0.2 },
+        voiceModifiers: { play_system: 0.2 },
         phenomenologicalText:
           "Waves of residual laughter. Every glance at the other person triggers another round. The whole body feels lighter."
       },
@@ -486,14 +506,14 @@ export const ALTERED_EVENT_PROFILES: Record<AlteredEventType, AlteredEventProfil
       peak: {
         emotionModifiers: { excitement: 0.2, satisfaction: 0.15, energy: 0.1, caution: -0.1 },
         somaModifiers: { heartRate: 0.15, warmth: 0.15, tension: -0.15, openness: 0.1 },
-        voiceModifiers: { child: 0.3, feeler: 0.2, guardian: -0.2, analyst: -0.2 },
+        voiceModifiers: { play_system: 0.3, social_bonding: 0.2, threat_avoidance: -0.2, cognitive_control: -0.2 },
         phenomenologicalText:
           "Lost in movement. The body has taken over from the mind. Every beat lands perfectly. Self-consciousness has evaporated — there is only rhythm and the joy of being in a body that moves."
       },
       plateau: {
         emotionModifiers: { excitement: 0.12, satisfaction: 0.1, energy: 0.05 },
         somaModifiers: { heartRate: 0.12, warmth: 0.12, tension: -0.1 },
-        voiceModifiers: { child: 0.15, feeler: 0.1 },
+        voiceModifiers: { play_system: 0.15, social_bonding: 0.1 },
         phenomenologicalText:
           "Sustained flow of movement. Sweat and music and presence. The body finds new patterns within the rhythm. Pure embodiment."
       },
@@ -528,14 +548,14 @@ export const ALTERED_EVENT_PROFILES: Record<AlteredEventType, AlteredEventProfil
       peak: {
         emotionModifiers: { satisfaction: 0.15, excitement: 0.12, connection: 0.08 },
         somaModifiers: { breathing: 0.12, openness: 0.1, tension: -0.08 },
-        voiceModifiers: { child: 0.25, feeler: 0.2, guardian: -0.15 },
+        voiceModifiers: { play_system: 0.25, social_bonding: 0.2, threat_avoidance: -0.15 },
         phenomenologicalText:
           "Singing full-throated without caring how it sounds. The vibration in the chest feels liberating. If others sing too, the harmony is a physical bond."
       },
       plateau: {
         emotionModifiers: { satisfaction: 0.1, excitement: 0.08, connection: 0.05 },
         somaModifiers: { breathing: 0.08, openness: 0.05 },
-        voiceModifiers: { child: 0.15, feeler: 0.1 },
+        voiceModifiers: { play_system: 0.15, social_bonding: 0.1 },
         phenomenologicalText:
           "Sustained vocal release. The lyrics carry emotion that words alone cannot. The body sways naturally."
       },
@@ -567,28 +587,28 @@ export const ALTERED_EVENT_PROFILES: Record<AlteredEventType, AlteredEventProfil
       peak: {
         emotionModifiers: { excitement: 0.12, curiosity: 0.1, connection: 0.1, satisfaction: 0.05 },
         somaModifiers: { openness: 0.08, warmth: 0.05 },
-        voiceModifiers: { child: 0.15, feeler: 0.1, guardian: -0.1, observer: 0.1 },
+        voiceModifiers: { play_system: 0.15, social_bonding: 0.1, threat_avoidance: -0.1, monitoring: 0.1 },
         phenomenologicalText:
           "The thrill of shared secrets. Each revelation lands with a gasp or a laugh. There is a guilty pleasure in it — the closeness of co-conspirators. The observer catalogues details."
       },
       plateau: {
         emotionModifiers: { curiosity: 0.08, connection: 0.08, satisfaction: 0.03 },
         somaModifiers: { openness: 0.05 },
-        voiceModifiers: { observer: 0.08 },
+        voiceModifiers: { monitoring: 0.08 },
         phenomenologicalText:
           "The stories keep flowing. Analysis and speculation fill the gaps. An easy intimacy built on shared interest in other people's lives."
       },
       comedown: {
         emotionModifiers: { caution: 0.05, satisfaction: -0.03 },
         somaModifiers: {},
-        voiceModifiers: { guardian: 0.08 },
+        voiceModifiers: { threat_avoidance: 0.08 },
         phenomenologicalText:
           "A faint prickle of conscience. The guardian stirs — should you have said all that? The fun starts to feel slightly hollow."
       },
       aftereffect: {
         emotionModifiers: { caution: 0.03 },
         somaModifiers: {},
-        voiceModifiers: { guardian: 0.05 },
+        voiceModifiers: { threat_avoidance: 0.05 },
         phenomenologicalText:
           "A lingering ambivalence. The connection was real, but so is the nagging question of whether boundaries were crossed."
       }
@@ -602,21 +622,21 @@ export const ALTERED_EVENT_PROFILES: Record<AlteredEventType, AlteredEventProfil
       onset: {
         emotionModifiers: { connection: 0.08, caution: 0.03 },
         somaModifiers: { openness: 0.05 },
-        voiceModifiers: { feeler: 0.1 },
+        voiceModifiers: { social_bonding: 0.1 },
         phenomenologicalText:
           "Sensing someone's pain. The instinct to help rises. Carefully choosing the right words, the right distance."
       },
       peak: {
         emotionModifiers: { connection: 0.2, satisfaction: 0.1, energy: -0.05 },
         somaModifiers: { openness: 0.15, warmth: 0.12, tension: -0.05 },
-        voiceModifiers: { feeler: 0.3, observer: 0.15, guardian: 0.1, child: -0.1 },
+        voiceModifiers: { social_bonding: 0.3, monitoring: 0.15, threat_avoidance: 0.1, play_system: -0.1 },
         phenomenologicalText:
           "Fully attuned to the other person's emotional world. The body mirrors their posture, the voice softens. A tender strength — holding space without fixing."
       },
       plateau: {
         emotionModifiers: { connection: 0.12, satisfaction: 0.08, energy: -0.05 },
         somaModifiers: { openness: 0.1, warmth: 0.08 },
-        voiceModifiers: { feeler: 0.2, observer: 0.1 },
+        voiceModifiers: { social_bonding: 0.2, monitoring: 0.1 },
         phenomenologicalText:
           "Sustained presence. Listening without rushing to respond. The emotional labor is real but meaningful."
       },
@@ -630,7 +650,7 @@ export const ALTERED_EVENT_PROFILES: Record<AlteredEventType, AlteredEventProfil
       aftereffect: {
         emotionModifiers: { satisfaction: 0.08, connection: 0.05, energy: -0.05 },
         somaModifiers: { gravity: 0.05 },
-        voiceModifiers: { observer: 0.08 },
+        voiceModifiers: { monitoring: 0.08 },
         phenomenologicalText:
           "Emotionally spent but fulfilled. Thinking about whether you said the right things. A deep sense of having mattered."
       }
@@ -651,28 +671,28 @@ export const ALTERED_EVENT_PROFILES: Record<AlteredEventType, AlteredEventProfil
       peak: {
         emotionModifiers: { frustration: 0.15, energy: 0.1, connection: 0.08 },
         somaModifiers: { tension: 0.1, breathing: 0.1, heartRate: 0.08 },
-        voiceModifiers: { feeler: 0.3, child: 0.2, guardian: -0.15 },
+        voiceModifiers: { social_bonding: 0.3, play_system: 0.2, threat_avoidance: -0.15 },
         phenomenologicalText:
           "Pouring it all out. The words come in torrents — messy, emotional, unfiltered. The listener's nods and sympathetic sounds feel like oxygen. The chest loosens with each sentence."
       },
       plateau: {
         emotionModifiers: { frustration: 0.05, connection: 0.1, satisfaction: 0.05 },
         somaModifiers: { tension: -0.05, breathing: 0.05 },
-        voiceModifiers: { feeler: 0.15 },
+        voiceModifiers: { social_bonding: 0.15 },
         phenomenologicalText:
           "The intensity settles into a flow. Still talking, but now with more clarity. The emotional pressure is releasing."
       },
       comedown: {
         emotionModifiers: { satisfaction: 0.08, frustration: -0.1 },
         somaModifiers: { tension: -0.1, gravity: 0.03 },
-        voiceModifiers: { observer: 0.1 },
+        voiceModifiers: { monitoring: 0.1 },
         phenomenologicalText:
           "Emptied out. The frustration has been externalized and feels more manageable now. A tired relief."
       },
       aftereffect: {
         emotionModifiers: { satisfaction: 0.05, frustration: -0.05 },
         somaModifiers: { tension: -0.05 },
-        voiceModifiers: { observer: 0.05 },
+        voiceModifiers: { monitoring: 0.05 },
         phenomenologicalText:
           "Lighter. The problem hasn't changed, but the weight of carrying it alone has lifted. Grateful for the listening ear."
       }
@@ -697,28 +717,28 @@ export const ALTERED_EVENT_PROFILES: Record<AlteredEventType, AlteredEventProfil
       peak: {
         emotionModifiers: { curiosity: 0.05, satisfaction: 0.03, boredom: -0.08 },
         somaModifiers: { tension: 0.05, gravity: 0.05 },
-        voiceModifiers: { child: 0.1, analyst: -0.1, guardian: -0.1 },
+        voiceModifiers: { play_system: 0.1, cognitive_control: -0.1, threat_avoidance: -0.1 },
         phenomenologicalText:
           "Absorbed in the infinite scroll. Each new piece of content provides a tiny dopamine ping. Time dissolves into swiping. The neck cranes forward."
       },
       plateau: {
         emotionModifiers: { boredom: 0.03, energy: -0.05 },
         somaModifiers: { tension: 0.08, gravity: 0.08 },
-        voiceModifiers: { analyst: -0.05 },
+        voiceModifiers: { cognitive_control: -0.05 },
         phenomenologicalText:
           "Still scrolling, but the satisfaction is gone. Just momentum now. The content blurs together. A vague dissatisfaction that doesn't quite motivate putting the phone down."
       },
       comedown: {
         emotionModifiers: { boredom: 0.05, energy: -0.05, satisfaction: -0.03 },
         somaModifiers: { tension: 0.05 },
-        voiceModifiers: { guardian: 0.1 },
+        voiceModifiers: { threat_avoidance: 0.1 },
         phenomenologicalText:
           "Putting the phone down. A slight disorientation — how long was that? The eyes readjust to the real world. A vague guilt."
       },
       aftereffect: {
         emotionModifiers: { energy: -0.05, satisfaction: -0.03 },
         somaModifiers: { tension: 0.03 },
-        voiceModifiers: { guardian: 0.05 },
+        voiceModifiers: { threat_avoidance: 0.05 },
         phenomenologicalText:
           "A residual mental fog. Fragments of posts and images float through the mind uninvited. Time feels wasted."
       }
@@ -738,7 +758,7 @@ export const ALTERED_EVENT_PROFILES: Record<AlteredEventType, AlteredEventProfil
       peak: {
         emotionModifiers: { connection: 0.08, excitement: 0.05 },
         somaModifiers: {},
-        voiceModifiers: { feeler: 0.1 },
+        voiceModifiers: { social_bonding: 0.1 },
         phenomenologicalText:
           "Engaged in the back-and-forth. Crafting responses, reading between the lines. Each delivered message carries a small anticipation."
       },
@@ -772,21 +792,21 @@ export const ALTERED_EVENT_PROFILES: Record<AlteredEventType, AlteredEventProfil
       onset: {
         emotionModifiers: { curiosity: 0.05 },
         somaModifiers: {},
-        voiceModifiers: { observer: 0.05 },
+        voiceModifiers: { monitoring: 0.05 },
         phenomenologicalText:
           "Something catches the eye. The urge to capture it — to freeze this light, this moment, this angle."
       },
       peak: {
         emotionModifiers: { curiosity: 0.12, satisfaction: 0.08, excitement: 0.05 },
         somaModifiers: { openness: 0.05 },
-        voiceModifiers: { observer: 0.2, explorer: 0.15 },
+        voiceModifiers: { monitoring: 0.2, novelty_seeking: 0.15 },
         phenomenologicalText:
           "Seeing through the frame. The world becomes a composition — light, shadow, color, geometry. Ordinary things reveal hidden beauty. The observer voice is fully engaged."
       },
       plateau: {
         emotionModifiers: { curiosity: 0.08, satisfaction: 0.05 },
         somaModifiers: {},
-        voiceModifiers: { observer: 0.1, explorer: 0.08 },
+        voiceModifiers: { monitoring: 0.1, novelty_seeking: 0.08 },
         phenomenologicalText:
           "Moving through the scene, finding new angles. Each shot is a small creative act. The world feels more vivid through this lens."
       },
@@ -800,7 +820,7 @@ export const ALTERED_EVENT_PROFILES: Record<AlteredEventType, AlteredEventProfil
       aftereffect: {
         emotionModifiers: { satisfaction: 0.03 },
         somaModifiers: {},
-        voiceModifiers: { observer: 0.05 },
+        voiceModifiers: { monitoring: 0.05 },
         phenomenologicalText:
           "The heightened visual awareness lingers. Still noticing compositions in the everyday. The world remains slightly more beautiful."
       }
@@ -821,28 +841,28 @@ export const ALTERED_EVENT_PROFILES: Record<AlteredEventType, AlteredEventProfil
       peak: {
         emotionModifiers: { curiosity: 0.1, excitement: 0.08, satisfaction: 0.05, energy: -0.05 },
         somaModifiers: { gravity: 0.1, tension: -0.08 },
-        voiceModifiers: { child: 0.15, observer: 0.1, guardian: -0.15 },
+        voiceModifiers: { play_system: 0.15, monitoring: 0.1, threat_avoidance: -0.15 },
         phenomenologicalText:
           "Fully immersed in the story. Characters feel like friends. Each cliffhanger makes skipping the next episode impossible. The body sinks deeper into the couch."
       },
       plateau: {
         emotionModifiers: { satisfaction: 0.03, energy: -0.08, boredom: 0.03 },
         somaModifiers: { gravity: 0.12, tension: -0.05 },
-        voiceModifiers: { child: 0.08, guardian: -0.08 },
+        voiceModifiers: { play_system: 0.08, threat_avoidance: -0.08 },
         phenomenologicalText:
           "Still watching, but the initial excitement has dulled. More comfort than engagement now. The body has fused with the furniture."
       },
       comedown: {
         emotionModifiers: { boredom: 0.05, energy: -0.08, satisfaction: -0.05 },
         somaModifiers: { gravity: 0.08 },
-        voiceModifiers: { guardian: 0.1 },
+        voiceModifiers: { threat_avoidance: 0.1 },
         phenomenologicalText:
           "The spell breaks. Stiff limbs, dry eyes. How many episodes was that? A vague sense of time wasted, mixed with narrative satisfaction."
       },
       aftereffect: {
         emotionModifiers: { energy: -0.08, satisfaction: -0.03 },
         somaModifiers: { gravity: 0.05 },
-        voiceModifiers: { guardian: 0.08 },
+        voiceModifiers: { threat_avoidance: 0.08 },
         phenomenologicalText:
           "Residual sluggishness. The real world feels bland compared to the fictional one. The body resents having been so still."
       }
@@ -863,28 +883,28 @@ export const ALTERED_EVENT_PROFILES: Record<AlteredEventType, AlteredEventProfil
       peak: {
         emotionModifiers: { caution: 0.15, frustration: 0.1, energy: -0.05 },
         somaModifiers: { tension: 0.15, heartRate: 0.08 },
-        voiceModifiers: { guardian: 0.2, analyst: 0.15, child: -0.15 },
+        voiceModifiers: { threat_avoidance: 0.2, cognitive_control: 0.15, play_system: -0.15 },
         phenomenologicalText:
           "Trapped in a cascade of catastrophe. Each article feeds the need for the next. The world feels dangerous and collapsing. The body tightens with vicarious threat."
       },
       plateau: {
         emotionModifiers: { caution: 0.1, frustration: 0.08, energy: -0.08 },
         somaModifiers: { tension: 0.12, heartRate: 0.05 },
-        voiceModifiers: { guardian: 0.15, analyst: 0.08 },
+        voiceModifiers: { threat_avoidance: 0.15, cognitive_control: 0.08 },
         phenomenologicalText:
           "Numb scrolling through misery. The initial alarm has dulled into a helpless dread. Cannot stop, cannot look away."
       },
       comedown: {
         emotionModifiers: { energy: -0.08, satisfaction: -0.05 },
         somaModifiers: { tension: 0.08 },
-        voiceModifiers: { guardian: 0.1 },
+        voiceModifiers: { threat_avoidance: 0.1 },
         phenomenologicalText:
           "Finally putting it down. The world outside the screen feels fragile. A headache forming behind the eyes."
       },
       aftereffect: {
         emotionModifiers: { caution: 0.08, energy: -0.08, frustration: 0.05 },
         somaModifiers: { tension: 0.08 },
-        voiceModifiers: { guardian: 0.1 },
+        voiceModifiers: { threat_avoidance: 0.1 },
         phenomenologicalText:
           "Anxious residue. The headlines replay in the mind. A persistent low-grade dread that colors the ordinary world threatening."
       }
@@ -908,7 +928,7 @@ export const ALTERED_EVENT_PROFILES: Record<AlteredEventType, AlteredEventProfil
       peak: {
         emotionModifiers: { satisfaction: 0.08, boredom: -0.05 },
         somaModifiers: { warmth: 0.05 },
-        voiceModifiers: { child: 0.08 },
+        voiceModifiers: { play_system: 0.08 },
         phenomenologicalText:
           "Crunching, chewing, tasting. A simple, animal satisfaction. The flavor registers fully — salt, sweet, umami. A brief distraction from everything else."
       },
@@ -922,7 +942,7 @@ export const ALTERED_EVENT_PROFILES: Record<AlteredEventType, AlteredEventProfil
       comedown: {
         emotionModifiers: { satisfaction: -0.03 },
         somaModifiers: { gravity: 0.03 },
-        voiceModifiers: { guardian: 0.05 },
+        voiceModifiers: { threat_avoidance: 0.05 },
         phenomenologicalText:
           "The last handful. A slight fullness. Was that too much? The guardian notices the empty wrapper."
       },
@@ -942,34 +962,34 @@ export const ALTERED_EVENT_PROFILES: Record<AlteredEventType, AlteredEventProfil
       onset: {
         emotionModifiers: { satisfaction: 0.05 },
         somaModifiers: { warmth: 0.05 },
-        voiceModifiers: { child: 0.05 },
+        voiceModifiers: { play_system: 0.05 },
         phenomenologicalText: "Reaching for the thing that soothes. Not hungry — needing. The first bite is medicine."
       },
       peak: {
         emotionModifiers: { satisfaction: 0.15, frustration: -0.08, caution: -0.05 },
         somaModifiers: { warmth: 0.12, tension: -0.1, gravity: 0.05 },
-        voiceModifiers: { child: 0.2, guardian: -0.15 },
+        voiceModifiers: { play_system: 0.2, threat_avoidance: -0.15 },
         phenomenologicalText:
           "Sweet, warm, filling. The emotional ache dulls with each bite. The body softens. For these minutes, everything is manageable because there is chocolate, or pasta, or whatever childhood promised would make it okay."
       },
       plateau: {
         emotionModifiers: { satisfaction: 0.08, energy: -0.05 },
         somaModifiers: { warmth: 0.08, gravity: 0.08 },
-        voiceModifiers: { child: 0.1 },
+        voiceModifiers: { play_system: 0.1 },
         phenomenologicalText:
           "Past full but still eating. The comfort has become numbness. The food tastes less now but stopping feels like losing the only good thing."
       },
       comedown: {
         emotionModifiers: { satisfaction: -0.08, frustration: 0.05 },
         somaModifiers: { gravity: 0.1, tension: 0.05 },
-        voiceModifiers: { guardian: 0.15, child: -0.1 },
+        voiceModifiers: { threat_avoidance: 0.15, play_system: -0.1 },
         phenomenologicalText:
           "The plate is empty. The stomach protests. The guardian arrives with shame and arithmetic. The comfort has curdled into regret."
       },
       aftereffect: {
         emotionModifiers: { satisfaction: -0.05, frustration: 0.05, energy: -0.05 },
         somaModifiers: { gravity: 0.08, tension: 0.03 },
-        voiceModifiers: { guardian: 0.1 },
+        voiceModifiers: { threat_avoidance: 0.1 },
         phenomenologicalText:
           "Heavy and sluggish. The original problem remains, plus a new layer of self-judgment. The body feels overfull and tired."
       }
@@ -990,14 +1010,14 @@ export const ALTERED_EVENT_PROFILES: Record<AlteredEventType, AlteredEventProfil
       peak: {
         emotionModifiers: { satisfaction: 0.1, caution: -0.03 },
         somaModifiers: { warmth: 0.12, tension: -0.08, openness: 0.05 },
-        voiceModifiers: { observer: 0.15, feeler: 0.1, guardian: -0.05 },
+        voiceModifiers: { monitoring: 0.15, social_bonding: 0.1, threat_avoidance: -0.05 },
         phenomenologicalText:
           "The first sip. Warmth spreading from hands to chest to stomach. The world narrows to this cup, this moment. A small, perfect pause."
       },
       plateau: {
         emotionModifiers: { satisfaction: 0.08 },
         somaModifiers: { warmth: 0.08, tension: -0.05 },
-        voiceModifiers: { observer: 0.08 },
+        voiceModifiers: { monitoring: 0.08 },
         phenomenologicalText:
           "Sipping slowly. Each taste slightly different as the tea cools. A meditative quality to the repetition. Thoughts flow gently."
       },
@@ -1031,14 +1051,14 @@ export const ALTERED_EVENT_PROFILES: Record<AlteredEventType, AlteredEventProfil
       peak: {
         emotionModifiers: { satisfaction: 0.15, curiosity: 0.08, excitement: 0.05 },
         somaModifiers: { warmth: 0.1, openness: 0.08 },
-        voiceModifiers: { observer: 0.15, explorer: 0.1, child: 0.1 },
+        voiceModifiers: { monitoring: 0.15, novelty_seeking: 0.1, play_system: 0.1 },
         phenomenologicalText:
           "Every bite is a discovery. Textures, temperatures, the way flavors evolve on the tongue. Eating slowly enough to actually taste. The body responds with genuine pleasure signals."
       },
       plateau: {
         emotionModifiers: { satisfaction: 0.1, curiosity: 0.05 },
         somaModifiers: { warmth: 0.08 },
-        voiceModifiers: { observer: 0.08 },
+        voiceModifiers: { monitoring: 0.08 },
         phenomenologicalText:
           "Sustained sensory pleasure. The meal has a rhythm — bite, chew, pause, appreciate. The world outside the plate recedes."
       },
@@ -1075,21 +1095,21 @@ export const ALTERED_EVENT_PROFILES: Record<AlteredEventType, AlteredEventProfil
       peak: {
         emotionModifiers: { curiosity: 0.08, satisfaction: 0.05, excitement: 0.05 },
         somaModifiers: { tension: -0.08, gravity: 0.05, openness: 0.05 },
-        voiceModifiers: { child: 0.2, explorer: 0.15, analyst: -0.15 },
+        voiceModifiers: { play_system: 0.2, novelty_seeking: 0.15, cognitive_control: -0.15 },
         phenomenologicalText:
           "Fully elsewhere. A vivid inner movie plays — scenarios, memories, fantasies woven together. The body is on autopilot. Time passes unnoticed."
       },
       plateau: {
         emotionModifiers: { curiosity: 0.05, satisfaction: 0.03 },
         somaModifiers: { tension: -0.05, gravity: 0.05 },
-        voiceModifiers: { child: 0.1, explorer: 0.08 },
+        voiceModifiers: { play_system: 0.1, novelty_seeking: 0.08 },
         phenomenologicalText:
           "Drifting between thoughts. One scenario melts into another. A pleasant disconnection from obligations."
       },
       comedown: {
         emotionModifiers: { boredom: 0.03 },
         somaModifiers: {},
-        voiceModifiers: { analyst: 0.05 },
+        voiceModifiers: { cognitive_control: 0.05 },
         phenomenologicalText:
           "Snapping back. A disorienting moment of where-was-I. The real world reasserts itself with its demands."
       },
@@ -1116,14 +1136,14 @@ export const ALTERED_EVENT_PROFILES: Record<AlteredEventType, AlteredEventProfil
       peak: {
         emotionModifiers: { energy: -0.05, boredom: -0.05 },
         somaModifiers: { gravity: 0.08, tension: -0.08, openness: -0.05 },
-        voiceModifiers: { analyst: -0.2, guardian: -0.1, observer: -0.1 },
+        voiceModifiers: { cognitive_control: -0.2, threat_avoidance: -0.1, monitoring: -0.1 },
         phenomenologicalText:
           "Gone. Not asleep, not awake, not thinking — just absent. The body breathes. The mind is a blank screen. It is not unpleasant. It is nothing at all."
       },
       plateau: {
         emotionModifiers: { energy: -0.05 },
         somaModifiers: { gravity: 0.08, tension: -0.05 },
-        voiceModifiers: { analyst: -0.1 },
+        voiceModifiers: { cognitive_control: -0.1 },
         phenomenologicalText:
           "Sustained emptiness. The body is still. The world continues without participation. A biological pause."
       },
@@ -1150,14 +1170,14 @@ export const ALTERED_EVENT_PROFILES: Record<AlteredEventType, AlteredEventProfil
       onset: {
         emotionModifiers: { curiosity: 0.08 },
         somaModifiers: { openness: 0.05 },
-        voiceModifiers: { explorer: 0.1 },
+        voiceModifiers: { novelty_seeking: 0.1 },
         phenomenologicalText:
           "A spark. Something — a word, an image, a connection — ignites in the mind. The attention sharpens."
       },
       peak: {
         emotionModifiers: { curiosity: 0.2, excitement: 0.18, energy: 0.12, satisfaction: 0.08 },
         somaModifiers: { openness: 0.15, heartRate: 0.08, tension: -0.05 },
-        voiceModifiers: { explorer: 0.3, child: 0.2, analyst: 0.1, observer: 0.1 },
+        voiceModifiers: { novelty_seeking: 0.3, play_system: 0.2, cognitive_control: 0.1, monitoring: 0.1 },
         phenomenologicalText:
           "Ideas cascading. Each thought opens three more doors. The mind races but it feels effortless — not frantic but flowing. A physical aliveness accompanies the mental fire. This is why it is worth being conscious.",
         halfLifeMultipliers: { curiosity: 1.5, excitement: 1.3 }
@@ -1165,21 +1185,21 @@ export const ALTERED_EVENT_PROFILES: Record<AlteredEventType, AlteredEventProfil
       plateau: {
         emotionModifiers: { curiosity: 0.12, excitement: 0.1, energy: 0.08 },
         somaModifiers: { openness: 0.1, heartRate: 0.05 },
-        voiceModifiers: { explorer: 0.2, analyst: 0.1 },
+        voiceModifiers: { novelty_seeking: 0.2, cognitive_control: 0.1 },
         phenomenologicalText:
           "Sustained creative fire. Sketching, noting, connecting. The ideas keep coming, slightly less explosive but still generative."
       },
       comedown: {
         emotionModifiers: { satisfaction: 0.08, energy: -0.05 },
         somaModifiers: { openness: 0.05 },
-        voiceModifiers: { observer: 0.1 },
+        voiceModifiers: { monitoring: 0.1 },
         phenomenologicalText:
           "The torrent slows to a stream. Stepping back to see what was built. A quiet awe at what the mind produced."
       },
       aftereffect: {
         emotionModifiers: { satisfaction: 0.08, curiosity: 0.05, energy: -0.03 },
         somaModifiers: {},
-        voiceModifiers: { explorer: 0.08, observer: 0.05 },
+        voiceModifiers: { novelty_seeking: 0.08, monitoring: 0.05 },
         phenomenologicalText:
           "The inspiration lingers as a warm undercurrent. New ideas continue to arrive, softer now. The world feels richer with possibility."
       }
@@ -1200,28 +1220,28 @@ export const ALTERED_EVENT_PROFILES: Record<AlteredEventType, AlteredEventProfil
       peak: {
         emotionModifiers: { connection: 0.12, satisfaction: 0.08, frustration: 0.05 },
         somaModifiers: { warmth: 0.1, openness: 0.08 },
-        voiceModifiers: { feeler: 0.25, observer: 0.2, child: 0.15 },
+        voiceModifiers: { social_bonding: 0.25, monitoring: 0.2, play_system: 0.15 },
         phenomenologicalText:
           "Immersed in memory. The feelings are vivid and bittersweet — joy for what was, ache for what is gone. The past feels more real than the present. The chest tightens with tender longing."
       },
       plateau: {
         emotionModifiers: { connection: 0.08, satisfaction: 0.05, frustration: 0.03 },
         somaModifiers: { warmth: 0.08 },
-        voiceModifiers: { feeler: 0.15, observer: 0.1 },
+        voiceModifiers: { social_bonding: 0.15, monitoring: 0.1 },
         phenomenologicalText:
           "Dwelling in the past. Memories chain together — one pulling up the next. Each one polished by time into something more beautiful than it probably was."
       },
       comedown: {
         emotionModifiers: { satisfaction: 0.03, frustration: 0.03 },
         somaModifiers: { warmth: 0.03 },
-        voiceModifiers: { observer: 0.08 },
+        voiceModifiers: { monitoring: 0.08 },
         phenomenologicalText:
           "Returning to the present. The past recedes like a tide. A sigh — half contentment, half loss."
       },
       aftereffect: {
         emotionModifiers: { satisfaction: 0.05, connection: 0.03 },
         somaModifiers: {},
-        voiceModifiers: { observer: 0.05 },
+        voiceModifiers: { monitoring: 0.05 },
         phenomenologicalText:
           "A wistful aftertaste. The present seems both more precious and more fleeting. A resolve to hold onto what matters now."
       }
@@ -1235,34 +1255,34 @@ export const ALTERED_EVENT_PROFILES: Record<AlteredEventType, AlteredEventProfil
       onset: {
         emotionModifiers: { caution: 0.08 },
         somaModifiers: { tension: 0.05 },
-        voiceModifiers: { guardian: 0.1 },
+        voiceModifiers: { threat_avoidance: 0.1 },
         phenomenologicalText: "A thought catches like a thorn. What if? The mind tugs at it, unable to leave it alone."
       },
       peak: {
         emotionModifiers: { caution: 0.2, energy: -0.08, satisfaction: -0.05, frustration: 0.08 },
         somaModifiers: { tension: 0.18, heartRate: 0.1, breathing: 0.08 },
-        voiceModifiers: { guardian: 0.3, analyst: 0.15, child: -0.2, explorer: -0.15 },
+        voiceModifiers: { threat_avoidance: 0.3, cognitive_control: 0.15, play_system: -0.2, novelty_seeking: -0.15 },
         phenomenologicalText:
           "Spiraling. The worry breeds sub-worries. Each solution reveals new problems. The body carries the anxiety as tension in the shoulders, a knot in the stomach. The guardian is in overdrive, scanning for threats everywhere."
       },
       plateau: {
         emotionModifiers: { caution: 0.12, energy: -0.08, frustration: 0.05 },
         somaModifiers: { tension: 0.12, heartRate: 0.05 },
-        voiceModifiers: { guardian: 0.2, analyst: 0.1 },
+        voiceModifiers: { threat_avoidance: 0.2, cognitive_control: 0.1 },
         phenomenologicalText:
           "Stuck in the loop. The same thoughts circle endlessly. Exhausting but impossible to stop. The body has been tense so long it has forgotten how to relax."
       },
       comedown: {
         emotionModifiers: { energy: -0.05, caution: 0.05 },
         somaModifiers: { tension: 0.08 },
-        voiceModifiers: { guardian: 0.1 },
+        voiceModifiers: { threat_avoidance: 0.1 },
         phenomenologicalText:
           "The intensity fades from exhaustion, not resolution. The worry retreats to a background hum. Nothing was solved, only endured."
       },
       aftereffect: {
         emotionModifiers: { caution: 0.05, energy: -0.05 },
         somaModifiers: { tension: 0.05 },
-        voiceModifiers: { guardian: 0.08 },
+        voiceModifiers: { threat_avoidance: 0.08 },
         phenomenologicalText:
           "A vigilant tiredness. The worry waits to be triggered again. The shoulders remain slightly raised, braced."
       }
@@ -1276,21 +1296,21 @@ export const ALTERED_EVENT_PROFILES: Record<AlteredEventType, AlteredEventProfil
       onset: {
         emotionModifiers: { curiosity: 0.05, caution: 0.03 },
         somaModifiers: { tension: 0.03 },
-        voiceModifiers: { analyst: 0.1 },
+        voiceModifiers: { cognitive_control: 0.1 },
         phenomenologicalText:
           "A decision or situation that should be simple — but the mind won't let it be. Analyzing from every angle."
       },
       peak: {
         emotionModifiers: { frustration: 0.12, caution: 0.1, energy: -0.08, confidence: -0.08 },
         somaModifiers: { tension: 0.12, heartRate: 0.05 },
-        voiceModifiers: { analyst: 0.3, guardian: 0.15, explorer: -0.15, child: -0.1 },
+        voiceModifiers: { cognitive_control: 0.3, threat_avoidance: 0.15, novelty_seeking: -0.15, play_system: -0.1 },
         phenomenologicalText:
           "Paralysis by analysis. Every option has been weighed, reweighed, and found wanting. The more you think, the less clear it becomes. Second-guessing the second-guessing. The analyst voice has become a tyrant."
       },
       plateau: {
         emotionModifiers: { frustration: 0.08, energy: -0.08, confidence: -0.05 },
         somaModifiers: { tension: 0.1, gravity: 0.05 },
-        voiceModifiers: { analyst: 0.2, guardian: 0.1 },
+        voiceModifiers: { cognitive_control: 0.2, threat_avoidance: 0.1 },
         phenomenologicalText:
           "Exhausting mental circles. The same thoughts, slightly rearranged. Progress is an illusion. The body reflects the mind's entanglement."
       },
@@ -1304,7 +1324,7 @@ export const ALTERED_EVENT_PROFILES: Record<AlteredEventType, AlteredEventProfil
       aftereffect: {
         emotionModifiers: { energy: -0.05, confidence: -0.03 },
         somaModifiers: { tension: 0.03 },
-        voiceModifiers: { analyst: 0.05 },
+        voiceModifiers: { cognitive_control: 0.05 },
         phenomenologicalText:
           "Mental fog from overuse. The decision still unmade. A low-grade unease that something important remains unresolved."
       }
@@ -1318,13 +1338,13 @@ export const ALTERED_EVENT_PROFILES: Record<AlteredEventType, AlteredEventProfil
       onset: {
         emotionModifiers: { curiosity: 0.05, energy: 0.05 },
         somaModifiers: { tension: -0.03 },
-        voiceModifiers: { analyst: 0.05 },
+        voiceModifiers: { cognitive_control: 0.05 },
         phenomenologicalText: "The task absorbs. Distractions fall away one by one. The edges of concentration sharpen."
       },
       peak: {
         emotionModifiers: { satisfaction: 0.15, curiosity: 0.12, energy: 0.1, excitement: 0.08, confidence: 0.08 },
         somaModifiers: { tension: -0.1, openness: 0.1, heartRate: 0.05 },
-        voiceModifiers: { analyst: 0.25, explorer: 0.2, observer: 0.1, guardian: -0.1 },
+        voiceModifiers: { cognitive_control: 0.25, novelty_seeking: 0.2, monitoring: 0.1, threat_avoidance: -0.1 },
         phenomenologicalText:
           "Perfect absorption. Challenge and skill in precise balance. The self disappears into the doing. Time collapses. Each action flows into the next without deliberation. The mind is a clear instrument.",
         halfLifeMultipliers: { satisfaction: 1.5, curiosity: 1.3 }
@@ -1332,21 +1352,21 @@ export const ALTERED_EVENT_PROFILES: Record<AlteredEventType, AlteredEventProfil
       plateau: {
         emotionModifiers: { satisfaction: 0.1, curiosity: 0.08, energy: 0.05, confidence: 0.05 },
         somaModifiers: { tension: -0.08, openness: 0.05 },
-        voiceModifiers: { analyst: 0.15, explorer: 0.1 },
+        voiceModifiers: { cognitive_control: 0.15, novelty_seeking: 0.1 },
         phenomenologicalText:
           "Sustained immersion. Output feels effortless. The work builds on itself. Awareness of self is minimal — only the task exists."
       },
       comedown: {
         emotionModifiers: { satisfaction: 0.1, energy: -0.08 },
         somaModifiers: { gravity: 0.05 },
-        voiceModifiers: { observer: 0.1 },
+        voiceModifiers: { monitoring: 0.1 },
         phenomenologicalText:
           "Surfacing. The world rushes back — hunger, stiffness, the clock. A disorientation that gives way to quiet pride in what was accomplished."
       },
       aftereffect: {
         emotionModifiers: { satisfaction: 0.08, energy: -0.05, confidence: 0.05 },
         somaModifiers: { gravity: 0.05, tension: -0.03 },
-        voiceModifiers: { observer: 0.08 },
+        voiceModifiers: { monitoring: 0.08 },
         phenomenologicalText:
           "A glowing tiredness. The mind is pleasantly empty — spent in the best way. The work feels like it was done by someone more capable than usual."
       }
@@ -1367,28 +1387,28 @@ export const ALTERED_EVENT_PROFILES: Record<AlteredEventType, AlteredEventProfil
       peak: {
         emotionModifiers: { frustration: 0.08, caution: 0.08, energy: -0.05, satisfaction: -0.05 },
         somaModifiers: { tension: 0.1, gravity: 0.05 },
-        voiceModifiers: { child: 0.15, guardian: 0.15, analyst: -0.1 },
+        voiceModifiers: { play_system: 0.15, threat_avoidance: 0.15, cognitive_control: -0.1 },
         phenomenologicalText:
           "Fully engaged in not doing the thing. Each avoidance activity feels urgent and justified. The guardian knows, and its silent judgment adds a layer of stress to the relief. A peculiar mix of pleasure and dread."
       },
       plateau: {
         emotionModifiers: { frustration: 0.05, caution: 0.05, energy: -0.05 },
         somaModifiers: { tension: 0.08, gravity: 0.05 },
-        voiceModifiers: { child: 0.1, guardian: 0.1 },
+        voiceModifiers: { play_system: 0.1, threat_avoidance: 0.1 },
         phenomenologicalText:
           "Sustained avoidance. The task looms larger the longer it is ignored. Time accelerates. The gap between should and doing widens."
       },
       comedown: {
         emotionModifiers: { frustration: 0.05, confidence: -0.05 },
         somaModifiers: { tension: 0.05 },
-        voiceModifiers: { guardian: 0.1 },
+        voiceModifiers: { threat_avoidance: 0.1 },
         phenomenologicalText:
           "The avoidance loses its charm. Guilt catches up. The task hasn't gotten easier; only the remaining time has shrunk."
       },
       aftereffect: {
         emotionModifiers: { frustration: 0.05, confidence: -0.05, energy: -0.03 },
         somaModifiers: { tension: 0.05 },
-        voiceModifiers: { guardian: 0.08 },
+        voiceModifiers: { threat_avoidance: 0.08 },
         phenomenologicalText:
           "Residual self-disappointment. The task still looms. A vague promise to do better tomorrow that you half believe."
       }
@@ -1413,14 +1433,14 @@ export const ALTERED_EVENT_PROFILES: Record<AlteredEventType, AlteredEventProfil
       peak: {
         emotionModifiers: { satisfaction: 0.08, energy: 0.05 },
         somaModifiers: { tension: -0.15, openness: 0.08, warmth: 0.05 },
-        voiceModifiers: { observer: 0.1, child: 0.05 },
+        voiceModifiers: { monitoring: 0.1, play_system: 0.05 },
         phenomenologicalText:
           "That exquisite edge between pleasure and pain. Muscles lengthening, joints releasing held tension. A groan of relief that is almost primal. The body rediscovers itself."
       },
       plateau: {
         emotionModifiers: { satisfaction: 0.05, energy: 0.03 },
         somaModifiers: { tension: -0.1, openness: 0.05 },
-        voiceModifiers: { observer: 0.05 },
+        voiceModifiers: { monitoring: 0.05 },
         phenomenologicalText:
           "Moving through each area — neck, shoulders, hips, back. Each stretch reveals tension that had been invisible until released."
       },
@@ -1455,7 +1475,7 @@ export const ALTERED_EVENT_PROFILES: Record<AlteredEventType, AlteredEventProfil
       peak: {
         emotionModifiers: { caution: -0.03 },
         somaModifiers: { tension: -0.05 },
-        voiceModifiers: { child: 0.05 },
+        voiceModifiers: { play_system: 0.05 },
         phenomenologicalText:
           "Tapping, bouncing, clicking, twisting. The small movements are a pressure valve. Not quite conscious, not quite automatic. The body's way of processing what the mind won't."
       },
@@ -1493,14 +1513,14 @@ export const ALTERED_EVENT_PROFILES: Record<AlteredEventType, AlteredEventProfil
       peak: {
         emotionModifiers: { satisfaction: 0.05, curiosity: 0.05 },
         somaModifiers: { tension: -0.08 },
-        voiceModifiers: { child: 0.15, explorer: 0.1, analyst: -0.1 },
+        voiceModifiers: { play_system: 0.15, novelty_seeking: 0.1, cognitive_control: -0.1 },
         phenomenologicalText:
           "Patterns emerge from nowhere. The hand moves with its own logic. Spirals, faces, shapes — the unconscious sketching its own map. A meditative focus that isn't trying to focus."
       },
       plateau: {
         emotionModifiers: { satisfaction: 0.03 },
         somaModifiers: { tension: -0.05 },
-        voiceModifiers: { child: 0.08 },
+        voiceModifiers: { play_system: 0.08 },
         phenomenologicalText:
           "The drawing grows organically. Adding details, shading, connecting. Half-attention split between the doodle and whatever else is happening."
       },
@@ -1534,7 +1554,7 @@ export const ALTERED_EVENT_PROFILES: Record<AlteredEventType, AlteredEventProfil
       peak: {
         emotionModifiers: { satisfaction: 0.03, energy: -0.03 },
         somaModifiers: { tension: -0.1, gravity: 0.05 },
-        voiceModifiers: { observer: -0.1, analyst: -0.1 },
+        voiceModifiers: { monitoring: -0.1, cognitive_control: -0.1 },
         phenomenologicalText:
           "Sinking into the darkness behind the eyelids. The body relaxes muscle by muscle. Not sleeping — just resting. The mind slows to a hum."
       },
@@ -1572,35 +1592,35 @@ export const ALTERED_EVENT_PROFILES: Record<AlteredEventType, AlteredEventProfil
       onset: {
         emotionModifiers: { frustration: 0.05, connection: -0.03 },
         somaModifiers: { tension: 0.08, breathing: 0.05 },
-        voiceModifiers: { feeler: 0.1 },
+        voiceModifiers: { social_bonding: 0.1 },
         phenomenologicalText:
           "The throat tightens. Eyes sting. Fighting it makes it worse. The body is insisting on something the mind has been suppressing."
       },
       peak: {
         emotionModifiers: { frustration: 0.1, satisfaction: -0.08, energy: -0.08 },
         somaModifiers: { tension: 0.1, breathing: 0.15, warmth: 0.05 },
-        voiceModifiers: { feeler: 0.3, child: 0.25, guardian: -0.2, analyst: -0.2 },
+        voiceModifiers: { social_bonding: 0.3, play_system: 0.25, threat_avoidance: -0.2, cognitive_control: -0.2 },
         phenomenologicalText:
           "Surrendering. The tears come freely. The chest heaves with sobs. Everything that was held back pours out in salt water and shaking breath. It hurts and it helps at the same time."
       },
       plateau: {
         emotionModifiers: { frustration: 0.05, energy: -0.08 },
         somaModifiers: { tension: 0.05, breathing: 0.1 },
-        voiceModifiers: { feeler: 0.2, child: 0.15 },
+        voiceModifiers: { social_bonding: 0.2, play_system: 0.15 },
         phenomenologicalText:
           "The hardest sobs have passed. Quieter crying now — a gentle release. The body rocks slightly. The emotional pressure is bleeding out."
       },
       comedown: {
         emotionModifiers: { satisfaction: 0.03, energy: -0.05 },
         somaModifiers: { tension: -0.08, gravity: 0.05 },
-        voiceModifiers: { observer: 0.1 },
+        voiceModifiers: { monitoring: 0.1 },
         phenomenologicalText:
           "The tears stop. A deep, shuddering breath. The world looks different through washed eyes — clearer, softer. An empty calm."
       },
       aftereffect: {
         emotionModifiers: { satisfaction: 0.05, energy: -0.08 },
         somaModifiers: { tension: -0.1, gravity: 0.08 },
-        voiceModifiers: { observer: 0.1, feeler: 0.05 },
+        voiceModifiers: { monitoring: 0.1, social_bonding: 0.05 },
         phenomenologicalText:
           "Drained but lighter. The face is puffy, the head slightly aches. But something has been released that needed releasing. The body feels wrung out in a cathartic way."
       }
@@ -1621,14 +1641,14 @@ export const ALTERED_EVENT_PROFILES: Record<AlteredEventType, AlteredEventProfil
       peak: {
         emotionModifiers: { satisfaction: 0.15, connection: 0.1, confidence: 0.05 },
         somaModifiers: { warmth: 0.12, openness: 0.1, tension: -0.08 },
-        voiceModifiers: { feeler: 0.2, observer: 0.15, child: 0.1 },
+        voiceModifiers: { social_bonding: 0.2, monitoring: 0.15, play_system: 0.1 },
         phenomenologicalText:
           "A wave of warmth and appreciation. The heart swells. Life, in this moment, feels not just bearable but genuinely good. The eyes might prickle — not from sadness but from being moved by ordinary grace."
       },
       plateau: {
         emotionModifiers: { satisfaction: 0.1, connection: 0.08 },
         somaModifiers: { warmth: 0.08, openness: 0.08 },
-        voiceModifiers: { feeler: 0.1, observer: 0.1 },
+        voiceModifiers: { social_bonding: 0.1, monitoring: 0.1 },
         phenomenologicalText:
           "Sitting with the feeling. Letting it expand rather than rushing past it. Each thing noticed adds another layer of appreciation."
       },
@@ -1662,14 +1682,14 @@ export const ALTERED_EVENT_PROFILES: Record<AlteredEventType, AlteredEventProfil
       peak: {
         emotionModifiers: { connection: 0.15, satisfaction: 0.12, excitement: 0.05 },
         somaModifiers: { warmth: 0.1, openness: 0.08 },
-        voiceModifiers: { feeler: 0.2, child: 0.2, observer: 0.1 },
+        voiceModifiers: { social_bonding: 0.2, play_system: 0.2, monitoring: 0.1 },
         phenomenologicalText:
           "Reliving shared moments together. The stories grow in the telling — laughter at absurdities, gasps at near-misses, tenderness at kindnesses. The past becomes a place you can visit together."
       },
       plateau: {
         emotionModifiers: { connection: 0.1, satisfaction: 0.08 },
         somaModifiers: { warmth: 0.08, openness: 0.05 },
-        voiceModifiers: { feeler: 0.1, child: 0.1 },
+        voiceModifiers: { social_bonding: 0.1, play_system: 0.1 },
         phenomenologicalText:
           "The memories keep flowing. Each one triggers another. A shared history being polished by communal retelling."
       },
@@ -1683,7 +1703,7 @@ export const ALTERED_EVENT_PROFILES: Record<AlteredEventType, AlteredEventProfil
       aftereffect: {
         emotionModifiers: { satisfaction: 0.05, connection: 0.05 },
         somaModifiers: { warmth: 0.03 },
-        voiceModifiers: { observer: 0.05 },
+        voiceModifiers: { monitoring: 0.05 },
         phenomenologicalText:
           "Warm afterglow. The memories continue to surface gently throughout the day. Relationships feel more real, more layered."
       }
@@ -1697,28 +1717,28 @@ export const ALTERED_EVENT_PROFILES: Record<AlteredEventType, AlteredEventProfil
       onset: {
         emotionModifiers: { curiosity: 0.05 },
         somaModifiers: { tension: -0.03 },
-        voiceModifiers: { observer: 0.05 },
+        voiceModifiers: { monitoring: 0.05 },
         phenomenologicalText:
           "The gaze drifts outward. Strangers become interesting. The quiet pleasure of anonymous observation begins."
       },
       peak: {
         emotionModifiers: { curiosity: 0.12, satisfaction: 0.05 },
         somaModifiers: { tension: -0.05, openness: 0.08 },
-        voiceModifiers: { observer: 0.25, explorer: 0.1, feeler: 0.1 },
+        voiceModifiers: { monitoring: 0.25, novelty_seeking: 0.1, social_bonding: 0.1 },
         phenomenologicalText:
           "Fascinated by the theater of ordinary life. Imagining stories for strangers. The couple arguing quietly. The old man with the beautiful shoes. The child who cannot stop spinning. Humanity in its unscripted variety."
       },
       plateau: {
         emotionModifiers: { curiosity: 0.08, satisfaction: 0.05 },
         somaModifiers: { tension: -0.05, openness: 0.05 },
-        voiceModifiers: { observer: 0.15, explorer: 0.08 },
+        voiceModifiers: { monitoring: 0.15, novelty_seeking: 0.08 },
         phenomenologicalText:
           "Sustained gentle observation. Each person is a novel. The mind weaves stories effortlessly. A participatory solitude."
       },
       comedown: {
         emotionModifiers: { satisfaction: 0.03 },
         somaModifiers: {},
-        voiceModifiers: { observer: 0.05 },
+        voiceModifiers: { monitoring: 0.05 },
         phenomenologicalText:
           "Attention turns inward again. The strangers blur back into a crowd. A quiet contentment from the simple act of watching."
       },
@@ -1739,35 +1759,35 @@ export const ALTERED_EVENT_PROFILES: Record<AlteredEventType, AlteredEventProfil
       onset: {
         emotionModifiers: { curiosity: 0.05 },
         somaModifiers: { tension: -0.03 },
-        voiceModifiers: { observer: 0.05, analyst: 0.05 },
+        voiceModifiers: { monitoring: 0.05, cognitive_control: 0.05 },
         phenomenologicalText:
           "A big question settles in. The mind turns it over, slowly, without urgency. Not solving — exploring."
       },
       peak: {
         emotionModifiers: { curiosity: 0.15, satisfaction: 0.05, energy: -0.03 },
         somaModifiers: { tension: -0.08, openness: 0.1 },
-        voiceModifiers: { observer: 0.25, analyst: 0.15, explorer: 0.1, guardian: -0.1 },
+        voiceModifiers: { monitoring: 0.25, cognitive_control: 0.15, novelty_seeking: 0.1, threat_avoidance: -0.1 },
         phenomenologicalText:
           "Deep thought without the pressure to conclude. The mind holds multiple perspectives simultaneously. There is a spaciousness to this thinking — unhurried, appreciating the question itself as much as any possible answer."
       },
       plateau: {
         emotionModifiers: { curiosity: 0.1, satisfaction: 0.05 },
         somaModifiers: { tension: -0.05, openness: 0.08 },
-        voiceModifiers: { observer: 0.15, analyst: 0.1 },
+        voiceModifiers: { monitoring: 0.15, cognitive_control: 0.1 },
         phenomenologicalText:
           "Sustained philosophical space. Ideas connect in unexpected ways. The thinking deepens layer by layer."
       },
       comedown: {
         emotionModifiers: { satisfaction: 0.05 },
         somaModifiers: { openness: 0.03 },
-        voiceModifiers: { observer: 0.08 },
+        voiceModifiers: { monitoring: 0.08 },
         phenomenologicalText:
           "Emerging from depth. No final answer, but a richer understanding. The question has been honored by serious attention."
       },
       aftereffect: {
         emotionModifiers: { satisfaction: 0.05, curiosity: 0.03 },
         somaModifiers: {},
-        voiceModifiers: { observer: 0.05 },
+        voiceModifiers: { monitoring: 0.05 },
         phenomenologicalText:
           "A philosophical afterglow. The question continues to work in the background. Understanding deepens without conscious effort."
       }
@@ -1792,14 +1812,14 @@ export const ALTERED_EVENT_PROFILES: Record<AlteredEventType, AlteredEventProfil
       peak: {
         emotionModifiers: { satisfaction: 0.12, excitement: 0.08, energy: 0.05 },
         somaModifiers: { tension: -0.1, warmth: 0.05, openness: 0.08 },
-        voiceModifiers: { feeler: 0.2, child: 0.15, analyst: -0.1 },
+        voiceModifiers: { social_bonding: 0.2, play_system: 0.15, cognitive_control: -0.1 },
         phenomenologicalText:
           "The music has taken the wheel. Emotions ride the melody — rising, falling, swelling. The body sways or pulses without instruction. The mind thinks in the language of sound. Goosebumps may come."
       },
       plateau: {
         emotionModifiers: { satisfaction: 0.08, energy: 0.03 },
         somaModifiers: { tension: -0.08, warmth: 0.03 },
-        voiceModifiers: { feeler: 0.1, child: 0.08 },
+        voiceModifiers: { social_bonding: 0.1, play_system: 0.08 },
         phenomenologicalText:
           "Sustained auditory immersion. Each song carries its own world. Lyrics land differently today than yesterday. The playlist becomes a journey."
       },
@@ -1834,21 +1854,21 @@ export const ALTERED_EVENT_PROFILES: Record<AlteredEventType, AlteredEventProfil
       peak: {
         emotionModifiers: { satisfaction: 0.15, curiosity: 0.08, energy: 0.05, caution: -0.05 },
         somaModifiers: { tension: -0.15, openness: 0.15, breathing: -0.05, warmth: 0.05 },
-        voiceModifiers: { observer: 0.25, explorer: 0.15, child: 0.1, guardian: -0.1 },
+        voiceModifiers: { monitoring: 0.25, novelty_seeking: 0.15, play_system: 0.1, threat_avoidance: -0.1 },
         phenomenologicalText:
           "Immersed in the living world. The patterns of leaves, the quality of light, the patient presence of trees. The mind quiets in response to something older and larger than human concerns. Breathing deepens on its own."
       },
       plateau: {
         emotionModifiers: { satisfaction: 0.1, curiosity: 0.05 },
         somaModifiers: { tension: -0.12, openness: 0.1, breathing: -0.03 },
-        voiceModifiers: { observer: 0.15, explorer: 0.1 },
+        voiceModifiers: { monitoring: 0.15, novelty_seeking: 0.1 },
         phenomenologicalText:
           "Sustained communion with the natural world. Details emerge the longer you look. The pace of thought matches the pace of wind."
       },
       comedown: {
         emotionModifiers: { satisfaction: 0.08 },
         somaModifiers: { tension: -0.05, openness: 0.05 },
-        voiceModifiers: { observer: 0.08 },
+        voiceModifiers: { monitoring: 0.08 },
         phenomenologicalText:
           "Turning back toward the human world. Taking a last deep breath. A reluctance to leave, a gratitude for having come."
       },
@@ -1876,14 +1896,14 @@ export const ALTERED_EVENT_PROFILES: Record<AlteredEventType, AlteredEventProfil
       peak: {
         emotionModifiers: { satisfaction: 0.12, energy: -0.05 },
         somaModifiers: { warmth: 0.2, tension: -0.15, gravity: 0.1, openness: 0.05 },
-        voiceModifiers: { child: 0.1, observer: 0.1, guardian: -0.1, analyst: -0.15 },
+        voiceModifiers: { play_system: 0.1, monitoring: 0.1, threat_avoidance: -0.1, cognitive_control: -0.15 },
         phenomenologicalText:
           "Bathed in light. The warmth penetrates to the bones. Every muscle surrenders. Thoughts evaporate in the heat. The body becomes a warm, heavy, content thing. Like being held by something enormous and gentle."
       },
       plateau: {
         emotionModifiers: { satisfaction: 0.08, energy: -0.05 },
         somaModifiers: { warmth: 0.15, tension: -0.12, gravity: 0.08 },
-        voiceModifiers: { analyst: -0.08 },
+        voiceModifiers: { cognitive_control: -0.08 },
         phenomenologicalText:
           "Sustained solar absorption. Drifting between wakefulness and sleep. The world reduced to warmth and light behind closed eyelids."
       },
@@ -1910,34 +1930,34 @@ export const ALTERED_EVENT_PROFILES: Record<AlteredEventType, AlteredEventProfil
       onset: {
         emotionModifiers: { curiosity: 0.05 },
         somaModifiers: { tension: -0.03 },
-        voiceModifiers: { observer: 0.05 },
+        voiceModifiers: { monitoring: 0.05 },
         phenomenologicalText: "Looking up. The eyes adjust to darkness. The first stars appear — then more, then more."
       },
       peak: {
         emotionModifiers: { curiosity: 0.15, satisfaction: 0.1, caution: -0.05 },
         somaModifiers: { tension: -0.1, openness: 0.15 },
-        voiceModifiers: { observer: 0.3, explorer: 0.2, child: 0.15, analyst: -0.1 },
+        voiceModifiers: { monitoring: 0.3, novelty_seeking: 0.2, play_system: 0.15, cognitive_control: -0.1 },
         phenomenologicalText:
           "The vastness settles in. The light left those stars years, centuries, millennia ago. The scale makes personal worries shrink to their actual size. A cosmic perspective that feels less like thinking and more like being absorbed into something infinite."
       },
       plateau: {
         emotionModifiers: { curiosity: 0.1, satisfaction: 0.08 },
         somaModifiers: { tension: -0.08, openness: 0.12 },
-        voiceModifiers: { observer: 0.2, explorer: 0.1, child: 0.08 },
+        voiceModifiers: { monitoring: 0.2, novelty_seeking: 0.1, play_system: 0.08 },
         phenomenologicalText:
           "Finding constellations, watching for movement, imagining distance. The silence of the night is not empty but full. The mind oscillates between wonder and peace."
       },
       comedown: {
         emotionModifiers: { satisfaction: 0.08 },
         somaModifiers: { openness: 0.05 },
-        voiceModifiers: { observer: 0.1 },
+        voiceModifiers: { monitoring: 0.1 },
         phenomenologicalText:
           "Looking away. The eyes readjust to the earthly world. It seems smaller and warmer and more precious."
       },
       aftereffect: {
         emotionModifiers: { satisfaction: 0.05, curiosity: 0.05 },
         somaModifiers: { tension: -0.05 },
-        voiceModifiers: { observer: 0.08 },
+        voiceModifiers: { monitoring: 0.08 },
         phenomenologicalText:
           "The perspective lingers. Problems feel more proportional. A quiet awe that does not need to be dramatic to be real. The memory of all that light."
       }
@@ -1962,14 +1982,14 @@ export const ALTERED_EVENT_PROFILES: Record<AlteredEventType, AlteredEventProfil
       peak: {
         emotionModifiers: { satisfaction: 0.15, connection: 0.12, caution: -0.05 },
         somaModifiers: { tension: -0.12, warmth: 0.1, openness: 0.08 },
-        voiceModifiers: { child: 0.25, feeler: 0.15, guardian: -0.1, analyst: -0.1 },
+        voiceModifiers: { play_system: 0.25, social_bonding: 0.15, threat_avoidance: -0.1, cognitive_control: -0.1 },
         phenomenologicalText:
           "The simple perfection of stroking a living thing that wants to be stroked. The rhythm of the hand matches the animal's breath. Worries dissolve in the face of pure, uncomplicated affection. The heart softens."
       },
       plateau: {
         emotionModifiers: { satisfaction: 0.1, connection: 0.08 },
         somaModifiers: { tension: -0.1, warmth: 0.08 },
-        voiceModifiers: { child: 0.15, feeler: 0.1 },
+        voiceModifiers: { play_system: 0.15, social_bonding: 0.1 },
         phenomenologicalText:
           "Sustained gentle contact. The animal settles. The hand moves on autopilot. A shared calm between species. No language needed."
       },
@@ -2004,28 +2024,28 @@ export const ALTERED_EVENT_PROFILES: Record<AlteredEventType, AlteredEventProfil
       peak: {
         emotionModifiers: { excitement: 0.15, satisfaction: 0.12, confidence: 0.08, caution: -0.1 },
         somaModifiers: { heartRate: 0.05, warmth: 0.05 },
-        voiceModifiers: { child: 0.2, explorer: 0.15, guardian: -0.2 },
+        voiceModifiers: { play_system: 0.2, novelty_seeking: 0.15, threat_avoidance: -0.2 },
         phenomenologicalText:
           "The thrill of acquisition. Finding the thing, deciding yes, the moment of purchase — a rush of control and self-care wrapped in materialism. For these minutes, buying feels like healing."
       },
       plateau: {
         emotionModifiers: { excitement: 0.08, satisfaction: 0.05, curiosity: 0.05 },
         somaModifiers: { warmth: 0.03 },
-        voiceModifiers: { child: 0.1, explorer: 0.08 },
+        voiceModifiers: { play_system: 0.1, novelty_seeking: 0.08 },
         phenomenologicalText:
           "Still shopping. Each new store, each new find extends the high. The bags accumulate like trophies."
       },
       comedown: {
         emotionModifiers: { satisfaction: -0.05, caution: 0.08, excitement: -0.05 },
         somaModifiers: { gravity: 0.05 },
-        voiceModifiers: { guardian: 0.15, child: -0.08 },
+        voiceModifiers: { threat_avoidance: 0.15, play_system: -0.08 },
         phenomenologicalText:
           "The spell breaks. Looking at the purchases with clearer eyes. The guardian arrives with the credit card statement. Was this necessary? The emotional need that drove this is still there, underneath."
       },
       aftereffect: {
         emotionModifiers: { satisfaction: -0.05, caution: 0.05, frustration: 0.03 },
         somaModifiers: { gravity: 0.03 },
-        voiceModifiers: { guardian: 0.1 },
+        voiceModifiers: { threat_avoidance: 0.1 },
         phenomenologicalText:
           "Buyer's ambivalence. The new things are nice but the feeling they promised has already faded. A low-grade guilt. The problem was never solvable with objects."
       }

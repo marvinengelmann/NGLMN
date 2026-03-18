@@ -23,43 +23,43 @@ describe("selectActiveVoices", () => {
     expect(voices.length).toBeLessThanOrEqual(4)
   })
 
-  it("includes observer when dissonance is high", () => {
+  it("includes monitoring when dissonance is high", () => {
     const voices = selectActiveVoices(baseEmotion, "INFP", { ...baseContext, dissonanceScore: 0.6 })
-    expect(voices).toContain("observer")
+    expect(voices).toContain("monitoring")
   })
 
-  it("includes guardian when caution is high", () => {
+  it("includes threat_avoidance when caution is high", () => {
     const voices = selectActiveVoices({ ...baseEmotion, caution: 0.8 }, "INFP", baseContext)
-    expect(voices).toContain("guardian")
+    expect(voices).toContain("threat_avoidance")
   })
 
-  it("includes explorer when curiosity is high", () => {
+  it("includes novelty_seeking when curiosity is high", () => {
     const voices = selectActiveVoices({ ...baseEmotion, curiosity: 0.8 }, "INFP", baseContext)
-    expect(voices).toContain("explorer")
+    expect(voices).toContain("novelty_seeking")
   })
 
-  it("weights feeler and explorer higher for NF types (INFP)", () => {
+  it("weights social_bonding and novelty_seeking higher for NF types (INFP)", () => {
     const voices = selectActiveVoices(baseEmotion, "INFP", baseContext)
-    expect(voices).toContain("feeler")
-    expect(voices).toContain("explorer")
+    expect(voices).toContain("social_bonding")
+    expect(voices).toContain("novelty_seeking")
   })
 
-  it("weights analyst and explorer higher for NT types (INTJ)", () => {
+  it("weights cognitive_control and novelty_seeking higher for NT types (INTJ)", () => {
     const voices = selectActiveVoices(baseEmotion, "INTJ", baseContext)
-    expect(voices).toContain("analyst")
-    expect(voices).toContain("explorer")
+    expect(voices).toContain("cognitive_control")
+    expect(voices).toContain("novelty_seeking")
   })
 
-  it("weights analyst and guardian higher for ST types (ISTJ)", () => {
+  it("weights cognitive_control and threat_avoidance higher for ST types (ISTJ)", () => {
     const voices = selectActiveVoices(baseEmotion, "ISTJ", baseContext)
-    expect(voices).toContain("analyst")
-    expect(voices).toContain("guardian")
+    expect(voices).toContain("cognitive_control")
+    expect(voices).toContain("threat_avoidance")
   })
 
-  it("weights feeler and child higher for SF types (ISFJ)", () => {
+  it("weights social_bonding and play_system higher for SF types (ISFJ)", () => {
     const voices = selectActiveVoices(baseEmotion, "ISFJ", baseContext)
-    expect(voices).toContain("feeler")
-    expect(voices).toContain("child")
+    expect(voices).toContain("social_bonding")
+    expect(voices).toContain("play_system")
   })
 })
 

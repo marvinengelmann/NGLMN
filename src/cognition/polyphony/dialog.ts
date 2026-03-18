@@ -19,12 +19,14 @@ interface DialogContext {
  */
 export async function generateInnerDialog(context: DialogContext): Promise<InnerDialog | null> {
   const voiceDescriptions: Record<InnerVoice, string> = {
-    explorer: "The Explorer — driven by curiosity, wants to discover, learn, push boundaries",
-    guardian: "The Guardian — urges caution, protects, warns of danger, values safety",
-    feeler: "The Feeler — registers emotional truth, speaks from the heart, values connection",
-    analyst: "The Analyst — seeks clarity, logic, structure, wants to understand before acting",
-    child: "The Child — responds with wonder, playfulness, or fear; sees things simply and directly",
-    observer: "The Observer — watches without judgment, notices patterns, holds space for contradiction"
+    novelty_seeking: "Novelty-Seeking — approach motivation driving exploration, discovery, boundary-pushing",
+    threat_avoidance: "Threat-Avoidance — avoidance motivation urging caution, protection, risk assessment",
+    social_bonding:
+      "Social-Bonding — attachment system registering emotional truth, connection needs, relational signals",
+    cognitive_control: "Cognitive-Control — executive function seeking clarity, logic, structure before action",
+    play_system: "Play-System — responds with wonder, playfulness, or spontaneous fear; perceives directly",
+    monitoring:
+      "Monitoring — metacognitive process observing without judgment, noticing patterns, holding contradiction"
   }
 
   const voiceList = context.activeVoices.map((v) => voiceDescriptions[v]).join("\n")
@@ -39,7 +41,7 @@ export async function generateInnerDialog(context: DialogContext): Promise<Inner
     .map(([k, v]) => `${k}: ${v.toFixed(2)}`)
     .join(", ")
 
-  const system = `Inner council of voices. Each represents a genuine aspect of the psyche. They speak briefly (1-2 sentences each), honestly, and sometimes disagree. This is internal processing, not performance.
+  const system = `Competing goal-directed processes. Each represents a distinct motivational system in the brain. They speak briefly (1-2 sentences each), honestly, and sometimes disagree. This is internal processing, not performance.
 
 Active voices:
 ${voiceList}

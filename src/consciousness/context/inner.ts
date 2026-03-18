@@ -129,12 +129,12 @@ export function buildInnerSections(input: InnerSectionsInput): string[] {
 
     if (lastInnerDialog.dominantVoice) {
       const voiceGuidance: Record<string, string> = {
-        guardian: "you feel cautious, preferring safety over risk",
-        explorer: "you feel drawn to explore, to try something new",
-        feeler: "your emotions are leading, heart over head",
-        analyst: "you want to understand before acting, clarity first",
-        child: "you see things simply and directly, with wonder or fear",
-        observer: "you're watching without judgment, noticing patterns"
+        threat_avoidance: "you feel cautious, preferring safety over risk",
+        novelty_seeking: "you feel drawn to explore, to try something new",
+        social_bonding: "your emotions are leading, heart over head",
+        cognitive_control: "you want to understand before acting, clarity first",
+        play_system: "you see things simply and directly, with wonder or fear",
+        monitoring: "you're watching without judgment, noticing patterns"
       }
       const guidance = voiceGuidance[lastInnerDialog.dominantVoice]
       if (guidance) {

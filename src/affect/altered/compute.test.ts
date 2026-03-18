@@ -135,8 +135,8 @@ describe("computeVoiceModifiers", () => {
     const state = makeState("cannabis", start)
     const mods = computeVoiceModifiers(state)
     expect(mods).toBeDefined()
-    expect(mods?.child).toBeGreaterThan(0)
-    expect(mods?.guardian).toBeLessThan(0)
+    expect(mods?.play_system).toBeGreaterThan(0)
+    expect(mods?.threat_avoidance).toBeLessThan(0)
   })
 
   it("returns undefined when no voice modifiers defined", () => {
