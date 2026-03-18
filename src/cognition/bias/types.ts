@@ -8,7 +8,7 @@ export const BiasType = z.enum([
   "peak_end",
   "mere_exposure",
   "optimism",
-  "dunning_kruger",
+  "calibration_bias",
   "spotlight"
 ])
 export type BiasType = z.infer<typeof BiasType>
@@ -38,7 +38,7 @@ export const DEFAULT_BIAS_STATE: BiasState = {
     peak_end: 0.5,
     mere_exposure: 0.3,
     optimism: 0.4,
-    dunning_kruger: 0.5,
+    calibration_bias: 0.5,
     spotlight: 0.3
   },
   anchorPoints: [],

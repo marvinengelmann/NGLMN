@@ -2,8 +2,8 @@ import { describe, expect, it } from "vitest"
 import {
   addAnchor,
   applyAvailabilityBias,
+  applyCalibrationBias,
   applyConfirmationBias,
-  applyDunningKrugerEffect,
   applyNegativityBias,
   applyOptimismBias,
   applyPeakEndRule,
@@ -24,6 +24,8 @@ const baseNeuro = {
   oxytocin: { level: 0.5, productionRate: 0.5, reuptakeRate: 0.5 },
   cortisol: { level: 0.5, productionRate: 0.5, reuptakeRate: 0.5 },
   endorphins: { level: 0.5, productionRate: 0.5, reuptakeRate: 0.5 },
+  gaba: { level: 0.5, productionRate: 0.5, reuptakeRate: 0.5 },
+  dopamineDetail: { tonicLevel: 0.45, phasicLevel: 0.05 },
   lastUpdatedAt: new Date().toISOString()
 }
 
@@ -165,12 +167,12 @@ describe("updateBiasModifiers", () => {
     expect(result.activeModifiers.optimism).toBeGreaterThan(DEFAULT_BIAS_STATE.activeModifiers.optimism)
   })
 
-  it("increases dunning-kruger bias with high dopamine", () => {
+  it("increases calibration bias with high dopamine", () => {
     const result = updateBiasModifiers(DEFAULT_BIAS_STATE, {
       ...baseNeuro,
       dopamine: { ...baseNeuro.dopamine, level: 0.9 }
     })
-    expect(result.activeModifiers.dunning_kruger).toBeGreaterThan(DEFAULT_BIAS_STATE.activeModifiers.dunning_kruger)
+    expect(result.activeModifiers.calibration_bias).toBeGreaterThan(DEFAULT_BIAS_STATE.activeModifiers.calibration_bias)
   })
 
   it("increases spotlight bias with high cortisol", () => {
@@ -182,29 +184,30 @@ describe("updateBiasModifiers", () => {
   })
 })
 
-describe("applyDunningKrugerEffect", () => {
+describe("applyCalibrationBias", () => {
   it("inflates confidence at low familiarity", () => {
-    const result = applyDunningKrugerEffect(0.5, 0.05, 0.5)
+    const result = applyCalibrationBias(0.5, 0.05, 0.5)
     expect(result).toBeGreaterThan(0.5)
   })
 
-  it("depresses confidence at medium familiarity (valley of despair)", () => {
-    const result = applyDunningKrugerEffect(0.5, 0.4, 0.5)
-    expect(result).toBeLessThan(0.5)
+  it("has less effect at higher familiarity (monotonic decrease)", () => {
+    const lowFamiliarity = applyCalibrationBias(0.5, 0.1, 0.5)
+    const highFamiliarity = applyCalibrationBias(0.5, 0.9, 0.5)
+    expect(lowFamiliarity).toBeGreaterThan(highFamiliarity)
   })
 
   it("has minimal effect at high familiarity", () => {
-    const result = applyDunningKrugerEffect(0.5, 0.9, 0.5)
+    const result = applyCalibrationBias(0.5, 0.95, 0.5)
     expect(result).toBeCloseTo(0.5, 1)
   })
 
   it("clamps output to [0, 1]", () => {
-    expect(applyDunningKrugerEffect(0.95, 0.01, 1.0)).toBeLessThanOrEqual(1)
-    expect(applyDunningKrugerEffect(0.05, 0.4, 1.0)).toBeGreaterThanOrEqual(0)
+    expect(applyCalibrationBias(0.95, 0.01, 1.0)).toBeLessThanOrEqual(1)
+    expect(applyCalibrationBias(0.05, 0.01, 1.0)).toBeGreaterThanOrEqual(0)
   })
 
   it("has no effect when bias strength is 0", () => {
-    expect(applyDunningKrugerEffect(0.5, 0.1, 0)).toBe(0.5)
+    expect(applyCalibrationBias(0.5, 0.1, 0)).toBe(0.5)
   })
 })
 
