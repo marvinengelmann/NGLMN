@@ -166,7 +166,7 @@ export function makePendingMessage(overrides?: Partial<PendingMessage>): Pending
 
 export function makeTrustEvent(overrides?: Partial<TrustEvent>): TrustEvent {
   return {
-    success: true,
+    outcome: 1,
     timestamp: "2026-03-06T12:00:00Z",
     ...overrides
   }

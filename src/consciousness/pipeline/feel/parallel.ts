@@ -13,11 +13,7 @@ import {
 } from "@/relational/attachment/update.ts"
 import { extractSignals, learnFromObservation } from "@/relational/mind/triggers.ts"
 import { detectModelCorrection, updateOperatorModel } from "@/relational/mind/update.ts"
-import {
-  activateTransference,
-  computeTransferenceModulation,
-  matchTemplate
-} from "@/relational/transference/compute.ts"
+import { activatePattern, computePatternModulation, matchRelationalPattern } from "@/relational/patterns/compute.ts"
 import { updateBoundaryState } from "@/self/boundaries/compute.ts"
 import { checkDissonanceWithCooldown } from "@/self/dissonance/compute.ts"
 import type { SenseResult } from "../../types.ts"
@@ -61,7 +57,7 @@ export async function runParallelSubsystems(
     detail: violation.description
   }))
 
-  const transferenceMatch = matchTemplate(prefetch.previousTransferenceState.templates, {
+  const patternMatch = matchRelationalPattern(prefetch.previousRelationalPatternState.templates, {
     operatorMood: operatorModelResult.operatorModel.estimatedMood ?? "neutral",
     messageText: messageTexts.join(" "),
     interactionTone: operatorModelResult.trigger,
@@ -69,14 +65,14 @@ export async function runParallelSubsystems(
     timeOfDay: new Date().getHours() < 12 ? "morning" : new Date().getHours() < 18 ? "afternoon" : "evening"
   })
 
-  const transferenceEvent = transferenceMatch
-    ? activateTransference(
-        transferenceMatch.template,
-        transferenceMatch.confidence,
-        prefetch.previousTransferenceState.awarenessLevel
+  const patternActivationEvent = patternMatch
+    ? activatePattern(
+        patternMatch.template,
+        patternMatch.confidence,
+        prefetch.previousRelationalPatternState.awarenessLevel
       )
     : null
-  const transferenceModulation = computeTransferenceModulation(transferenceEvent)
+  const patternModulation = computePatternModulation(patternActivationEvent)
 
   return {
     instinct: instinctResult,
@@ -92,8 +88,8 @@ export async function runParallelSubsystems(
     boundaryEmotionEvents,
     isolationStress: isolationStressResult,
     implicitAssociations: activeAssociations,
-    transferenceModulation,
-    transferenceEvent
+    patternModulation,
+    patternActivationEvent
   }
 }
 

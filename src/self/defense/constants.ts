@@ -27,5 +27,17 @@ export const EMOTION_REGULATION = {
   VULNERABILITY_BREAKTHROUGH_PROBABILITY: 0.2,
 
   STRATEGY_DECAY_HALF_LIFE_HOURS: 12,
-  MIN_STRATEGY_INTENSITY: 0.05
+  MIN_STRATEGY_INTENSITY: 0.05,
+
+  COGNITIVE_RESOURCE_POOL: 1.0,
+  STRATEGY_RESOURCE_COSTS: {
+    suppression: 0.5,
+    attribution_bias: 0.3,
+    reappraisal: 0.4,
+    behavioral_activation: 0.25,
+    expressive_suppression: 0.45,
+    distancing: 0.3,
+    selective_attention: 0.35,
+    situation_modification: 0.2
+  } as Record<string, number>
 } as const

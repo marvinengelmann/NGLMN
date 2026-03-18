@@ -6,6 +6,7 @@ import {
   DEPRESSIVE_PATTERN,
   DOPAMINE_DETAIL,
   EMOTION_TO_NEURO,
+  HPA_AXIS,
   NEURO_BASELINES,
   NEURO_HALF_LIVES,
   NEURO_PRODUCTION_SCALE,
@@ -69,18 +70,59 @@ function applyCrossModulatorInteractions(
   return result
 }
 
+/**
+ * Compute cortisol via HPA-axis dynamics: diurnal rhythm, CRH buffer delay, nonlinear clearance.
+ * Cortisol is a steroid hormone, not a neurotransmitter — it operates on minutes-to-hours timescales.
+ */
+function computeCortisolHPA(
+  currentLevel: number,
+  crhBuffer: number,
+  stressSignal: number,
+  hourOfDay: number,
+  elapsedMinutes: number,
+  allostaticLoad: number
+): { level: number; crhBuffer: number } {
+  const diurnalBaseline =
+    NEURO_BASELINES.cortisol +
+    HPA_AXIS.DIURNAL_AMPLITUDE * Math.cos(((hourOfDay - HPA_AXIS.DIURNAL_PEAK_HOUR) / 24) * 2 * Math.PI)
+
+  const newCrhBuffer = clamp01(crhBuffer * HPA_AXIS.CRH_BUFFER_DECAY_RATE + stressSignal)
+
+  const cortisolRelease = newCrhBuffer * HPA_AXIS.CRH_TO_CORTISOL_TRANSFER * (elapsedMinutes / 60)
+
+  const baseDecay = halfLifeDecay(elapsedMinutes, NEURO_HALF_LIVES.cortisol)
+  const chronicPenalty =
+    currentLevel > HPA_AXIS.CHRONIC_STRESS_THRESHOLD
+      ? (currentLevel - HPA_AXIS.CHRONIC_STRESS_THRESHOLD) * HPA_AXIS.CHRONIC_STRESS_CLEARANCE_REDUCTION
+      : 0
+  const effectiveDecay = baseDecay + chronicPenalty * (1 - baseDecay)
+
+  const decayed = diurnalBaseline + (currentLevel - diurnalBaseline) * effectiveDecay
+
+  const allostaticBoost = allostaticLoad * HPA_AXIS.ALLOSTATIC_PRODUCTION_SCALE
+
+  return {
+    level: clamp01(decayed + cortisolRelease + allostaticBoost),
+    crhBuffer: newCrhBuffer
+  }
+}
+
 export function computeNeuromodulatorUpdate(
   current: NeuromodulatoryState,
   emotion: EmotionalState,
   soma: SomaticState,
   elapsedMinutes: number,
-  allostaticLoad = 0
+  allostaticLoad = 0,
+  hourOfDay = new Date().getHours(),
+  isolationCortisolSignal = 0
 ): NeuromodulatoryState {
   const levels: Record<string, number> = {}
   const productionRates: Record<string, number> = {}
   const reuptakeRates: Record<string, number> = {}
 
   for (const mod of NEUROMODULATOR_TYPES) {
+    if (mod === "cortisol") continue
+
     const baseline = NEURO_BASELINES[mod]
     const halfLife = NEURO_HALF_LIVES[mod]
     const decay = halfLifeDecay(elapsedMinutes, halfLife)
@@ -88,11 +130,7 @@ export function computeNeuromodulatorUpdate(
 
     const emotionProduction = computeProductionFromEmotion(mod, emotion)
     const somaProduction = computeProductionFromSoma(mod, soma)
-    let totalProduction = emotionProduction + somaProduction
-
-    if (mod === "cortisol") {
-      totalProduction += allostaticLoad * 0.15
-    }
+    const totalProduction = emotionProduction + somaProduction
 
     const newProductionRate = clamp01(current[mod].productionRate * 0.9 + (0.5 + totalProduction) * 0.1)
     const newReuptakeRate = current[mod].reuptakeRate
@@ -101,6 +139,24 @@ export function computeNeuromodulatorUpdate(
     productionRates[mod] = newProductionRate
     reuptakeRates[mod] = newReuptakeRate
   }
+
+  const cortisolStressSignal =
+    computeProductionFromEmotion("cortisol", emotion) +
+    computeProductionFromSoma("cortisol", soma) +
+    isolationCortisolSignal
+
+  const hpa = computeCortisolHPA(
+    current.cortisol.level,
+    current.crhBuffer,
+    Math.max(0, cortisolStressSignal),
+    hourOfDay,
+    elapsedMinutes,
+    allostaticLoad
+  )
+
+  levels.cortisol = hpa.level
+  productionRates.cortisol = clamp01(current.cortisol.productionRate * 0.9 + (0.5 + cortisolStressSignal) * 0.1)
+  reuptakeRates.cortisol = current.cortisol.reuptakeRate
 
   const interacted = applyCrossModulatorInteractions(levels as Record<NeuromodulatorType, number>)
 
@@ -123,6 +179,7 @@ export function computeNeuromodulatorUpdate(
   return {
     ...(result as Pick<NeuromodulatoryState, NeuromodulatorType>),
     dopamineDetail: { tonicLevel, phasicLevel },
+    crhBuffer: hpa.crhBuffer,
     lastUpdatedAt: new Date().toISOString()
   }
 }

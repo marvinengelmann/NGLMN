@@ -1,5 +1,5 @@
 import type { EmotionalState } from "@/affect/emotion/types.ts"
-import type { PersonalityType } from "@/self/personality/types.ts"
+import type { BigFive } from "@/self/genesis/types.ts"
 import { getDominanceHistory } from "./state.ts"
 import type { InnerVoice } from "./types.ts"
 
@@ -14,7 +14,7 @@ interface VoiceContext {
  */
 export function selectActiveVoices(
   emotion: EmotionalState,
-  personality: PersonalityType,
+  bigFive: BigFive,
   context: VoiceContext,
   alteredVoiceModifiers?: Partial<Record<InnerVoice, number>>
 ): InnerVoice[] {
@@ -45,8 +45,8 @@ export function selectActiveVoices(
 
   if (context.dissonanceScore > 0.3) scores.monitoring += 0.6
 
-  const mbtiWeights = getMbtiWeights(personality)
-  for (const [voice, bonus] of Object.entries(mbtiWeights)) {
+  const bigFiveWeights = getBigFiveWeights(bigFive)
+  for (const [voice, bonus] of Object.entries(bigFiveWeights)) {
     scores[voice as InnerVoice] += bonus
   }
 
@@ -96,17 +96,15 @@ export async function getVoiceDominanceBoost(): Promise<Partial<Record<InnerVoic
   return boost
 }
 
-function getMbtiWeights(personality: PersonalityType): Partial<Record<InnerVoice, number>> {
-  const isNT = personality[1] === "N" && personality[2] === "T"
-  const isNF = personality[1] === "N" && personality[2] === "F"
-  const isSF = personality[1] === "S" && personality[2] === "F"
-  const isST = personality[1] === "S" && personality[2] === "T"
-
-  if (isNT) return { cognitive_control: 0.3, novelty_seeking: 0.2 }
-  if (isNF) return { social_bonding: 0.3, novelty_seeking: 0.2 }
-  if (isSF) return { social_bonding: 0.2, play_system: 0.2 }
-  if (isST) return { cognitive_control: 0.2, threat_avoidance: 0.2 }
-  return {}
+function getBigFiveWeights(bigFive: BigFive): Partial<Record<InnerVoice, number>> {
+  return {
+    novelty_seeking: bigFive.openness * 0.3,
+    social_bonding: (bigFive.extraversion + bigFive.agreeableness) * 0.15,
+    cognitive_control: bigFive.conscientiousness * 0.25,
+    threat_avoidance: bigFive.conscientiousness * 0.15 + bigFive.neuroticism * 0.2,
+    play_system: bigFive.openness * 0.15 + bigFive.agreeableness * 0.1,
+    monitoring: bigFive.neuroticism * 0.25
+  }
 }
 
 /**

@@ -5,7 +5,9 @@ import { DEFAULT_FREE_ENERGY_STATE, FreeEnergyState } from "./types.ts"
 
 const KEYS = {
   STATE: "working:fep:state",
-  HISTORY: "working:fep:history"
+  HISTORY: "working:fep:history",
+  PRIOR_EMOTION: "working:fep:prior_emotion",
+  PRIOR_SOMA: "working:fep:prior_soma"
 } as const
 
 export async function getFreeEnergyState(): Promise<FreeEnergyState> {
@@ -31,4 +33,20 @@ export async function pushFreeEnergyHistory(totalFE: number): Promise<void> {
   }
 
   await redis.set(KEYS.HISTORY, JSON.stringify(history))
+}
+
+export async function getPriorSnapshots(): Promise<{
+  emotion: Record<string, number> | null
+  soma: Record<string, number> | null
+}> {
+  const emotionRaw = await getValidatedRedis(KEYS.PRIOR_EMOTION, z.record(z.string(), z.number()))
+  const somaRaw = await getValidatedRedis(KEYS.PRIOR_SOMA, z.record(z.string(), z.number()))
+  return { emotion: emotionRaw, soma: somaRaw }
+}
+
+export async function savePriorSnapshots(emotion: Record<string, number>, soma: Record<string, number>): Promise<void> {
+  await Promise.all([
+    redis.set(KEYS.PRIOR_EMOTION, JSON.stringify(emotion)),
+    redis.set(KEYS.PRIOR_SOMA, JSON.stringify(soma))
+  ])
 }

@@ -11,12 +11,16 @@ export function computeAttentionState(
   soma: SomaticState,
   hasMessages: boolean,
   consecutiveIdleTicks: number,
-  conversationMessageCount = 0
+  conversationMessageCount = 0,
+  consecutiveActiveTicks = 0
 ): AttentionState {
   if (emotion.curiosity > ATTENTION.HYPERFOCUS_CURIOSITY && emotion.energy > ATTENTION.HYPERFOCUS_ENERGY && hasMessages)
     return "hyperfocus"
 
   if (emotion.energy < ATTENTION.BLANK_ENERGY && soma.gravity > ATTENTION.BLANK_GRAVITY) return "blank"
+
+  if (consecutiveActiveTicks > ATTENTION.FATIGUE_ONSET_TICKS && emotion.energy < ATTENTION.FATIGUE_DRIFT_ENERGY)
+    return "drifting"
 
   if (
     emotion.boredom > ATTENTION.DRIFT_BOREDOM &&

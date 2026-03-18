@@ -1,10 +1,10 @@
 import { clamp01 } from "@/infra/lib/math.ts"
 import { nowISO } from "@/infra/lib/time.ts"
 import type { RelationalPattern } from "@/relational/mind/types.ts"
-import { TRANSFERENCE } from "./constants.ts"
-import type { RelationalTemplate, TransferenceEvent, TransferenceState } from "./types.ts"
+import { RELATIONAL_PATTERN } from "./constants.ts"
+import type { PatternActivationEvent, RelationalPatternState, RelationalTemplate } from "./types.ts"
 
-interface TransferenceMatchContext {
+interface PatternMatchContext {
   operatorMood: string
   messageText: string
   interactionTone: string
@@ -12,9 +12,9 @@ interface TransferenceMatchContext {
   timeOfDay: string
 }
 
-export function matchTemplate(
+export function matchRelationalPattern(
   templates: RelationalTemplate[],
-  context: TransferenceMatchContext
+  context: PatternMatchContext
 ): { template: RelationalTemplate; confidence: number } | null {
   if (templates.length === 0) return null
 
@@ -25,28 +25,28 @@ export function matchTemplate(
     const patternLower = template.pattern.toLowerCase()
     const contextLower = context.messageText.toLowerCase()
 
-    if (patternLower.includes(context.operatorMood)) confidence += TRANSFERENCE.MATCH_MOOD_WEIGHT
-    if (patternLower.includes(context.timeOfDay)) confidence += TRANSFERENCE.MATCH_TIME_WEIGHT
+    if (patternLower.includes(context.operatorMood)) confidence += RELATIONAL_PATTERN.MATCH_MOOD_WEIGHT
+    if (patternLower.includes(context.timeOfDay)) confidence += RELATIONAL_PATTERN.MATCH_TIME_WEIGHT
 
     const patternWords = patternLower.split(/\s+/)
     const contextWords = contextLower.split(/\s+/)
     const overlap = patternWords.filter((w) => contextWords.includes(w)).length
-    confidence += Math.min(TRANSFERENCE.MATCH_OVERLAP_MAX, overlap * TRANSFERENCE.MATCH_OVERLAP_WEIGHT)
+    confidence += Math.min(RELATIONAL_PATTERN.MATCH_OVERLAP_MAX, overlap * RELATIONAL_PATTERN.MATCH_OVERLAP_WEIGHT)
 
     const toneMatch = patternLower.includes(context.interactionTone.toLowerCase())
-    if (toneMatch) confidence += TRANSFERENCE.MATCH_TONE_WEIGHT
+    if (toneMatch) confidence += RELATIONAL_PATTERN.MATCH_TONE_WEIGHT
 
     confidence *= template.strength
 
     for (const pattern of context.recentPatterns) {
       if (patternLower.includes(pattern.type)) {
-        confidence += TRANSFERENCE.MATCH_PATTERN_WEIGHT
+        confidence += RELATIONAL_PATTERN.MATCH_PATTERN_WEIGHT
       }
     }
 
     confidence = clamp01(confidence)
 
-    if (confidence >= TRANSFERENCE.MATCH_THRESHOLD && (!bestMatch || confidence > bestMatch.confidence)) {
+    if (confidence >= RELATIONAL_PATTERN.MATCH_THRESHOLD && (!bestMatch || confidence > bestMatch.confidence)) {
       bestMatch = { template, confidence }
     }
   }
@@ -54,13 +54,13 @@ export function matchTemplate(
   return bestMatch
 }
 
-export function activateTransference(
+export function activatePattern(
   template: RelationalTemplate,
   confidence: number,
   awarenessLevel: number
-): TransferenceEvent {
-  const awarenessDampening = 1 - awarenessLevel * TRANSFERENCE.AWARENESS_DAMPENING_SCALE
-  const modulationScale = TRANSFERENCE.EMOTION_MODULATION_SCALE * awarenessDampening
+): PatternActivationEvent {
+  const awarenessDampening = 1 - awarenessLevel * RELATIONAL_PATTERN.AWARENESS_DAMPENING_SCALE
+  const modulationScale = RELATIONAL_PATTERN.EMOTION_MODULATION_SCALE * awarenessDampening
 
   const emotionModulation: Record<string, number> = {}
   for (const [key, value] of Object.entries(template.associatedEmotion)) {
@@ -76,7 +76,7 @@ export function activateTransference(
   }
 }
 
-export function computeTransferenceModulation(event: TransferenceEvent | null): Record<string, number> {
+export function computePatternModulation(event: PatternActivationEvent | null): Record<string, number> {
   if (!event) return {}
   return event.emotionModulation
 }
@@ -89,14 +89,14 @@ export function updateTemplateStrength(
     if (t.id === activatedId) {
       return {
         ...t,
-        strength: clamp01(t.strength + TRANSFERENCE.STRENGTH_INCREMENT),
+        strength: clamp01(t.strength + RELATIONAL_PATTERN.STRENGTH_INCREMENT),
         activationCount: t.activationCount + 1,
         lastActivatedAt: nowISO()
       }
     }
     return {
       ...t,
-      strength: Math.max(TRANSFERENCE.TEMPLATE_MIN_STRENGTH, t.strength * TRANSFERENCE.STRENGTH_DECAY)
+      strength: Math.max(RELATIONAL_PATTERN.TEMPLATE_MIN_STRENGTH, t.strength * RELATIONAL_PATTERN.STRENGTH_DECAY)
     }
   })
 }
@@ -105,8 +105,8 @@ export function maybeFormTemplate(
   recentPatterns: RelationalPattern[],
   existingTemplates: RelationalTemplate[]
 ): RelationalTemplate | null {
-  if (existingTemplates.length >= TRANSFERENCE.MAX_TEMPLATES) return null
-  if (recentPatterns.length < TRANSFERENCE.MIN_PATTERN_OCCURRENCES) return null
+  if (existingTemplates.length >= RELATIONAL_PATTERN.MAX_TEMPLATES) return null
+  if (recentPatterns.length < RELATIONAL_PATTERN.MIN_PATTERN_OCCURRENCES) return null
 
   const patternCounts = new Map<string, { count: number; mood: string; patterns: RelationalPattern[] }>()
   for (const pattern of recentPatterns) {
@@ -121,7 +121,7 @@ export function maybeFormTemplate(
   }
 
   for (const [key, data] of patternCounts) {
-    if (data.count < TRANSFERENCE.MIN_PATTERN_OCCURRENCES) continue
+    if (data.count < RELATIONAL_PATTERN.MIN_PATTERN_OCCURRENCES) continue
 
     const alreadyExists = existingTemplates.some((t) => t.pattern === key)
     if (alreadyExists) continue
@@ -133,7 +133,7 @@ export function maybeFormTemplate(
       pattern: key,
       associatedEmotion: emotionFromMood,
       formationContext: `Formed from ${data.count} occurrences of ${key}`,
-      strength: TRANSFERENCE.TEMPLATE_INITIAL_STRENGTH,
+      strength: RELATIONAL_PATTERN.TEMPLATE_INITIAL_STRENGTH,
       activationCount: 0,
       lastActivatedAt: null,
       formedAt: nowISO()
@@ -144,43 +144,40 @@ export function maybeFormTemplate(
 }
 
 function moodToEmotionDeltas(mood: string): Record<string, number> {
-  return TRANSFERENCE.MOOD_EMOTION_MAPPINGS[mood] ?? TRANSFERENCE.MOOD_DEFAULT_EMOTION
+  return RELATIONAL_PATTERN.MOOD_EMOTION_MAPPINGS[mood] ?? RELATIONAL_PATTERN.MOOD_DEFAULT_EMOTION
 }
 
-export function updateTransferenceAwareness(
-  current: number,
-  wasActivated: boolean,
-  metacognitionLevel: number
-): number {
+export function updatePatternAwareness(current: number, wasActivated: boolean, metacognitionLevel: number): number {
   if (!wasActivated) return current
 
   const increment =
-    TRANSFERENCE.AWARENESS_LEARNING_RATE * (1 + metacognitionLevel * TRANSFERENCE.AWARENESS_METACOGNITION_BOOST)
-  return Math.min(TRANSFERENCE.MAX_AWARENESS, current + increment)
+    RELATIONAL_PATTERN.AWARENESS_LEARNING_RATE *
+    (1 + metacognitionLevel * RELATIONAL_PATTERN.AWARENESS_METACOGNITION_BOOST)
+  return Math.min(RELATIONAL_PATTERN.MAX_AWARENESS, current + increment)
 }
 
-export function decayActiveTransference(state: TransferenceState): TransferenceState {
-  if (!state.activeTransference) return state
+export function decayActivePattern(state: RelationalPatternState): RelationalPatternState {
+  if (!state.activePattern) return state
 
   const decayedModulation: Record<string, number> = {}
   let hasSignificant = false
 
-  for (const [key, value] of Object.entries(state.activeTransference.emotionModulation)) {
-    const decayed = value * TRANSFERENCE.ACTIVATION_DECAY
-    if (Math.abs(decayed) > TRANSFERENCE.ACTIVATION_SIGNIFICANCE_THRESHOLD) {
+  for (const [key, value] of Object.entries(state.activePattern.emotionModulation)) {
+    const decayed = value * RELATIONAL_PATTERN.ACTIVATION_DECAY
+    if (Math.abs(decayed) > RELATIONAL_PATTERN.ACTIVATION_SIGNIFICANCE_THRESHOLD) {
       decayedModulation[key] = decayed
       hasSignificant = true
     }
   }
 
   if (!hasSignificant) {
-    return { ...state, activeTransference: null }
+    return { ...state, activePattern: null }
   }
 
   return {
     ...state,
-    activeTransference: {
-      ...state.activeTransference,
+    activePattern: {
+      ...state.activePattern,
       emotionModulation: decayedModulation
     }
   }

@@ -6,8 +6,8 @@ import { goals } from "@/infra/db/schema.ts"
 import { log } from "@/infra/lib/logger.ts"
 
 const STALE_DAYS = 14
-const PRIORITY_DECAY_PER_DAY = 0.01
-const OPERATOR_DECAY_FACTOR = 0.5
+const SELF_HALF_LIFE_DAYS = 30
+const OPERATOR_HALF_LIFE_DAYS = 60
 const MIN_PRIORITY = 0.1
 const PRIORITY_REFRESH_BOOST = 0.02
 
@@ -49,23 +49,24 @@ export async function markGoalOverdue(id: string): Promise<void> {
 }
 
 /**
- * Apply priority decay to all active/open goals. 1 tick = ~1 minute.
+ * Apply exponential priority decay to all active/open goals using half-life model.
+ * Self-goals: 30-day half-life. Operator-goals: 60-day half-life (decay slower).
+ * Formula: priority *= 0.5 ^ (1 / (halfLifeDays * 1440))
  */
 export async function applyGoalPriorityDecay(): Promise<void> {
-  const decayPerTick = PRIORITY_DECAY_PER_DAY / 1440
-
+  const selfDecayFactor = 0.5 ** (1 / (SELF_HALF_LIFE_DAYS * 1440))
   await db
     .update(goals)
     .set({
-      priority: sql`GREATEST(${MIN_PRIORITY}, COALESCE(${goals.priority}, 0.5) - ${decayPerTick})`
+      priority: sql`GREATEST(${MIN_PRIORITY}, COALESCE(${goals.priority}, 0.5) * ${selfDecayFactor})`
     })
     .where(and(inArray(goals.status, ["open", "active"]), eq(goals.source, "self")))
 
-  const operatorDecay = decayPerTick * OPERATOR_DECAY_FACTOR
+  const operatorDecayFactor = 0.5 ** (1 / (OPERATOR_HALF_LIFE_DAYS * 1440))
   await db
     .update(goals)
     .set({
-      priority: sql`GREATEST(${MIN_PRIORITY}, COALESCE(${goals.priority}, 0.5) - ${operatorDecay})`
+      priority: sql`GREATEST(${MIN_PRIORITY}, COALESCE(${goals.priority}, 0.5) * ${operatorDecayFactor})`
     })
     .where(and(inArray(goals.status, ["open", "active"]), eq(goals.source, "operator")))
 }

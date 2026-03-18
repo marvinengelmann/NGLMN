@@ -22,7 +22,7 @@ import { captureError } from "@/infra/lib/sentry.ts"
 import { queryRelated } from "@/memory/episodic.ts"
 import { getGoalsByPriority } from "@/memory/goals.ts"
 import { getOperatorProfile } from "@/relational/mind/profile.ts"
-import { getGenesisPersonalityType } from "@/self/genesis/state.ts"
+import { getGenesisBigFive } from "@/self/genesis/state.ts"
 import { getStructuredExistentialQuestions } from "@/self/psyche/questions.ts"
 import { buildContext, buildSystemPrompt } from "./context/builder.ts"
 import type { TickState } from "./pipeline/types.ts"
@@ -109,7 +109,7 @@ export async function deliberate(tickState: TickState): Promise<DeliberateResult
 
   const activeVoices = selectActiveVoices(
     feelResult.emotion,
-    await getGenesisPersonalityType(),
+    await getGenesisBigFive(),
     {
       dissonanceScore: feelResult.dissonance.activeDissonance,
       action: "pending",

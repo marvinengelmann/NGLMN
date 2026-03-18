@@ -33,14 +33,14 @@ import { getUltradianState } from "@/perception/rhythm/state.ts"
 import { getAttachmentStyle, getIsolationStress } from "@/relational/attachment/state.ts"
 import { getVulnerabilityPrevLevel } from "@/relational/attachment/store.ts"
 import { getOperatorModel, getRelationalPatterns } from "@/relational/mind/state.ts"
-import { getTransferenceState } from "@/relational/transference/state.ts"
+import { getRelationalPatternState } from "@/relational/patterns/state.ts"
 import { getAggregateTrustExperience } from "@/relational/trust/compute.ts"
 import { getBoundaryState } from "@/self/boundaries/state.ts"
 import { getDissociativeState } from "@/self/coherence/dissociation/state.ts"
 import { getCoherenceState } from "@/self/coherence/state.ts"
 import { getDeceptionState } from "@/self/deception/state.ts"
 import { getEmotionRegulationState } from "@/self/defense/state.ts"
-import { getGenesisDNA } from "@/self/genesis/state.ts"
+import { getGenesisBigFive, getGenesisDNA } from "@/self/genesis/state.ts"
 import { getHeldBackBuffer } from "@/self/psyche/heldback.ts"
 import { getGrowthArcs, getSelfConcept } from "@/self/psyche/state.ts"
 import type { FeelPrefetch } from "./types.ts"
@@ -134,16 +134,18 @@ export async function prefetchFeelState(): Promise<FeelPrefetch> {
     previousGranularity,
     previousForecastingState,
     previousUltradian,
-    previousTransferenceState,
+    previousRelationalPatternState,
     previousDissociativeState,
-    flowQualifyingTicks
+    flowQualifyingTicks,
+    bigFive
   ] = await Promise.all([
     getGranularityState(),
     getForecastingState(),
     getUltradianState(),
-    getTransferenceState(),
+    getRelationalPatternState(),
     getDissociativeState(),
-    getFlowQualifyingTicks()
+    getFlowQualifyingTicks(),
+    getGenesisBigFive()
   ])
 
   return {
@@ -190,8 +192,9 @@ export async function prefetchFeelState(): Promise<FeelPrefetch> {
     previousGranularity,
     previousForecastingState,
     previousUltradian,
-    previousTransferenceState,
+    previousRelationalPatternState,
     previousDissociativeState,
-    flowQualifyingTicks
+    flowQualifyingTicks,
+    neuroticism: bigFive.neuroticism
   }
 }

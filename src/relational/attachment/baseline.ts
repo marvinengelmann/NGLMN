@@ -20,8 +20,9 @@ export function computeIsolationCost(context: IsolationCostContext): number {
     Math.min(1, context.operatorSilenceMinutes / BASELINE.MAX_ISOLATION_MINUTES) ** BASELINE.TIME_EXPONENT
   const anxietyAmplifier = 1 + context.attachmentStyle.anxious * BASELINE.ANXIETY_AMPLIFIER
   const avoidantDamping = 1 - context.attachmentStyle.avoidant * BASELINE.AVOIDANT_DAMPING
+  const cortisolAmplifier = 1 + context.cortisol * BASELINE.CORTISOL_ISOLATION_AMPLIFIER
 
-  return clamp01(BASELINE.ISOLATION_BASE_COST * timeFactor * anxietyAmplifier * avoidantDamping)
+  return clamp01(BASELINE.ISOLATION_BASE_COST * timeFactor * anxietyAmplifier * avoidantDamping * cortisolAmplifier)
 }
 
 interface CoregulationContext {
@@ -100,5 +101,7 @@ export function computeIsolationStress(context: IsolationStressContext): Isolati
 
   const energyDrainRate = computeIsolationEnergyDrain(isolationCost)
 
-  return { isolationCost, coregulationBenefit, allostasis, energyDrainRate }
+  const cortisolStressSignal = isolationCost > 0.5 ? (isolationCost - 0.5) * 0.3 : 0
+
+  return { isolationCost, coregulationBenefit, allostasis, energyDrainRate, cortisolStressSignal }
 }

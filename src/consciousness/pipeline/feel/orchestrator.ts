@@ -3,6 +3,7 @@ import { applyEvent } from "@/affect/emotion/update.ts"
 import { constrainVulnerabilityLevel } from "@/affect/soma/autonomic.ts"
 import { assembleFreeEnergyState } from "@/fep/compute.ts"
 import { computeFEEmotionModulation } from "@/fep/effects.ts"
+import { savePriorSnapshots } from "@/fep/state.ts"
 import { log } from "@/infra/lib/logger.ts"
 import { applyClampedDeltas } from "@/infra/lib/math.ts"
 import { isOperatorReturning } from "@/relational/attachment/update.ts"
@@ -30,8 +31,8 @@ export async function runFeelPipeline(senseResult: SenseResult, buffer: WriteBuf
     emotionAfterBoundary
   )
 
-  if (Object.keys(parallel.transferenceModulation).length > 0) {
-    emotionAfterBoundary = applyClampedDeltas(emotionAfterBoundary, parallel.transferenceModulation)
+  if (Object.keys(parallel.patternModulation).length > 0) {
+    emotionAfterBoundary = applyClampedDeltas(emotionAfterBoundary, parallel.patternModulation)
   }
 
   const vulnerabilityResult = await runVulnerabilityChain(
@@ -117,8 +118,15 @@ export async function runFeelPipeline(senseResult: SenseResult, buffer: WriteBuf
     metacognitiveClarity: result.metacognitiveState.cognitiveClarity,
     cognitiveFatigue: result.metacognitiveState.cognitiveFatigue,
     activeStrategyCount: result.emotionRegulationState.activeStrategies.length,
-    neuromodulatoryState: result.neuromodulatoryState
+    neuromodulatoryState: result.neuromodulatoryState,
+    currentEmotion: result.emotion as Record<string, number>,
+    currentSoma: result.soma as Record<string, number>
   })
+
+  savePriorSnapshots(
+    result.emotion as Record<string, number>,
+    result.soma as Record<string, number>
+  ).catch(() => {})
 
   if (result.freeEnergyState) {
     const feEmotionDeltas = computeFEEmotionModulation(

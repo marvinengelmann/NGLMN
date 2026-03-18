@@ -4,7 +4,6 @@ import { redis } from "@/infra/integrations/redis.ts"
 import { log } from "@/infra/lib/logger.ts"
 import { logAndCaptureError } from "@/infra/lib/result.ts"
 import { storeWithConsistencyCheck } from "@/memory/consistency.ts"
-import { RECONSOLIDATION } from "@/memory/constants.ts"
 import { downgradeEpisodes, forgetOldEpisodes, queryRelated, summarizeOldEpisodes } from "@/memory/episodic.ts"
 import { processReconsolidation } from "@/memory/reconsolidation.ts"
 import { storeRelation } from "@/memory/semantic.ts"
@@ -15,6 +14,7 @@ import {
   SemanticScope,
   SemanticSource
 } from "@/memory/types.ts"
+import { DREAM_PHASES } from "./constants.ts"
 import type { ConsolidationOutput } from "./types.ts"
 
 const QUERY_TEXTS = [
@@ -107,7 +107,7 @@ export async function applyConsolidationResult(output: ConsolidationOutput): Pro
       consolidationEpisodes,
       dreamEmotion,
       dreamNeuro,
-      RECONSOLIDATION.DREAM_BLEND_MULTIPLIER
+      DREAM_PHASES.NREM_RECONSOLIDATION_MULTIPLIER
     )
   }
 

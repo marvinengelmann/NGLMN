@@ -7,7 +7,7 @@ import { interactionOutcomes, promptVersions } from "@/infra/db/schema.ts"
 import { log } from "@/infra/lib/logger.ts"
 import { logAndCaptureError } from "@/infra/lib/result.ts"
 import { PROMPT_EVOLUTION_SYSTEM_PROMPT } from "@/prompts/evolution.ts"
-import { canActAutonomously, recordSuccess } from "@/relational/trust/compute.ts"
+import { canActAutonomously, recordOutcome } from "@/relational/trust/compute.ts"
 import { writeChangelogEntry } from "./changelog.ts"
 
 interface PromptProposal extends PromptProposalOutput {
@@ -111,7 +111,7 @@ export async function applyPromptChange(
   const changelogResult = await writeChangelogEntry("prompt", `${promptId}: ${changelog}`, "success")
   if (changelogResult.isErr()) logAndCaptureError(changelogResult.error)
 
-  await recordSuccess("prompt_modification")
+  await recordOutcome("prompt_modification", 1)
 
   return newVersion
 }

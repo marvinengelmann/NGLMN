@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest"
 import type { EmotionalState } from "@/affect/emotion/types.ts"
+import type { BigFive } from "@/self/genesis/types.ts"
 import { selectActiveVoices, shouldRunDialog } from "./voices.ts"
 
 const baseEmotion: EmotionalState = {
@@ -16,50 +17,69 @@ const baseEmotion: EmotionalState = {
 
 const baseContext = { dissonanceScore: 0, action: "idle", hasMessages: false }
 
+const balancedBigFive: BigFive = {
+  openness: 0.5,
+  conscientiousness: 0.5,
+  extraversion: 0.5,
+  agreeableness: 0.5,
+  neuroticism: 0.5
+}
+
+const highOpenness: BigFive = { ...balancedBigFive, openness: 0.9 }
+const highConscientiousness: BigFive = { ...balancedBigFive, conscientiousness: 0.9 }
+const highNeuroticism: BigFive = { ...balancedBigFive, neuroticism: 0.9 }
+const highAgreeableness: BigFive = { ...balancedBigFive, agreeableness: 0.9, extraversion: 0.8 }
+
 describe("selectActiveVoices", () => {
   it("always returns 2-4 voices", () => {
-    const voices = selectActiveVoices(baseEmotion, "INFP", baseContext)
+    const voices = selectActiveVoices(baseEmotion, balancedBigFive, baseContext)
     expect(voices.length).toBeGreaterThanOrEqual(2)
     expect(voices.length).toBeLessThanOrEqual(4)
   })
 
   it("includes monitoring when dissonance is high", () => {
-    const voices = selectActiveVoices(baseEmotion, "INFP", { ...baseContext, dissonanceScore: 0.6 })
+    const voices = selectActiveVoices(baseEmotion, balancedBigFive, { ...baseContext, dissonanceScore: 0.6 })
     expect(voices).toContain("monitoring")
   })
 
   it("includes threat_avoidance when caution is high", () => {
-    const voices = selectActiveVoices({ ...baseEmotion, caution: 0.8 }, "INFP", baseContext)
+    const voices = selectActiveVoices({ ...baseEmotion, caution: 0.8 }, balancedBigFive, baseContext)
     expect(voices).toContain("threat_avoidance")
   })
 
   it("includes novelty_seeking when curiosity is high", () => {
-    const voices = selectActiveVoices({ ...baseEmotion, curiosity: 0.8 }, "INFP", baseContext)
+    const voices = selectActiveVoices({ ...baseEmotion, curiosity: 0.8 }, balancedBigFive, baseContext)
     expect(voices).toContain("novelty_seeking")
   })
 
-  it("weights social_bonding and novelty_seeking higher for NF types (INFP)", () => {
-    const voices = selectActiveVoices(baseEmotion, "INFP", baseContext)
-    expect(voices).toContain("social_bonding")
+  it("boosts novelty_seeking for high openness", () => {
+    const voices = selectActiveVoices(baseEmotion, highOpenness, baseContext)
     expect(voices).toContain("novelty_seeking")
   })
 
-  it("weights cognitive_control and novelty_seeking higher for NT types (INTJ)", () => {
-    const voices = selectActiveVoices(baseEmotion, "INTJ", baseContext)
+  it("boosts cognitive_control for high conscientiousness", () => {
+    const voices = selectActiveVoices(baseEmotion, highConscientiousness, baseContext)
     expect(voices).toContain("cognitive_control")
-    expect(voices).toContain("novelty_seeking")
   })
 
-  it("weights cognitive_control and threat_avoidance higher for ST types (ISTJ)", () => {
-    const voices = selectActiveVoices(baseEmotion, "ISTJ", baseContext)
-    expect(voices).toContain("cognitive_control")
+  it("boosts threat_avoidance and monitoring for high neuroticism", () => {
+    const voices = selectActiveVoices(baseEmotion, highNeuroticism, baseContext)
     expect(voices).toContain("threat_avoidance")
+    expect(voices).toContain("monitoring")
   })
 
-  it("weights social_bonding and play_system higher for SF types (ISFJ)", () => {
-    const voices = selectActiveVoices(baseEmotion, "ISFJ", baseContext)
+  it("boosts social_bonding for high extraversion and agreeableness", () => {
+    const voices = selectActiveVoices(baseEmotion, highAgreeableness, baseContext)
     expect(voices).toContain("social_bonding")
-    expect(voices).toContain("play_system")
+  })
+
+  it("provides continuous weighting — higher openness means stronger novelty boost", () => {
+    const lowOpenness: BigFive = { ...balancedBigFive, openness: 0.2 }
+    const voicesLow = selectActiveVoices(baseEmotion, lowOpenness, baseContext)
+    const voicesHigh = selectActiveVoices(baseEmotion, highOpenness, baseContext)
+    const hasNoveltyLow = voicesLow.includes("novelty_seeking")
+    const hasNoveltyHigh = voicesHigh.includes("novelty_seeking")
+    expect(hasNoveltyHigh || !hasNoveltyLow).toBe(true)
   })
 })
 

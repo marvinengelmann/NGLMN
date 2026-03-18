@@ -41,7 +41,7 @@ import type {
   VulnerableMessageStyle
 } from "@/relational/attachment/types.ts"
 import type { OperatorModel, RelationalPatternLibrary } from "@/relational/mind/types.ts"
-import type { TransferenceEvent, TransferenceState } from "@/relational/transference/types.ts"
+import type { PatternActivationEvent, RelationalPatternState } from "@/relational/patterns/types.ts"
 import type { BoundaryState, BoundaryViolation } from "@/self/boundaries/types.ts"
 import type { DissociativeState } from "@/self/coherence/dissociation/types.ts"
 import type { CoherenceState } from "@/self/coherence/types.ts"
@@ -95,9 +95,10 @@ export interface FeelPrefetch {
   previousGranularity: GranularityState
   previousForecastingState: ForecastingState
   previousUltradian: UltradianState
-  previousTransferenceState: TransferenceState
+  previousRelationalPatternState: RelationalPatternState
   previousDissociativeState: DissociativeState
   flowQualifyingTicks: number
+  neuroticism: number
 }
 
 export interface EmotionChainResult {
@@ -138,8 +139,8 @@ export interface ParallelFanResult {
   boundaryEmotionEvents: EmotionUpdateEvent[]
   isolationStress: IsolationStress
   implicitAssociations: AssociationActivation[]
-  transferenceModulation: Record<string, number>
-  transferenceEvent: TransferenceEvent | null
+  patternModulation: Record<string, number>
+  patternActivationEvent: PatternActivationEvent | null
 }
 
 export interface VulnerabilityChainResult {

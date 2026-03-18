@@ -39,11 +39,11 @@ export const NeuromodulatoryState = z.object({
   serotonin: NeuromodulatorLevel,
   norepinephrine: NeuromodulatorLevel,
   oxytocin: NeuromodulatorLevel,
-  /** Stress hormone (HPA axis steroid, not a neurotransmitter) */
   cortisol: NeuromodulatorLevel,
   endorphins: NeuromodulatorLevel,
   gaba: NeuromodulatorLevel,
   dopamineDetail: DopamineDetail,
+  crhBuffer: z.number().min(0).max(1).default(0),
   lastUpdatedAt: z.string()
 })
 export type NeuromodulatoryState = z.infer<typeof NeuromodulatoryState>
@@ -63,5 +63,6 @@ export const DEFAULT_NEUROMODULATORY_STATE: NeuromodulatoryState = {
   endorphins: { level: 0.3, productionRate: 0.3, reuptakeRate: 0.5 },
   gaba: { level: 0.5, productionRate: 0.5, reuptakeRate: 0.5 },
   dopamineDetail: { tonicLevel: 0.45, phasicLevel: 0.05 },
+  crhBuffer: 0,
   lastUpdatedAt: new Date().toISOString()
 }

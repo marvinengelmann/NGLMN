@@ -26,6 +26,7 @@ const baseNeuro = {
   endorphins: { level: 0.5, productionRate: 0.5, reuptakeRate: 0.5 },
   gaba: { level: 0.5, productionRate: 0.5, reuptakeRate: 0.5 },
   dopamineDetail: { tonicLevel: 0.45, phasicLevel: 0.05 },
+  crhBuffer: 0,
   lastUpdatedAt: new Date().toISOString()
 }
 

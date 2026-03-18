@@ -13,6 +13,7 @@ interface DissociationContext {
   integrationScore: number
   isolationStress: IsolationStress
   cortisolLevel: number
+  neuroticism: number
 }
 
 export function checkDissociationTriggers(context: DissociationContext): boolean {
@@ -25,9 +26,14 @@ export function checkDissociationTriggers(context: DissociationContext): boolean
   )
 }
 
-export function computeDissociativeState(previous: DissociativeState, triggered: boolean): DissociativeState {
+export function computeDissociativeState(
+  previous: DissociativeState,
+  triggered: boolean,
+  neuroticism = 0.5
+): DissociativeState {
   if (triggered) {
-    if (!previous.active && Math.random() >= DISSOCIATION.ONSET_PROBABILITY) {
+    const effectiveProbability = DISSOCIATION.ONSET_PROBABILITY * (DISSOCIATION.NEUROTICISM_ONSET_BASE + neuroticism)
+    if (!previous.active && Math.random() >= effectiveProbability) {
       return previous
     }
 

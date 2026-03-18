@@ -1,9 +1,9 @@
 export const SOMA = {
   HALF_LIVES: {
-    tension: 180,
+    tension: 60,
     warmth: 360,
-    heartRate: 60,
-    breathing: 120,
+    heartRate: 15,
+    breathing: 45,
     gravity: 480,
     openness: 540
   },

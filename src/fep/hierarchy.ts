@@ -12,21 +12,27 @@ import {
  * Higher levels (narrative, social) provide contextual priors that modulate
  * precision at lower levels (affective, interoceptive).
  */
+/**
+ * Apply bidirectional hierarchical precision modulation.
+ * Top-down: higher-level PE increases lower-level precision (contextual priors).
+ * Bottom-up: lower-level PE increases higher-level precision (body signals demand processing).
+ */
 export function applyHierarchicalPrecisionModulation(
   channels: PredictionErrorChannel[],
   precisionWeights: PrecisionWeights
 ): PrecisionWeights {
   const levelErrors = computeLevelAverageErrors(channels)
-  const topDownModulation = computeTopDownModulation(levelErrors)
+  const topDownMod = computeTopDownModulation(levelErrors)
+  const bottomUpMod = computeBottomUpModulation(levelErrors)
 
   const modulated = { ...precisionWeights }
 
   for (const channel of channels) {
     const channelLevel = PE_CHANNEL_HIERARCHY[channel.name]
-    const modFactor = topDownModulation[channelLevel] ?? 0
+    const combinedMod = (topDownMod[channelLevel] ?? 0) + (bottomUpMod[channelLevel] ?? 0)
 
     const key = channel.name as keyof PrecisionWeights
-    modulated[key] = clamp(modulated[key] * (1 + modFactor), FEP.PRECISION_FLOOR, FEP.PRECISION_CEILING)
+    modulated[key] = clamp(modulated[key] * (1 + combinedMod), FEP.PRECISION_FLOOR, FEP.PRECISION_CEILING)
   }
 
   return modulated
@@ -47,6 +53,32 @@ function computeLevelAverageErrors(channels: PredictionErrorChannel[]): Record<P
     affective: counts.affective > 0 ? sums.affective / counts.affective : 0,
     social: counts.social > 0 ? sums.social / counts.social : 0,
     narrative: counts.narrative > 0 ? sums.narrative / counts.narrative : 0
+  }
+}
+
+/**
+ * Compute bottom-up modulation: lower-level PE boosts precision at higher levels.
+ * Body signals (interoceptive) demand emotional processing (affective),
+ * emotional distress demands relational attention (social),
+ * relational issues demand identity work (narrative).
+ */
+function computeBottomUpModulation(levelErrors: Record<PEHierarchyLevel, number>): Record<PEHierarchyLevel, number> {
+  const H = FEP.HIERARCHY
+  const W = H.BOTTOM_UP_WEIGHT
+
+  const interoceptiveError = levelErrors.interoceptive
+  const affectiveError = levelErrors.affective
+  const socialError = levelErrors.social
+
+  return {
+    interoceptive: 0,
+    affective: interoceptiveError * H.INTEROCEPTIVE_TO_AFFECTIVE * W,
+    social: (interoceptiveError * H.INTEROCEPTIVE_TO_AFFECTIVE + affectiveError * H.AFFECTIVE_TO_SOCIAL) * W,
+    narrative:
+      (interoceptiveError * H.INTEROCEPTIVE_TO_AFFECTIVE +
+        affectiveError * H.AFFECTIVE_TO_SOCIAL +
+        socialError * H.SOCIAL_TO_NARRATIVE) *
+      W
   }
 }
 

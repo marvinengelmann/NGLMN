@@ -115,9 +115,14 @@ export async function runFinalSubsystems(
     fragmentationSources: coherenceState.fragmentationSources,
     integrationScore: coherenceState.integrationScore,
     isolationStress,
-    cortisolLevel: prefetch.previousNeuromodulatoryState.cortisol.level
+    cortisolLevel: prefetch.previousNeuromodulatoryState.cortisol.level,
+    neuroticism: prefetch.neuroticism
   })
-  const dissociativeState = computeDissociativeState(prefetch.previousDissociativeState, dissociationTriggered)
+  const dissociativeState = computeDissociativeState(
+    prefetch.previousDissociativeState,
+    dissociationTriggered,
+    prefetch.neuroticism
+  )
   const dissociationEffects = computeDissociationEffects(dissociativeState)
 
   if (dissociativeState.active) {
@@ -151,12 +156,14 @@ export async function runFinalSubsystems(
     : computedRegister
 
   const conversationMessageCount = prefetch.activeConversation?.messages.length ?? 0
+  const consecutiveActiveTicks = prefetch.consecutiveIdleTicks === 0 ? prefetch.consecutiveConversationTicks : 0
   const attentionState = computeAttentionState(
     dampedEmotion,
     soma,
     sense.pendingMessages.length > 0,
     prefetch.consecutiveIdleTicks,
-    conversationMessageCount
+    conversationMessageCount,
+    consecutiveActiveTicks
   )
 
   const flowConditions = assessFlowConditions(dampedEmotion, soma, driveState, prefetch.consecutiveIdleTicks > 0)

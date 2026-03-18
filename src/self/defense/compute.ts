@@ -206,7 +206,22 @@ export function selectActiveStrategies(context: RegulationContext): ActiveStrate
     .sort((a, b) => b.intensity - a.intensity)
     .slice(0, EMOTION_REGULATION.MAX_ACTIVE_STRATEGIES)
 
-  return candidates
+  return applyResourceCompetition(candidates)
+}
+
+/**
+ * Apply cognitive resource competition: multiple strategies share a limited resource pool.
+ * When total demand exceeds capacity, all strategy intensities are proportionally scaled down.
+ * Suppression is most resource-intensive (Richards & Gross, 2000).
+ */
+function applyResourceCompetition(strategies: ActiveStrategy[]): ActiveStrategy[] {
+  const costs = EMOTION_REGULATION.STRATEGY_RESOURCE_COSTS
+  const totalDemand = strategies.reduce((sum, s) => sum + (costs[s.type] ?? 0.3) * s.intensity, 0)
+
+  if (totalDemand <= EMOTION_REGULATION.COGNITIVE_RESOURCE_POOL) return strategies
+
+  const scaleFactor = EMOTION_REGULATION.COGNITIVE_RESOURCE_POOL / totalDemand
+  return strategies.map((s) => ({ ...s, intensity: s.intensity * scaleFactor }))
 }
 
 /**

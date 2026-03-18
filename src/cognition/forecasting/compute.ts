@@ -30,11 +30,20 @@ export function generateForecast(
     return createNeutralForecast(trigger.trigger)
   }
 
+  const emotionProfile = FORECASTING.EMOTION_BIAS_PROFILES[dominant[0]]
+  const effectiveBiasStrengths: Record<ForecastBiasType, number> = emotionProfile
+    ? {
+        impact_bias: biasStrengths.impact_bias * (emotionProfile.impact_bias ?? 1),
+        focalism: biasStrengths.focalism * (emotionProfile.focalism ?? 1),
+        immune_neglect: biasStrengths.immune_neglect * (emotionProfile.immune_neglect ?? 1)
+      }
+    : biasStrengths
+
   const biasesApplied: ForecastBiasType[] = []
   let predictedIntensity = trigger.intensity
 
-  if (biasStrengths.impact_bias > 0) {
-    const amplification = 1 + (FORECASTING.IMPACT_BIAS_MULTIPLIER - 1) * biasStrengths.impact_bias
+  if (effectiveBiasStrengths.impact_bias > 0) {
+    const amplification = 1 + (FORECASTING.IMPACT_BIAS_MULTIPLIER - 1) * effectiveBiasStrengths.impact_bias
     predictedIntensity = clamp01(predictedIntensity * amplification)
     biasesApplied.push("impact_bias")
   }
@@ -43,12 +52,12 @@ export function generateForecast(
     FORECASTING.BASE_DURATION_OFFSET + trigger.intensity * FORECASTING.BASE_DURATION_SCALE
   )
   predictedDuration = Math.round(
-    predictedDuration * (1 + (FORECASTING.DURATION_BIAS_MULTIPLIER - 1) * biasStrengths.impact_bias)
+    predictedDuration * (1 + (FORECASTING.DURATION_BIAS_MULTIPLIER - 1) * effectiveBiasStrengths.impact_bias)
   )
 
   const predictedEmotion: Record<string, number> = {}
-  if (biasStrengths.focalism > 0) {
-    const focusWeight = FORECASTING.FOCALISM_WEIGHT * biasStrengths.focalism
+  if (effectiveBiasStrengths.focalism > 0) {
+    const focusWeight = FORECASTING.FOCALISM_WEIGHT * effectiveBiasStrengths.focalism
     predictedEmotion[dominant[0]] = clamp01((dominant[1] - 0.5) * predictedIntensity * focusWeight)
     biasesApplied.push("focalism")
   } else {
@@ -60,9 +69,9 @@ export function generateForecast(
     }
   }
 
-  if (biasStrengths.immune_neglect > 0) {
+  if (effectiveBiasStrengths.immune_neglect > 0) {
     predictedDuration = Math.round(
-      predictedDuration * (1 + (1 - FORECASTING.IMMUNE_NEGLECT_FACTOR) * biasStrengths.immune_neglect)
+      predictedDuration * (1 + (1 - FORECASTING.IMMUNE_NEGLECT_FACTOR) * effectiveBiasStrengths.immune_neglect)
     )
     biasesApplied.push("immune_neglect")
   }

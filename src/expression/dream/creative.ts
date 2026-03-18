@@ -1,10 +1,14 @@
+import { getEmotionalState } from "@/affect/emotion/state.ts"
+import { getNeuromodulatoryState } from "@/affect/neuromodulation/state.ts"
 import { log } from "@/infra/lib/logger.ts"
 import { logAndCaptureError } from "@/infra/lib/result.ts"
 import { queryRelated, storeEpisode } from "@/memory/episodic.ts"
 import { createGoal } from "@/memory/goals.ts"
+import { processReconsolidation } from "@/memory/reconsolidation.ts"
 import { getKnowledge, storeKnowledge } from "@/memory/semantic.ts"
 import { SemanticCategory, SemanticScope, SemanticSource } from "@/memory/types.ts"
 import { addExistentialQuestion } from "@/self/psyche/questions.ts"
+import { DREAM_PHASES } from "./constants.ts"
 import type { CreativeConnectionsOutput } from "./types.ts"
 
 const DIVERSE_QUERIES = [
@@ -103,6 +107,12 @@ export async function applyCreativeResult(output: CreativeConnectionsOutput): Pr
       logAndCaptureError(r.error)
     })
   const goalsCreated = goalResults.filter((r) => r.isOk()).length
+
+  const emotionalEpisodes = await queryRelated("emotional moments and meaningful experiences", 10)
+  if (emotionalEpisodes.length > 0) {
+    const [remEmotion, remNeuro] = await Promise.all([getEmotionalState(), getNeuromodulatoryState()])
+    await processReconsolidation(emotionalEpisodes, remEmotion, remNeuro, DREAM_PHASES.REM_RECONSOLIDATION_MULTIPLIER)
+  }
 
   const existentialCandidates = (output.existentialQuestions ?? []).slice(0, 2)
   await Promise.all(existentialCandidates.map((question) => addExistentialQuestion(question)))

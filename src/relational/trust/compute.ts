@@ -16,16 +16,16 @@ function computeWeight(event: TrustEvent, now: Date): number {
 function computeWeightedExperience(events: TrustEvent[]): number {
   if (events.length === 0) return 0
   const now = new Date()
-  const { weightedSuccess, totalWeight } = events.reduce(
+  const { weightedOutcome, totalWeight } = events.reduce(
     (acc, event) => {
       const weight = computeWeight(event, now)
       acc.totalWeight += weight
-      if (event.success) acc.weightedSuccess += weight
+      acc.weightedOutcome += event.outcome * weight
       return acc
     },
-    { weightedSuccess: 0, totalWeight: 0 }
+    { weightedOutcome: 0, totalWeight: 0 }
   )
-  return totalWeight > 0 ? weightedSuccess / totalWeight : 0
+  return totalWeight > 0 ? weightedOutcome / totalWeight : 0
 }
 
 /**
@@ -36,7 +36,6 @@ async function getTrustLevel(actionType: ActionTypeT) {
   return {
     actionType,
     totalAttempts: events.length,
-    successfulAttempts: events.filter((e) => e.success).length,
     weightedExperience: computeWeightedExperience(events)
   }
 }
@@ -117,17 +116,10 @@ export async function canActAutonomously(actionType: ActionTypeT): Promise<Trust
 }
 
 /**
- * Record a successful action as a trust event.
+ * Record an action outcome as a trust event with continuous outcome value (0-1).
  */
-export async function recordSuccess(actionType: ActionTypeT): Promise<void> {
-  await pushTrustEvent(actionType, { success: true, timestamp: new Date().toISOString() })
-}
-
-/**
- * Record a failed action as a trust event.
- */
-export async function recordFailure(actionType: ActionTypeT): Promise<void> {
-  await pushTrustEvent(actionType, { success: false, timestamp: new Date().toISOString() })
+export async function recordOutcome(actionType: ActionTypeT, outcome: number): Promise<void> {
+  await pushTrustEvent(actionType, { outcome: Math.max(0, Math.min(1, outcome)), timestamp: new Date().toISOString() })
 }
 
 type TrustAssessment = {

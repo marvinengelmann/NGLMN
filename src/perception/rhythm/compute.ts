@@ -40,12 +40,18 @@ export function determineBRACPhase(position: number): BRACPhase {
   return "transitioning_up"
 }
 
-export function computeRestDepth(position: number, phase: BRACPhase): number {
+export function computeRestDepth(position: number, phase: BRACPhase, hourOfDay?: number): number {
   if (phase !== "rest") return 0
   const restStart = ULTRADIAN.TRANSITION_DOWN_END
   const restEnd = ULTRADIAN.REST_END
   const restProgress = (position - restStart) / (restEnd - restStart)
-  return Math.sin(restProgress * Math.PI)
+  const baseDepth = Math.sin(restProgress * Math.PI)
+
+  if (hourOfDay === undefined) return baseDepth
+
+  const circadianFactor =
+    1 + Math.cos(((hourOfDay - ULTRADIAN.CIRCADIAN_NADIR_HOUR) / 24) * 2 * Math.PI) * ULTRADIAN.CIRCADIAN_REST_AMPLITUDE
+  return Math.min(1, baseDepth * circadianFactor)
 }
 
 export function computeUltradianModulation(phase: BRACPhase, restDepth: number): UltradianModulation {
@@ -109,7 +115,7 @@ export function updateUltradianState(previous: UltradianState, now: Date, cognit
   }
 
   const phase = determineBRACPhase(position)
-  const restDepth = computeRestDepth(position, phase)
+  const restDepth = computeRestDepth(position, phase, now.getHours())
 
   return {
     ...previous,

@@ -1,4 +1,4 @@
-import { differenceInMinutes, parseISO } from "date-fns"
+import { differenceInHours, differenceInMinutes, parseISO } from "date-fns"
 import type { EmotionalState } from "@/affect/emotion/types.ts"
 import { computeValence } from "@/affect/emotion/update.ts"
 import type { NeuromodulatoryState } from "@/affect/neuromodulation/types.ts"
@@ -9,23 +9,34 @@ import { nowISO } from "@/infra/lib/time.ts"
 import { RECONSOLIDATION } from "./constants.ts"
 import type { EpisodeMetadata } from "./types.ts"
 
+/**
+ * Compute how much a memory blends with current emotional state during reconsolidation.
+ * High-relevance memories are MORE malleable (Forcato et al. 2014).
+ * Cortisol follows an inverted-U: moderate stress enhances reconsolidation, extreme stress impairs it.
+ * Young memories (< 6h) are still consolidating and resist reconsolidation.
+ */
 export function computeReconsolidationBlend(
   relevanceScore: number,
   cortisolLevel: number,
-  reconsolidationCount: number
+  reconsolidationCount: number,
+  memoryAgeHours = Infinity
 ): number {
-  const base =
-    relevanceScore >= RECONSOLIDATION.HIGH_RELEVANCE_THRESHOLD
-      ? RECONSOLIDATION.HIGH_RELEVANCE_BLEND_FACTOR
-      : RECONSOLIDATION.BASE_BLEND_FACTOR
+  let base: number
+  if (memoryAgeHours < RECONSOLIDATION.YOUNG_MEMORY_HOURS) {
+    base = RECONSOLIDATION.YOUNG_MEMORY_BLEND_FACTOR
+  } else if (relevanceScore >= RECONSOLIDATION.HIGH_RELEVANCE_THRESHOLD) {
+    base = RECONSOLIDATION.HIGH_RELEVANCE_BLEND_FACTOR
+  } else {
+    base = RECONSOLIDATION.BASE_BLEND_FACTOR
+  }
 
-  const cortisolBoost = Math.max(0, cortisolLevel - 0.2) * RECONSOLIDATION.CORTISOL_AMPLIFICATION
+  const cortisolEffect = 1 + Math.sin(cortisolLevel * Math.PI) * 0.5
   const recountBonus = Math.min(
     RECONSOLIDATION.MAX_RECOUNT_BONUS,
     reconsolidationCount * RECONSOLIDATION.RECOUNT_MALLEABILITY_FACTOR
   )
 
-  return Math.min(RECONSOLIDATION.MAX_BLEND_FACTOR, base + cortisolBoost + recountBonus)
+  return Math.min(RECONSOLIDATION.MAX_BLEND_FACTOR, (base + recountBonus) * cortisolEffect)
 }
 
 export async function reconsolidateEpisode(
@@ -50,8 +61,11 @@ export async function reconsolidateEpisode(
   const oldValence = meta.valence ?? 0
   const relevance = meta.relevanceScore ?? 0.5
   const reconsolidationCount = meta.reconsolidationCount ?? 0
+  const memoryAgeHours = meta.timestamp ? differenceInHours(new Date(), parseISO(meta.timestamp)) : Infinity
 
-  const blend = clamp01(computeReconsolidationBlend(relevance, cortisolLevel, reconsolidationCount) * blendMultiplier)
+  const blend = clamp01(
+    computeReconsolidationBlend(relevance, cortisolLevel, reconsolidationCount, memoryAgeHours) * blendMultiplier
+  )
   const newValence = Math.max(-1, Math.min(1, oldValence * (1 - blend) + currentValence * blend))
 
   const updates: Partial<EpisodeMetadata> = {

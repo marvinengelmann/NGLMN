@@ -139,20 +139,28 @@ describe("extractEmotionLabels", () => {
 })
 
 describe("findCoactivations", () => {
-  it("finds pairs among current stimuli", () => {
+  it("finds pairs among current stimuli as simultaneous", () => {
     const pairs = findCoactivations(["a", "b", "c"], [])
     expect(pairs.length).toBe(3)
+    expect(pairs.every((p) => p.timing === "simultaneous")).toBe(true)
   })
 
   it("finds cross-pairs with recent history", () => {
     const pairs = findCoactivations(["a"], [["b", "c"]])
-    expect(pairs.some(([x, y]) => (x === "a" && y === "b") || (x === "b" && y === "a"))).toBe(true)
+    expect(pairs.some((p) => (p.a === "a" && p.b === "b") || (p.a === "b" && p.b === "a"))).toBe(true)
   })
 
   it("does not duplicate pairs", () => {
     const pairs = findCoactivations(["a", "b"], [["a", "b"]])
-    const keys = pairs.map(([x, y]) => `${x}|${y}`)
+    const keys = pairs.map((p) => `${p.a}|${p.b}`)
     expect(new Set(keys).size).toBe(keys.length)
+  })
+
+  it("marks cross-tick pairs with forward/backward timing", () => {
+    const pairs = findCoactivations(["current"], [["previous"]])
+    const crossPair = pairs.find((p) => p.a !== p.b)
+    expect(crossPair).toBeDefined()
+    expect(crossPair?.timing).not.toBe("simultaneous")
   })
 })
 

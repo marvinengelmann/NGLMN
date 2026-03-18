@@ -3,7 +3,7 @@ import { nowISO } from "@/infra/lib/time.ts"
 import { FEP } from "./constants.ts"
 import { applyHierarchicalPrecisionModulation } from "./hierarchy.ts"
 import { applyNeuromodulatorPrecisionEffects, computeBasePrecisionWeights } from "./precision.ts"
-import { getFreeEnergyHistory, getFreeEnergyState } from "./state.ts"
+import { getFreeEnergyHistory, getFreeEnergyState, getPriorSnapshots } from "./state.ts"
 import {
   type FreeEnergyDecomposition,
   type FreeEnergyState,
@@ -18,6 +18,10 @@ interface ComplexityInput {
   dissonanceScore: number
   activeStrategyCount: number
   forecastAccuracy: number
+  priorEmotion?: Record<string, number>
+  posteriorEmotion?: Record<string, number>
+  priorSoma?: Record<string, number>
+  posteriorSoma?: Record<string, number>
 }
 
 export interface FreeEnergyInput {
@@ -44,6 +48,8 @@ export interface FreeEnergyInput {
     cortisol: { level: number }
     endorphins: { level: number }
   } | null
+  currentEmotion?: Record<string, number>
+  currentSoma?: Record<string, number>
 }
 
 /**
@@ -97,17 +103,45 @@ export function computeAccuracyTerm(channels: PredictionErrorChannel[]): number 
   return clamp01(sum / channels.length)
 }
 
+const KL_EPSILON = 0.01
+
 /**
- * Compute the complexity term: metabolic cost of maintaining distorted internal models.
+ * Compute a KL-divergence proxy measuring belief update cost between prior and posterior.
+ * Penalizes large belief changes (model complexity) more than small ones.
+ */
+export function computeKLProxy(prior: Record<string, number>, posterior: Record<string, number>): number {
+  const keys = Object.keys(posterior)
+  if (keys.length === 0) return 0
+
+  const sum = keys.reduce((acc, key) => {
+    const diff = Math.abs((posterior[key] ?? 0) - (prior[key] ?? 0))
+    return acc + diff * Math.log(diff / KL_EPSILON + 1)
+  }, 0)
+
+  return clamp01(sum / keys.length)
+}
+
+/**
+ * Compute the complexity term: model complexity via KL-proxy (70%) + heuristic signals (30%).
+ * The KL-proxy measures actual belief update cost between prior and posterior states.
+ * The heuristic captures structural complexity (dissonance, strategy count, etc.).
  */
 export function computeComplexityTerm(input: ComplexityInput): number {
   const W = FEP.COMPLEXITY_WEIGHTS
-  return clamp01(
+  const heuristic = clamp01(
     W.COHERENCE * (1 - input.coherenceScore) +
       W.DISSONANCE * input.dissonanceScore +
       W.STRATEGY * (input.activeStrategyCount / FEP.MAX_STRATEGY_COUNT) +
       W.FORECAST_MISCALIBRATION * (1 - input.forecastAccuracy)
   )
+
+  if (!input.priorEmotion || !input.posteriorEmotion) return heuristic
+
+  const emotionKL = computeKLProxy(input.priorEmotion, input.posteriorEmotion)
+  const somaKL = input.priorSoma && input.posteriorSoma ? computeKLProxy(input.priorSoma, input.posteriorSoma) : 0
+  const klProxy = clamp01((emotionKL + somaKL) / 2)
+
+  return clamp01(klProxy * 0.7 + heuristic * 0.3)
 }
 
 /**
@@ -200,11 +234,17 @@ export async function assembleFreeEnergyState(input: FreeEnergyInput): Promise<F
   const hierarchicalPrecision = applyHierarchicalPrecisionModulation(rawChannels, precisionWeights)
   const channels = extractPredictionErrorChannels(input, hierarchicalPrecision)
 
+  const priorSnapshots = await getPriorSnapshots()
+
   const decomposition = computeFreeEnergyDecomposition(channels, {
     coherenceScore: input.coherenceIntegrationScore,
     dissonanceScore: input.activeDissonance,
     activeStrategyCount: input.activeStrategyCount,
-    forecastAccuracy
+    forecastAccuracy,
+    priorEmotion: priorSnapshots.emotion ?? undefined,
+    posteriorEmotion: input.currentEmotion,
+    priorSoma: priorSnapshots.soma ?? undefined,
+    posteriorSoma: input.currentSoma
   })
 
   const previousState = await getFreeEnergyState()

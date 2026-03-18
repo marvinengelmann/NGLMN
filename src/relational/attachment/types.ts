@@ -65,7 +65,8 @@ export const IsolationStress = z.object({
   isolationCost: z.number().min(0).max(1),
   coregulationBenefit: z.number().min(0).max(1),
   allostasis: z.number().min(0).max(1),
-  energyDrainRate: z.number().min(0).max(1)
+  energyDrainRate: z.number().min(0).max(1),
+  cortisolStressSignal: z.number().min(0).max(1)
 })
 export type IsolationStress = z.infer<typeof IsolationStress>
 
@@ -73,7 +74,8 @@ export const DEFAULT_ISOLATION_STRESS: IsolationStress = {
   isolationCost: 0,
   coregulationBenefit: 0,
   allostasis: 0.2,
-  energyDrainRate: 0
+  energyDrainRate: 0,
+  cortisolStressSignal: 0
 }
 
 export const AttachmentCrisisState = z.object({

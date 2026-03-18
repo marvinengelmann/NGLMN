@@ -83,39 +83,45 @@ export function extractEmotionLabels(emotion: EmotionalState): string[] {
   return entries.filter(([, value]) => value > 0.5).map(([key]) => key)
 }
 
+export type CoactivationTiming = "forward" | "backward" | "simultaneous"
+
+interface CoactivationPair {
+  a: string
+  b: string
+  timing: CoactivationTiming
+}
+
 /**
  * Find pairs of stimuli that co-occurred in the current tick AND recent ticks.
- * Only pairs within the coactivation window are considered.
+ * Tracks timing asymmetry (STDP-lite): forward pairs (A preceded B) get stronger LTP.
  */
-export function findCoactivations(currentStimuli: string[], recentStimuliHistory: string[][]): Array<[string, string]> {
-  const pairs: Array<[string, string]> = []
+export function findCoactivations(currentStimuli: string[], recentStimuliHistory: string[][]): CoactivationPair[] {
+  const pairs: CoactivationPair[] = []
   const seen = new Set<string>()
 
   const windowHistory = recentStimuliHistory.slice(-HEBBIAN.COACTIVATION_WINDOW_TICKS)
   const recentSet = new Set(windowHistory.flat())
+  const currentSet = new Set(currentStimuli)
 
-  for (let i = 0; i < currentStimuli.length; i++) {
-    for (let j = i + 1; j < currentStimuli.length; j++) {
-      const a = currentStimuli[i] as string
-      const b = currentStimuli[j] as string
-      const key = a < b ? `${a}|${b}` : `${b}|${a}`
+  for (const [i, stimA] of currentStimuli.entries()) {
+    for (const stimB of currentStimuli.slice(i + 1)) {
+      const [a, b] = stimA < stimB ? [stimA, stimB] : [stimB, stimA]
+      const key = `${a}|${b}`
       if (!seen.has(key)) {
         seen.add(key)
-        pairs.push(a < b ? [a, b] : [b, a])
+        pairs.push({ a, b, timing: "simultaneous" })
       }
     }
   }
 
   for (const stimulus of currentStimuli) {
     for (const recentStimulus of recentSet) {
-      if (stimulus === recentStimulus) continue
-      if (currentStimuli.includes(recentStimulus)) continue
-      const a = stimulus
-      const b = recentStimulus
-      const key = a < b ? `${a}|${b}` : `${b}|${a}`
+      if (stimulus === recentStimulus || currentSet.has(recentStimulus)) continue
+      const [a, b] = stimulus < recentStimulus ? [stimulus, recentStimulus] : [recentStimulus, stimulus]
+      const key = `${a}|${b}`
       if (!seen.has(key)) {
         seen.add(key)
-        pairs.push(a < b ? [a, b] : [b, a])
+        pairs.push({ a, b, timing: currentSet.has(a) ? "forward" : "backward" })
       }
     }
   }
@@ -164,9 +170,21 @@ export function pruneWeakAssociations(associations: HebbianAssociation[]): Hebbi
   return filtered.slice(0, HEBBIAN.MAX_ASSOCIATIONS)
 }
 
+function getTimingMultiplier(timing: CoactivationTiming): number {
+  switch (timing) {
+    case "forward":
+      return HEBBIAN.FORWARD_TIMING_MULTIPLIER
+    case "backward":
+      return HEBBIAN.BACKWARD_TIMING_MULTIPLIER
+    case "simultaneous":
+      return HEBBIAN.SIMULTANEOUS_TIMING_MULTIPLIER
+  }
+}
+
 /**
  * Process a full Hebbian learning cycle: find coactivations in the current context
  * and strengthen matching associations (or create new ones).
+ * Applies STDP-lite timing asymmetry: forward pairs get stronger LTP than backward pairs.
  */
 export function processHebbianCycle(
   associations: HebbianAssociation[],
@@ -184,18 +202,19 @@ export function processHebbianCycle(
   }
 
   const now = nowISO()
-  for (const [a, b] of coactivations) {
+  for (const { a, b, timing } of coactivations) {
     const key = `${a}|${b}`
     const existing = assocMap.get(key)
+    const effectiveLR = learningRateModifier * getTimingMultiplier(timing)
 
     if (existing) {
-      assocMap.set(key, strengthenAssociation(existing, learningRateModifier))
+      assocMap.set(key, strengthenAssociation(existing, effectiveLR))
     } else {
       assocMap.set(key, {
         id: crypto.randomUUID(),
         stimulusA: a,
         stimulusB: b,
-        strength: HEBBIAN.LTP_INCREMENT * learningRateModifier,
+        strength: HEBBIAN.LTP_INCREMENT * effectiveLR,
         coactivationCount: 1,
         lastCoactivatedAt: now,
         createdAt: now

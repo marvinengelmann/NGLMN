@@ -26,7 +26,7 @@ import { extractErrorMessage, logAndCaptureError } from "@/infra/lib/result.ts"
 import { nowFilename } from "@/infra/lib/time.ts"
 import { storeEpisode } from "@/memory/episodic.ts"
 import { CODE_EVOLUTION_SYSTEM_PROMPT, FILE_SELECTION_SYSTEM_PROMPT } from "@/prompts/evolution.ts"
-import { canActAutonomously, recordFailure, recordSuccess } from "@/relational/trust/compute.ts"
+import { canActAutonomously, recordOutcome } from "@/relational/trust/compute.ts"
 import { writeChangelogEntry } from "./changelog.ts"
 
 const SOURCE_CONTEXT_TOKEN_BUDGET = 50_000
@@ -337,7 +337,7 @@ export async function executeCodeEvolution(proposal: CodeProposal): Promise<{
       fileCount: proposal.files.length,
       commitSubject: proposal.commitSubject
     })
-    await recordFailure("code_modification")
+    await recordOutcome("code_modification", 0)
     return { success: false, error: `Guardian blocked: ${guardianResult.reasons.join(", ")}` }
   }
 
@@ -381,7 +381,7 @@ export async function executeCodeEvolution(proposal: CodeProposal): Promise<{
     if (sandboxResult.passed) {
       await mergeBranch(branchName)
       log.info("Evolution merged", { branchName, commitSubject: proposal.commitSubject })
-      await recordSuccess("code_modification")
+      await recordOutcome("code_modification", 1)
       ;(await writeChangelogEntry("code", `${commitPrefix}: ${proposal.commitSubject}`, "success")).mapErr(
         logAndCaptureError
       )
@@ -401,7 +401,7 @@ export async function executeCodeEvolution(proposal: CodeProposal): Promise<{
         stderr: sandboxResult.stderr.slice(0, 500)
       })
       await deleteBranch(branchName)
-      await recordFailure("code_modification")
+      await recordOutcome("code_modification", 0)
 
       const errorType = !sandboxResult.tscCheckPassed
         ? "tsc"
@@ -442,7 +442,7 @@ export async function executeCodeEvolution(proposal: CodeProposal): Promise<{
       log.warn("Failed to clean up evolution branch", { branchName, error: String(e) })
     }
 
-    await recordFailure("code_modification")
+    await recordOutcome("code_modification", 0)
     const errorMsg = extractErrorMessage(error)
     return { success: false, error: errorMsg }
   }

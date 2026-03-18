@@ -756,8 +756,8 @@ export const forecastLog = pgTable(
 export type ForecastLogInsert = typeof forecastLog.$inferInsert
 export type ForecastLogSelect = typeof forecastLog.$inferSelect
 
-export const transferenceLog = pgTable(
-  "transference_log",
+export const patternActivationLog = pgTable(
+  "pattern_activation_log",
   {
     id: uuid("id").primaryKey().defaultRandom(),
     templateId: text("template_id").notNull(),
@@ -766,10 +766,10 @@ export const transferenceLog = pgTable(
     awarenessLevel: real("awareness_level").notNull(),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow()
   },
-  (table) => [index("idx_transference_log_created").on(table.createdAt)]
+  (table) => [index("idx_pattern_activation_log_created").on(table.createdAt)]
 )
-export type TransferenceLogInsert = typeof transferenceLog.$inferInsert
-export type TransferenceLogSelect = typeof transferenceLog.$inferSelect
+export type PatternActivationLogInsert = typeof patternActivationLog.$inferInsert
+export type PatternActivationLogSelect = typeof patternActivationLog.$inferSelect
 
 export const dissociationLog = pgTable(
   "dissociation_log",

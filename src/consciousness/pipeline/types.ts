@@ -50,7 +50,6 @@ export interface PreloadedState {
   trustLevels: Array<{
     actionType: ActionType
     totalAttempts: number
-    successfulAttempts: number
     weightedExperience: number
   }>
   evolutionHistory: EvolutionLogSelect[]

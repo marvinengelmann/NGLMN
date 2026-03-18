@@ -111,13 +111,13 @@ import {
 import { detectConflict, hasStyleChanged, updateAttachmentStyle } from "@/relational/attachment/update.ts"
 import { maybeUpdateProfile } from "@/relational/mind/profiling.ts"
 import {
-  decayActiveTransference,
+  decayActivePattern,
   maybeFormTemplate,
-  updateTemplateStrength,
-  updateTransferenceAwareness
-} from "@/relational/transference/compute.ts"
-import { TRANSFERENCE } from "@/relational/transference/constants.ts"
-import { getTransferenceState, saveTransferenceState } from "@/relational/transference/state.ts"
+  updatePatternAwareness,
+  updateTemplateStrength
+} from "@/relational/patterns/compute.ts"
+import { RELATIONAL_PATTERN } from "@/relational/patterns/constants.ts"
+import { getRelationalPatternState, saveRelationalPatternState } from "@/relational/patterns/state.ts"
 import { formBoundary, maybeFormNegativeBoundary } from "@/self/boundaries/compute.ts"
 import { detectBoundaryFormation } from "@/self/boundaries/detect.ts"
 import { getBoundaryState } from "@/self/boundaries/state.ts"
@@ -734,36 +734,33 @@ async function runProbabilisticTasks(input: MaintainInput, feelResult: FeelingRe
       }
     },
     {
-      name: "transference_template_formation",
-      probability: TRANSFERENCE.TEMPLATE_FORMATION_PROBABILITY,
+      name: "pattern_template_formation",
+      probability: RELATIONAL_PATTERN.TEMPLATE_FORMATION_PROBABILITY,
       execute: async () => {
-        const state = await getTransferenceState()
+        const state = await getRelationalPatternState()
         const patterns = feelResult.relationalPatterns?.patterns ?? []
         const newTemplate = maybeFormTemplate(patterns, state.templates)
         if (newTemplate) {
-          await saveTransferenceState({
+          await saveRelationalPatternState({
             ...state,
-            templates: [...state.templates, newTemplate].slice(-TRANSFERENCE.MAX_TEMPLATES)
+            templates: [...state.templates, newTemplate].slice(-RELATIONAL_PATTERN.MAX_TEMPLATES)
           })
         }
       }
     },
     {
-      name: "transference_state_update",
+      name: "pattern_state_update",
       probability: 1,
       execute: async () => {
-        const state = await getTransferenceState()
-        const decayed = decayActiveTransference(state)
-        const updatedTemplates = updateTemplateStrength(
-          decayed.templates,
-          decayed.activeTransference?.templateId ?? null
-        )
-        const awareness = updateTransferenceAwareness(
+        const state = await getRelationalPatternState()
+        const decayed = decayActivePattern(state)
+        const updatedTemplates = updateTemplateStrength(decayed.templates, decayed.activePattern?.templateId ?? null)
+        const awareness = updatePatternAwareness(
           decayed.awarenessLevel,
-          !!decayed.activeTransference,
+          !!decayed.activePattern,
           feelResult.metacognitiveState?.cognitiveClarity ?? DEFAULT_METACOGNITIVE_STATE.cognitiveClarity
         )
-        await saveTransferenceState({ ...decayed, templates: updatedTemplates, awarenessLevel: awareness })
+        await saveRelationalPatternState({ ...decayed, templates: updatedTemplates, awarenessLevel: awareness })
       }
     },
     {

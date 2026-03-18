@@ -30,7 +30,7 @@ import { SubjectiveTimeState } from "@/perception/time/types.ts"
 import { PerceptionSummary } from "@/perception/types.ts"
 import { AttachmentDynamics, IsolationStress, VulnerabilityState } from "@/relational/attachment/types.ts"
 import { OperatorModel, type RelationalPatternLibrary } from "@/relational/mind/types.ts"
-import { TransferenceEvent } from "@/relational/transference/types.ts"
+import { PatternActivationEvent } from "@/relational/patterns/types.ts"
 import { BoundaryState } from "@/self/boundaries/types.ts"
 import { DissociativeState } from "@/self/coherence/dissociation/types.ts"
 import { CoherenceState } from "@/self/coherence/types.ts"
@@ -111,7 +111,7 @@ export const FeelingResult = z.object({
   dissociativeState: DissociativeState.optional(),
   granularityLevel: z.string().default("coarse"),
   relationalPatterns: z.custom<RelationalPatternLibrary>().nullable().default(null),
-  transferenceEvent: TransferenceEvent.nullable().default(null),
+  patternActivationEvent: PatternActivationEvent.nullable().default(null),
   neuromodulatoryState: NeuromodulatoryState.nullable().default(null),
   freeEnergyState: FreeEnergyState.nullable().default(null)
 })

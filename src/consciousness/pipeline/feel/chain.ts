@@ -253,7 +253,9 @@ export async function runEmotionChain(sense: SenseResult, prefetch: FeelPrefetch
     emotion,
     soma,
     Math.max(1, sense.elapsedMinutes),
-    previousFEState.allostaticLoad
+    previousFEState.allostaticLoad,
+    getHours(new Date()),
+    prefetch.previousIsolationStress.cortisolStressSignal
   )
 
   if (episodicHits.length > 0) {

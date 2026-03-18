@@ -30,10 +30,10 @@ export function computeDistortionProbability(context: {
   relevanceScore: number
   emotionalIntensity: number
 }): number {
-  const ageContribution = Math.min(
-    DISTORTION.MAX_AGE_CONTRIBUTION,
-    (context.memoryAgeDays / DISTORTION.AGE_SCALE_DAYS) * DISTORTION.MAX_AGE_CONTRIBUTION
-  )
+  const ageContribution =
+    DISTORTION.MAX_AGE_CONTRIBUTION *
+    (Math.log(1 + context.memoryAgeDays / DISTORTION.AGE_SCALE_DAYS) /
+      Math.log(1 + DISTORTION.MAX_REFERENCE_DAYS / DISTORTION.AGE_SCALE_DAYS))
   const relevanceContribution = (1 - context.relevanceScore) * DISTORTION.RELEVANCE_WEIGHT
   const emotionContribution = context.emotionalIntensity * DISTORTION.EMOTION_WEIGHT
 

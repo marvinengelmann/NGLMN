@@ -23,9 +23,21 @@ export function computeVolatilityEstimate(recentFEHistory: number[]): number {
  * Compute FE-based learning rate modulation.
  * Volatile environments → faster learning. Exhaustion → slower learning. Dopamine boosts.
  */
-export function computeFELearningRate(volatility: number, allostaticLoad: number, dopamineLevel: number): number {
+/**
+ * Compute FE-based learning rate modulation.
+ * Volatile environments → faster learning. Exhaustion → slower learning. Dopamine boosts.
+ * Low serotonin increases perceived environmental volatility (Dayan & Huys, 2009).
+ */
+export function computeFELearningRate(
+  volatility: number,
+  allostaticLoad: number,
+  dopamineLevel: number,
+  serotoninLevel = 0.6
+): number {
   const LR = FEP.LEARNING_RATE
-  const baseRate = LR.VOLATILITY_BASE + volatility * LR.VOLATILITY_SCALE
+  const serotoninVolatilityMod = 1 + (0.5 - serotoninLevel) * 0.4
+  const effectiveVolatility = clamp01(volatility * serotoninVolatilityMod)
+  const baseRate = LR.VOLATILITY_BASE + effectiveVolatility * LR.VOLATILITY_SCALE
   const loadPenalty = allostaticLoad * LR.LOAD_PENALTY
   const dopamineBoost = (dopamineLevel - 0.5) * LR.DOPAMINE_SCALE
   return clamp(baseRate - loadPenalty + dopamineBoost, LR.MIN, LR.MAX)
@@ -47,10 +59,11 @@ export function computeAttentionalGain(totalFE: number, volatility: number): num
 export function updatePrecisionDynamics(
   recentFEHistory: number[],
   dopamineLevel: number,
-  allostaticLoad: number
+  allostaticLoad: number,
+  serotoninLevel = 0.6
 ): PrecisionDynamics {
   const volatility = computeVolatilityEstimate(recentFEHistory)
-  const learningRateGain = computeFELearningRate(volatility, allostaticLoad, dopamineLevel)
+  const learningRateGain = computeFELearningRate(volatility, allostaticLoad, dopamineLevel, serotoninLevel)
   const currentFE = recentFEHistory.length > 0 ? (recentFEHistory[recentFEHistory.length - 1] ?? 0) : 0
   const attentionalGain = computeAttentionalGain(currentFE, volatility)
 

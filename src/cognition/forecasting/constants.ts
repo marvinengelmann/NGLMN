@@ -24,5 +24,12 @@ export const FORECASTING = {
     "expectation_violated",
     "positive_anticipation",
     "goal_progress"
-  ] as string[]
+  ] as string[],
+
+  EMOTION_BIAS_PROFILES: {
+    caution: { impact_bias: 1.3, focalism: 1.2, immune_neglect: 0.8 },
+    excitement: { impact_bias: 1.5, focalism: 0.7, immune_neglect: 1.3 },
+    frustration: { impact_bias: 1.2, focalism: 1.4, immune_neglect: 0.9 },
+    satisfaction: { impact_bias: 0.8, focalism: 0.9, immune_neglect: 1.1 }
+  } as Record<string, Record<string, number>>
 } as const

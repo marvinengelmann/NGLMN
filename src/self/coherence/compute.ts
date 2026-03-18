@@ -59,7 +59,15 @@ export function detectFragmentation(context: CoherenceContext): FragmentationSou
  */
 export function computeCoherence(context: CoherenceContext, previous: CoherenceState): number {
   const sources = detectFragmentation(context)
-  const target = clamp01(1 - sources.length * COHERENCE.FRAGMENTATION_WEIGHT)
+
+  const compoundingBonus = COHERENCE.COMPOUNDING_PAIRS.reduce((bonus, [a, b]) => {
+    if (sources.includes(a as FragmentationSource) && sources.includes(b as FragmentationSource)) {
+      return bonus + COHERENCE.COMPOUNDING_BONUS_WEIGHT
+    }
+    return bonus
+  }, 0)
+
+  const target = clamp01(1 - sources.length * COHERENCE.FRAGMENTATION_WEIGHT - compoundingBonus)
   return clamp01(previous.integrationScore + (target - previous.integrationScore) * COHERENCE.CONVERGENCE_RATE)
 }
 

@@ -55,22 +55,21 @@ export function applyNeuromodulatorPrecisionEffects(
   const rewardGain = clamp(P.DOPAMINE_BASE + da * P.DOPAMINE_SCALE, 0.8, 1.2)
   const threatGain = clamp(P.CORTISOL_THREAT_BASE + cortisol * P.CORTISOL_THREAT_SCALE, 0.9, 1.2)
   const socialDampen = clamp(P.CORTISOL_SOCIAL_BASE - cortisol * P.CORTISOL_SOCIAL_SCALE, 0.7, 1.1)
-  const serotoninFloor = serotonin < P.SEROTONIN_VOLATILITY_THRESHOLD ? 0.7 + serotonin : 1.0
+  const serotoninMod = clamp(P.SEROTONIN_CONTINUOUS_BASE + serotonin * P.SEROTONIN_CONTINUOUS_SCALE, 0.7, 1.2)
   const oxytocinBoost = clamp(P.OXYTOCIN_BASE + oxy * P.OXYTOCIN_SCALE, 0.9, 1.2)
-  const endorphinDampen = clamp(P.ENDORPHIN_BASE - endo * P.ENDORPHIN_SCALE, 0.7, 1.1)
   const gabaDampen = clamp(1.1 - gaba * 0.3, 0.7, 1.1)
 
-  const globalScale = globalArousal * serotoninFloor * endorphinDampen * gabaDampen
+  const globalScale = globalArousal * gabaDampen
 
   const result: PrecisionWeights = {
-    interoceptive: base.interoceptive * globalScale * threatGain,
-    anticipatory: base.anticipatory * globalScale * rewardGain,
+    interoceptive: base.interoceptive * globalScale * threatGain * (1 + endo * P.ENDORPHIN_INTEROCEPTIVE),
+    anticipatory: base.anticipatory * globalScale * rewardGain * serotoninMod * (1 + endo * P.ENDORPHIN_ANTICIPATORY),
     novelty: base.novelty * globalScale,
-    relational: base.relational * globalScale * socialDampen * oxytocinBoost,
+    relational: base.relational * globalScale * socialDampen * oxytocinBoost * (1 + endo * P.ENDORPHIN_RELATIONAL),
     coherence: base.coherence * globalScale * threatGain,
     dissonance: base.dissonance * globalScale,
-    drive: base.drive * globalScale * rewardGain,
-    forecast: base.forecast * globalScale,
+    drive: base.drive * globalScale * rewardGain * (1 + endo * P.ENDORPHIN_DRIVE),
+    forecast: base.forecast * globalScale * serotoninMod,
     metacognitive: base.metacognitive * globalScale
   }
 

@@ -102,7 +102,7 @@ describe("applyNeuromodulatorPrecisionEffects", () => {
     expect(high.anticipatory).toBeGreaterThan(low.anticipatory)
   })
 
-  it("low serotonin makes precisions more volatile (lower)", () => {
+  it("low serotonin reduces anticipatory and forecast precision (volatility channels)", () => {
     const lowSerotonin: NeuromodulatoryState = {
       ...DEFAULT_NEUROMODULATORY_STATE,
       serotonin: { level: 0.1, productionRate: 0.5, reuptakeRate: 0.5 }
@@ -116,7 +116,8 @@ describe("applyNeuromodulatorPrecisionEffects", () => {
     const low = applyNeuromodulatorPrecisionEffects(base, lowSerotonin)
     const normal = applyNeuromodulatorPrecisionEffects(base, normalSerotonin)
 
-    expect(low.metacognitive).toBeLessThan(normal.metacognitive)
+    expect(low.anticipatory).toBeLessThan(normal.anticipatory)
+    expect(low.forecast).toBeLessThan(normal.forecast)
   })
 
   it("high oxytocin boosts relational precision", () => {
@@ -146,6 +147,7 @@ describe("applyNeuromodulatorPrecisionEffects", () => {
       endorphins: { level: 1, productionRate: 1, reuptakeRate: 0 },
       gaba: { level: 0.5, productionRate: 0.5, reuptakeRate: 0.5 },
       dopamineDetail: { tonicLevel: 0.45, phasicLevel: 0.05 },
+      crhBuffer: 0,
       lastUpdatedAt: new Date().toISOString()
     }
     const result = applyNeuromodulatorPrecisionEffects(DEFAULT_PRECISION_WEIGHTS, extremeNeuro)

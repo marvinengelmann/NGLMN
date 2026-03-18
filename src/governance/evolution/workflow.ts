@@ -10,7 +10,7 @@ import { log } from "@/infra/lib/logger.ts"
 import type { AnimaResultAsync } from "@/infra/lib/result.ts"
 import { logAndCaptureError, trySafe } from "@/infra/lib/result.ts"
 import { WORKFLOW_PROPOSAL_SYSTEM_PROMPT } from "@/prompts/workflow.ts"
-import { canActAutonomously, recordSuccess } from "@/relational/trust/compute.ts"
+import { canActAutonomously, recordOutcome } from "@/relational/trust/compute.ts"
 import { writeChangelogEntry } from "./changelog.ts"
 
 interface WorkflowProposal extends WorkflowProposalOutput {
@@ -99,7 +99,7 @@ export function applyWorkflow(proposal: WorkflowProposal): AnimaResultAsync<stri
     )
     if (changelogResult.isErr()) logAndCaptureError(changelogResult.error)
 
-    await recordSuccess("workflow_creation")
+    await recordOutcome("workflow_creation", 1)
 
     return first.id
   })

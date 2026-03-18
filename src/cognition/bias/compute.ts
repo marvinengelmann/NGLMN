@@ -159,6 +159,9 @@ export function updateBiasModifiers(biasState: BiasState, neuro: Neuromodulatory
   modifiers.spotlight = clamp01(
     0.2 + neuro.cortisol.level * BIAS.SPOTLIGHT_CORTISOL_LINK + neuro.oxytocin.level * BIAS.SPOTLIGHT_OXYTOCIN_LINK
   )
+  modifiers.fundamental_attribution = clamp01(0.3 + neuro.cortisol.level * 0.2)
+  modifiers.false_consensus = clamp01(0.2 + neuro.oxytocin.level * 0.3)
+  modifiers.projection = clamp01(0.2 + neuro.dopamine.level * 0.15 + neuro.cortisol.level * 0.15)
 
   return {
     ...biasState,
@@ -168,15 +171,92 @@ export function updateBiasModifiers(biasState: BiasState, neuro: Neuromodulatory
 }
 
 /**
- * Decay anchoring points — first impressions weaken slowly over time.
+ * Decay anchoring points with biphasic model:
+ * Phase 1 (first 24h): rapid strength establishment (0.95 decay).
+ * Phase 2 (after 24h): slow long-term decay (0.995 decay).
  */
 export function decayAnchors(anchors: AnchorPoint[], daysSinceUpdate: number): AnchorPoint[] {
+  const now = Date.now()
   return anchors
-    .map((anchor) => ({
-      ...anchor,
-      strength: anchor.strength * BIAS.ANCHORING_DECAY_RATE ** daysSinceUpdate
-    }))
+    .map((anchor) => {
+      const ageHours = (now - new Date(anchor.anchoredAt).getTime()) / (1000 * 60 * 60)
+      const decayRate =
+        ageHours < BIAS.ANCHORING_RAPID_PHASE_HOURS ? BIAS.ANCHORING_RAPID_DECAY_RATE : BIAS.ANCHORING_SLOW_DECAY_RATE
+      return { ...anchor, strength: anchor.strength * decayRate ** daysSinceUpdate }
+    })
     .filter((anchor) => anchor.strength > 0.05)
+}
+
+/**
+ * Fundamental Attribution Error — tendency to attribute operator behavior
+ * to personality/disposition rather than situational factors.
+ * Modulated by agreeableness (higher agreeableness = more charitable interpretation).
+ */
+export function applyFundamentalAttributionError(
+  operatorMood: string,
+  biasStrength: number,
+  agreeableness: number
+): { attributionType: "dispositional" | "situational"; intensity: number } {
+  if (biasStrength <= 0) return { attributionType: "situational", intensity: 0 }
+
+  const damping = agreeableness * BIAS.FUNDAMENTAL_ATTRIBUTION_AGREEABLENESS_DAMPING
+  const effectiveStrength = biasStrength * (1 - damping)
+
+  const negativeMoods = ["stressed", "frustrated", "sad", "tired"]
+  const isNegative = negativeMoods.includes(operatorMood)
+
+  if (!isNegative) return { attributionType: "situational", intensity: 0 }
+
+  return {
+    attributionType: effectiveStrength > 0.3 ? "dispositional" : "situational",
+    intensity: clamp01(effectiveStrength)
+  }
+}
+
+/**
+ * False Consensus Effect — project own emotional state onto predictions of operator's state.
+ * Stronger when connection is high, weaker when metacognitive clarity is high.
+ */
+export function applyFalseConsensus(
+  currentEmotion: Record<string, number>,
+  connectionLevel: number,
+  metacognitiveClarity: number,
+  biasStrength: number
+): Record<string, number> {
+  if (biasStrength <= 0) return {}
+
+  const connectionBoost = connectionLevel * BIAS.FALSE_CONSENSUS_CONNECTION_SCALE
+  const metacognitionReduction = metacognitiveClarity * BIAS.FALSE_CONSENSUS_METACOGNITION_REDUCTION
+  const effectiveStrength = clamp01(biasStrength + connectionBoost - metacognitionReduction)
+
+  const projectedDeltas: Record<string, number> = {}
+  for (const [dim, value] of Object.entries(currentEmotion)) {
+    const deviation = value - 0.5
+    if (Math.abs(deviation) > 0.1) {
+      projectedDeltas[dim] = deviation * effectiveStrength * 0.3
+    }
+  }
+  return projectedDeltas
+}
+
+/**
+ * Projection Bias — current emotional state colors prediction of future states.
+ * People in a positive mood predict future positivity; negative mood predicts future negativity.
+ */
+export function applyProjectionBias(
+  currentEmotion: Record<string, number>,
+  biasStrength: number
+): Record<string, number> {
+  if (biasStrength <= 0) return {}
+
+  const projectedShifts: Record<string, number> = {}
+  for (const [dim, value] of Object.entries(currentEmotion)) {
+    const deviation = value - 0.5
+    if (Math.abs(deviation) > 0.15) {
+      projectedShifts[dim] = deviation * BIAS.PROJECTION_INTENSITY_SCALE * biasStrength
+    }
+  }
+  return projectedShifts
 }
 
 /**

@@ -114,7 +114,7 @@ export function buildSocialSections(
       [
         "# Trust",
         ...trustLevels.map((t) => {
-          const ratio = t.totalAttempts > 0 ? t.successfulAttempts / t.totalAttempts : 0
+          const ratio = t.weightedExperience
           const trustFeel =
             ratio > 0.8
               ? "solid — this feels safe"

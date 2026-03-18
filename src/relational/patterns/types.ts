@@ -12,26 +12,26 @@ export const RelationalTemplate = z.object({
 })
 export type RelationalTemplate = z.infer<typeof RelationalTemplate>
 
-export const TransferenceEvent = z.object({
+export const PatternActivationEvent = z.object({
   templateId: z.string(),
   triggerContext: z.string(),
   matchConfidence: z.number().min(0).max(1),
   emotionModulation: z.record(z.string(), z.number()),
   occurredAt: z.string()
 })
-export type TransferenceEvent = z.infer<typeof TransferenceEvent>
+export type PatternActivationEvent = z.infer<typeof PatternActivationEvent>
 
-export const TransferenceState = z.object({
+export const RelationalPatternState = z.object({
   templates: z.array(RelationalTemplate),
-  activeTransference: TransferenceEvent.nullable(),
+  activePattern: PatternActivationEvent.nullable(),
   totalActivations: z.number().int().min(0),
   awarenessLevel: z.number().min(0).max(1)
 })
-export type TransferenceState = z.infer<typeof TransferenceState>
+export type RelationalPatternState = z.infer<typeof RelationalPatternState>
 
-export const DEFAULT_TRANSFERENCE_STATE: TransferenceState = {
+export const DEFAULT_RELATIONAL_PATTERN_STATE: RelationalPatternState = {
   templates: [],
-  activeTransference: null,
+  activePattern: null,
   totalActivations: 0,
   awarenessLevel: 0
 }

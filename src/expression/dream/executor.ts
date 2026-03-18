@@ -12,7 +12,9 @@ import { nowISO } from "@/infra/lib/time.ts"
 import { forgetOldEpisodes } from "@/memory/episodic.ts"
 
 /**
- * Execute dream results: apply consolidation + creative, persist insights and state.
+ * Execute dream results in two neuroscience-grounded phases:
+ * 1. NREM phase: declarative memory consolidation (semantic entries, episode downgrading)
+ * 2. REM phase: emotional processing and creative recombination (loose associations, insights)
  */
 export async function executeDream(dreamResult: DreamThinkResult): Promise<void> {
   await setDreamState("dreaming")
@@ -21,6 +23,7 @@ export async function executeDream(dreamResult: DreamThinkResult): Promise<void>
     if (dreamResult.consolidation) {
       await applyConsolidationResult(dreamResult.consolidation)
     }
+
     if (dreamResult.creative) {
       await applyCreativeResult(dreamResult.creative)
     }

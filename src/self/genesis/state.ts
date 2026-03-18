@@ -66,6 +66,22 @@ export async function getGenesisPersonalityType(): Promise<PersonalityType> {
 }
 
 /**
+ * Get the genesis Big Five traits, falling back to balanced defaults.
+ */
+export async function getGenesisBigFive(): Promise<BigFive> {
+  const record = await getGenesisRecord()
+  return (
+    record?.dna.bigFive ?? {
+      openness: 0.5,
+      conscientiousness: 0.5,
+      extraversion: 0.5,
+      agreeableness: 0.5,
+      neuroticism: 0.5
+    }
+  )
+}
+
+/**
  * Get the full genesis DNA, or null if no genesis has occurred.
  */
 export async function getGenesisDNA(): Promise<GenesisDNA | null> {

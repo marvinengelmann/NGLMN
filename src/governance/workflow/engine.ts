@@ -14,7 +14,7 @@ import { createGoal } from "@/memory/goals.ts"
 import { getOperatorLanguage } from "@/memory/semantic.ts"
 import type { PerceptionSummary } from "@/perception/types.ts"
 import { PERCEPTION_TRIGGER_EVAL_PROMPT, WORKFLOW_EXECUTION_SYSTEM_PROMPT } from "@/prompts/workflow.ts"
-import { recordFailure, recordSuccess } from "@/relational/trust/compute.ts"
+import { recordOutcome } from "@/relational/trust/compute.ts"
 import { WORKFLOW } from "./constants.ts"
 import {
   type WorkflowDefinition,
@@ -273,18 +273,18 @@ export async function executeWorkflow(
     })
 
     if (callResult.isErr()) {
-      await recordFailure("workflow_creation")
+      await recordOutcome("workflow_creation", 0)
       return workflowFailure(workflow, callResult.error.message)
     }
 
     const output = JSON.stringify(callResult.value)
     const postResult = await trySafe("WORKFLOW_ERROR", () => finalizeWorkflow(workflow, output))
     if (postResult.isErr()) {
-      await recordFailure("workflow_creation")
+      await recordOutcome("workflow_creation", 0)
       return workflowFailure(workflow, postResult.error.message)
     }
 
-    await recordSuccess("workflow_creation")
+    await recordOutcome("workflow_creation", 1)
     return { workflowId: workflow.id, workflowName: workflow.name, success: true, output }
   }
 
@@ -296,7 +296,7 @@ export async function executeWorkflow(
   })
 
   if (callResult.isErr()) {
-    await recordFailure("workflow_creation")
+    await recordOutcome("workflow_creation", 0)
     return workflowFailure(workflow, callResult.error.message)
   }
 
@@ -305,11 +305,11 @@ export async function executeWorkflow(
   const postResult = await trySafe("WORKFLOW_ERROR", () => finalizeWorkflow(workflow, output))
 
   if (postResult.isErr()) {
-    await recordFailure("workflow_creation")
+    await recordOutcome("workflow_creation", 0)
     return workflowFailure(workflow, postResult.error.message)
   }
 
-  await recordSuccess("workflow_creation")
+  await recordOutcome("workflow_creation", 1)
   return {
     workflowId: workflow.id,
     workflowName: workflow.name,

@@ -14,7 +14,7 @@ export const AutonomyLevel = z.enum(["locked", "approval_required", "supervised"
 export type AutonomyLevel = z.infer<typeof AutonomyLevel>
 
 export const TrustEvent = z.object({
-  success: z.boolean(),
+  outcome: z.number().min(0).max(1),
   timestamp: z.string()
 })
 export type TrustEvent = z.infer<typeof TrustEvent>

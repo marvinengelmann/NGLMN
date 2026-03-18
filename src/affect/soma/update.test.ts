@@ -127,7 +127,7 @@ describe("applySomaticHysteresis", () => {
     expect(result.tension).toBeLessThan(target.tension)
   })
 
-  it("has slower half-lives than emotion system", () => {
+  it("slow-moving dimensions (gravity, openness) lag behind fast ones (heartRate)", () => {
     const current: SomaticState = {
       tension: 0,
       warmth: 0,
@@ -147,7 +147,8 @@ describe("applySomaticHysteresis", () => {
       socialBattery: 0.8
     }
     const after30min = applySomaticHysteresis(current, target, 30)
-    expect(after30min.heartRate).toBeLessThan(0.5)
+    expect(after30min.heartRate).toBeGreaterThan(after30min.gravity)
+    expect(after30min.heartRate).toBeGreaterThan(after30min.openness)
   })
 
   it("returns values identical to target for very long elapsed times", () => {

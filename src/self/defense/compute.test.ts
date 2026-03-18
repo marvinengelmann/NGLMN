@@ -30,6 +30,7 @@ const baseNeuro = {
   endorphins: { level: 0.5, productionRate: 0.5, reuptakeRate: 0.5 },
   gaba: { level: 0.5, productionRate: 0.5, reuptakeRate: 0.5 },
   dopamineDetail: { tonicLevel: 0.45, phasicLevel: 0.05 },
+  crhBuffer: 0,
   lastUpdatedAt: new Date().toISOString()
 }
 
@@ -75,7 +76,13 @@ const baseContext: RegulationContext = {
     lastReviewedAt: undefined
   },
   neuro: baseNeuro,
-  isolationStress: { isolationCost: 0.1, coregulationBenefit: 0, allostasis: 0.2, energyDrainRate: 0 },
+  isolationStress: {
+    isolationCost: 0.1,
+    coregulationBenefit: 0,
+    allostasis: 0.2,
+    energyDrainRate: 0,
+    cortisolStressSignal: 0
+  },
   biasState: {
     activeModifiers: {
       confirmation: 0.3,
@@ -86,7 +93,10 @@ const baseContext: RegulationContext = {
       mere_exposure: 0.3,
       optimism: 0.4,
       calibration_bias: 0.5,
-      spotlight: 0.3
+      spotlight: 0.3,
+      fundamental_attribution: 0.4,
+      false_consensus: 0.3,
+      projection: 0.3
     },
     anchorPoints: [],
     exposureCounts: {},
@@ -116,7 +126,13 @@ describe("selectActiveStrategies", () => {
     const context: RegulationContext = {
       ...baseContext,
       emotion: { ...baseEmotion, caution: 0.8, connection: 0.1 },
-      isolationStress: { isolationCost: 0.4, coregulationBenefit: 0, allostasis: 0.3, energyDrainRate: 0.01 }
+      isolationStress: {
+        isolationCost: 0.4,
+        coregulationBenefit: 0,
+        allostasis: 0.3,
+        energyDrainRate: 0.01,
+        cortisolStressSignal: 0
+      }
     }
     const result = selectActiveStrategies(context)
     expect(result.some((d) => d.type === "attribution_bias")).toBe(true)
@@ -168,7 +184,13 @@ describe("selectActiveStrategies", () => {
       heldBackBuffer: { entries: [], suppressionPressure: 0.5, lastReviewedAt: undefined },
       shameState: { level: 0.7, isActive: true, trigger: "", lastTriggeredAt: "", decaySinceTriggered: 0 },
       dissonance: { activeDissonance: 0.7, recentEvents: [], cumulativeUnresolved: 0.5 },
-      isolationStress: { isolationCost: 0.5, coregulationBenefit: 0, allostasis: 0.4, energyDrainRate: 0.02 }
+      isolationStress: {
+        isolationCost: 0.5,
+        coregulationBenefit: 0,
+        allostasis: 0.4,
+        energyDrainRate: 0.02,
+        cortisolStressSignal: 0
+      }
     }
     const result = selectActiveStrategies(context)
     expect(result.length).toBeLessThanOrEqual(3)
