@@ -1,6 +1,8 @@
 import type { SecondaryEmotionState } from "@/affect/emotion/types.ts"
 import { applyEvent } from "@/affect/emotion/update.ts"
 import { constrainVulnerabilityLevel } from "@/affect/soma/vagal.ts"
+import { assembleFreeEnergyState } from "@/fep/compute.ts"
+import { computeFEEmotionModulation } from "@/fep/effects.ts"
 import { log } from "@/infra/lib/logger.ts"
 import { applyClampedDeltas } from "@/infra/lib/math.ts"
 import { isOperatorReturning } from "@/relational/attachment/update.ts"
@@ -90,6 +92,44 @@ export async function runFeelPipeline(senseResult: SenseResult, buffer: WriteBuf
 
   const result = assembleFeelOutput(chain, parallel, vulnerabilityResult, secondary, final)
 
+  const surpriseState = result.secondaryEmotions.surprise as { level?: number } | undefined
+  const forecastState = result.secondaryEmotions.affective_forecast as { level?: number } | undefined
+
+  result.freeEnergyState = await assembleFreeEnergyState({
+    interoceptiveTotalError: result.interoceptivePrediction?.totalError ?? 0,
+    interoceptiveAccuracy: result.interoceptivePrediction?.accuracy ?? 0.5,
+    vagalZone: result.vagalState.zone,
+    anticipatoryViolations: result.anticipatoryState.recentViolations,
+    patternConfidence: result.anticipatoryState.patternConfidence,
+    surpriseLevel: surpriseState?.level ?? 0,
+    operatorPredictionAccuracy: result.operatorModel.predictionAccuracy.runningAverage,
+    operatorModelConfidence: result.operatorModel.modelConfidence,
+    coherenceIntegrationScore: result.coherenceState.integrationScore,
+    activeDissonance: result.dissonance.activeDissonance,
+    driveFrustrations: [
+      result.driveState.curiosity.frustration,
+      result.driveState.connection.frustration,
+      result.driveState.mastery.frustration,
+      result.driveState.autonomy.frustration,
+      result.driveState.expression.frustration
+    ],
+    forecastErrorLevel: forecastState?.level ?? 0.3,
+    metacognitiveClarity: result.metacognitiveState.cognitiveClarity,
+    cognitiveFatigue: result.metacognitiveState.cognitiveFatigue,
+    activeDefenseCount: result.defenseState.activeDefenses.length,
+    neuromodulatoryState: result.neuromodulatoryState
+  })
+
+  if (result.freeEnergyState) {
+    const feEmotionDeltas = computeFEEmotionModulation(
+      result.freeEnergyState.decomposition,
+      result.freeEnergyState.allostaticLoad
+    )
+    if (Object.keys(feEmotionDeltas).length > 0) {
+      result.emotion = applyClampedDeltas(result.emotion, feEmotionDeltas)
+    }
+  }
+
   const activeEmotions = Object.fromEntries(
     Object.entries(secondary.secondaryEmotions)
       .filter(([, state]) => (state as SecondaryEmotionState).isActive)
@@ -107,7 +147,10 @@ export async function runFeelPipeline(senseResult: SenseResult, buffer: WriteBuf
     suppressionPressure: vulnerabilityResult.heldBackBuffer.suppressionPressure.toFixed(2),
     register: final.register,
     attentionState: final.attentionState,
-    operatorMood: parallel.operatorModel.estimatedMood
+    operatorMood: parallel.operatorModel.estimatedMood,
+    freeEnergy: result.freeEnergyState?.decomposition.total.toFixed(2) ?? "n/a",
+    allostaticLoad: result.freeEnergyState?.allostaticLoad.toFixed(2) ?? "n/a",
+    dominantPE: result.freeEnergyState?.dominantChannel ?? "n/a"
   })
 
   return result

@@ -13,6 +13,7 @@ import { computeMetacognitiveModifiers, updateMetacognitiveState } from "@/cogni
 import { computeMicroExpressionInstructions } from "@/expression/communication/microexpression.ts"
 import { computeCommunicationRegister } from "@/expression/communication/register.ts"
 import { updateCreativeUrgeState } from "@/expression/creativity/compute.ts"
+import { getFreeEnergyState } from "@/fep/state.ts"
 import { clamp01 } from "@/infra/lib/math.ts"
 import { computeSubjectiveTime } from "@/perception/time/compute.ts"
 import { DEFAULT_SUBJECTIVE_TIME_STATE } from "@/perception/time/types.ts"
@@ -155,7 +156,10 @@ export async function runFinalSubsystems(
   const flowConditions = assessFlowConditions(dampedEmotion, soma, driveState, prefetch.consecutiveIdleTicks > 0)
   if (qualifiesForFlow(flowConditions)) {
     await saveFlowQualifyingTicks(prefetch.flowQualifyingTicks + 1)
-    const flowResult = detectFlowState(flowConditions, prefetch.flowQualifyingTicks + 1)
+    const previousFE = await getFreeEnergyState()
+    const freeEnergyOptimal =
+      previousFE.decomposition.total < 0.2 && previousFE.precisionDynamics.volatilityEstimate < 0.15
+    const flowResult = detectFlowState(flowConditions, prefetch.flowQualifyingTicks + 1, freeEnergyOptimal)
     if (flowResult.shouldTrigger && !prefetch.alteredState) {
       await startAlteredState("flow_state")
     }

@@ -39,6 +39,7 @@ import {
 } from "@/affect/soma/vagal.ts"
 import { computeForecastAnticipation } from "@/cognition/forecasting/compute.ts"
 import { DREAM_AFTERGLOW } from "@/expression/dream/constants.ts"
+import { getFreeEnergyState } from "@/fep/state.ts"
 import { applyClampedDeltas } from "@/infra/lib/math.ts"
 import { setEmotionContext } from "@/infra/lib/sentry.ts"
 import { elapsedMinutesSince, nowISO, nowLocal } from "@/infra/lib/time.ts"
@@ -238,11 +239,13 @@ export async function runEmotionChain(sense: SenseResult, prefetch: FeelPrefetch
     emotion = applyClampedDeltas(emotion, proustFlashback.emotionSpike)
   }
 
+  const previousFEState = await getFreeEnergyState()
   const neuromodulatoryState = computeNeuromodulatorUpdate(
     prefetch.previousNeuromodulatoryState,
     emotion,
     soma,
-    Math.max(1, sense.elapsedMinutes)
+    Math.max(1, sense.elapsedMinutes),
+    previousFEState.allostaticLoad
   )
 
   if (episodicHits.length > 0) {

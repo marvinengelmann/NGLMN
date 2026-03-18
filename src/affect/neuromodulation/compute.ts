@@ -67,7 +67,8 @@ export function computeNeuromodulatorUpdate(
   current: NeuromodulatoryState,
   emotion: EmotionalState,
   soma: SomaticState,
-  elapsedMinutes: number
+  elapsedMinutes: number,
+  allostaticLoad = 0
 ): NeuromodulatoryState {
   const levels: Record<string, number> = {}
   const productionRates: Record<string, number> = {}
@@ -81,7 +82,11 @@ export function computeNeuromodulatorUpdate(
 
     const emotionProduction = computeProductionFromEmotion(mod, emotion)
     const somaProduction = computeProductionFromSoma(mod, soma)
-    const totalProduction = emotionProduction + somaProduction
+    let totalProduction = emotionProduction + somaProduction
+
+    if (mod === "cortisol") {
+      totalProduction += allostaticLoad * 0.15
+    }
 
     const newProductionRate = clamp01(current[mod].productionRate * 0.9 + (0.5 + totalProduction) * 0.1)
     const newReuptakeRate = current[mod].reuptakeRate

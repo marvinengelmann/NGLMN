@@ -6,6 +6,7 @@ import type { GuiltSource } from "@/affect/emotion/guilt.ts"
 import { getGuiltState, markRepaired, saveGuiltState } from "@/affect/emotion/guilt.ts"
 import { getMoodBaseline } from "@/affect/emotion/state.ts"
 import { blendMoodBaseline, enforceEmotionFloors, summarizeEmotions } from "@/affect/emotion/update.ts"
+import { computeLearningRateModulation } from "@/affect/neuromodulation/compute.ts"
 import { getNeuromodulatoryState } from "@/affect/neuromodulation/state.ts"
 import { getSomaticState } from "@/affect/soma/state.ts"
 import { rechargeSocialBattery } from "@/affect/soma/update.ts"
@@ -54,6 +55,8 @@ import {
 } from "@/expression/communication/idiolect.ts"
 import { analyzeConversationPatterns } from "@/expression/communication/patterns.ts"
 import { getConversationBuffer } from "@/expression/communication/state.ts"
+import { computeFELearningRate, updatePrecisionDynamics } from "@/fep/dynamics.ts"
+import { getFreeEnergyHistory, pushFreeEnergyHistory, saveFreeEnergyState } from "@/fep/state.ts"
 import { createExplorationGoal, generateInterests, shouldExplore } from "@/governance/evolution/curiosity.ts"
 import { incrementConsecutiveCritical, resetConsecutiveCritical } from "@/governance/health/state.ts"
 import { handleDriftCheck } from "@/governance/security/guardian.ts"
@@ -189,6 +192,7 @@ export async function maintain(
   await maintainDisappointmentAcknowledgment(input)
   await maintainBoundaries(input, feelResult, buffer)
   await maintainGoals()
+  await maintainFreeEnergy(feelResult)
   await runProbabilisticTasks(input, feelResult)
 
   const durationMs = Date.now() - input.startTime
@@ -481,6 +485,24 @@ async function maintainGoals(): Promise<void> {
   await applyGoalPriorityDecay()
 }
 
+async function maintainFreeEnergy(feelResult: FeelingResult): Promise<void> {
+  const feState = feelResult.freeEnergyState
+  if (!feState) return
+
+  await pushFreeEnergyHistory(feState.decomposition.total)
+
+  const history = await getFreeEnergyHistory()
+  const neuro = feelResult.neuromodulatoryState
+  const dopamineLevel = neuro?.dopamine.level ?? 0.5
+
+  const updatedDynamics = updatePrecisionDynamics(history, dopamineLevel, feState.allostaticLoad)
+
+  await saveFreeEnergyState({
+    ...feState,
+    precisionDynamics: updatedDynamics
+  })
+}
+
 async function maintainEmotionState(
   input: MaintainInput,
   feelResult: FeelingResult,
@@ -601,9 +623,20 @@ async function runProbabilisticTasks(input: MaintainInput, feelResult: FeelingRe
           ...messageTexts.slice(0, 2).map((t) => `topic:${t.slice(0, 30)}`)
         ]
         if (stimuli.length < 2) return
-        const history = await getRecentStimuliHistory()
+        const neuro = await getNeuromodulatoryState()
+        const neuroLR = computeLearningRateModulation(neuro)
+        const feState = feelResult.freeEnergyState
+        const feLR = feState
+          ? computeFELearningRate(
+              feState.precisionDynamics.volatilityEstimate,
+              feState.allostaticLoad,
+              neuro.dopamine.level
+            )
+          : 1.0
+        const effectiveLR = neuroLR * feLR
+        const stimuliHistory = await getRecentStimuliHistory()
         const associations = await getAllAssociations()
-        const updated = processHebbianCycle(associations, stimuli, history)
+        const updated = processHebbianCycle(associations, stimuli, stimuliHistory, effectiveLR)
         await batchUpsertAssociations(updated)
         await pushStimuliHistory(stimuli)
         await saveActiveAssociations(updated)

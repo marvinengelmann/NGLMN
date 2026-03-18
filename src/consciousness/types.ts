@@ -9,6 +9,7 @@ import {
   MoodContext,
   type SecondaryEmotionState
 } from "@/affect/emotion/types.ts"
+import { NeuromodulatoryState } from "@/affect/neuromodulation/types.ts"
 import { InteroceptivePrediction, SomaticState, VagalConstraints, VagalState } from "@/affect/soma/types.ts"
 import { BiasState } from "@/cognition/bias/types.ts"
 import { InnerDialog } from "@/cognition/polyphony/types.ts"
@@ -18,6 +19,7 @@ import { CommunicationRegister } from "@/expression/communication/types.ts"
 import { CreativeUrgeState } from "@/expression/creativity/types.ts"
 import { DreamThinkResult } from "@/expression/dream/types.ts"
 import { MorningThinkResult, ReflectionOutput } from "@/expression/routine/types.ts"
+import { FreeEnergyState } from "@/fep/types.ts"
 import { HealthCheckResult } from "@/governance/health/types.ts"
 import { WorkflowDefinition } from "@/governance/workflow/types.ts"
 import { PendingMessage, WeatherData } from "@/infra/integrations/types.ts"
@@ -109,7 +111,9 @@ export const FeelingResult = z.object({
   dissociativeState: DissociativeState.optional(),
   granularityLevel: z.string().default("coarse"),
   relationalPatterns: z.custom<RelationalPatternLibrary>().nullable().default(null),
-  transferenceEvent: TransferenceEvent.nullable().default(null)
+  transferenceEvent: TransferenceEvent.nullable().default(null),
+  neuromodulatoryState: NeuromodulatoryState.nullable().default(null),
+  freeEnergyState: FreeEnergyState.nullable().default(null)
 })
 export type FeelingResult = z.infer<typeof FeelingResult>
 

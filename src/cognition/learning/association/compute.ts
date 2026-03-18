@@ -8,8 +8,8 @@ import type { AssociationActivation, HebbianAssociation } from "./types.ts"
  * Strengthen an association via Long-Term Potentiation (LTP).
  * Uses diminishing returns near max strength.
  */
-export function strengthenAssociation(association: HebbianAssociation): HebbianAssociation {
-  const increment = HEBBIAN.LTP_INCREMENT * (1 - association.strength)
+export function strengthenAssociation(association: HebbianAssociation, learningRateModifier = 1.0): HebbianAssociation {
+  const increment = HEBBIAN.LTP_INCREMENT * (1 - association.strength) * learningRateModifier
   return {
     ...association,
     strength: clamp(association.strength + increment, 0, HEBBIAN.MAX_STRENGTH),
@@ -171,7 +171,8 @@ export function pruneWeakAssociations(associations: HebbianAssociation[]): Hebbi
 export function processHebbianCycle(
   associations: HebbianAssociation[],
   currentStimuli: string[],
-  recentStimuliHistory: string[][]
+  recentStimuliHistory: string[][],
+  learningRateModifier = 1.0
 ): HebbianAssociation[] {
   const coactivations = findCoactivations(currentStimuli, recentStimuliHistory)
   if (coactivations.length === 0) return associations
@@ -188,13 +189,13 @@ export function processHebbianCycle(
     const existing = assocMap.get(key)
 
     if (existing) {
-      assocMap.set(key, strengthenAssociation(existing))
+      assocMap.set(key, strengthenAssociation(existing, learningRateModifier))
     } else {
       assocMap.set(key, {
         id: crypto.randomUUID(),
         stimulusA: a,
         stimulusB: b,
-        strength: HEBBIAN.LTP_INCREMENT,
+        strength: HEBBIAN.LTP_INCREMENT * learningRateModifier,
         coactivationCount: 1,
         lastCoactivatedAt: now,
         createdAt: now

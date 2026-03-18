@@ -10,6 +10,7 @@ import { getVoiceDominanceBoost, selectActiveVoices, shouldRunDialog } from "@/c
 import { callIntelligence } from "@/core/intelligence.ts"
 import { thinkDream } from "@/expression/dream/thinking.ts"
 import { thinkMorning, thinkReflect } from "@/expression/routine/thinking.ts"
+import { computeActiveInferenceSignal } from "@/fep/active-inference.ts"
 import { fetchUpcomingEvents, isCaldavEnabled } from "@/infra/integrations/caldav.ts"
 import { CALENDAR, SOCIAL_MEDIA } from "@/infra/integrations/constants.ts"
 import { canCheckCalendar, canCheckEmail, canPerformSocialMedia } from "@/infra/integrations/cooldowns.ts"
@@ -246,11 +247,32 @@ export async function deliberate(tickState: TickState): Promise<DeliberateResult
     userPrompt = `${userPrompt}\n${dialogSection}`
   }
 
+  const activeInference = feelResult.freeEnergyState ? computeActiveInferenceSignal(feelResult.freeEnergyState) : null
+
+  if (feelResult.freeEnergyState && activeInference) {
+    const feState = feelResult.freeEnergyState
+
+    const driveLines = [
+      "\n## Internal Drive",
+      `Dominant prediction-error source: ${feState.dominantChannel}`,
+      `Free energy: ${feState.decomposition.total.toFixed(2)} (trend: ${feState.trend > 0 ? "rising" : feState.trend < 0 ? "falling" : "stable"})`,
+      `Allostatic load: ${feState.allostaticLoad.toFixed(2)}`,
+      `Exploration tendency: ${activeInference.explorationBonus.toFixed(2)} | Exploitation tendency: ${activeInference.exploitationPull.toFixed(2)}`
+    ]
+    if (activeInference.preferredAction) {
+      driveLines.push(`Gut feeling suggests: ${activeInference.preferredAction} would reduce internal tension most`)
+    }
+    userPrompt = `${userPrompt}\n${driveLines.join("\n")}`
+  }
+
   const images = senseResult.pendingMessages
     .filter((m): m is typeof m & { image: NonNullable<typeof m.image> } => m.image != null)
     .map((m) => ({ base64: m.image.base64, mimeType: m.image.mimeType }))
 
-  const temperature = computeTemperatureFromMetacognition(feelResult.metacognitiveState)
+  let temperature = computeTemperatureFromMetacognition(feelResult.metacognitiveState)
+  if (activeInference) {
+    temperature = temperature * (0.8 + activeInference.explorationBonus * 0.4)
+  }
 
   const callResult = await callIntelligence({
     system: systemPrompt,

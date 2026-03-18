@@ -51,6 +51,8 @@ export function assembleFeelOutput(
     dissociativeState: final.dissociativeState,
     granularityLevel: final.granularityLevel,
     relationalPatterns: parallel.relationalPatterns,
-    transferenceEvent: parallel.transferenceEvent
+    transferenceEvent: parallel.transferenceEvent,
+    neuromodulatoryState: chain.neuromodulatoryState,
+    freeEnergyState: null
   }
 }

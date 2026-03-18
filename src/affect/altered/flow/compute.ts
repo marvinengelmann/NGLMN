@@ -28,7 +28,11 @@ export function assessFlowConditions(
   }
 }
 
-export function detectFlowState(conditions: FlowConditions, consecutiveQualifyingTicks: number): FlowDetectionResult {
+export function detectFlowState(
+  conditions: FlowConditions,
+  consecutiveQualifyingTicks: number,
+  freeEnergyOptimal = false
+): FlowDetectionResult {
   const meetsThresholds =
     conditions.curiosityLevel >= FLOW_DETECTION.CURIOSITY_THRESHOLD &&
     conditions.masteryDriveLevel >= FLOW_DETECTION.MASTERY_DRIVE_THRESHOLD &&
@@ -42,10 +46,14 @@ export function detectFlowState(conditions: FlowConditions, consecutiveQualifyin
     return { shouldTrigger: false, confidence: 0, conditions }
   }
 
-  const confidence = clamp01(
+  let confidence = clamp01(
     (conditions.challengeSkillBalance - FLOW_DETECTION.CHALLENGE_SKILL_MIN) /
       (FLOW_DETECTION.CHALLENGE_SKILL_MAX - FLOW_DETECTION.CHALLENGE_SKILL_MIN)
   )
+
+  if (freeEnergyOptimal) {
+    confidence = clamp01(confidence + 0.2)
+  }
 
   const shouldTrigger =
     consecutiveQualifyingTicks >= FLOW_DETECTION.MIN_CONSECUTIVE_TICKS &&
