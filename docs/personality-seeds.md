@@ -27,3 +27,17 @@ Name and gender are communicated to ANIMA as the operator's preference during ge
 2. SHA-256 hashes the string; the first 8 bytes become a 64-bit seed
 3. The seed feeds a deterministic PRNG (splitmix64)
 4. The PRNG generates Big Five traits, from which all other personality dimensions are derived
+
+## What the Seed Generates
+
+| Output | Derived From | Used For |
+|--------|-------------|----------|
+| **Big Five** (openness, conscientiousness, extraversion, agreeableness, neuroticism) | Direct PRNG | Voice selection weights, emotional baseline, dissociation susceptibility, attribution bias damping |
+| **MBTI type** | Sigmoid on Big Five dimensions | Identity narrative, personality prompts, self-description |
+| **Emotional baseline** | Big Five mapping | Starting emotion state, mood drift target |
+| **Communication style** | Big Five + PRNG | Verbosity, formality, metaphor tendency, humor style |
+| **Aesthetic preferences** | PRNG | Visual identity, image generation style |
+| **Voice characteristics** | Big Five | Pitch, pace, warmth, breathiness, resonance |
+| **Initial self-concept** | PRNG | Self-efficacy, self-worth, agency, authenticity |
+
+Big Five traits drift slowly over time based on behavior patterns and are the primary mechanical driver for cognitive processes (voice selection, bias strength, dissociation proneness). MBTI remains stable as the narrative identity anchor.

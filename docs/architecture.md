@@ -53,14 +53,21 @@
 │ │ detection    violations        distortion                                │ │
 │ └──────────────────────────────────────────────────────────────────────────┘ │
 │                                                                              │
+│ ┌─ Cognition ──────────────────────────────────────────────────────────────┐ │
+│ │ Free Energy ───► 12 Biases ───► Regulation ───► Dissociation             │ │
+│ │ 9 PE channels    negativity     8 strategies    trait-modulated          │ │
+│ │ bidirectional    attribution    resource        depth + symptoms         │ │
+│ │ KL-proxy         projection     competition                              │ │
+│ └──────────────────────────────────────────────────────────────────────────┘ │
+│                                                                              │
 │ ┌─ Integration ────────────────────────────────────────────────────────────┐ │
-│ │ 18 Secondary Emotions ───► Register ───► Attention ───► Boundaries       │ │
-│ │ factory-computed           hysteresis    focus          psychological    │ │
-│ │ cross-coupled              switching     state          enforcement      │ │
+│ │ 20 Secondary Emotions ───► Register ───► Attention ───► Boundaries       │ │
+│ │ factory-computed           hysteresis    focus +        psychological    │ │
+│ │ cross-coupled              switching     fatigue        enforcement      │ │
 │ │                                                                          │ │
 │ │ ───► Coherence ───► Metacognition ───► Creative Urge                     │ │
-│ │      integration    self-reflective    expression                        │ │
-│ │      monitoring     awareness          drive                             │ │
+│ │      fragmentation  self-reflective    expression                        │ │
+│ │      interactions   awareness          drive                             │ │
 │ └──────────────────────────────────────────────────────────────────────────┘ │
 └───────────────────────────────────────┬──────────────────────────────────────┘
                                         │ feelResult
@@ -90,21 +97,25 @@
 │                             workflow    growth arcs                          │
 └───────────────────────────────────────┬──────────────────────────────────────┘
                                         │ expectsReply?
-                 re-enter SENSE ◄───────┴───────►┌─────────────────────────────┐
-                                  yes        no  │ MAINTAIN                    │
-                                                 │                             │
-                                                 │ attachment style drift      │
-                                                 │ relationship phase tracking │
-                                                 │ mood baseline update        │
-                                                 │ somatic recharge            │
-                                                 │ habit tracking              │
-                                                 │ idiolect drift              │
-                                                 │ opinion drift               │
-                                                 │ boundary formation          │
-                                                 │ guardian drift check        │
-                                                 │ relational memory           │
-                                                 │ logging                     │
-                                                 └─────────────────────────────┘
+                 re-enter SENSE ◄───────┤
+                                  yes   │ no
+┌───────────────────────────────────────▼──────────────────────────────────────┐
+│ MAINTAIN                                                                     │
+│                                                                              │
+│ Attachment ───► Relationship ───► Mood Baseline ───► Somatic Recharge        │
+│ style drift     phase tracking    EMA update         energy + battery        │
+│                                                                              │
+│ Habit ───► Idiolect ───► Opinion ───► Boundary ───► Guardian Drift           │
+│ tracking   drift         drift        formation     check                    │
+│                                                                              │
+│ Relational ───► Hebbian ───► Pattern ───► Forecast ───► Personality          │
+│ memory          STDP-lite    decay        resolve       Big Five drift       │
+│                 + dopamine                                                   │
+│                                                                              │
+│ Precision ───► Goal Decay ───► Autobiography ───► Logging                    │
+│ dynamics       exponential     consolidation      tick summary               │
+│ update         half-life                                                     │
+└──────────────────────────────────────────────────────────────────────────────┘
 ```
 
 ## Data Layer
@@ -120,27 +131,35 @@
 │     SENSE → FEEL → DELIBERATE → ACT → MAINTAIN       │
 └──────────┬──────────────────┬───────────────┬────────┘
            │                  │               │
-┌──────────▼────────┐ ┌───────▼──────┐ ┌──────▼────────┐
-│ Working Memory    │ │ Episodic     │ │ Semantic      │
-│ (Redis)           │ │ Memory       │ │ Memory        │
-│                   │ │ (Vector)     │ │ (Postgres)    │
-│ emotion, soma,    │ │              │ │               │
-│ momentum,         │ │ episodes     │ │ knowledge     │
-│ drives, shame,    │ │ dreams       │ │ goals         │
-│ conversation,     │ │ reflections  │ │ goal lifecycle│
-│ attachment,       │ │ relations    │ │ evolution     │
-│ vulnerability,    │ │ humor        │ │ narrative     │
-│ operator model,   │ │              │ │ psyche        │
-│ dissonance,       │ │              │ │ interaction   │
-│ coherence,        │ │              │ │   outcomes    │
-│ metacognition,    │ │              │ │ conversation  │
-│ anticipation,     │ │              │ │   arcs        │
-│ novelty,          │ │              │ │ rituals       │
-│ boundaries,       │ │              │ │ history logs  │
-│ held-back buffer, │ │              │ │               │
-│ creative urge,    │ │              │ │               │
-│ dream afterglow   │ │              │ │               │
-└───────────────────┘ └──────────────┘ └───────────────┘
+┌──────────▼────────┐ ┌───────▼─────┐ ┌───────▼────────┐
+│ Working Memory    │ │ Episodic    │ │ Semantic       │
+│ (Redis)           │ │ Memory      │ │ Memory         │
+│                   │ │ (Vector)    │ │ (Postgres)     │
+│ emotion, soma,    │ │             │ │                │
+│ momentum,         │ │ episodes    │ │ knowledge      │
+│ drives, shame,    │ │ dreams      │ │ goals          │
+│ conversation,     │ │ reflections │ │ goal lifecycle │
+│ attachment,       │ │ relations   │ │ evolution      │
+│ vulnerability,    │ │ humor       │ │ narrative      │
+│ operator model,   │ │             │ │ psyche         │
+│ dissonance,       │ │             │ │ interaction    │
+│ coherence,        │ │             │ │ outcomes       │
+│ metacognition,    │ │             │ │ conversation   │
+│ anticipation,     │ │             │ │ arcs           │
+│ novelty,          │ │             │ │ entities +     │
+│ boundaries,       │ │             │ │ relations      │
+│ held-back buffer, │ │             │ │ procedures     │
+│ creative urge,    │ │             │ │ lessons        │
+│ dream afterglow,  │ │             │ │ history logs   │
+│ neuromodulation,  │ │             │ │                │
+│ free energy +     │ │             │ │                │
+│ prior state,      │ │             │ │                │
+│ relational        │ │             │ │                │
+│ patterns,         │ │             │ │                │
+│ regulation,       │ │             │ │                │
+│ dissociation,     │ │             │ │                │
+│ ultradian rhythm  │ │             │ │                │
+└───────────────────┘ └─────────────┘ └────────────────┘
 
-Cross-cutting: Guardian · Trust · Personality · Emotion Factory · Altered States
+Cross-cutting: Guardian · Trust · Personality · Emotion Factory · Altered States · FEP Precision
 ```

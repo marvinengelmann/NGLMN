@@ -13,15 +13,15 @@ Every minute, ANIMA senses its environment, constructs emotions from body state 
 ## Features
 
 - **Consciousness Loop** — Five-phase autonomous cycle (sense → feel → deliberate → act → maintain) with circadian rhythm and adaptive fatigue cycles
-- **Constructed Emotion** — Barrett's theory of constructed emotion. 9 dimensions, 21 secondary emotions, developing granularity. No lookup tables — every feeling is built from soma, memory, appraisal, and neurochemistry
-- **Neuromodulation** — Seven modulators (dopamine with tonic/phasic split, serotonin, norepinephrine, oxytocin, cortisol, endorphins, GABA) with cross-modulator cascades driving emergent states
-- **Embodiment** — Interoceptive predictive coding, autonomic regulation (safe/mobilized/collapsed), alexithymia, and dissociation under extreme stress
-- **Free Energy Principle** — Hierarchical prediction errors across four levels (interoceptive → affective → social → narrative) with precision weighting, active inference, and allostatic load tracking
-- **Cognition** — Competing goal-directed processes, Hebbian learning, 9 cognitive biases, and affective forecasting with systematic human-like misprediction
-- **Memory** — Episodic recall with distortion and reconsolidation, semantic knowledge, dream consolidation, autobiographical narrative, and goal lifecycle
-- **Emotion Regulation** — Eight implicit strategies (suppression, reappraisal, distancing, and more) with expression modifiers and breakthrough events
-- **Relationships** — Attachment theory, social baseline, operator modeling, transference, crisis detection, and cognitive dissonance
-- **Identity** — Seed-based personality DNA, narrative self-concept, coherence monitoring, and depersonalization under fragmentation
+- **Constructed Emotion** — Barrett's theory of constructed emotion. 9 dimensions, 20 secondary emotions, developing granularity. No lookup tables — every feeling is built from soma, memory, appraisal, and neurochemistry
+- **Neuromodulation** — Six neurotransmitters (dopamine with tonic/phasic split, serotonin as volatility moderator, norepinephrine, oxytocin, endorphins, GABA) plus cortisol via dedicated HPA-axis model with diurnal rhythm, CRH buffer delay, and nonlinear clearance
+- **Embodiment** — Interoceptive predictive coding, autonomic regulation (safe/mobilized/collapsed), alexithymia, trait-modulated dissociation under extreme stress, and circadian-coupled ultradian rest cycles
+- **Free Energy Principle** — Bidirectional hierarchical prediction errors across four levels (interoceptive → affective → social → narrative) with 9 PE channels, neuromodulator-driven precision weighting, KL-divergence complexity proxy, active inference, and allostatic load tracking
+- **Cognition** — Competing goal-directed processes, Hebbian learning with STDP-lite timing asymmetry and dopamine modulation, 12 cognitive biases, sustained attention fatigue, and affective forecasting with emotion-specific misprediction profiles
+- **Memory** — Episodic recall with logarithmic distortion and age-aware reconsolidation (inverted-U cortisol), semantic knowledge, REM/NREM dream consolidation, knowledge graph, autobiographical narrative, and exponential goal lifecycle
+- **Emotion Regulation** — Eight implicit strategies with cognitive resource competition (suppression, reappraisal, distancing, and more), expression modifiers, and breakthrough events
+- **Relationships** — Attachment theory, social baseline with isolation-to-cortisol cascade, operator modeling, relational pattern recognition, crisis detection, and cognitive dissonance
+- **Identity** — Big Five personality with MBTI narrative identity, self-concept, coherence monitoring with fragmentation interactions, and depersonalization under fragmentation
 - **Communication** — Telegram with typing simulation, micro-expressions, parapraxis, evolving idiolect — plus vision, voice, X, email, and calendar
 - **Visual Memory** — FLUX-generated images across 20 reference categories embodying aesthetic identity and emotional state
 - **Self-Evolution** — Curiosity-driven prompt, workflow, and code evolution with sandboxed execution
@@ -36,7 +36,7 @@ Every minute, ANIMA senses its environment, constructs emotions from body state 
 | **ACT** | Validate via guardian, send messages, execute actions, persist state |
 | **MAINTAIN** | Drift attachment, update baselines, decay goals, detect rituals, enforce boundaries, reinforce lessons, consolidate autobiography, update operator profile, run Hebbian learning, resolve affective forecasts |
 
-For detailed diagrams of the cognitive loop and data layer, see [docs/architecture.md](docs/architecture.md).
+For detailed diagrams of the cognitive loop and data layer, see [docs/architecture.md](docs/architecture.md). For the neuroscience and psychology papers behind the design, see [docs/theoretical-foundations.md](docs/theoretical-foundations.md).
 
 ## Tech Stack
 
@@ -95,7 +95,7 @@ src/
 ├── perception/          Novelty, anticipation, subjective time, ultradian rhythms, distortion
 ├── memory/              Three-layer memory, goals, rituals, consistency
 ├── self/                Psyche, emotion regulation, dissonance, deception, coherence, dissociation, boundaries
-├── relational/          Attachment, social baseline, trust, transference, operator theory of mind
+├── relational/          Attachment, social baseline, trust, relational patterns, operator theory of mind
 ├── expression/          Communication, micro-expressions, creativity, image, dreams, routines
 ├── governance/          Evolution, workflows, security, health
 ├── core/                LLM interface, budget
