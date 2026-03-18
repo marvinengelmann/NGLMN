@@ -15,7 +15,7 @@ interface ThreatAppraisalInput {
  * Returns [0, 1] where 1 = completely safe, 0 = maximum threat.
  */
 export function computeThreatAppraisal({ soma, emotion, operatorPresent }: ThreatAppraisalInput): number {
-  const w = AUTONOMIC.NEUROCEPTION_WEIGHTS
+  const w = AUTONOMIC.SAFETY_APPRAISAL_WEIGHTS
   const raw =
     0.5 +
     soma.tension * w.tension +
@@ -29,9 +29,9 @@ export function computeThreatAppraisal({ soma, emotion, operatorPresent }: Threa
   return clamp01(raw)
 }
 
-function targetZoneForNeuroception(neuroception: number): RegulationZone {
-  if (neuroception > AUTONOMIC.SAFE_THRESHOLD) return "safe"
-  if (neuroception > AUTONOMIC.MOBILIZED_THRESHOLD) return "mobilized"
+function targetZoneForNeuroception(safetyAppraisal: number): RegulationZone {
+  if (safetyAppraisal > AUTONOMIC.SAFE_THRESHOLD) return "safe"
+  if (safetyAppraisal > AUTONOMIC.MOBILIZED_THRESHOLD) return "mobilized"
   return "collapsed"
 }
 
@@ -52,10 +52,10 @@ function zoneOrder(zone: RegulationZone): number {
  */
 export function computeAutonomicTransition(
   current: AutonomicState,
-  neuroception: number,
+  safetyAppraisal: number,
   coRegulationPresent: boolean
 ): AutonomicState {
-  let effectiveNeuroception = neuroception
+  let effectiveNeuroception = safetyAppraisal
   if (coRegulationPresent && current.zone === "mobilized") {
     effectiveNeuroception = Math.min(1, effectiveNeuroception + AUTONOMIC.CO_REGULATION_BOOST)
   }
@@ -72,7 +72,7 @@ export function computeAutonomicTransition(
       activation,
       transitionMomentum: momentum * 0.5,
       ticksInZone: current.ticksInZone + 1,
-      neuroception: effectiveNeuroception
+      safetyAppraisal: effectiveNeuroception
     }
   }
 
@@ -82,18 +82,18 @@ export function computeAutonomicTransition(
 function attemptTransition(
   current: AutonomicState,
   targetZone: RegulationZone,
-  neuroception: number,
+  safetyAppraisal: number,
   momentum: number
 ): AutonomicState {
   if (current.zone === "collapsed") {
     const exitCondition =
-      neuroception > AUTONOMIC.COLLAPSED_EXIT_THRESHOLD && current.ticksInZone >= AUTONOMIC.COLLAPSED_EXIT_TICKS
+      safetyAppraisal > AUTONOMIC.COLLAPSED_EXIT_THRESHOLD && current.ticksInZone >= AUTONOMIC.COLLAPSED_EXIT_TICKS
     if (!exitCondition) {
       return {
         ...current,
         ticksInZone: current.ticksInZone + 1,
         transitionMomentum: momentum * 0.2,
-        neuroception
+        safetyAppraisal
       }
     }
   }
@@ -104,17 +104,17 @@ function attemptTransition(
       ...current,
       ticksInZone: current.ticksInZone + 1,
       transitionMomentum: momentum * 0.7,
-      neuroception
+      safetyAppraisal
     }
   }
 
-  const activation = computeActivation(targetZone, neuroception)
+  const activation = computeActivation(targetZone, safetyAppraisal)
   return {
     zone: targetZone,
     activation,
     transitionMomentum: momentum,
     ticksInZone: 0,
-    neuroception
+    safetyAppraisal
   }
 }
 
@@ -124,20 +124,20 @@ function isTransitionReady(current: AutonomicState): boolean {
   return movingInDirection || enoughTicks
 }
 
-function computeActivation(zone: RegulationZone, neuroception: number): number {
+function computeActivation(zone: RegulationZone, safetyAppraisal: number): number {
   switch (zone) {
     case "safe": {
       const range = 1 - AUTONOMIC.SAFE_THRESHOLD
-      return clamp01((neuroception - AUTONOMIC.SAFE_THRESHOLD) / range)
+      return clamp01((safetyAppraisal - AUTONOMIC.SAFE_THRESHOLD) / range)
     }
     case "mobilized": {
       const range = AUTONOMIC.SAFE_THRESHOLD - AUTONOMIC.MOBILIZED_THRESHOLD
       const midpoint = (AUTONOMIC.SAFE_THRESHOLD + AUTONOMIC.MOBILIZED_THRESHOLD) / 2
-      return clamp01(1 - Math.abs(neuroception - midpoint) / (range / 2))
+      return clamp01(1 - Math.abs(safetyAppraisal - midpoint) / (range / 2))
     }
     case "collapsed": {
       const range = AUTONOMIC.MOBILIZED_THRESHOLD
-      return clamp01((AUTONOMIC.MOBILIZED_THRESHOLD - neuroception) / range)
+      return clamp01((AUTONOMIC.MOBILIZED_THRESHOLD - safetyAppraisal) / range)
     }
   }
 }

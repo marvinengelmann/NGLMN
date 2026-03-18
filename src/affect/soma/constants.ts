@@ -36,7 +36,7 @@ export const AUTONOMIC = {
   COLLAPSED_EXIT_TICKS: 5,
   COLLAPSED_EXIT_THRESHOLD: 0.35,
   CO_REGULATION_BOOST: 0.1,
-  NEUROCEPTION_WEIGHTS: {
+  SAFETY_APPRAISAL_WEIGHTS: {
     tension: -0.25,
     heartRate: -0.15,
     openness: 0.2,

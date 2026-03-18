@@ -29,7 +29,7 @@ export const AutonomicState = z.object({
   activation: z.number().min(0).max(1),
   transitionMomentum: z.number().min(-1).max(1),
   ticksInZone: z.number().int().min(0),
-  neuroception: z.number().min(0).max(1)
+  safetyAppraisal: z.number().min(0).max(1)
 })
 export type AutonomicState = z.infer<typeof AutonomicState>
 
@@ -38,7 +38,7 @@ export const DEFAULT_AUTONOMIC_STATE: AutonomicState = {
   activation: 0.6,
   transitionMomentum: 0,
   ticksInZone: 100,
-  neuroception: 0.7
+  safetyAppraisal: 0.7
 }
 
 export const RegulationConstraints = z.object({

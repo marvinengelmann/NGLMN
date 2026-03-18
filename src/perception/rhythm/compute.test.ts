@@ -3,7 +3,7 @@ import {
   computeCyclePosition,
   computeRestDepth,
   computeUltradianModulation,
-  determineBRACPhase,
+  determineActivityPhase,
   updateUltradianState
 } from "./compute.ts"
 import { DEFAULT_ULTRADIAN_STATE } from "./types.ts"
@@ -43,18 +43,18 @@ describe("computeCyclePosition", () => {
   })
 })
 
-describe("determineBRACPhase", () => {
+describe("determineActivityPhase", () => {
   it("returns active for early positions", () => {
-    expect(determineBRACPhase(0)).toBe("active")
-    expect(determineBRACPhase(0.3)).toBe("active")
+    expect(determineActivityPhase(0)).toBe("active")
+    expect(determineActivityPhase(0.3)).toBe("active")
   })
 
   it("returns rest for mid-late positions", () => {
-    expect(determineBRACPhase(0.8)).toBe("rest")
+    expect(determineActivityPhase(0.8)).toBe("rest")
   })
 
   it("returns transitioning_up near end", () => {
-    expect(determineBRACPhase(0.95)).toBe("transitioning_up")
+    expect(determineActivityPhase(0.95)).toBe("transitioning_up")
   })
 })
 

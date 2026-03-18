@@ -1,6 +1,6 @@
 import { differenceInMinutes, parseISO } from "date-fns"
 import { ULTRADIAN } from "./constants.ts"
-import type { BRACPhase, UltradianModulation, UltradianState } from "./types.ts"
+import type { ActivityPhase, UltradianModulation, UltradianState } from "./types.ts"
 import { NEUTRAL_MODULATION } from "./types.ts"
 
 /**
@@ -33,14 +33,14 @@ export function computeCyclePosition(
   return Math.min(1, Math.max(0, elapsed / effectiveDuration))
 }
 
-export function determineBRACPhase(position: number): BRACPhase {
+export function determineActivityPhase(position: number): ActivityPhase {
   if (position < ULTRADIAN.ACTIVE_END) return "active"
   if (position < ULTRADIAN.TRANSITION_DOWN_END) return "transitioning_down"
   if (position < ULTRADIAN.REST_END) return "rest"
   return "transitioning_up"
 }
 
-export function computeRestDepth(position: number, phase: BRACPhase, hourOfDay?: number): number {
+export function computeRestDepth(position: number, phase: ActivityPhase, hourOfDay?: number): number {
   if (phase !== "rest") return 0
   const restStart = ULTRADIAN.TRANSITION_DOWN_END
   const restEnd = ULTRADIAN.REST_END
@@ -54,7 +54,7 @@ export function computeRestDepth(position: number, phase: BRACPhase, hourOfDay?:
   return Math.min(1, baseDepth * circadianFactor)
 }
 
-export function computeUltradianModulation(phase: BRACPhase, restDepth: number): UltradianModulation {
+export function computeUltradianModulation(phase: ActivityPhase, restDepth: number): UltradianModulation {
   switch (phase) {
     case "active":
       return {
@@ -114,7 +114,7 @@ export function updateUltradianState(previous: UltradianState, now: Date, cognit
     }
   }
 
-  const phase = determineBRACPhase(position)
+  const phase = determineActivityPhase(position)
   const restDepth = computeRestDepth(position, phase, now.getHours())
 
   return {

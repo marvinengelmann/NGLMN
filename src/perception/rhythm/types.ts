@@ -1,10 +1,10 @@
 import * as z from "zod"
 
-export const BRACPhase = z.enum(["active", "transitioning_down", "rest", "transitioning_up"])
-export type BRACPhase = z.infer<typeof BRACPhase>
+export const ActivityPhase = z.enum(["active", "transitioning_down", "rest", "transitioning_up"])
+export type ActivityPhase = z.infer<typeof ActivityPhase>
 
 export const UltradianState = z.object({
-  phase: BRACPhase,
+  phase: ActivityPhase,
   cyclePosition: z.number().min(0).max(1),
   cycleStartedAt: z.string(),
   cycleCount: z.number().int().min(0),

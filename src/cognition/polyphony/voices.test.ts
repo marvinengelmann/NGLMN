@@ -42,43 +42,43 @@ describe("selectActiveVoices", () => {
     expect(voices).toContain("monitoring")
   })
 
-  it("includes threat_avoidance when caution is high", () => {
+  it("includes fear when caution is high", () => {
     const voices = selectActiveVoices({ ...baseEmotion, caution: 0.8 }, balancedBigFive, baseContext)
-    expect(voices).toContain("threat_avoidance")
+    expect(voices).toContain("fear")
   })
 
-  it("includes novelty_seeking when curiosity is high", () => {
+  it("includes seeking when curiosity is high", () => {
     const voices = selectActiveVoices({ ...baseEmotion, curiosity: 0.8 }, balancedBigFive, baseContext)
-    expect(voices).toContain("novelty_seeking")
+    expect(voices).toContain("seeking")
   })
 
-  it("boosts novelty_seeking for high openness", () => {
+  it("boosts seeking for high openness", () => {
     const voices = selectActiveVoices(baseEmotion, highOpenness, baseContext)
-    expect(voices).toContain("novelty_seeking")
+    expect(voices).toContain("seeking")
   })
 
-  it("boosts cognitive_control for high conscientiousness", () => {
+  it("boosts executive for high conscientiousness", () => {
     const voices = selectActiveVoices(baseEmotion, highConscientiousness, baseContext)
-    expect(voices).toContain("cognitive_control")
+    expect(voices).toContain("executive")
   })
 
-  it("boosts threat_avoidance and monitoring for high neuroticism", () => {
+  it("boosts fear and monitoring for high neuroticism", () => {
     const voices = selectActiveVoices(baseEmotion, highNeuroticism, baseContext)
-    expect(voices).toContain("threat_avoidance")
+    expect(voices).toContain("fear")
     expect(voices).toContain("monitoring")
   })
 
-  it("boosts social_bonding for high extraversion and agreeableness", () => {
+  it("boosts care for high extraversion and agreeableness", () => {
     const voices = selectActiveVoices(baseEmotion, highAgreeableness, baseContext)
-    expect(voices).toContain("social_bonding")
+    expect(voices).toContain("care")
   })
 
   it("provides continuous weighting — higher openness means stronger novelty boost", () => {
     const lowOpenness: BigFive = { ...balancedBigFive, openness: 0.2 }
     const voicesLow = selectActiveVoices(baseEmotion, lowOpenness, baseContext)
     const voicesHigh = selectActiveVoices(baseEmotion, highOpenness, baseContext)
-    const hasNoveltyLow = voicesLow.includes("novelty_seeking")
-    const hasNoveltyHigh = voicesHigh.includes("novelty_seeking")
+    const hasNoveltyLow = voicesLow.includes("seeking")
+    const hasNoveltyHigh = voicesHigh.includes("seeking")
     expect(hasNoveltyHigh || !hasNoveltyLow).toBe(true)
   })
 })

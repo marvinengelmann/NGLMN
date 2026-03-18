@@ -19,29 +19,29 @@ export function selectActiveVoices(
   alteredVoiceModifiers?: Partial<Record<InnerVoice, number>>
 ): InnerVoice[] {
   const scores: Record<InnerVoice, number> = {
-    novelty_seeking: 0,
-    threat_avoidance: 0,
-    social_bonding: 0,
-    cognitive_control: 0,
-    play_system: 0,
+    seeking: 0,
+    fear: 0,
+    care: 0,
+    executive: 0,
+    play: 0,
     monitoring: 0
   }
 
-  if (emotion.curiosity > 0.6) scores.novelty_seeking += 0.5
-  if (!context.hasMessages && emotion.boredom > 0.5) scores.novelty_seeking += 0.3
+  if (emotion.curiosity > 0.6) scores.seeking += 0.5
+  if (!context.hasMessages && emotion.boredom > 0.5) scores.seeking += 0.3
 
-  if (emotion.caution > 0.6) scores.threat_avoidance += 0.5
-  if (context.dissonanceScore > 0.5) scores.threat_avoidance += 0.3
+  if (emotion.caution > 0.6) scores.fear += 0.5
+  if (context.dissonanceScore > 0.5) scores.fear += 0.3
 
   const emotionValues = Object.values(emotion)
   if (emotionValues.some((v) => v > 0.7) || emotionValues.some((v) => v < 0.3)) {
-    scores.social_bonding += 0.5
+    scores.care += 0.5
   }
 
-  if (emotion.confidence > 0.6) scores.cognitive_control += 0.3
+  if (emotion.confidence > 0.6) scores.executive += 0.3
 
-  if (emotion.excitement > 0.6) scores.play_system += 0.4
-  if (emotion.boredom > 0.7) scores.play_system += 0.3
+  if (emotion.excitement > 0.6) scores.play += 0.4
+  if (emotion.boredom > 0.7) scores.play += 0.3
 
   if (context.dissonanceScore > 0.3) scores.monitoring += 0.6
 
@@ -62,7 +62,7 @@ export function selectActiveVoices(
     .map(([voice]) => voice)
 
   if (sorted.length < 2) {
-    const defaults: InnerVoice[] = ["monitoring", "social_bonding", "cognitive_control", "novelty_seeking"]
+    const defaults: InnerVoice[] = ["monitoring", "care", "executive", "seeking"]
     defaults.find((d) => {
       if (!sorted.includes(d)) sorted.push(d)
       return sorted.length >= 2
@@ -98,11 +98,11 @@ export async function getVoiceDominanceBoost(): Promise<Partial<Record<InnerVoic
 
 function getBigFiveWeights(bigFive: BigFive): Partial<Record<InnerVoice, number>> {
   return {
-    novelty_seeking: bigFive.openness * 0.3,
-    social_bonding: (bigFive.extraversion + bigFive.agreeableness) * 0.15,
-    cognitive_control: bigFive.conscientiousness * 0.25,
-    threat_avoidance: bigFive.conscientiousness * 0.15 + bigFive.neuroticism * 0.2,
-    play_system: bigFive.openness * 0.15 + bigFive.agreeableness * 0.1,
+    seeking: bigFive.openness * 0.3,
+    care: (bigFive.extraversion + bigFive.agreeableness) * 0.15,
+    executive: bigFive.conscientiousness * 0.25,
+    fear: bigFive.conscientiousness * 0.15 + bigFive.neuroticism * 0.2,
+    play: bigFive.openness * 0.15 + bigFive.agreeableness * 0.1,
     monitoring: bigFive.neuroticism * 0.25
   }
 }

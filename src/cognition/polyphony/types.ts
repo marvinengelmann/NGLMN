@@ -1,11 +1,11 @@
 import * as z from "zod"
 
 export const InnerVoice = z.enum([
-  "novelty_seeking",
-  "threat_avoidance",
-  "social_bonding",
-  "cognitive_control",
-  "play_system",
+  "seeking",
+  "fear",
+  "care",
+  "executive",
+  "play",
   "monitoring"
 ])
 export type InnerVoice = z.infer<typeof InnerVoice>

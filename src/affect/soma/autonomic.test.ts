@@ -93,7 +93,7 @@ describe("computeAutonomicTransition", () => {
       activation: 0.8,
       transitionMomentum: -0.5,
       ticksInZone: 2,
-      neuroception: 0.15
+      safetyAppraisal: 0.15
     }
 
     const stillCollapsed = computeAutonomicTransition(collapsed, 0.4, false)
@@ -106,13 +106,13 @@ describe("computeAutonomicTransition", () => {
       activation: 0.5,
       transitionMomentum: 0.3,
       ticksInZone: 5,
-      neuroception: 0.5
+      safetyAppraisal: 0.5
     }
 
     const withCo = computeAutonomicTransition(mobilized, 0.5, true)
     const withoutCo = computeAutonomicTransition(mobilized, 0.5, false)
 
-    expect(withCo.neuroception).toBeGreaterThan(withoutCo.neuroception)
+    expect(withCo.safetyAppraisal).toBeGreaterThan(withoutCo.safetyAppraisal)
   })
 })
 
@@ -131,7 +131,7 @@ describe("computeRegulationConstraints", () => {
       activation: 1.0,
       transitionMomentum: -0.5,
       ticksInZone: 10,
-      neuroception: 0.1
+      safetyAppraisal: 0.1
     }
     const constraints = computeRegulationConstraints(state)
     expect(constraints.vulnerabilityAccess).toBe(0.0)
@@ -145,7 +145,7 @@ describe("computeRegulationConstraints", () => {
       activation: 1.0,
       transitionMomentum: 0,
       ticksInZone: 5,
-      neuroception: 0.4
+      safetyAppraisal: 0.4
     }
     const constraints = computeRegulationConstraints(state)
     expect(constraints.vulnerabilityAccess).toBeGreaterThan(0)

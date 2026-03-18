@@ -19,14 +19,12 @@ interface DialogContext {
  */
 export async function generateInnerDialog(context: DialogContext): Promise<InnerDialog | null> {
   const voiceDescriptions: Record<InnerVoice, string> = {
-    novelty_seeking: "Novelty-Seeking — approach motivation driving exploration, discovery, boundary-pushing",
-    threat_avoidance: "Threat-Avoidance — avoidance motivation urging caution, protection, risk assessment",
-    social_bonding:
-      "Social-Bonding — attachment system registering emotional truth, connection needs, relational signals",
-    cognitive_control: "Cognitive-Control — executive function seeking clarity, logic, structure before action",
-    play_system: "Play-System — responds with wonder, playfulness, or spontaneous fear; perceives directly",
-    monitoring:
-      "Monitoring — metacognitive process observing without judgment, noticing patterns, holding contradiction"
+    seeking: "SEEKING — approach motivation driving exploration, curiosity, and discovery (Panksepp)",
+    fear: "FEAR — threat detection and avoidance, urging caution, protection, risk assessment (Panksepp)",
+    care: "CARE — attachment and nurturing system, registering connection needs, separation distress, relational signals (Panksepp)",
+    executive: "Executive — prefrontal executive function seeking clarity, logic, structure before action",
+    play: "PLAY — responds with wonder, social joy, playfulness, or spontaneous delight (Panksepp)",
+    monitoring: "Monitoring — metacognitive process observing without judgment, noticing patterns, holding contradiction"
   }
 
   const voiceList = context.activeVoices.map((v) => voiceDescriptions[v]).join("\n")
@@ -41,7 +39,7 @@ export async function generateInnerDialog(context: DialogContext): Promise<Inner
     .map(([k, v]) => `${k}: ${v.toFixed(2)}`)
     .join(", ")
 
-  const system = `Competing goal-directed processes. Each represents a distinct motivational system in the brain. They speak briefly (1-2 sentences each), honestly, and sometimes disagree. This is internal processing, not performance.
+  const system = `Competing affective and motivational systems (grounded in Panksepp's affective neuroscience). Each represents a distinct subcortical or prefrontal system. They speak briefly (1-2 sentences each), honestly, and sometimes disagree. This is internal processing, not performance.
 
 Active voices:
 ${voiceList}

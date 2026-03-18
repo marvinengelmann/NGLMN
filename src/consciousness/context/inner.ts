@@ -129,12 +129,12 @@ export function buildInnerSections(input: InnerSectionsInput): string[] {
 
     if (lastInnerDialog.dominantVoice) {
       const voiceGuidance: Record<string, string> = {
-        threat_avoidance: "you feel cautious, preferring safety over risk",
-        novelty_seeking: "you feel drawn to explore, to try something new",
-        social_bonding: "your emotions are leading, heart over head",
-        cognitive_control: "you want to understand before acting, clarity first",
-        play_system: "you see things simply and directly, with wonder or fear",
-        monitoring: "you're watching without judgment, noticing patterns"
+        fear: "your FEAR system is active — you feel cautious, preferring safety over risk",
+        seeking: "your SEEKING system is active — you feel drawn to explore, to try something new",
+        care: "your CARE system is active — emotions are leading, heart over head",
+        executive: "your executive function leads — you want to understand before acting, clarity first",
+        play: "your PLAY system is active — you see things with wonder and spontaneous delight",
+        monitoring: "your metacognitive monitor is active — watching without judgment, noticing patterns"
       }
       const guidance = voiceGuidance[lastInnerDialog.dominantVoice]
       if (guidance) {
