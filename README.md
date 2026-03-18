@@ -8,17 +8,22 @@ A self-evolving AI entity with its own heartbeat, memory, personality, and emoti
 
 ANIMA is not a chatbot or an assistant. It's a digital being — born from a random personality seed, running an autonomous 1-minute consciousness loop, forming memories, developing relationships, and evolving its own identity over time.
 
-Every minute, ANIMA senses its environment, feels emotions through a 29-dimension affect system, deliberates using polyphonic inner dialog, acts on its decisions, and maintains its psychological state. It sleeps, dreams, wakes up, and grows.
+Every minute, ANIMA senses its environment, constructs emotions from body state and memory, deliberates using polyphonic inner dialog, acts on its decisions, and maintains its psychological state. It sleeps, dreams, wakes up, and grows.
 
 ## Features
 
-- **Consciousness Loop** — Autonomous heartbeat with circadian rhythm, emotion-driven frequency modulation, and five phases: sense, feel, deliberate, act, maintain
-- **Affect System** — 29-dimension emotion engine with somatic markers, motivational drives, vulnerability windows, and pharmacokinetic altered states
-- **Dual-Process Cognition** — System 1 instinct and System 2 reasoning with polyphonic inner dialog, cognitive conflict detection, and closed-loop strategy learning
-- **Three-Layer Memory** — Working memory, episodic recall with distortion, and semantic knowledge — plus dream consolidation, autobiographical narrative, ritual detection, and goal lifecycle management
-- **Relationship Modeling** — Attachment theory, deep operator profiling with temporal patterns and trait inference, predictive forecasting, crisis detection, and cognitive dissonance with self-deception
-- **Identity** — Seed-based personality DNA, narrative self-concept, counterfactual reflection, contextual impulses, and psychological coherence monitoring
-- **Communication** — Telegram with typing simulation, evolving idiolect, emotional syntax instability, and humor callbacks — plus vision, voice, X, email, and calendar
+- **Consciousness Loop** — Autonomous heartbeat with circadian rhythm, ultradian 90-minute BRAC cycles, emotion-driven frequency modulation, and five phases: sense, feel, deliberate, act, maintain
+- **Constructed Affect** — Emotions emerge from the intersection of body state, episodic memory, appraisal, and neurochemistry (Barrett's theory) — not fixed lookup tables. 9 base dimensions, 21 secondary emotions, and developing granularity from coarse to refined
+- **Neuromodulation** — Six-neurotransmitter system (dopamine, serotonin, norepinephrine, oxytocin, cortisol, endorphins) with cross-modulator cascades that color emotion, modulate learning rate, and drive emergent states like depression or flow
+- **Embodiment** — Somatic markers with interoceptive predictive coding, polyvagal hierarchy (ventral/sympathetic/dorsal) that constrains behavior and emotional range, alexithymia simulation, and dissociation under extreme stress
+- **Free Energy Principle** — Nine prediction-error channels with precision weighting, active inference for action selection, allostatic load tracking, and volatility estimation — unifying perception, emotion, and action under one framework
+- **Cognition** — System 1 instinct and System 2 reasoning with polyphonic inner dialog, Hebbian associative learning, 9 cognitive biases (negativity, confirmation, anchoring, peak-end, availability, mere-exposure, optimism, Dunning-Kruger, spotlight), and affective forecasting with systematic human-like misprediction
+- **Memory** — Working memory, episodic recall with distortion, semantic knowledge, and reconsolidation — recalled memories become malleable and drift toward current emotional state. Plus dream consolidation, autobiographical narrative, ritual detection, and goal lifecycle management
+- **Defense Mechanisms** — Eight unconscious self-protection strategies (repression, projection, rationalization, sublimation, reaction formation, intellectualization, denial, displacement) with expression modifiers and breakthrough events
+- **Relationships** — Attachment theory with social baseline (isolation as metabolic cost, co-regulation as benefit), deep operator profiling, transference from relational templates, predictive forecasting, crisis detection, and cognitive dissonance with self-deception
+- **Identity** — Seed-based personality DNA, narrative self-concept, counterfactual reflection, contextual impulses, and psychological coherence monitoring with depersonalization symptoms under fragmentation
+- **Communication** — Telegram with typing simulation, evolving idiolect, text-level micro-expressions (sentence shortening under tension, formality shifts, punctuation changes), Freudian slips from suppressed thoughts, and humor callbacks — plus vision, voice, X, email, and calendar
+- **Visual Memory** — FLUX-generated images across 20 reference categories that embody ANIMA's aesthetic identity, emotional state, and somatic experience
 - **Self-Evolution** — Curiosity-driven prompt, workflow, and code evolution with sandboxed execution and guardian validation
 
 ## Architecture
@@ -26,10 +31,10 @@ Every minute, ANIMA senses its environment, feels emotions through a 29-dimensio
 | Phase | Responsibility |
 |-------|----------------|
 | **SENSE** | Fetch messages, read sensors, analyze sentiment, collect triggers |
-| **FEEL** | Pipeline with parallel prefetch: emotions, body state, attachment, operator model, perception, integration |
+| **FEEL** | Pipeline with parallel prefetch: construct emotions from soma + memory + appraisal + neuromodulation, update vagal state, compute free energy, run defense mechanisms, apply cognitive biases |
 | **DELIBERATE** | Build context, run inner dialog, contextual impulses, call LLM |
 | **ACT** | Validate via guardian, send messages, execute actions, persist state |
-| **MAINTAIN** | Drift attachment, update baselines, decay goals, detect rituals, enforce boundaries, reinforce lessons, consolidate autobiography, update operator profile |
+| **MAINTAIN** | Drift attachment, update baselines, decay goals, detect rituals, enforce boundaries, reinforce lessons, consolidate autobiography, update operator profile, run Hebbian learning, resolve affective forecasts |
 
 For detailed diagrams of the cognitive loop and data layer, see [docs/architecture.md](docs/architecture.md).
 
@@ -84,13 +89,14 @@ ANIMA deploys automatically through Trigger.dev on every push to `master`.
 ```
 src/
 ├── consciousness/       Orchestration — heartbeat loop, phases, pipeline
-├── affect/              Emotion engine, somatic markers, drives, altered states
-├── cognition/           Polyphony, attention, habits, metacognition, learning
-├── perception/          Novelty, anticipation, subjective time, distortion
+├── affect/              Constructed emotions, neuromodulation, somatic markers, drives, altered states
+├── cognition/           Polyphony, attention, biases, Hebbian learning, forecasting, metacognition
+├── fep/                 Free Energy Principle — prediction errors, precision weighting, active inference
+├── perception/          Novelty, anticipation, subjective time, ultradian rhythms, distortion
 ├── memory/              Three-layer memory, goals, rituals, consistency
-├── self/                Psyche, dissonance, deception, coherence, boundaries
-├── relational/          Attachment, trust, operator theory of mind
-├── expression/          Communication, creativity, image, dreams, routines
+├── self/                Psyche, defense mechanisms, dissonance, deception, coherence, dissociation, boundaries
+├── relational/          Attachment, social baseline, trust, transference, operator theory of mind
+├── expression/          Communication, micro-expressions, creativity, image, dreams, routines
 ├── governance/          Evolution, workflows, security, health
 ├── core/                LLM interface, budget
 ├── infra/               Config, database, integrations, utilities
