@@ -205,18 +205,41 @@ export function computeNeuroColoringSignal(neuro: NeuromodulatoryState, baseDelt
   return deltas
 }
 
-function blendDeltas(sources: EmotionConstructionSources, intensity: number): EmotionDeltas {
-  const { WEIGHTS, MAX_DELTA } = CONSTRUCTION
-  const allDims = new Set<EmoDim>()
-
-  for (const signal of Object.values(sources)) {
+function collectDimensions(signals: EmotionDeltas[]): Set<EmoDim> {
+  const dims = new Set<EmoDim>()
+  for (const signal of signals) {
     for (const key of Object.keys(signal)) {
-      allDims.add(key as EmoDim)
+      dims.add(key as EmoDim)
     }
   }
+  return dims
+}
+
+function blendPreNeuro(
+  somatic: EmotionDeltas,
+  memory: EmotionDeltas,
+  appraisal: EmotionDeltas,
+  prior: EmotionDeltas
+): EmotionDeltas {
+  const { WEIGHTS } = CONSTRUCTION
+  const dims = collectDimensions([somatic, memory, appraisal, prior])
+  const result: EmotionDeltas = {}
+  for (const dim of dims) {
+    result[dim] =
+      (somatic[dim] ?? 0) * WEIGHTS.SOMATIC +
+      (memory[dim] ?? 0) * WEIGHTS.MEMORY +
+      (appraisal[dim] ?? 0) * WEIGHTS.APPRAISAL +
+      (prior[dim] ?? 0) * WEIGHTS.PRIOR
+  }
+  return result
+}
+
+function blendDeltas(sources: EmotionConstructionSources, intensity: number): EmotionDeltas {
+  const { WEIGHTS, MAX_DELTA } = CONSTRUCTION
+  const dims = collectDimensions(Object.values(sources))
 
   const result: EmotionDeltas = {}
-  for (const dim of allDims) {
+  for (const dim of dims) {
     const blended =
       (sources.somatic[dim] ?? 0) * WEIGHTS.SOMATIC +
       (sources.memory[dim] ?? 0) * WEIGHTS.MEMORY +
@@ -254,21 +277,7 @@ export function constructEmotionDeltas(
     priorScaled[dim as EmoDim] = val
   }
 
-  const preNeuroDeltas: EmotionDeltas = {}
-  const allDims = new Set<EmoDim>()
-  for (const signal of [somatic, memory, appraisalSignal, priorScaled]) {
-    for (const key of Object.keys(signal)) {
-      allDims.add(key as EmoDim)
-    }
-  }
-  for (const dim of allDims) {
-    preNeuroDeltas[dim] =
-      (somatic[dim] ?? 0) * CONSTRUCTION.WEIGHTS.SOMATIC +
-      (memory[dim] ?? 0) * CONSTRUCTION.WEIGHTS.MEMORY +
-      (appraisalSignal[dim] ?? 0) * CONSTRUCTION.WEIGHTS.APPRAISAL +
-      (priorScaled[dim] ?? 0) * CONSTRUCTION.WEIGHTS.PRIOR
-  }
-
+  const preNeuroDeltas = blendPreNeuro(somatic, memory, appraisalSignal, priorScaled)
   const neuroColoring = computeNeuroColoringSignal(neuro, preNeuroDeltas)
 
   const sources: EmotionConstructionSources = {

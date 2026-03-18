@@ -176,8 +176,3 @@ export function computeForecastAnticipation(
 export function shouldResolveForecast(forecast: AffectiveForecast, ticksSinceForecast: number): boolean {
   return !forecast.resolvedAt && ticksSinceForecast >= forecast.predictedDuration
 }
-
-export function computeTicksSinceForecast(state: ForecastingState, currentTickCount: number): number {
-  if (!state.lastForecastAt) return FORECASTING.FORECAST_COOLDOWN_TICKS + 1
-  return currentTickCount
-}
