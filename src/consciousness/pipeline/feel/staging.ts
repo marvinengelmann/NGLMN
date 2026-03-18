@@ -9,7 +9,7 @@ import {
   operatorModelLog,
   somaticHistory
 } from "@/infra/db/schema.ts"
-import type { WriteBuffer } from "../persistence.ts"
+import type { WriteBuffer } from "@/infra/lib/buffer.ts"
 import type {
   EmotionChainResult,
   FinalFanResult,

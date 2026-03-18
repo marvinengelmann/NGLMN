@@ -46,7 +46,7 @@ import { buildNarrativeSummary, generateNarrativeEntry } from "@/self/psyche/nar
 import { getGrowthArcs, getRecentNarratives } from "@/self/psyche/state.ts"
 import { detectGrowthArc, updateSelfConcept } from "@/self/psyche/update.ts"
 import { recordActiveTick } from "./gating.ts"
-import type { WriteBuffer } from "./pipeline/persistence.ts"
+import type { WriteBuffer } from "@/infra/lib/buffer.ts"
 import type { ActResult, DeliberateResult, FeelingResult, SenseResult } from "./types.ts"
 
 /**

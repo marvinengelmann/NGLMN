@@ -122,7 +122,7 @@ import { detectBoundaryFormation } from "@/self/boundaries/detect.ts"
 import { getBoundaryState } from "@/self/boundaries/state.ts"
 import { saveDissociativeState } from "@/self/coherence/dissociation/state.ts"
 import { maybeDriftBigFive } from "@/self/genesis/drift.ts"
-import type { WriteBuffer } from "./pipeline/persistence.ts"
+import type { WriteBuffer } from "@/infra/lib/buffer.ts"
 import type { DeliberateResult, FeelingResult, MaintainInput, TickSummary } from "./types.ts"
 
 const PROBABILITIES = {
