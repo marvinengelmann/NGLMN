@@ -29,10 +29,12 @@ import { getKnowledge } from "@/memory/semantic.ts"
 import { getConsecutiveConversationTicks, getConsecutiveIdleTicks, getRecentActions } from "@/memory/working.ts"
 import { getAnticipatoryState } from "@/perception/anticipation/state.ts"
 import { getNoveltyState } from "@/perception/novelty/state.ts"
+import { getDMNState } from "@/cognition/dmn/state.ts"
 import { getUltradianState } from "@/perception/rhythm/state.ts"
 import { getAttachmentStyle, getIsolationStress } from "@/relational/attachment/state.ts"
 import { getVulnerabilityPrevLevel } from "@/relational/attachment/store.ts"
 import { getOperatorModel, getRelationalPatterns } from "@/relational/mind/state.ts"
+import { getMentalizingState } from "@/relational/mind/mentalizing.state.ts"
 import { getRelationalPatternState } from "@/relational/patterns/state.ts"
 import { getAggregateTrustExperience } from "@/relational/trust/compute.ts"
 import { getBoundaryState } from "@/self/boundaries/state.ts"
@@ -137,7 +139,9 @@ export async function prefetchFeelState(): Promise<FeelPrefetch> {
     previousRelationalPatternState,
     previousDissociativeState,
     flowQualifyingTicks,
-    bigFive
+    bigFive,
+    previousDMNState,
+    previousMentalizingState
   ] = await Promise.all([
     getGranularityState(),
     getForecastingState(),
@@ -145,7 +149,9 @@ export async function prefetchFeelState(): Promise<FeelPrefetch> {
     getRelationalPatternState(),
     getDissociativeState(),
     getFlowQualifyingTicks(),
-    getGenesisBigFive()
+    getGenesisBigFive(),
+    getDMNState(),
+    getMentalizingState()
   ])
 
   return {
@@ -195,6 +201,8 @@ export async function prefetchFeelState(): Promise<FeelPrefetch> {
     previousRelationalPatternState,
     previousDissociativeState,
     flowQualifyingTicks,
-    neuroticism: bigFive.neuroticism
+    neuroticism: bigFive.neuroticism,
+    previousDMNState,
+    previousMentalizingState
   }
 }

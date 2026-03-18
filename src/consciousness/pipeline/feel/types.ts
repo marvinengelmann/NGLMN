@@ -43,6 +43,8 @@ import type {
 import type { OperatorModel, RelationalPatternLibrary } from "@/relational/mind/types.ts"
 import type { PatternActivationEvent, RelationalPatternState } from "@/relational/patterns/types.ts"
 import type { BoundaryState, BoundaryViolation } from "@/self/boundaries/types.ts"
+import type { DefaultModeNetworkState } from "@/cognition/dmn/types.ts"
+import type { MentalizingState } from "@/relational/mind/mentalizing.ts"
 import type { DissociativeState } from "@/self/coherence/dissociation/types.ts"
 import type { CoherenceState } from "@/self/coherence/types.ts"
 import type { DeceptionState } from "@/self/deception/types.ts"
@@ -99,6 +101,8 @@ export interface FeelPrefetch {
   previousDissociativeState: DissociativeState
   flowQualifyingTicks: number
   neuroticism: number
+  previousDMNState: DefaultModeNetworkState
+  previousMentalizingState: MentalizingState
 }
 
 export interface EmotionChainResult {
@@ -141,6 +145,7 @@ export interface ParallelFanResult {
   implicitAssociations: AssociationActivation[]
   patternModulation: Record<string, number>
   patternActivationEvent: PatternActivationEvent | null
+  mentalizingState: MentalizingState
 }
 
 export interface VulnerabilityChainResult {
@@ -177,4 +182,5 @@ export interface FinalFanResult {
   microExpressionInstructions: string | null
   dissociativeState: DissociativeState
   granularityLevel: string
+  dmnState: DefaultModeNetworkState
 }

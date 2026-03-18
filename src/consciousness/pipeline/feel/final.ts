@@ -12,6 +12,7 @@ import {
 } from "@/affect/soma/autonomic.ts"
 import type { RegulationConstraints, SomaticState } from "@/affect/soma/types.ts"
 import { computeAttentionState } from "@/cognition/attention.ts"
+import { computeDMNState } from "@/cognition/dmn/compute.ts"
 import { updateBiasModifiers } from "@/cognition/bias/compute.ts"
 import { computeMetacognitiveModifiers, updateMetacognitiveState } from "@/cognition/metacognition.ts"
 import { computeMicroExpressionInstructions } from "@/expression/communication/microexpression.ts"
@@ -166,6 +167,16 @@ export async function runFinalSubsystems(
     consecutiveActiveTicks
   )
 
+  const dmnState = computeDMNState(prefetch.previousDMNState, {
+    attentionState,
+    consecutiveIdleTicks: prefetch.consecutiveIdleTicks,
+    ultradianRestDepth: prefetch.previousUltradian.restDepth,
+    ruminationDetected: metacognitiveState.ruminationDetected,
+    cognitiveFatigue: metacognitiveState.cognitiveFatigue,
+    neuroticism: prefetch.neuroticism,
+    inConversation: sense.moodContext.inConversation
+  })
+
   const flowConditions = assessFlowConditions(dampedEmotion, soma, driveState, prefetch.consecutiveIdleTicks > 0)
   if (qualifiesForFlow(flowConditions)) {
     await saveFlowQualifyingTicks(prefetch.flowQualifyingTicks + 1)
@@ -205,6 +216,7 @@ export async function runFinalSubsystems(
     biasState: updatedBias,
     microExpressionInstructions,
     dissociativeState,
-    granularityLevel: prefetch.previousGranularity.level
+    granularityLevel: prefetch.previousGranularity.level,
+    dmnState
   }
 }

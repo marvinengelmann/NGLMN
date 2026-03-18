@@ -53,6 +53,8 @@ export function assembleFeelOutput(
     relationalPatterns: parallel.relationalPatterns,
     patternActivationEvent: parallel.patternActivationEvent,
     neuromodulatoryState: chain.neuromodulatoryState,
-    freeEnergyState: null
+    freeEnergyState: null,
+    dmnState: final.dmnState,
+    mentalizingState: parallel.mentalizingState
   }
 }

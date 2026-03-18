@@ -181,7 +181,12 @@ export async function runEmotionChain(sense: SenseResult, prefetch: FeelPrefetch
     moodContext: sense.moodContext,
     autonomicState: prefetch.previousAutonomicState,
     trajectory: somaticTrajectory,
-    hourOfDay
+    hourOfDay,
+    allostaticContext: {
+      allostaticLoad: prefetch.previousIsolationStress.allostasis,
+      hasActiveGoals: sense.moodContext.hasActiveGoals,
+      forecastIntensity: prefetch.previousForecastingState.activeForecast?.predictedIntensity ?? 0
+    }
   })
 
   const elapsed = elapsedMinutesSince(prefetch.lastSomaTimestamp)

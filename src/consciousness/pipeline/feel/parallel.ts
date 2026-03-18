@@ -12,6 +12,7 @@ import {
   isOperatorReturning
 } from "@/relational/attachment/update.ts"
 import { extractSignals, learnFromObservation } from "@/relational/mind/triggers.ts"
+import { computeMentalizingState } from "@/relational/mind/mentalizing.ts"
 import { detectModelCorrection, updateOperatorModel } from "@/relational/mind/update.ts"
 import { activatePattern, computePatternModulation, matchRelationalPattern } from "@/relational/patterns/compute.ts"
 import { updateBoundaryState } from "@/self/boundaries/compute.ts"
@@ -74,6 +75,18 @@ export async function runParallelSubsystems(
     : null
   const patternModulation = computePatternModulation(patternActivationEvent)
 
+  const mentalizingState = computeMentalizingState(prefetch.previousMentalizingState, {
+    cortisolLevel: prefetch.previousNeuromodulatoryState.cortisol.level,
+    attachmentSecure: prefetch.attachmentStyle.secure,
+    attachmentAnxious: prefetch.attachmentStyle.anxious,
+    cognitiveFatigue: prefetch.previousMetacognition.cognitiveFatigue,
+    isolationCost: isolationStressResult.isolationCost,
+    vulnerabilityOpen: false,
+    regulationZone: prefetch.previousAutonomicState.zone,
+    metacognitiveClarity: prefetch.previousMetacognition.cognitiveClarity,
+    predictionAccuracy: operatorModelResult.operatorModel.predictionAccuracy.runningAverage
+  })
+
   return {
     instinct: instinctResult,
     dissonance: dissonanceResult,
@@ -89,7 +102,8 @@ export async function runParallelSubsystems(
     isolationStress: isolationStressResult,
     implicitAssociations: activeAssociations,
     patternModulation,
-    patternActivationEvent
+    patternActivationEvent,
+    mentalizingState
   }
 }
 

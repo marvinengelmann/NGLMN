@@ -56,7 +56,9 @@ const REDIS = {
   INTEROCEPTIVE_ACCURACY: "working:soma:interoceptiveAccuracy",
   LAST_PREDICTION: "working:soma:lastPrediction",
   LAST_APPRAISALS: "working:emotion:lastAppraisals",
-  NEUROMODULATORY_STATE: "working:affect:neuromodulation"
+  NEUROMODULATORY_STATE: "working:affect:neuromodulation",
+  DMN_STATE: "working:cognition:dmn",
+  MENTALIZING_STATE: "working:mind:mentalizing"
 } as const
 
 function stageEmotionChainWrites(buffer: WriteBuffer, chain: EmotionChainResult): void {
@@ -110,6 +112,7 @@ function stageParallelWrites(buffer: WriteBuffer, parallel: ParallelFanResult): 
   buffer.stage(REDIS.BOUNDARY_STATE, parallel.boundaryState)
 
   buffer.stage(REDIS.ISOLATION_STRESS, parallel.isolationStress)
+  buffer.stage(REDIS.MENTALIZING_STATE, parallel.mentalizingState)
 
   if (parallel.relationalPatterns) {
     buffer.stage(REDIS.RELATIONAL_PATTERNS, parallel.relationalPatterns)
@@ -169,6 +172,8 @@ function stageFinalWrites(buffer: WriteBuffer, final: FinalFanResult): void {
   buffer.stage(REDIS.CREATIVE_URGE, final.creativeUrge)
   buffer.stage(REDIS.COHERENCE_STATE, final.coherenceState)
   buffer.stage(REDIS.METACOGNITION_STATE, final.metacognitiveState)
+
+  buffer.stage(REDIS.DMN_STATE, final.dmnState)
 
   buffer.stagePostgres(coherenceLog, {
     integrationScore: final.coherenceState.integrationScore,

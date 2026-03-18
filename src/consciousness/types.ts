@@ -12,6 +12,7 @@ import {
 import { NeuromodulatoryState } from "@/affect/neuromodulation/types.ts"
 import { AutonomicState, InteroceptivePrediction, RegulationConstraints, SomaticState } from "@/affect/soma/types.ts"
 import { BiasState } from "@/cognition/bias/types.ts"
+import { DefaultModeNetworkState } from "@/cognition/dmn/types.ts"
 import { InnerDialog } from "@/cognition/polyphony/types.ts"
 import { AttentionState, CognitiveConflict, InstinctImpression, MetacognitiveState } from "@/cognition/types.ts"
 import { AnimaDecision } from "@/core/types.ts"
@@ -113,7 +114,19 @@ export const FeelingResult = z.object({
   relationalPatterns: z.custom<RelationalPatternLibrary>().nullable().default(null),
   patternActivationEvent: PatternActivationEvent.nullable().default(null),
   neuromodulatoryState: NeuromodulatoryState.nullable().default(null),
-  freeEnergyState: FreeEnergyState.nullable().default(null)
+  freeEnergyState: FreeEnergyState.nullable().default(null),
+  dmnState: DefaultModeNetworkState.nullable().default(null),
+  mentalizingState: z
+    .custom<{
+      capacity: number
+      mode: string
+      selfMentalizingClarity: number
+      otherMentalizingClarity: number
+      failureCount: number
+      lastUpdatedAt: string
+    }>()
+    .nullable()
+    .default(null)
 })
 export type FeelingResult = z.infer<typeof FeelingResult>
 
