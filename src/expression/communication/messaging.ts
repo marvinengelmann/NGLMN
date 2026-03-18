@@ -11,6 +11,7 @@ import {
 } from "@/expression/communication/timing.ts"
 import { maybeIntroduceTypo } from "@/expression/communication/typos.ts"
 import { generateAnimaImage } from "@/expression/image/generate.ts"
+import { buildAmbientVoiceMessage } from "@/expression/voice/mixing.ts"
 import { handleGuardianVerdict, validateOutput } from "@/governance/security/guardian.ts"
 import { pushRecentResponse, setGuardianResult } from "@/governance/security/state.ts"
 import { textToSpeech } from "@/infra/integrations/elevenlabs.ts"
@@ -88,6 +89,24 @@ export async function sendMessages(decision: AnimaDecision, context?: MessagingC
         }
       } catch (error) {
         captureError(error, { phase: "image_send" })
+        const sentId = await sendMessageWithReply(message.text, message.replyTo)
+        await pushToActiveConversation([{ role: "anima", text: message.text, timestamp: nowISO(), messageId: sentId }])
+      }
+    } else if (message.asVoice && message.backgroundSound && message.voiceSegments?.length) {
+      try {
+        await sendRecordVoiceAction()
+        const { oggBuffer } = await buildAmbientVoiceMessage(
+          message.voiceSegments,
+          message.backgroundSound,
+          message.backgroundSoundVolume
+        )
+        const sentId = await sendVoiceToOperator(oggBuffer, message.replyTo)
+
+        await pushToActiveConversation([
+          { role: "anima", text: message.text, timestamp: nowISO(), messageId: sentId, isVoice: true }
+        ])
+      } catch (error) {
+        captureError(error, { phase: "ambient_voice_send" })
         const sentId = await sendMessageWithReply(message.text, message.replyTo)
         await pushToActiveConversation([{ role: "anima", text: message.text, timestamp: nowISO(), messageId: sentId }])
       }

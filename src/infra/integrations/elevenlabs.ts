@@ -71,6 +71,27 @@ export async function saveVoice(name: string, description: string, generatedVoic
 }
 
 /**
+ * Generate a sound effect from a text description via ElevenLabs.
+ * @param prompt - Natural language description of the desired sound (e.g. "gentle piano melody", "rain on a window").
+ * @param durationSeconds - Optional target duration (0.5–22s). If omitted, ElevenLabs infers optimal length.
+ * @returns MP3 audio buffer of the generated sound effect.
+ */
+export async function generateSoundEffect(prompt: string, durationSeconds?: number): Promise<Buffer> {
+  const stream = await getClient().textToSoundEffects.convert({
+    text: prompt,
+    output_format: "mp3_44100_128",
+    duration_seconds: durationSeconds,
+    prompt_influence: 0.4
+  })
+
+  const chunks: Uint8Array[] = []
+  for await (const chunk of stream) {
+    chunks.push(chunk)
+  }
+  return Buffer.concat(chunks)
+}
+
+/**
  * Transcribe audio to text via ElevenLabs Scribe v1 STT.
  * @param audioBuffer - Audio data buffer (any format supported by Scribe).
  * @returns Transcribed text.
