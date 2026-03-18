@@ -23,6 +23,10 @@ vi.mock("@/infra/integrations/redis.ts", () => ({
   redis: { get: vi.fn() }
 }))
 
+vi.mock("@/memory/events.ts", () => ({
+  recordEvent: vi.fn()
+}))
+
 vi.mock("@/core/budget.ts", () => ({
   getBudgetState: vi.fn().mockResolvedValue({ consumedToday: 1, dailyLimit: 5, remainingToday: 4 })
 }))
