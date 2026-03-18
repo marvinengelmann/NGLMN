@@ -27,8 +27,10 @@ import type { ProustFlashback } from "@/perception/proust.ts"
 import { SubjectiveTimeState } from "@/perception/time/types.ts"
 import { PerceptionSummary } from "@/perception/types.ts"
 import { AttachmentDynamics, IsolationStress, VulnerabilityState } from "@/relational/attachment/types.ts"
-import { OperatorModel } from "@/relational/mind/types.ts"
+import { OperatorModel, type RelationalPatternLibrary } from "@/relational/mind/types.ts"
+import { TransferenceEvent } from "@/relational/transference/types.ts"
 import { BoundaryState } from "@/self/boundaries/types.ts"
+import { DissociativeState } from "@/self/coherence/dissociation/types.ts"
 import { CoherenceState } from "@/self/coherence/types.ts"
 import { DefenseState } from "@/self/defense/types.ts"
 import { DissonanceState } from "@/self/dissonance/types.ts"
@@ -102,7 +104,12 @@ export const FeelingResult = z.object({
   isolationStress: IsolationStress,
   defenseState: DefenseState,
   defenseExpressionModifiers: z.string().nullable().default(null),
-  biasState: BiasState
+  biasState: BiasState,
+  microExpressionInstructions: z.string().nullable().default(null),
+  dissociativeState: DissociativeState.optional(),
+  granularityLevel: z.string().default("coarse"),
+  relationalPatterns: z.custom<RelationalPatternLibrary>().nullable().default(null),
+  transferenceEvent: TransferenceEvent.nullable().default(null)
 })
 export type FeelingResult = z.infer<typeof FeelingResult>
 

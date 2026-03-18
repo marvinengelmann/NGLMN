@@ -2,6 +2,7 @@ import type { SecondaryEmotionState } from "@/affect/emotion/types.ts"
 import { applyEvent } from "@/affect/emotion/update.ts"
 import { constrainVulnerabilityLevel } from "@/affect/soma/vagal.ts"
 import { log } from "@/infra/lib/logger.ts"
+import { applyClampedDeltas } from "@/infra/lib/math.ts"
 import { isOperatorReturning } from "@/relational/attachment/update.ts"
 import type { FeelingResult, SenseResult } from "../../types.ts"
 import type { WriteBuffer } from "../persistence.ts"
@@ -26,6 +27,10 @@ export async function runFeelPipeline(senseResult: SenseResult, buffer: WriteBuf
     (acc, event) => applyEvent(acc, event),
     emotionAfterBoundary
   )
+
+  if (Object.keys(parallel.transferenceModulation).length > 0) {
+    emotionAfterBoundary = applyClampedDeltas(emotionAfterBoundary, parallel.transferenceModulation)
+  }
 
   const vulnerabilityResult = await runVulnerabilityChain(
     emotionAfterBoundary,

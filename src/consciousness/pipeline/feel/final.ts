@@ -1,3 +1,6 @@
+import { assessFlowConditions, detectFlowState, qualifiesForFlow } from "@/affect/altered/flow/compute.ts"
+import { saveFlowQualifyingTicks } from "@/affect/altered/flow/state.ts"
+import { startAlteredState } from "@/affect/altered/state.ts"
 import type { DriveState } from "@/affect/drive/types.ts"
 import type { ShameState } from "@/affect/emotion/shame.ts"
 import type { EmotionalState } from "@/affect/emotion/types.ts"
@@ -7,6 +10,7 @@ import { constrainCognitiveFlexibility, constrainCreativeUrge, vagalForcesTerseR
 import { computeAttentionState } from "@/cognition/attention.ts"
 import { updateBiasModifiers } from "@/cognition/bias/compute.ts"
 import { computeMetacognitiveModifiers, updateMetacognitiveState } from "@/cognition/metacognition.ts"
+import { computeMicroExpressionInstructions } from "@/expression/communication/microexpression.ts"
 import { computeCommunicationRegister } from "@/expression/communication/register.ts"
 import { updateCreativeUrgeState } from "@/expression/creativity/compute.ts"
 import { clamp01 } from "@/infra/lib/math.ts"
@@ -14,6 +18,11 @@ import { computeSubjectiveTime } from "@/perception/time/compute.ts"
 import { DEFAULT_SUBJECTIVE_TIME_STATE } from "@/perception/time/types.ts"
 import type { IsolationStress, VulnerabilityState } from "@/relational/attachment/types.ts"
 import { computeCoherenceEffect, updateCoherenceState } from "@/self/coherence/compute.ts"
+import {
+  checkDissociationTriggers,
+  computeDissociationEffects,
+  computeDissociativeState
+} from "@/self/coherence/dissociation/compute.ts"
 import { processDeceptionCycle } from "@/self/deception/compute.ts"
 import { computeDefenseExpressionModifiers, processDefenseCycle } from "@/self/defense/compute.ts"
 import type { DissonanceState } from "@/self/dissonance/types.ts"
@@ -96,6 +105,20 @@ export async function runFinalSubsystems(
   const coherenceEffect = computeCoherenceEffect(coherenceState)
   let dampedEmotion = applyEmotionalDamping(emotion, coherenceEffect.emotionalDamping)
 
+  const dissociationTriggered = checkDissociationTriggers({
+    vagalZone: prefetch.previousVagalState.zone,
+    fragmentationSources: coherenceState.fragmentationSources,
+    integrationScore: coherenceState.integrationScore,
+    isolationStress,
+    cortisolLevel: prefetch.previousNeuromodulatoryState.cortisol.level
+  })
+  const dissociativeState = computeDissociativeState(prefetch.previousDissociativeState, dissociationTriggered)
+  const dissociationEffects = computeDissociationEffects(dissociativeState)
+
+  if (dissociativeState.active) {
+    dampedEmotion = applyEmotionalDamping(dampedEmotion, dissociationEffects.emotionDampingFactor)
+  }
+
   const metacognitiveState = updateMetacognitiveState(prefetch.previousMetacognition, {
     emotion: dampedEmotion,
     soma,
@@ -129,6 +152,25 @@ export async function runFinalSubsystems(
     conversationMessageCount
   )
 
+  const flowConditions = assessFlowConditions(dampedEmotion, soma, driveState, prefetch.consecutiveIdleTicks > 0)
+  if (qualifiesForFlow(flowConditions)) {
+    await saveFlowQualifyingTicks(prefetch.flowQualifyingTicks + 1)
+    const flowResult = detectFlowState(flowConditions, prefetch.flowQualifyingTicks + 1)
+    if (flowResult.shouldTrigger && !prefetch.alteredState) {
+      await startAlteredState("flow_state")
+    }
+  } else {
+    await saveFlowQualifyingTicks(0)
+  }
+
+  const microExpressionInstructions = computeMicroExpressionInstructions({
+    emotion: dampedEmotion,
+    soma,
+    coherenceState,
+    defenseState: updatedDefense,
+    granularityLevel: prefetch.previousGranularity.level
+  })
+
   return {
     subjectiveTime,
     creativeUrge,
@@ -143,6 +185,9 @@ export async function runFinalSubsystems(
     hedgingLevel: metacognitiveModifiers.hedgingLevel,
     defenseState: updatedDefense,
     defenseExpressionModifiers,
-    biasState: updatedBias
+    biasState: updatedBias,
+    microExpressionInstructions,
+    dissociativeState,
+    granularityLevel: prefetch.previousGranularity.level
   }
 }

@@ -737,3 +737,48 @@ export const defenseLog = pgTable(
 )
 export type DefenseLogInsert = typeof defenseLog.$inferInsert
 export type DefenseLogSelect = typeof defenseLog.$inferSelect
+
+export const forecastLog = pgTable(
+  "forecast_log",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    triggerEvent: text("trigger_event").notNull(),
+    predictedIntensity: real("predicted_intensity").notNull(),
+    actualIntensity: real("actual_intensity"),
+    predictedDuration: integer("predicted_duration").notNull(),
+    actualDuration: integer("actual_duration"),
+    biasesApplied: jsonb("biases_applied").notNull(),
+    intensityError: real("intensity_error"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow()
+  },
+  (table) => [index("idx_forecast_log_created").on(table.createdAt)]
+)
+export type ForecastLogInsert = typeof forecastLog.$inferInsert
+export type ForecastLogSelect = typeof forecastLog.$inferSelect
+
+export const transferenceLog = pgTable(
+  "transference_log",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    templateId: text("template_id").notNull(),
+    triggerContext: text("trigger_context").notNull(),
+    matchConfidence: real("match_confidence").notNull(),
+    awarenessLevel: real("awareness_level").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow()
+  },
+  (table) => [index("idx_transference_log_created").on(table.createdAt)]
+)
+export type TransferenceLogInsert = typeof transferenceLog.$inferInsert
+export type TransferenceLogSelect = typeof transferenceLog.$inferSelect
+
+export const dissociationLog = pgTable(
+  "dissociation_log",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    depth: real("depth").notNull(),
+    symptoms: jsonb("symptoms").notNull(),
+    triggerSource: text("trigger_source"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow()
+  },
+  (table) => [index("idx_dissociation_log_created").on(table.createdAt)]
+)

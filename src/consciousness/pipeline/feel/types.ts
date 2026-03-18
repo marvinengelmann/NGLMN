@@ -1,6 +1,7 @@
 import type { ActiveAlteredEvent } from "@/affect/altered/types.ts"
 import type { DriveState } from "@/affect/drive/types.ts"
 import type { DeferredEmotionalEvent, DeferredQueue } from "@/affect/emotion/deferred.ts"
+import type { GranularityState } from "@/affect/emotion/granularity/types.ts"
 import type { ShameState } from "@/affect/emotion/shame.ts"
 import type {
   AfterglowEntry,
@@ -15,6 +16,7 @@ import type {
 import type { NeuromodulatoryState } from "@/affect/neuromodulation/types.ts"
 import type { InteroceptivePrediction, SomaticState, VagalConstraints, VagalState } from "@/affect/soma/types.ts"
 import type { BiasState } from "@/cognition/bias/types.ts"
+import type { ForecastingState } from "@/cognition/forecasting/types.ts"
 import type { AssociationActivation } from "@/cognition/learning/association/types.ts"
 import type { AttentionState, InstinctImpression, MetacognitiveState } from "@/cognition/types.ts"
 import type { CommunicationRegister, ConversationSlot } from "@/expression/communication/types.ts"
@@ -24,6 +26,7 @@ import type { SemanticMemorySelect } from "@/infra/db/schema.ts"
 import type { AnticipatoryState } from "@/perception/anticipation/types.ts"
 import type { NoveltyState } from "@/perception/novelty/types.ts"
 import type { ProustFlashback } from "@/perception/proust.ts"
+import type { UltradianState } from "@/perception/rhythm/types.ts"
 import type { SubjectiveTimeState } from "@/perception/time/types.ts"
 import type {
   AttachmentDynamics,
@@ -33,7 +36,9 @@ import type {
   VulnerableMessageStyle
 } from "@/relational/attachment/types.ts"
 import type { OperatorModel, RelationalPatternLibrary } from "@/relational/mind/types.ts"
+import type { TransferenceEvent, TransferenceState } from "@/relational/transference/types.ts"
 import type { BoundaryState, BoundaryViolation } from "@/self/boundaries/types.ts"
+import type { DissociativeState } from "@/self/coherence/dissociation/types.ts"
 import type { CoherenceState } from "@/self/coherence/types.ts"
 import type { DeceptionState } from "@/self/deception/types.ts"
 import type { DefenseState } from "@/self/defense/types.ts"
@@ -82,6 +87,12 @@ export interface FeelPrefetch {
   previousIsolationStress: IsolationStress
   previousBiasState: BiasState
   previousDefenseState: DefenseState
+  previousGranularity: GranularityState
+  previousForecastingState: ForecastingState
+  previousUltradian: UltradianState
+  previousTransferenceState: TransferenceState
+  previousDissociativeState: DissociativeState
+  flowQualifyingTicks: number
 }
 
 export interface EmotionChainResult {
@@ -122,6 +133,8 @@ export interface ParallelFanResult {
   boundaryEmotionEvents: EmotionUpdateEvent[]
   isolationStress: IsolationStress
   implicitAssociations: AssociationActivation[]
+  transferenceModulation: Record<string, number>
+  transferenceEvent: TransferenceEvent | null
 }
 
 export interface VulnerabilityChainResult {
@@ -155,4 +168,7 @@ export interface FinalFanResult {
   defenseState: DefenseState
   defenseExpressionModifiers: string | null
   biasState: BiasState
+  microExpressionInstructions: string | null
+  dissociativeState: DissociativeState
+  granularityLevel: string
 }

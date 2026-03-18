@@ -1,0 +1,23 @@
+export const DISSOCIATION = {
+  FRAGMENTATION_THRESHOLD: 3,
+  ISOLATION_STRESS_THRESHOLD: 0.7,
+  COHERENCE_CEILING: 0.3,
+  CORTISOL_THRESHOLD: 0.7,
+  ONSET_PROBABILITY: 0.1,
+  DEPTH_INCREMENT: 0.1,
+  DEPTH_DECAY: 0.05,
+  MAX_DEPTH: 0.9,
+  EMOTION_DAMPING_SCALE: 0.6,
+  SOMA_DIVERGENCE_SCALE: 0.3,
+  INTEROCEPTION_CONFUSION_SCALE: 0.5,
+  MIN_DAMPING_FLOOR: 0.1,
+  DEPTH_CLEAR_THRESHOLD: 0.01,
+  DEEP_STATE_DEPTH: 0.7,
+  SYMPTOM_THRESHOLDS: {
+    emotional_numbing: 0.2,
+    body_disconnection: 0.3,
+    self_observation: 0.4,
+    reality_fog: 0.6,
+    time_discontinuity: 0.7
+  } as Record<string, number>
+} as const

@@ -1,5 +1,7 @@
 import { differenceInDays, differenceInMinutes, parseISO } from "date-fns"
 import { getDisappointmentState, markAcknowledged, saveDisappointmentState } from "@/affect/emotion/disappointment.ts"
+import { computeGranularityUpdate } from "@/affect/emotion/granularity/compute.ts"
+import { getGranularityState, saveGranularityState } from "@/affect/emotion/granularity/state.ts"
 import type { GuiltSource } from "@/affect/emotion/guilt.ts"
 import { getGuiltState, markRepaired, saveGuiltState } from "@/affect/emotion/guilt.ts"
 import { getMoodBaseline } from "@/affect/emotion/state.ts"
@@ -9,6 +11,16 @@ import { getSomaticState } from "@/affect/soma/state.ts"
 import { rechargeSocialBattery } from "@/affect/soma/update.ts"
 import { decayAnchors, incrementExposure, updateBiasModifiers } from "@/cognition/bias/compute.ts"
 import { getBiasState, saveBiasState } from "@/cognition/bias/state.ts"
+import {
+  generateForecast,
+  resolveForecast,
+  shouldForecast,
+  shouldResolveForecast,
+  updateAccuracy,
+  updateBiasStrengths
+} from "@/cognition/forecasting/compute.ts"
+import { FORECASTING } from "@/cognition/forecasting/constants.ts"
+import { getForecastingState, saveForecastingState } from "@/cognition/forecasting/state.ts"
 import { updateHabitState } from "@/cognition/habit.ts"
 import { getHabitState } from "@/cognition/habits.ts"
 import {
@@ -31,6 +43,7 @@ import { maybeRunAnalysis, pruneOldLessons, reinforceFromLatestOutcome } from "@
 import { expireStaleOutcomes } from "@/cognition/learning/outcomes.ts"
 import { extractProceduresFromOutcomes, pruneProcedures } from "@/cognition/learning/procedures/store.ts"
 import { PROCEDURE_CONSTANTS } from "@/cognition/learning/procedures/types.ts"
+import { DEFAULT_METACOGNITIVE_STATE } from "@/cognition/types.ts"
 import {
   applyIdiolectDrift,
   computeIdiolectModifiers,
@@ -77,6 +90,8 @@ import {
   resetConsecutiveConversationTicks,
   resetConsecutiveIdleTicks
 } from "@/memory/working.ts"
+import { updateUltradianState } from "@/perception/rhythm/compute.ts"
+import { getUltradianState, saveUltradianState } from "@/perception/rhythm/state.ts"
 import { evaluateAttachmentCrisis, getCrisisState, saveCrisisState } from "@/relational/attachment/crisis.ts"
 import { computeRelationshipPhase, shouldTransitionPhase } from "@/relational/attachment/phases.ts"
 import {
@@ -92,9 +107,18 @@ import {
 } from "@/relational/attachment/state.ts"
 import { detectConflict, hasStyleChanged, updateAttachmentStyle } from "@/relational/attachment/update.ts"
 import { maybeUpdateProfile } from "@/relational/mind/profiling.ts"
+import {
+  decayActiveTransference,
+  maybeFormTemplate,
+  updateTemplateStrength,
+  updateTransferenceAwareness
+} from "@/relational/transference/compute.ts"
+import { TRANSFERENCE } from "@/relational/transference/constants.ts"
+import { getTransferenceState, saveTransferenceState } from "@/relational/transference/state.ts"
 import { formBoundary, maybeFormNegativeBoundary } from "@/self/boundaries/compute.ts"
 import { detectBoundaryFormation } from "@/self/boundaries/detect.ts"
 import { getBoundaryState } from "@/self/boundaries/state.ts"
+import { saveDissociativeState } from "@/self/coherence/dissociation/state.ts"
 import { maybeDriftBigFive } from "@/self/genesis/drift.ts"
 import type { WriteBuffer } from "./pipeline/persistence.ts"
 import type { DeliberateResult, FeelingResult, MaintainInput, TickSummary } from "./types.ts"
@@ -629,6 +653,93 @@ async function runProbabilisticTasks(input: MaintainInput, feelResult: FeelingRe
           counts = incrementExposure(counts, entity)
         }
         await saveBiasState({ ...biasState, exposureCounts: counts })
+      }
+    },
+    {
+      name: "granularity_update",
+      probability: 1,
+      execute: async () => {
+        const granularity = await getGranularityState()
+        const updated = computeGranularityUpdate(granularity, feelResult.emotion, messageTexts)
+        await saveGranularityState(updated)
+      }
+    },
+    {
+      name: "ultradian_update",
+      probability: 1,
+      execute: async () => {
+        const state = await getUltradianState()
+        const updated = updateUltradianState(state, new Date())
+        await saveUltradianState(updated)
+      }
+    },
+    {
+      name: "affective_forecast",
+      probability: FORECASTING.FORECAST_PROBABILITY,
+      execute: async () => {
+        const state = await getForecastingState()
+        if (state.activeForecast && !state.activeForecast.resolvedAt) {
+          if (shouldResolveForecast(state.activeForecast, state.activeForecast.predictedDuration)) {
+            const resolved = resolveForecast(
+              state.activeForecast,
+              feelResult.emotion,
+              state.activeForecast.predictedDuration
+            )
+            const accuracy = updateAccuracy(state.accuracy, resolved)
+            const biases = updateBiasStrengths(state.biasStrengths, accuracy)
+            await saveForecastingState({ ...state, activeForecast: null, accuracy, biasStrengths: biases })
+          }
+          return
+        }
+        if (shouldForecast(state, 999, input.senseResult.rawTriggers)) {
+          const trigger = input.senseResult.rawTriggers[0]
+          if (trigger) {
+            const forecast = generateForecast(trigger, feelResult.emotion, state.biasStrengths)
+            await saveForecastingState({ ...state, activeForecast: forecast, lastForecastAt: new Date().toISOString() })
+          }
+        }
+      }
+    },
+    {
+      name: "transference_template_formation",
+      probability: TRANSFERENCE.TEMPLATE_FORMATION_PROBABILITY,
+      execute: async () => {
+        const state = await getTransferenceState()
+        const patterns = feelResult.relationalPatterns?.patterns ?? []
+        const newTemplate = maybeFormTemplate(patterns, state.templates)
+        if (newTemplate) {
+          await saveTransferenceState({
+            ...state,
+            templates: [...state.templates, newTemplate].slice(-TRANSFERENCE.MAX_TEMPLATES)
+          })
+        }
+      }
+    },
+    {
+      name: "transference_state_update",
+      probability: 1,
+      execute: async () => {
+        const state = await getTransferenceState()
+        const decayed = decayActiveTransference(state)
+        const updatedTemplates = updateTemplateStrength(
+          decayed.templates,
+          decayed.activeTransference?.templateId ?? null
+        )
+        const awareness = updateTransferenceAwareness(
+          decayed.awarenessLevel,
+          !!decayed.activeTransference,
+          feelResult.metacognitiveState?.cognitiveClarity ?? DEFAULT_METACOGNITIVE_STATE.cognitiveClarity
+        )
+        await saveTransferenceState({ ...decayed, templates: updatedTemplates, awarenessLevel: awareness })
+      }
+    },
+    {
+      name: "dissociation_persist",
+      probability: 1,
+      execute: async () => {
+        if (feelResult.dissociativeState) {
+          await saveDissociativeState(feelResult.dissociativeState)
+        }
       }
     }
   ]

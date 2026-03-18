@@ -203,11 +203,13 @@ export function assembleInteroceptivePrediction(
   predicted: SomaticState,
   actual: SomaticState,
   previousAccuracy: number,
-  vagalZone: string
+  vagalZone: string,
+  dissociationPenalty = 0
 ): InteroceptivePrediction {
   const error = computePredictionError(predicted, actual)
   const totalError = computeTotalError(error)
-  const accuracy = updateInteroceptiveAccuracy(previousAccuracy, totalError)
+  const rawAccuracy = updateInteroceptiveAccuracy(previousAccuracy, totalError)
+  const accuracy = Math.max(0, rawAccuracy - dissociationPenalty)
   const alexithymia = computeAlexithymia(accuracy, totalError, vagalZone)
   const somethingFeelsOff =
     totalError > INTEROCEPTION.SOMETHING_FEELS_OFF_THRESHOLD && totalError < INTEROCEPTION.EMOTION_TRIGGER_THRESHOLD

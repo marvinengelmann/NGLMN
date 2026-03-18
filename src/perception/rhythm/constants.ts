@@ -1,0 +1,22 @@
+export const ULTRADIAN = {
+  CYCLE_DURATION_MINUTES: 90,
+  ACTIVE_END: 0.6,
+  TRANSITION_DOWN_END: 0.675,
+  REST_END: 0.925,
+
+  REST_ATTENTION_DIP: -0.15,
+  REST_ENERGY_DIP: -0.1,
+  REST_CREATIVITY_BOOST: 0.3,
+  REST_MIND_WANDERING: 0.4,
+
+  ACTIVE_ATTENTION_BOOST: 0.1,
+  ACTIVE_ENERGY_BOOST: 0.05,
+
+  EMOTION_REST_SHIFTS: {
+    boredom: 0.05,
+    curiosity: 0.03,
+    energy: -0.08
+  } as Record<string, number>,
+
+  NATURAL_VARIANCE_MINUTES: 15
+} as const

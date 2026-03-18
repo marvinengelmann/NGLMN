@@ -46,6 +46,11 @@ export function assembleFeelOutput(
     isolationStress: parallel.isolationStress,
     defenseState: final.defenseState,
     defenseExpressionModifiers: final.defenseExpressionModifiers,
-    biasState: final.biasState
+    biasState: final.biasState,
+    microExpressionInstructions: final.microExpressionInstructions,
+    dissociativeState: final.dissociativeState,
+    granularityLevel: final.granularityLevel,
+    relationalPatterns: parallel.relationalPatterns,
+    transferenceEvent: parallel.transferenceEvent
   }
 }

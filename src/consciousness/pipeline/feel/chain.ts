@@ -37,6 +37,7 @@ import {
   computeVagalConstraints,
   computeVagalTransition
 } from "@/affect/soma/vagal.ts"
+import { computeForecastAnticipation } from "@/cognition/forecasting/compute.ts"
 import { DREAM_AFTERGLOW } from "@/expression/dream/constants.ts"
 import { applyClampedDeltas } from "@/infra/lib/math.ts"
 import { setEmotionContext } from "@/infra/lib/sentry.ts"
@@ -44,6 +45,8 @@ import { elapsedMinutesSince, nowISO, nowLocal } from "@/infra/lib/time.ts"
 import { queryRelated } from "@/memory/episodic.ts"
 import { processReconsolidation } from "@/memory/reconsolidation.ts"
 import { detectProustFlashback } from "@/perception/proust.ts"
+import { computeUltradianModulation, updateUltradianState } from "@/perception/rhythm/compute.ts"
+import { DISSOCIATION } from "@/self/coherence/dissociation/constants.ts"
 import type { SenseResult } from "../../types.ts"
 import type { EmotionChainResult, FeelPrefetch } from "./types.ts"
 
@@ -98,6 +101,17 @@ export async function runEmotionChain(sense: SenseResult, prefetch: FeelPrefetch
   const allAfterglowEntries = [...remainingEntries, ...newAfterglowEntries]
 
   let emotion = afterglowState
+
+  const ultradianState = updateUltradianState(prefetch.previousUltradian, new Date())
+  const ultradianModulation = computeUltradianModulation(ultradianState.phase, ultradianState.restDepth)
+  if (Object.keys(ultradianModulation.emotionBaselineShift).length > 0) {
+    emotion = applyClampedDeltas(emotion, ultradianModulation.emotionBaselineShift)
+  }
+
+  const forecastAnticipation = computeForecastAnticipation(prefetch.previousForecastingState.activeForecast, emotion)
+  if (Object.keys(forecastAnticipation).length > 0) {
+    emotion = applyClampedDeltas(emotion, forecastAnticipation)
+  }
 
   let dreamAfterglowDecayed: EmotionChainResult["dreamAfterglowDecayed"] = null
   if (prefetch.dreamAfterglow && prefetch.dreamAfterglow.intensity >= DREAM_AFTERGLOW.MIN_INTENSITY) {
@@ -180,11 +194,16 @@ export async function runEmotionChain(sense: SenseResult, prefetch: FeelPrefetch
     soma = applyClampedDeltas(soma, somaMods, new Set(["socialBattery"]))
   }
 
+  const dissociationPenalty = prefetch.previousDissociativeState.active
+    ? prefetch.previousDissociativeState.depth * DISSOCIATION.INTEROCEPTION_CONFUSION_SCALE
+    : 0
+
   const interoceptivePrediction = assembleInteroceptivePrediction(
     predictedSoma,
     soma,
     prefetch.interoceptiveAccuracy,
-    prefetch.previousVagalState.zone
+    prefetch.previousVagalState.zone,
+    dissociationPenalty
   )
 
   const interoceptiveTriggers = computeInteroceptiveEmotionTriggers(interoceptivePrediction)

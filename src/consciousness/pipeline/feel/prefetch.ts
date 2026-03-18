@@ -1,7 +1,9 @@
+import { getFlowQualifyingTicks } from "@/affect/altered/flow/state.ts"
 import { getActiveAlteredState } from "@/affect/altered/state.ts"
 import { getDriveState } from "@/affect/drive/state.ts"
 import { getAllSecondaryEmotionStates } from "@/affect/emotion/batch.ts"
 import { getDeferredQueue } from "@/affect/emotion/deferred.ts"
+import { getGranularityState } from "@/affect/emotion/granularity/state.ts"
 import { getShameState } from "@/affect/emotion/shame.ts"
 import {
   getAfterglowEntries,
@@ -19,6 +21,7 @@ import {
 } from "@/affect/soma/state.ts"
 import { getMetacognitiveState } from "@/cognition/awareness.ts"
 import { getBiasState } from "@/cognition/bias/state.ts"
+import { getForecastingState } from "@/cognition/forecasting/state.ts"
 import { getActiveConversation } from "@/expression/communication/state.ts"
 import { getCreativeUrgeState } from "@/expression/creativity/state.ts"
 import { getDreamAfterglow } from "@/expression/dream/state.ts"
@@ -26,11 +29,14 @@ import { getKnowledge } from "@/memory/semantic.ts"
 import { getConsecutiveConversationTicks, getConsecutiveIdleTicks, getRecentActions } from "@/memory/working.ts"
 import { getAnticipatoryState } from "@/perception/anticipation/state.ts"
 import { getNoveltyState } from "@/perception/novelty/state.ts"
+import { getUltradianState } from "@/perception/rhythm/state.ts"
 import { getAttachmentStyle, getIsolationStress } from "@/relational/attachment/state.ts"
 import { getVulnerabilityPrevLevel } from "@/relational/attachment/store.ts"
 import { getOperatorModel, getRelationalPatterns } from "@/relational/mind/state.ts"
+import { getTransferenceState } from "@/relational/transference/state.ts"
 import { getAggregateTrustExperience } from "@/relational/trust/compute.ts"
 import { getBoundaryState } from "@/self/boundaries/state.ts"
+import { getDissociativeState } from "@/self/coherence/dissociation/state.ts"
 import { getCoherenceState } from "@/self/coherence/state.ts"
 import { getDeceptionState } from "@/self/deception/state.ts"
 import { getDefenseState } from "@/self/defense/state.ts"
@@ -124,6 +130,22 @@ export async function prefetchFeelState(): Promise<FeelPrefetch> {
     getDefenseState()
   ])
 
+  const [
+    previousGranularity,
+    previousForecastingState,
+    previousUltradian,
+    previousTransferenceState,
+    previousDissociativeState,
+    flowQualifyingTicks
+  ] = await Promise.all([
+    getGranularityState(),
+    getForecastingState(),
+    getUltradianState(),
+    getTransferenceState(),
+    getDissociativeState(),
+    getFlowQualifyingTicks()
+  ])
+
   return {
     dnaBaseline: genesisDNA?.emotionalBaseline ?? null,
     currentEmotion,
@@ -164,6 +186,12 @@ export async function prefetchFeelState(): Promise<FeelPrefetch> {
     previousNeuromodulatoryState,
     previousIsolationStress,
     previousBiasState,
-    previousDefenseState
+    previousDefenseState,
+    previousGranularity,
+    previousForecastingState,
+    previousUltradian,
+    previousTransferenceState,
+    previousDissociativeState,
+    flowQualifyingTicks
   }
 }

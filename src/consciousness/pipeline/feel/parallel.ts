@@ -13,6 +13,11 @@ import {
 } from "@/relational/attachment/update.ts"
 import { extractSignals, learnFromObservation } from "@/relational/mind/triggers.ts"
 import { detectModelCorrection, updateOperatorModel } from "@/relational/mind/update.ts"
+import {
+  activateTransference,
+  computeTransferenceModulation,
+  matchTemplate
+} from "@/relational/transference/compute.ts"
 import { updateBoundaryState } from "@/self/boundaries/compute.ts"
 import { checkDissonanceWithCooldown } from "@/self/dissonance/compute.ts"
 import type { SenseResult } from "../../types.ts"
@@ -56,6 +61,23 @@ export async function runParallelSubsystems(
     detail: violation.description
   }))
 
+  const transferenceMatch = matchTemplate(prefetch.previousTransferenceState.templates, {
+    operatorMood: operatorModelResult.operatorModel.estimatedMood ?? "neutral",
+    messageText: messageTexts.join(" "),
+    interactionTone: operatorModelResult.trigger,
+    recentPatterns: (operatorModelResult.updatedPatterns ?? prefetch.relationalPatterns)?.patterns ?? [],
+    timeOfDay: new Date().getHours() < 12 ? "morning" : new Date().getHours() < 18 ? "afternoon" : "evening"
+  })
+
+  const transferenceEvent = transferenceMatch
+    ? activateTransference(
+        transferenceMatch.template,
+        transferenceMatch.confidence,
+        prefetch.previousTransferenceState.awarenessLevel
+      )
+    : null
+  const transferenceModulation = computeTransferenceModulation(transferenceEvent)
+
   return {
     instinct: instinctResult,
     dissonance: dissonanceResult,
@@ -69,7 +91,9 @@ export async function runParallelSubsystems(
     newBoundaryViolations: boundaryResult.newViolations,
     boundaryEmotionEvents,
     isolationStress: isolationStressResult,
-    implicitAssociations: activeAssociations
+    implicitAssociations: activeAssociations,
+    transferenceModulation,
+    transferenceEvent
   }
 }
 
