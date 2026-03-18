@@ -206,22 +206,33 @@ export function selectActiveStrategies(context: RegulationContext): ActiveStrate
     .sort((a, b) => b.intensity - a.intensity)
     .slice(0, EMOTION_REGULATION.MAX_ACTIVE_STRATEGIES)
 
-  return applyResourceCompetition(candidates)
+  return applyOpportunityCostPrioritization(candidates)
 }
 
 /**
- * Apply cognitive resource competition: multiple strategies share a limited resource pool.
- * When total demand exceeds capacity, all strategy intensities are proportionally scaled down.
- * Suppression is most resource-intensive (Richards & Gross, 2000).
+ * Apply opportunity cost prioritization (Kurzban et al., 2013).
+ * Strategies compete based on motivational priority, not a fixed resource pool.
+ * The brain allocates attention to regulation strategies that offer the highest expected utility,
+ * attenuating lower-priority strategies when multiple compete for behavioral control.
  */
-function applyResourceCompetition(strategies: ActiveStrategy[]): ActiveStrategy[] {
-  const costs = EMOTION_REGULATION.STRATEGY_RESOURCE_COSTS
-  const totalDemand = strategies.reduce((sum, s) => sum + (costs[s.type] ?? 0.3) * s.intensity, 0)
+function applyOpportunityCostPrioritization(strategies: ActiveStrategy[]): ActiveStrategy[] {
+  if (strategies.length <= 1) return strategies
 
-  if (totalDemand <= EMOTION_REGULATION.COGNITIVE_RESOURCE_POOL) return strategies
+  const weights = EMOTION_REGULATION.STRATEGY_PRIORITY_WEIGHTS
+  const scored = strategies.map((s) => ({
+    strategy: s,
+    utility: s.intensity * (weights[s.type] ?? 0.5)
+  }))
 
-  const scaleFactor = EMOTION_REGULATION.COGNITIVE_RESOURCE_POOL / totalDemand
-  return strategies.map((s) => ({ ...s, intensity: s.intensity * scaleFactor }))
+  const maxUtility = Math.max(...scored.map((s) => s.utility))
+
+  return scored.map(({ strategy, utility }) => {
+    const relativePriority = utility / maxUtility
+    const attenuation = relativePriority < EMOTION_REGULATION.OPPORTUNITY_COST_THRESHOLD
+      ? relativePriority / EMOTION_REGULATION.OPPORTUNITY_COST_THRESHOLD
+      : 1
+    return { ...strategy, intensity: strategy.intensity * attenuation }
+  })
 }
 
 /**

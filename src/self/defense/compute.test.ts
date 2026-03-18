@@ -92,7 +92,7 @@ const baseContext: RegulationContext = {
       peak_end: 0.5,
       mere_exposure: 0.3,
       optimism: 0.4,
-      calibration_bias: 0.5,
+      metacognitive_miscalibration: 0.5,
       spotlight: 0.3,
       fundamental_attribution: 0.4,
       false_consensus: 0.3,

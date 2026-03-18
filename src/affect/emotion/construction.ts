@@ -174,15 +174,20 @@ export function computeAppraisalSignal(appraisal: AppraisalResult): EmotionDelta
 
 /**
  * Apply neuromodulatory coloring to a set of base deltas.
- * High dopamine amplifies positive deltas; high cortisol amplifies negative; low serotonin biases negative.
+ * High dopamine amplifies positive deltas; high cortisol amplifies negative.
+ * Low serotonin reduces behavioral inhibition — amplifies impulsive emotional reactions
+ * and increases frustration tolerance deficit (Miyazaki et al., 2014; Dayan & Huys, 2009).
+ * High oxytocin amplifies social-dimension deltas in both directions (Shamay-Tsoory & Abu-Akel, 2016).
  */
 export function computeNeuroColoringSignal(neuro: NeuromodulatoryState, baseDeltas: EmotionDeltas): EmotionDeltas {
   const dopamineExcess = Math.max(0, neuro.dopamine.level - NEURO_BASELINES.dopamine)
   const cortisolExcess = Math.max(0, neuro.cortisol.level - NEURO_BASELINES.cortisol)
   const serotoninDeficit = Math.max(0, NEURO_BASELINES.serotonin - neuro.serotonin.level)
+  const oxytocinExcess = Math.max(0, neuro.oxytocin.level - 0.4)
 
-  const positives: EmoDim[] = ["satisfaction", "connection", "confidence", "excitement", "curiosity"]
+  const positives: EmoDim[] = ["satisfaction", "confidence", "excitement", "curiosity"]
   const negatives: EmoDim[] = ["frustration", "caution", "boredom"]
+  const socialDims: EmoDim[] = ["connection", "caution"]
 
   const deltas: EmotionDeltas = {}
 
@@ -191,7 +196,6 @@ export function computeNeuroColoringSignal(neuro: NeuromodulatoryState, baseDelt
     if (base > 0) {
       deltas[dim] = base * dopamineExcess * CONSTRUCTION.NEURO_COLORING.DOPAMINE_POSITIVE_AMP
     }
-    deltas[dim] = (deltas[dim] ?? 0) - serotoninDeficit * CONSTRUCTION.NEURO_COLORING.SEROTONIN_BIAS * 0.5
   }
 
   for (const dim of negatives) {
@@ -199,7 +203,22 @@ export function computeNeuroColoringSignal(neuro: NeuromodulatoryState, baseDelt
     if (base > 0) {
       deltas[dim] = base * cortisolExcess * CONSTRUCTION.NEURO_COLORING.CORTISOL_NEGATIVE_AMP
     }
-    deltas[dim] = (deltas[dim] ?? 0) + serotoninDeficit * CONSTRUCTION.NEURO_COLORING.SEROTONIN_BIAS * 0.5
+  }
+
+  deltas.frustration = (deltas.frustration ?? 0) + serotoninDeficit * CONSTRUCTION.NEURO_COLORING.SEROTONIN_BIAS * 0.8
+  deltas.excitement = (deltas.excitement ?? 0) + serotoninDeficit * CONSTRUCTION.NEURO_COLORING.SEROTONIN_BIAS * 0.3
+  deltas.caution = (deltas.caution ?? 0) - serotoninDeficit * CONSTRUCTION.NEURO_COLORING.SEROTONIN_BIAS * 0.4
+
+  for (const dim of socialDims) {
+    const base = baseDeltas[dim] ?? 0
+    if (Math.abs(base) > 0.01) {
+      deltas[dim] = (deltas[dim] ?? 0) + base * oxytocinExcess * 0.3
+    }
+  }
+
+  const connectionBase = baseDeltas.connection ?? 0
+  if (Math.abs(connectionBase) > 0.01) {
+    deltas.connection = (deltas.connection ?? 0) + connectionBase * oxytocinExcess * 0.4
   }
 
   return deltas

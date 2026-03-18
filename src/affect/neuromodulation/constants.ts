@@ -23,11 +23,11 @@ export const NEURO_BASELINES: Record<NeuromodulatorType, number> = {
 export const CROSS_MODULATOR = {
   INTERACTIONS: [
     { source: "cortisol", target: "serotonin", coefficient: -0.08 },
-    { source: "serotonin", target: "dopamine", coefficient: 0.1 },
+    { source: "serotonin", target: "dopamine", coefficient: 0.06 },
     { source: "cortisol", target: "dopamine", coefficient: -0.1 },
     { source: "dopamine", target: "endorphins", coefficient: 0.08 },
     { source: "norepinephrine", target: "cortisol", coefficient: 0.12 },
-    { source: "oxytocin", target: "cortisol", coefficient: -0.1 },
+    { source: "oxytocin", target: "cortisol", coefficient: -0.05 },
     { source: "gaba", target: "norepinephrine", coefficient: -0.12 },
     { source: "gaba", target: "cortisol", coefficient: -0.08 }
   ] as Array<{ source: NeuromodulatorType; target: NeuromodulatorType; coefficient: number }>,
@@ -36,9 +36,9 @@ export const CROSS_MODULATOR = {
 
 export const EMOTION_TO_NEURO = {
   dopamine: { satisfaction: 0.3, excitement: 0.2, confidence: 0.15, curiosity: 0.1 },
-  serotonin: { satisfaction: 0.15, connection: 0.1, energy: 0.1 },
+  serotonin: { satisfaction: 0.15, confidence: 0.1, caution: -0.1 },
   norepinephrine: { frustration: 0.25, caution: 0.2, excitement: 0.15 },
-  oxytocin: { connection: 0.35, satisfaction: 0.1 },
+  oxytocin: { connection: 0.35, frustration: -0.15, caution: 0.1 },
   cortisol: { frustration: 0.2, caution: 0.25, boredom: 0.05 },
   endorphins: { curiosity: 0.15, excitement: 0.1, satisfaction: 0.1, confidence: 0.1 },
   gaba: { satisfaction: 0.2, connection: 0.15 }
@@ -57,10 +57,10 @@ export const NEURO_PRODUCTION_SCALE = 0.3
 export const NEURO_SYSTEM_EFFECTS = {
   MOOD_BASELINE: {
     serotonin: {
-      satisfaction: 0.04,
-      connection: 0.02,
       frustration: -0.03,
-      boredom: -0.025
+      caution: -0.02,
+      boredom: -0.02,
+      confidence: 0.02
     },
     dopamine: {
       satisfaction: 0.03,
@@ -75,9 +75,8 @@ export const NEURO_SYSTEM_EFFECTS = {
       energy: -0.02
     },
     oxytocin: {
-      connection: 0.03,
-      satisfaction: 0.02,
-      caution: -0.02
+      connection: 0.02,
+      caution: 0.01
     },
     gaba: {
       caution: -0.04,
@@ -91,8 +90,8 @@ export const NEURO_SYSTEM_EFFECTS = {
   LEARNING_RATE: {
     dopamine: { minScale: 0.5, maxScale: 1.5 }
   },
-  ATTACHMENT: {
-    oxytocin: { trustBoostScale: 0.15, bondingStrengthScale: 0.2 }
+  SOCIAL_SALIENCE: {
+    oxytocin: { salienceAmplification: 0.3, negativeSocialThreatScale: 0.2 }
   },
   ATTENTION: {
     norepinephrine: { broadeningThreshold: 0.4, narrowingThreshold: 0.7 }

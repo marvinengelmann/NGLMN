@@ -240,16 +240,24 @@ export function computeLearningRateModulation(neuro: NeuromodulatoryState): numb
   return minScale + dopamineNormalized * (maxScale - minScale)
 }
 
-export function computeAttachmentModulation(neuro: NeuromodulatoryState): {
-  trustBoost: number
-  bondingStrength: number
+/**
+ * Oxytocin as social salience modulator (Shamay-Tsoory & Abu-Akel, 2016).
+ * Oxytocin amplifies the intensity of ALL social signals — positive and negative.
+ * In positive social contexts it boosts trust/bonding; in negative contexts it amplifies
+ * social threat, jealousy, and out-group hostility.
+ */
+export function computeSocialSalienceModulation(
+  neuro: NeuromodulatoryState,
+  socialValence: number
+): {
+  salienceGain: number
+  socialThreatAmplification: number
 } {
   const oxytocinExcess = Math.max(0, neuro.oxytocin.level - NEURO_BASELINES.oxytocin)
-  const { trustBoostScale, bondingStrengthScale } = NEURO_SYSTEM_EFFECTS.ATTACHMENT.oxytocin
-  return {
-    trustBoost: oxytocinExcess * trustBoostScale,
-    bondingStrength: oxytocinExcess * bondingStrengthScale
-  }
+  const { salienceAmplification, negativeSocialThreatScale } = NEURO_SYSTEM_EFFECTS.SOCIAL_SALIENCE.oxytocin
+  const salienceGain = oxytocinExcess * salienceAmplification
+  const socialThreatAmplification = socialValence < 0 ? oxytocinExcess * negativeSocialThreatScale : 0
+  return { salienceGain, socialThreatAmplification }
 }
 
 export function computeAttentionModulation(neuro: NeuromodulatoryState): { broadening: number; narrowing: number } {

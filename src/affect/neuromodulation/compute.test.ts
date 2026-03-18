@@ -2,13 +2,13 @@ import { describe, expect, it } from "vitest"
 import { DEFAULT_EMOTIONAL_STATE, type EmotionalState } from "@/affect/emotion/types.ts"
 import { DEFAULT_SOMATIC_STATE, type SomaticState } from "@/affect/soma/types.ts"
 import {
-  computeAttachmentModulation,
   computeAttentionModulation,
   computeCopingModulation,
   computeFlowModulation,
   computeLearningRateModulation,
   computeMoodBaselineModulation,
   computeNeuromodulatorUpdate,
+  computeSocialSalienceModulation,
   detectDepressivePattern
 } from "./compute.ts"
 import { NEURO_BASELINES } from "./constants.ts"
@@ -110,16 +110,16 @@ describe("computeNeuromodulatorUpdate", () => {
 })
 
 describe("computeMoodBaselineModulation", () => {
-  it("returns positive satisfaction modulation for high serotonin", () => {
+  it("reduces frustration modulation for high serotonin", () => {
     const high = makeNeuro({ serotonin: { level: 0.9 } })
     const mod = computeMoodBaselineModulation(high)
-    expect(mod.satisfaction).toBeGreaterThan(0)
+    expect(mod.frustration).toBeLessThan(0)
   })
 
-  it("returns negative satisfaction modulation for low serotonin", () => {
+  it("increases frustration modulation for low serotonin", () => {
     const low = makeNeuro({ serotonin: { level: 0.2 } })
     const mod = computeMoodBaselineModulation(low)
-    expect(mod.satisfaction).toBeLessThan(0)
+    expect(mod.frustration).toBeGreaterThan(0)
   })
 
   it("integrates multiple modulators — high dopamine boosts excitement", () => {
@@ -162,18 +162,25 @@ describe("computeLearningRateModulation", () => {
   })
 })
 
-describe("computeAttachmentModulation", () => {
-  it("returns zero boost at baseline oxytocin", () => {
-    const result = computeAttachmentModulation(DEFAULT_NEUROMODULATORY_STATE)
-    expect(result.trustBoost).toBeCloseTo(0)
-    expect(result.bondingStrength).toBeCloseTo(0)
+describe("computeSocialSalienceModulation", () => {
+  it("returns zero salience gain at baseline oxytocin", () => {
+    const result = computeSocialSalienceModulation(DEFAULT_NEUROMODULATORY_STATE, 0.5)
+    expect(result.salienceGain).toBeCloseTo(0)
+    expect(result.socialThreatAmplification).toBe(0)
   })
 
-  it("returns positive boost at high oxytocin", () => {
+  it("returns positive salience gain at high oxytocin with positive context", () => {
     const high = makeNeuro({ oxytocin: { level: 0.8 } })
-    const result = computeAttachmentModulation(high)
-    expect(result.trustBoost).toBeGreaterThan(0)
-    expect(result.bondingStrength).toBeGreaterThan(0)
+    const result = computeSocialSalienceModulation(high, 0.5)
+    expect(result.salienceGain).toBeGreaterThan(0)
+    expect(result.socialThreatAmplification).toBe(0)
+  })
+
+  it("amplifies social threat at high oxytocin with negative context", () => {
+    const high = makeNeuro({ oxytocin: { level: 0.8 } })
+    const result = computeSocialSalienceModulation(high, -0.5)
+    expect(result.salienceGain).toBeGreaterThan(0)
+    expect(result.socialThreatAmplification).toBeGreaterThan(0)
   })
 })
 

@@ -105,7 +105,8 @@ export function computeMereExposureEffect(entityName: string, exposureCounts: Re
 
 /**
  * Apply optimism bias — negative future predictions are shifted toward neutral.
- * Low serotonin reduces this protective bias.
+ * Low serotonin reduces patience for tolerating uncertain/negative predictions,
+ * making the protective optimism bias weaker (Miyazaki et al., 2014).
  */
 export function applyOptimismBias(prediction: number, biasStrength: number, serotonin: number): number {
   if (prediction >= 0) return prediction
@@ -116,13 +117,19 @@ export function applyOptimismBias(prediction: number, biasStrength: number, sero
 }
 
 /**
- * Apply calibration bias — confidence is inflated at low familiarity
+ * Apply metacognitive miscalibration — confidence is inflated at low familiarity
  * and monotonically decreases toward accurate calibration as experience grows.
+ * This is a general miscalibration phenomenon (Gignac & Zajenkowski, 2020),
+ * not the specific Dunning-Kruger effect which is largely a statistical artifact.
  */
-export function applyCalibrationBias(confidence: number, domainFamiliarity: number, biasStrength: number): number {
+export function applyMetacognitiveMiscalibration(
+  confidence: number,
+  domainFamiliarity: number,
+  biasStrength: number
+): number {
   if (biasStrength <= 0) return confidence
 
-  const boost = Math.max(0, (1 - domainFamiliarity) * BIAS.CALIBRATION_OVERCONFIDENCE_SCALE * biasStrength)
+  const boost = Math.max(0, (1 - domainFamiliarity) * BIAS.MISCALIBRATION_SCALE * biasStrength)
   return clamp01(confidence + boost)
 }
 
@@ -146,8 +153,10 @@ export function applySpotlightEffect(
 
 /**
  * Update bias modifier strengths based on neuromodulatory state.
- * Cortisol amplifies negativity bias, low serotonin weakens optimism bias, dopamine boosts confirmation bias.
- * Dopamine amplifies calibration bias, cortisol and oxytocin amplify Spotlight Effect.
+ * Cortisol amplifies negativity bias. Low serotonin weakens patience-based optimism bias.
+ * Dopamine boosts confirmation + calibration biases.
+ * Oxytocin amplifies social salience biases (spotlight, false consensus) — it increases
+ * attention to social signals, not just positive bonding (Shamay-Tsoory & Abu-Akel, 2016).
  */
 export function updateBiasModifiers(biasState: BiasState, neuro: NeuromodulatoryState): BiasState {
   const modifiers = { ...biasState.activeModifiers }
@@ -155,7 +164,7 @@ export function updateBiasModifiers(biasState: BiasState, neuro: Neuromodulatory
   modifiers.negativity = clamp01(0.4 + neuro.cortisol.level * BIAS.CORTISOL_NEGATIVITY_AMPLIFIER)
   modifiers.optimism = clamp01(0.4 + neuro.serotonin.level * BIAS.SEROTONIN_OPTIMISM_LINK)
   modifiers.confirmation = clamp01(0.3 + neuro.dopamine.level * BIAS.DOPAMINE_CONFIRMATION_LINK)
-  modifiers.calibration_bias = clamp01(0.3 + neuro.dopamine.level * BIAS.CALIBRATION_BIAS_DOPAMINE_LINK)
+  modifiers.metacognitive_miscalibration = clamp01(0.3 + neuro.dopamine.level * BIAS.MISCALIBRATION_DOPAMINE_LINK)
   modifiers.spotlight = clamp01(
     0.2 + neuro.cortisol.level * BIAS.SPOTLIGHT_CORTISOL_LINK + neuro.oxytocin.level * BIAS.SPOTLIGHT_OXYTOCIN_LINK
   )

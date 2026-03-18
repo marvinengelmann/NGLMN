@@ -37,6 +37,10 @@ export function computeBasePrecisionWeights(input: BasePrecisionInput): Precisio
 /**
  * Neuromodulators act as precision controllers — the key FEP insight.
  * Each modulator amplifies or dampens specific precision channels.
+ * Serotonin modulates patience-related channels (anticipatory, forecast) — low serotonin
+ * increases sensitivity to aversive prediction errors (Dayan & Huys, 2009).
+ * Oxytocin amplifies social signal precision — both positive and negative social cues
+ * become more salient (Shamay-Tsoory & Abu-Akel, 2016).
  */
 export function applyNeuromodulatorPrecisionEffects(
   base: PrecisionWeights,
