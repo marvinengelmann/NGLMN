@@ -92,10 +92,7 @@ async function persistEntity(
   await recordMention(entityId, tickId, contextSnippet)
 }
 
-async function persistRelations(
-  entity: ExtractedEntity,
-  entityIdMap: Map<string, string>
-): Promise<void> {
+async function persistRelations(entity: ExtractedEntity, entityIdMap: Map<string, string>): Promise<void> {
   const sourceId = entityIdMap.get(entity.name.toLowerCase())
   if (!sourceId) return
 

@@ -2,7 +2,7 @@ import { differenceInDays } from "date-fns"
 import { log } from "@/infra/lib/logger.ts"
 import type { AnimaResultAsync } from "@/infra/lib/result.ts"
 import { trySafe } from "@/infra/lib/result.ts"
-import { getAllActiveEntities, bulkUpdateSalience } from "./store.ts"
+import { bulkUpdateSalience, getAllActiveEntities } from "./store.ts"
 import { GRAPH_CONSTANTS } from "./types.ts"
 
 /**

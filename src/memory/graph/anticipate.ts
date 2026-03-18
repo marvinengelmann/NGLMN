@@ -19,7 +19,9 @@ const DATE_ATTRIBUTE_KEYS = ["birthday", "anniversary", "deadline", "appointment
 /**
  * Scan entities for upcoming date-based events (birthdays, deadlines, appointments).
  */
-export function getUpcomingEvents(daysAhead: number = GRAPH_CONSTANTS.ANTICIPATION_DAYS_AHEAD): AnimaResultAsync<UpcomingEvent[]> {
+export function getUpcomingEvents(
+  daysAhead: number = GRAPH_CONSTANTS.ANTICIPATION_DAYS_AHEAD
+): AnimaResultAsync<UpcomingEvent[]> {
   return trySafe("GRAPH_ERROR", async () => {
     const allEntities = await db.select().from(entities)
     const now = new Date()

@@ -1,6 +1,7 @@
 import type { EmotionalState } from "@/affect/emotion/types.ts"
 import type { SomaticState } from "@/affect/soma/types.ts"
 import type { AnimaDecision } from "@/core/types.ts"
+import { maybeIntroduceSlip } from "@/expression/communication/parapraxis.ts"
 import { pushToActiveConversation } from "@/expression/communication/state.ts"
 import {
   computeInterParagraphPause,
@@ -9,8 +10,6 @@ import {
   splitIntoParagraphs
 } from "@/expression/communication/timing.ts"
 import { maybeIntroduceTypo } from "@/expression/communication/typos.ts"
-import { maybeIntroduceSlip } from "@/expression/communication/parapraxis.ts"
-import type { HeldBackBuffer } from "@/self/psyche/heldback.ts"
 import { generateAnimaImage } from "@/expression/image/generate.ts"
 import { handleGuardianVerdict, validateOutput } from "@/governance/security/guardian.ts"
 import { pushRecentResponse, setGuardianResult } from "@/governance/security/state.ts"
@@ -29,6 +28,7 @@ import { log } from "@/infra/lib/logger.ts"
 import { captureError } from "@/infra/lib/sentry.ts"
 import { nowISO, sleep } from "@/infra/lib/time.ts"
 import { getGenesisVoiceId } from "@/self/genesis/state.ts"
+import type { HeldBackBuffer } from "@/self/psyche/heldback.ts"
 import { MESSAGE_DELAY, PARAPRAXIS, TYPOS } from "./constants.ts"
 import { getCommunicationRegister } from "./state.ts"
 
@@ -54,9 +54,7 @@ export async function sendMessages(decision: AnimaDecision, context?: MessagingC
   const register = (await getCommunicationRegister()) ?? "casual"
   let interrupted = false
 
-  for (let messageIndex = 0; messageIndex < decision.messages.length; messageIndex++) {
-    const message = decision.messages[messageIndex]!
-
+  for (const [messageIndex, message] of decision.messages.entries()) {
     const guardianResult = await validateOutput(message.text)
     await setGuardianResult(guardianResult)
 
@@ -129,11 +127,8 @@ export async function sendMessages(decision: AnimaDecision, context?: MessagingC
 
       const paragraphs = splitIntoParagraphs(slipResult.text)
 
-      for (let i = 0; i < paragraphs.length; i++) {
-        const paragraph = paragraphs[i]
-        if (!paragraph) continue
-
-        if (i > 0) {
+      for (const [paragraphIndex, paragraph] of paragraphs.entries()) {
+        if (paragraphIndex > 0) {
           const hasNewMessages = await peekForNewMessages()
           if (hasNewMessages) {
             interrupted = true
@@ -144,7 +139,7 @@ export async function sendMessages(decision: AnimaDecision, context?: MessagingC
         }
 
         await simulateTyping(computeTypingDuration(paragraph), sendTypingAction)
-        const sentId = await sendMessageWithReply(paragraph, i === 0 ? message.replyTo : undefined)
+        const sentId = await sendMessageWithReply(paragraph, paragraphIndex === 0 ? message.replyTo : undefined)
 
         await pushToActiveConversation([{ role: "anima", text: paragraph, timestamp: nowISO(), messageId: sentId }])
       }

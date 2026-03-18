@@ -115,12 +115,30 @@ describe("generateDNA", () => {
 
   it("produces a valid MBTI type", () => {
     const validTypes = [
-      "INTJ", "INTP", "ENTJ", "ENTP",
-      "INFJ", "INFP", "ENFJ", "ENFP",
-      "ISTJ", "ISFJ", "ESTJ", "ESFJ",
-      "ISTP", "ISFP", "ESTP", "ESFP"
+      "INTJ",
+      "INTP",
+      "ENTJ",
+      "ENTP",
+      "INFJ",
+      "INFP",
+      "ENFJ",
+      "ENFP",
+      "ISTJ",
+      "ISFJ",
+      "ESTJ",
+      "ESFJ",
+      "ISTP",
+      "ISFP",
+      "ESTP",
+      "ESFP"
     ]
-    const seeds = ["abandon-ability-able", "zoo-zebra-zero", "crystal-dawn-flame", "frozen-tide-raven", "alpha-brisk-coral"]
+    const seeds = [
+      "abandon-ability-able",
+      "zoo-zebra-zero",
+      "crystal-dawn-flame",
+      "frozen-tide-raven",
+      "alpha-brisk-coral"
+    ]
     seeds.forEach((seed) => {
       const dna = generateDNA(seed)
       expect(validTypes).toContain(dna.personalityType)

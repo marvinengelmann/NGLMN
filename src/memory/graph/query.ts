@@ -79,11 +79,6 @@ export function getRelevantEntities(conversationText: string, limit: number = 15
  */
 export function getEntitiesByType(type: EntitySelect["type"], limit: number = 10): AnimaResultAsync<EntitySelect[]> {
   return trySafe("GRAPH_ERROR", async () => {
-    return db
-      .select()
-      .from(entities)
-      .where(eq(entities.type, type))
-      .orderBy(desc(entities.salience))
-      .limit(limit)
+    return db.select().from(entities).where(eq(entities.type, type)).orderBy(desc(entities.salience)).limit(limit)
   })
 }

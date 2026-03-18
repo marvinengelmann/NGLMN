@@ -19,11 +19,7 @@ export function upsertEntity(
   source: EntityInsert["source"]
 ): AnimaResultAsync<string> {
   return trySafe("GRAPH_ERROR", async () => {
-    const existing = await db
-      .select()
-      .from(entities)
-      .where(sql`lower(${entities.name}) = lower(${name})`)
-      .limit(1)
+    const existing = await db.select().from(entities).where(sql`lower(${entities.name}) = lower(${name})`).limit(1)
 
     if (existing[0]) {
       const merged = { ...(existing[0].attributes as Record<string, unknown>), ...attributes }
@@ -39,10 +35,7 @@ export function upsertEntity(
       return existing[0].id
     }
 
-    const rows = await db
-      .insert(entities)
-      .values({ name, type, attributes, source })
-      .returning({ id: entities.id })
+    const rows = await db.insert(entities).values({ name, type, attributes, source }).returning({ id: entities.id })
 
     const first = rows[0]
     if (!first) throw new Error("Expected row from entity insert")
@@ -113,11 +106,7 @@ export function recordMention(
  */
 export function getEntityByName(name: string): AnimaResultAsync<EntitySelect | null> {
   return trySafe("GRAPH_ERROR", async () => {
-    const rows = await db
-      .select()
-      .from(entities)
-      .where(sql`lower(${entities.name}) = lower(${name})`)
-      .limit(1)
+    const rows = await db.select().from(entities).where(sql`lower(${entities.name}) = lower(${name})`).limit(1)
     return rows[0] ?? null
   })
 }
@@ -141,10 +130,7 @@ export function getHighSalienceEntities(limit: number = 10): AnimaResultAsync<En
  */
 export function getAllActiveEntities(): AnimaResultAsync<EntitySelect[]> {
   return trySafe("GRAPH_ERROR", async () => {
-    return db
-      .select()
-      .from(entities)
-      .where(gt(entities.salience, GRAPH_CONSTANTS.SALIENCE_FORGOTTEN_THRESHOLD))
+    return db.select().from(entities).where(gt(entities.salience, GRAPH_CONSTANTS.SALIENCE_FORGOTTEN_THRESHOLD))
   })
 }
 

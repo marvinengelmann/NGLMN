@@ -74,9 +74,9 @@ export function detectAndLinkRelatedEpisodes(
 
     let linksCreated = 0
 
-    for (let i = 0; i < recentEpisodes.length - 1; i++) {
-      const current = recentEpisodes[i]!
-      const next = recentEpisodes[i + 1]!
+    for (const [index, current] of recentEpisodes.slice(0, -1).entries()) {
+      const next = recentEpisodes[index + 1]
+      if (!next) continue
 
       const similarity = computeWordOverlap(current.data, next.data)
 

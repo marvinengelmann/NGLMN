@@ -87,10 +87,7 @@ export function upsertProcedure(
       return match.id
     }
 
-    const rows = await db
-      .insert(procedures)
-      .values({ trigger, strategy, source })
-      .returning({ id: procedures.id })
+    const rows = await db.insert(procedures).values({ trigger, strategy, source }).returning({ id: procedures.id })
 
     const first = rows[0]
     if (!first) throw new Error("Expected row from procedure insert")

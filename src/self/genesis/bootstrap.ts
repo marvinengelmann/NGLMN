@@ -1,9 +1,9 @@
+import { eq } from "drizzle-orm"
 import { db } from "@/infra/db/client.ts"
 import { goals } from "@/infra/db/schema.ts"
 import { log } from "@/infra/lib/logger.ts"
 import { logAndCaptureError } from "@/infra/lib/result.ts"
 import { storeKnowledge } from "@/memory/semantic.ts"
-import { eq } from "drizzle-orm"
 import type { GenesisRecord } from "./types.ts"
 
 /**
@@ -15,12 +15,26 @@ export async function bootstrapDNAMemory(record: GenesisRecord): Promise<void> {
   const { dna, identity } = record
 
   for (const interest of identity.interests) {
-    const result = await storeKnowledge("knowledge", `interest:${interest.name}`, { name: interest.name, fascination: interest.fascination, origin: "genesis" }, "observation", 0.6, "self")
+    const result = await storeKnowledge(
+      "knowledge",
+      `interest:${interest.name}`,
+      { name: interest.name, fascination: interest.fascination, origin: "genesis" },
+      "observation",
+      0.6,
+      "self"
+    )
     if (result.isErr()) logAndCaptureError(result.error)
   }
 
   for (const value of identity.coreValues) {
-    const result = await storeKnowledge("insight", `value:${value.name}`, { name: value.name, reason: value.reason, origin: "genesis" }, "reflection", 0.7, "self")
+    const result = await storeKnowledge(
+      "insight",
+      `value:${value.name}`,
+      { name: value.name, reason: value.reason, origin: "genesis" },
+      "reflection",
+      0.7,
+      "self"
+    )
     if (result.isErr()) logAndCaptureError(result.error)
   }
 

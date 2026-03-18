@@ -43,7 +43,7 @@ export function generateSeed(): string {
  */
 export function seedToNumeric(seed: string): number {
   const hash = createHash("sha256").update(seed).digest()
-  return hash.readUInt32BE(8) & 0x7FFFFFFF
+  return hash.readUInt32BE(8) & 0x7fffffff
 }
 
 function seedToRng(seed: string): PRNG {
@@ -58,14 +58,14 @@ function seedToRng(seed: string): PRNG {
  * splitmix64 — deterministic 64-bit PRNG. This algorithm MUST NEVER be changed (breaks seeds).
  */
 function splitmix64(seed: bigint): PRNG {
-  let state = seed & 0xFFFFFFFFFFFFFFFFn
+  let state = seed & 0xffffffffffffffffn
   return () => {
-    state = (state + 0x9e3779b97f4a7c15n) & 0xFFFFFFFFFFFFFFFFn
+    state = (state + 0x9e3779b97f4a7c15n) & 0xffffffffffffffffn
     let z = state
-    z = ((z ^ (z >> 30n)) * 0xbf58476d1ce4e5b9n) & 0xFFFFFFFFFFFFFFFFn
-    z = ((z ^ (z >> 27n)) * 0x94d049bb133111ebn) & 0xFFFFFFFFFFFFFFFFn
+    z = ((z ^ (z >> 30n)) * 0xbf58476d1ce4e5b9n) & 0xffffffffffffffffn
+    z = ((z ^ (z >> 27n)) * 0x94d049bb133111ebn) & 0xffffffffffffffffn
     z = z ^ (z >> 31n)
-    return Number(z & 0xFFFFFFFFn) / 0x100000000
+    return Number(z & 0xffffffffn) / 0x100000000
   }
 }
 
