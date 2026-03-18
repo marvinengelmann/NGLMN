@@ -99,7 +99,9 @@ export async function buildContext(
       genesisDNA,
       genesisIdentity,
       proustFlashback: feel.proustFlashback,
-      maturedDeferredEvents: feel.maturedDeferredEvents
+      maturedDeferredEvents: feel.maturedDeferredEvents,
+      dmnState: feel.dmnState,
+      mentalizingState: feel.mentalizingState
     }),
     ...buildDriveSections(
       feel.driveState,

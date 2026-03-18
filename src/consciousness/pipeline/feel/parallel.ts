@@ -1,4 +1,5 @@
 import type { EmotionalState, EmotionUpdateEvent } from "@/affect/emotion/types.ts"
+import { clamp01 } from "@/infra/lib/math.ts"
 import type { SomaticState } from "@/affect/soma/types.ts"
 import { computeInstinctImpression } from "@/cognition/instinct.ts"
 import { queryImplicitAssociations } from "@/cognition/learning/association/compute.ts"
@@ -12,7 +13,7 @@ import {
   isOperatorReturning
 } from "@/relational/attachment/update.ts"
 import { extractSignals, learnFromObservation } from "@/relational/mind/triggers.ts"
-import { computeMentalizingState } from "@/relational/mind/mentalizing.ts"
+import { computeMentalizingModulation, computeMentalizingState } from "@/relational/mind/mentalizing.ts"
 import { detectModelCorrection, updateOperatorModel } from "@/relational/mind/update.ts"
 import { activatePattern, computePatternModulation, matchRelationalPattern } from "@/relational/patterns/compute.ts"
 import { updateBoundaryState } from "@/self/boundaries/compute.ts"
@@ -87,10 +88,18 @@ export async function runParallelSubsystems(
     predictionAccuracy: operatorModelResult.operatorModel.predictionAccuracy.runningAverage
   })
 
+  const mentalizingModulation = computeMentalizingModulation(mentalizingState)
+  const mentalizingOperatorModel = {
+    ...operatorModelResult.operatorModel,
+    modelConfidence: clamp01(
+      operatorModelResult.operatorModel.modelConfidence + mentalizingModulation.confidenceModifier
+    )
+  }
+
   return {
     instinct: instinctResult,
     dissonance: dissonanceResult,
-    operatorModel: operatorModelResult.operatorModel,
+    operatorModel: mentalizingOperatorModel,
     operatorModelTrigger: operatorModelResult.trigger,
     relationalPatterns: operatorModelResult.updatedPatterns,
     attachmentDynamics: attachmentResult,

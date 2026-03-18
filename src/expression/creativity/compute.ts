@@ -10,6 +10,7 @@ interface CreativeUrgeContext {
   driveState: DriveState
   heldBackBuffer: HeldBackBuffer
   consecutiveIdleTicks: number
+  dmnCreativityBoost?: number
 }
 
 /**
@@ -29,6 +30,10 @@ export function computeCreativeUrge(context: CreativeUrgeContext): number {
 
   if (consecutiveIdleTicks >= CREATIVITY.IDLE_TICKS_FOR_SPONTANEOUS) {
     urge += 0.1
+  }
+
+  if (context.dmnCreativityBoost) {
+    urge += context.dmnCreativityBoost
   }
 
   return clamp01(urge)

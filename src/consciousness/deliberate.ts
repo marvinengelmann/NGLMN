@@ -206,10 +206,15 @@ export async function deliberate(tickState: TickState): Promise<DeliberateResult
     }
   }
 
-  if (feelResult.attentionState === "drifting" && Math.random() < ATTENTION.DRIFT_INJECTION_PROBABILITY) {
+  const dmnSpontaneousRetrieval = feelResult.dmnState?.spontaneousRetrievalProbability ?? 0
+  const driftProbability = Math.max(ATTENTION.DRIFT_INJECTION_PROBABILITY, dmnSpontaneousRetrieval)
+
+  if (feelResult.attentionState === "drifting" && Math.random() < driftProbability) {
     const driftMemories = await queryRelated("random thought memory association", 1)
     if (driftMemories.length > 0 && driftMemories[0]?.data) {
-      userPrompt = `${userPrompt}\n\n[A stray memory surfaces: "${driftMemories[0].data.slice(0, 200)}"]`
+      const dmnActive = (feelResult.dmnState?.mode ?? "suppressed") === "active"
+      const prefix = dmnActive ? "Your mind wanders freely" : "A stray memory surfaces"
+      userPrompt = `${userPrompt}\n\n[${prefix}: "${driftMemories[0].data.slice(0, 200)}"]`
     }
   }
 

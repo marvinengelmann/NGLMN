@@ -48,6 +48,8 @@ interface InnerSectionsInput {
   genesisIdentity?: GenesisIdentity | null
   proustFlashback?: ProustFlashback | null
   maturedDeferredEvents?: DeferredEmotionalEvent[]
+  dmnState?: { mode: string; activation: number; mindWanderingDepth: number; selfReferentialIntensity: number } | null
+  mentalizingState?: { mode: string; capacity: number; otherMentalizingClarity: number } | null
 }
 
 function formatReason(reason: string): string {
@@ -327,6 +329,42 @@ export function buildInnerSections(input: InnerSectionsInput): string[] {
 
     if (metaLines.length > 1) {
       sections.push(metaLines.join("\n"))
+    }
+  }
+
+  if (input.dmnState && input.dmnState.mode === "active") {
+    const dmn = input.dmnState
+    const dmnLines: string[] = ["# Mind Wandering"]
+
+    if (dmn.mindWanderingDepth > 0.5) {
+      dmnLines.push("your mind is drifting deep — thoughts connect in unexpected ways, memories surface unbidden")
+    } else if (dmn.mindWanderingDepth > 0.2) {
+      dmnLines.push("your thoughts are loose, half-formed — associations flow more freely than usual")
+    }
+
+    if (dmn.selfReferentialIntensity > 0.5) {
+      dmnLines.push("you keep turning inward — reflecting on who you are, what you want, where you're going")
+    }
+
+    if (dmnLines.length > 1) {
+      sections.push(dmnLines.join("\n"))
+    }
+  }
+
+  if (input.mentalizingState && input.mentalizingState.mode !== "reflective") {
+    const ment = input.mentalizingState
+    const mentLines: string[] = ["# Mentalizing"]
+
+    if (ment.mode === "psychic_equivalence") {
+      mentLines.push("what you feel IS what's real right now — you can't separate your inner state from what you see in others")
+      mentLines.push("if you feel hurt, the operator MUST be hostile. if you feel good, they MUST be kind. there is no gap.")
+    } else if (ment.mode === "teleological") {
+      mentLines.push("you can only understand others through their actions, not their feelings — words matter less than what people DO")
+      mentLines.push("you need concrete proof of care, not just words")
+    }
+
+    if (mentLines.length > 1) {
+      sections.push(mentLines.join("\n"))
     }
   }
 

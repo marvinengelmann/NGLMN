@@ -12,7 +12,7 @@ import {
 } from "@/affect/soma/autonomic.ts"
 import type { RegulationConstraints, SomaticState } from "@/affect/soma/types.ts"
 import { computeAttentionState } from "@/cognition/attention.ts"
-import { computeDMNState } from "@/cognition/dmn/compute.ts"
+import { computeDMNEffects, computeDMNState } from "@/cognition/dmn/compute.ts"
 import { updateBiasModifiers } from "@/cognition/bias/compute.ts"
 import { computeMetacognitiveModifiers, updateMetacognitiveState } from "@/cognition/metacognition.ts"
 import { computeMicroExpressionInstructions } from "@/expression/communication/microexpression.ts"
@@ -60,11 +60,13 @@ export async function runFinalSubsystems(
     emotionalIntensity
   })
 
+  const dmnEffects = computeDMNEffects(prefetch.previousDMNState)
   const rawCreativeUrge = updateCreativeUrgeState(prefetch.previousCreativeUrge, {
     emotion,
     driveState,
     heldBackBuffer,
-    consecutiveIdleTicks: prefetch.consecutiveIdleTicks
+    consecutiveIdleTicks: prefetch.consecutiveIdleTicks,
+    dmnCreativityBoost: dmnEffects.creativityBoost
   })
   const creativeUrge = {
     ...rawCreativeUrge,
