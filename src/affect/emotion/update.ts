@@ -342,7 +342,7 @@ export function blendMoodBaseline(
     EMOTION_DIMENSIONS.map((dim) => [dim, clampBaseline(alpha * current[dim] + retention * oldBaseline[dim])])
   )
 
-  return clampState({ ...oldBaseline, ...blended })
+  return clampState(blended as EmotionalState)
 }
 
 /**

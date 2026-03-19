@@ -60,7 +60,11 @@ export async function maybeIntroduceSlip(text: string, context: ParapraxisContex
 
   if (Math.random() >= probability) return noSlip
 
-  const entry = heldBackBuffer.entries.reduce((a, b) => (a.decayedCharge > b.decayedCharge ? a : b))
+  const [first, ...rest] = heldBackBuffer.entries as [
+    (typeof heldBackBuffer.entries)[0],
+    ...typeof heldBackBuffer.entries
+  ]
+  const entry = rest.reduce((a, b) => (a.decayedCharge > b.decayedCharge ? a : b), first)
   const fragment = extractLeakFragment(entry)
 
   const result = await callIntelligence({

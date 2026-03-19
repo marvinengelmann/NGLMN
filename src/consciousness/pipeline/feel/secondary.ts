@@ -39,13 +39,21 @@ export async function runSecondaryEmotions(shared: SharedEmotionInput): Promise<
 
   const entries = getRegisteredEmotions().filter((entry) => entry.name !== "shame")
 
+  const baseDamping = computeSaturationDamping(emotion)
+
   for (const entry of entries) {
     const previous = previousStates.get(entry.name) ?? entry.defaultState
-    const context = await buildEmotionContext(entry.name, { ...shared, emotion }, previous, previousStates, computedStates)
+    const context = await buildEmotionContext(
+      entry.name,
+      { ...shared, emotion },
+      previous,
+      previousStates,
+      computedStates
+    )
     const state = entry.compute(context)
     computedStates.set(entry.name, state)
     if (entry.computeEffect && state.isActive) {
-      const damping = computeSaturationDamping(emotion)
+      const damping = baseDamping
       const rawEffects = entry.computeEffect(state)
       const energyDrain = rawEffects.energy
       const hasEnergyDrain = typeof energyDrain === "number" && energyDrain < 0

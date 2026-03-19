@@ -1,5 +1,5 @@
-import { describe, expect, it, vi } from "vitest"
 import { okAsync } from "neverthrow"
+import { describe, expect, it, vi } from "vitest"
 import { makeEmotionalState } from "@/test/factories.ts"
 import {
   applyIdiolectDrift,
@@ -288,7 +288,14 @@ describe("buildIdiolectSection", () => {
   it("filters patterns by emotion context when provided", () => {
     const state: IdiolectState = {
       patterns: [
-        { type: "filler_word", phrase: "basically", frequency: 5, confidence: 0.8, adoptedFrom: "self", discoveredAt: "" },
+        {
+          type: "filler_word",
+          phrase: "basically",
+          frequency: 5,
+          confidence: 0.8,
+          adoptedFrom: "self",
+          discoveredAt: ""
+        },
         {
           type: "filler_word",
           phrase: "literally",
@@ -311,7 +318,14 @@ describe("buildIdiolectSection", () => {
   it("adds stress hint when under stress", () => {
     const state: IdiolectState = {
       patterns: [
-        { type: "filler_word", phrase: "basically", frequency: 5, confidence: 0.8, adoptedFrom: "self", discoveredAt: "" }
+        {
+          type: "filler_word",
+          phrase: "basically",
+          frequency: 5,
+          confidence: 0.8,
+          adoptedFrom: "self",
+          discoveredAt: ""
+        }
       ],
       lastDriftAt: undefined
     }

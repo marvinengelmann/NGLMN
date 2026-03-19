@@ -2,7 +2,7 @@ import { differenceInSeconds, parseISO } from "date-fns"
 import {
   clearConversationWaitingSince,
   getConversationWaitingSince,
-  setConversationWaitingSince
+  setConversationWaitingSinceIfAbsent
 } from "@/expression/communication/state.ts"
 import { HEARTBEAT } from "@/infra/config/constants.ts"
 import { distortionLog } from "@/infra/db/schema.ts"
@@ -151,10 +151,9 @@ export async function runHeartbeat() {
       if (!deliberateResult.decision.expectsReply) break
 
       try {
+        await setConversationWaitingSinceIfAbsent(nowISO())
         const waitingSince = await getConversationWaitingSince()
-        if (!waitingSince) {
-          await setConversationWaitingSince(nowISO())
-        } else {
+        if (waitingSince) {
           const elapsed = differenceInSeconds(new Date(), parseISO(waitingSince))
           if (elapsed >= HEARTBEAT.MAX_CONVERSATION_WAIT) {
             log.info("Conversation hard cap reached", { elapsed })

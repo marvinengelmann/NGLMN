@@ -70,6 +70,18 @@ export async function setConversationWaitingSince(isoTimestamp: string): Promise
   await redis.set(CONV_KEYS.CONVERSATION_WAITING_SINCE, isoTimestamp, { ex: HEARTBEAT.MAX_CONVERSATION_WAIT + 60 })
 }
 
+/**
+ * Atomically set the conversation waiting timestamp only if not already set.
+ * Returns true if the value was set (first caller wins), false if already existed.
+ */
+export async function setConversationWaitingSinceIfAbsent(isoTimestamp: string): Promise<boolean> {
+  const result = await redis.set(CONV_KEYS.CONVERSATION_WAITING_SINCE, isoTimestamp, {
+    ex: HEARTBEAT.MAX_CONVERSATION_WAIT + 60,
+    nx: true
+  })
+  return result === "OK"
+}
+
 export async function clearConversationWaitingSince(): Promise<void> {
   await redis.del(CONV_KEYS.CONVERSATION_WAITING_SINCE)
 }

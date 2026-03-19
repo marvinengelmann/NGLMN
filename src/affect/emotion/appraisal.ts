@@ -135,7 +135,7 @@ export function appraiseCopingPotential(
 export function appraiseNormCompatibility(event: EmotionUpdateEvent, selfConcept: SelfConcept): number {
   const baseCompat = NORM_COMPATIBILITY[event.trigger] ?? 0
   const authenticityModifier = selfConcept.authenticity > 0.6 ? 1.2 : 1.0
-  const agencyModifier = event.trigger === "guardian_block" ? 1 - selfConcept.agency : 1.0
+  const agencyModifier = event.trigger === "guardian_block" ? 0.5 + selfConcept.agency * 0.5 : 1.0
   return Math.max(-1, Math.min(1, baseCompat * authenticityModifier * agencyModifier * event.intensity))
 }
 

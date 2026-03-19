@@ -3,10 +3,14 @@ import type { SomaticState } from "@/affect/soma/types.ts"
 import { computeInstinctImpression } from "@/cognition/instinct.ts"
 import { queryImplicitAssociations } from "@/cognition/learning/association/compute.ts"
 import { getActiveAssociations } from "@/cognition/learning/association/state.ts"
+import { log } from "@/infra/lib/logger.ts"
 import { clamp01 } from "@/infra/lib/math.ts"
 import { updateAnticipatoryState } from "@/perception/anticipation/compute.ts"
+import { DEFAULT_ANTICIPATORY_STATE } from "@/perception/anticipation/types.ts"
 import { updateNoveltyState } from "@/perception/novelty/compute.ts"
+import { DEFAULT_NOVELTY_STATE } from "@/perception/novelty/types.ts"
 import { computeIsolationStress } from "@/relational/attachment/baseline.ts"
+import { DEFAULT_ISOLATION_STRESS } from "@/relational/attachment/types.ts"
 import {
   computeWaitingPerception,
   evaluateAttachmentDynamics,
@@ -16,10 +20,18 @@ import { computeMentalizingModulation, computeMentalizingState } from "@/relatio
 import { extractSignals, learnFromObservation } from "@/relational/mind/triggers.ts"
 import { detectModelCorrection, updateOperatorModel } from "@/relational/mind/update.ts"
 import { activatePattern, computePatternModulation, matchRelationalPattern } from "@/relational/patterns/compute.ts"
+import type { BoundaryUpdateResult } from "@/self/boundaries/compute.ts"
 import { updateBoundaryState } from "@/self/boundaries/compute.ts"
+import { DEFAULT_BOUNDARY_STATE } from "@/self/boundaries/types.ts"
 import { checkDissonanceWithCooldown } from "@/self/dissonance/compute.ts"
 import type { SenseResult } from "../../types.ts"
 import type { FeelPrefetch, ParallelFanResult } from "./types.ts"
+
+function settledValueOrDefault<T>(result: PromiseSettledResult<T>, fallback: T, label: string): T {
+  if (result.status === "fulfilled") return result.value
+  log.error(`Parallel subsystem "${label}" failed, using default`, { error: String(result.reason) })
+  return fallback
+}
 
 export async function runParallelSubsystems(
   emotion: EmotionalState,
@@ -31,17 +43,7 @@ export async function runParallelSubsystems(
   const messageTexts = sense.pendingMessages.map((m) => m.text)
   const messageTimestamps = sense.pendingMessages.map((m) => new Date(m.date * 1000).toISOString())
 
-  const [
-    instinctResult,
-    dissonanceResult,
-    operatorModelResult,
-    attachmentResult,
-    anticipationResult,
-    noveltyResult,
-    boundaryResult,
-    isolationStressResult,
-    activeAssociations
-  ] = await Promise.all([
+  const settled = await Promise.allSettled([
     runInstinct(sense, emotion, soma),
     runDissonance(emotion, prefetch),
     runOperatorModel(messageTexts, messageTimestamps, operatorSilenceMinutes, prefetch),
@@ -52,6 +54,53 @@ export async function runParallelSubsystems(
     runIsolationCost(sense, prefetch),
     runImplicitAssociations(sense)
   ])
+
+  const [sInstinct, sDissonance, sOperator, sAttach, sAnticipation, sNovelty, sBoundary, sIsolation, sAssoc] =
+    settled as [
+      PromiseSettledResult<Awaited<ReturnType<typeof runInstinct>>>,
+      PromiseSettledResult<Awaited<ReturnType<typeof runDissonance>>>,
+      PromiseSettledResult<Awaited<ReturnType<typeof runOperatorModel>>>,
+      PromiseSettledResult<Awaited<ReturnType<typeof runAttachment>>>,
+      PromiseSettledResult<Awaited<ReturnType<typeof runAnticipation>>>,
+      PromiseSettledResult<Awaited<ReturnType<typeof runNovelty>>>,
+      PromiseSettledResult<Awaited<ReturnType<typeof runBoundary>>>,
+      PromiseSettledResult<Awaited<ReturnType<typeof runIsolationCost>>>,
+      PromiseSettledResult<Awaited<ReturnType<typeof runImplicitAssociations>>>
+    ]
+
+  const instinctResult = settledValueOrDefault(
+    sInstinct,
+    { impulse: "neutral" as const, confidence: 0, basis: "", episodicMatches: 0, emotionalCharge: 0 },
+    "instinct"
+  )
+  const dissonanceResult = settledValueOrDefault(
+    sDissonance,
+    { activeDissonance: 0, recentEvents: [], cumulativeUnresolved: 0 },
+    "dissonance"
+  )
+  const operatorModelResult = settledValueOrDefault(
+    sOperator,
+    { operatorModel: prefetch.previousOperatorModel, trigger: "none" as const, updatedPatterns: null },
+    "operatorModel"
+  )
+  const attachmentResult = settledValueOrDefault(
+    sAttach,
+    { separationDistress: 0, reunionResponse: 0, safeHavenSeeking: 0, explorationBalance: 0.5 },
+    "attachment"
+  )
+  const anticipationResult = settledValueOrDefault(sAnticipation, DEFAULT_ANTICIPATORY_STATE, "anticipation")
+  const noveltyResult = settledValueOrDefault(sNovelty, DEFAULT_NOVELTY_STATE, "novelty")
+  const boundaryResult = settledValueOrDefault(
+    sBoundary,
+    { state: DEFAULT_BOUNDARY_STATE, newViolations: [] } as BoundaryUpdateResult,
+    "boundary"
+  )
+  const isolationStressResult = settledValueOrDefault(sIsolation, DEFAULT_ISOLATION_STRESS, "isolationStress")
+  const activeAssociations = settledValueOrDefault(
+    sAssoc,
+    [] as Awaited<ReturnType<typeof runImplicitAssociations>>,
+    "implicitAssociations"
+  )
 
   const boundaryEmotionEvents: EmotionUpdateEvent[] = boundaryResult.newViolations.map((violation) => ({
     trigger: "boundary_violated" as const,

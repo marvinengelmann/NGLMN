@@ -173,7 +173,7 @@ export async function applyResolutions(result: ConsistencyResult): Promise<boole
           Math.min(1, existingConfidence + (resolution.confidenceBoost ?? 0))
         )
         if (boostResult.isErr()) {
-          log.warn("Failed to boost confidence", { error: boostResult.error.message })
+          log.error("Failed to boost confidence", { error: boostResult.error.message })
         }
         break
       }

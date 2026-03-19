@@ -18,7 +18,12 @@ import {
   incrementPhaseTickCount,
   saveRelationshipPhase
 } from "@/relational/attachment/state.ts"
-import { detectConflict, hasStyleChanged, updateAttachmentStyle } from "@/relational/attachment/update.ts"
+import {
+  computeTrustDelta,
+  detectConflict,
+  hasStyleChanged,
+  updateAttachmentStyle
+} from "@/relational/attachment/update.ts"
 import { maybeUpdateProfile } from "@/relational/mind/profiling.ts"
 import {
   decayActivePattern,
@@ -91,10 +96,11 @@ async function maintainAttachment(
   const elapsedHours = lastTick ? differenceInMinutes(new Date(), parseISO(lastTick.timestamp)) / 60 : 1 / 60
 
   const previousCrisis = await getCrisisState()
+  const trustDelta = computeTrustDelta(feelResult.emotion)
   const crisisResult = evaluateAttachmentCrisis(previousCrisis, {
     dynamics: feelResult.attachmentDynamics,
     emotion: feelResult.emotion,
-    trustDelta: 0,
+    trustDelta,
     vulnerabilityOpen: feelResult.vulnerability.windowOpen
   })
   if (crisisResult.active !== previousCrisis.active || crisisResult.type !== previousCrisis.type) {

@@ -195,9 +195,7 @@ export async function pruneOldLessons(): Promise<number> {
     .returning({ id: lessonsTable.id })
 
   if (deleted.length > 0) {
-    const lessons = await getLessons()
-    const remaining = lessons.filter((l) => !deleted.some((d) => d.id === l.id))
-    await redis.set(REDIS_KEY, remaining, { ex: 3600 })
+    await redis.del(REDIS_KEY)
     log.info("Old lessons pruned", { count: deleted.length })
   }
 

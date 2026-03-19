@@ -1,3 +1,4 @@
+import type { EmotionalState } from "@/affect/emotion/types.ts"
 import { clamp01 } from "@/infra/lib/math.ts"
 import type { AttachmentDynamics, AttachmentStyle } from "./types.ts"
 
@@ -117,4 +118,14 @@ export function updateAttachmentStyle(
     avoidant: clamp01(avoidant),
     disorganized: clamp01(disorganized)
   }
+}
+
+/**
+ * Compute an acute trust delta from the current emotional state.
+ * Negative values indicate trust erosion; below CRISIS.TRUST_RUPTURE_THRESHOLD (-0.2) triggers crisis.
+ */
+export function computeTrustDelta(emotion: EmotionalState): number {
+  const negativePressure = (emotion.frustration + emotion.caution) / 2
+  const positiveSignal = emotion.connection * 0.5 + emotion.satisfaction * 0.3
+  return Math.max(-1, Math.min(1, positiveSignal - negativePressure))
 }

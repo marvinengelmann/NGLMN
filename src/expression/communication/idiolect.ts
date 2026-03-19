@@ -104,7 +104,10 @@ For each pattern, provide the exact phrase as it appears and how many times it o
  * Extract potential idiolect patterns from messages using LLM analysis.
  * Language-agnostic — works with any language the messages are in.
  */
-export async function extractPatterns(messages: string[], source: "self" | "operator" = "self"): Promise<IdiolectPattern[]> {
+export async function extractPatterns(
+  messages: string[],
+  source: "self" | "operator" = "self"
+): Promise<IdiolectPattern[]> {
   if (messages.length < IDIOLECT.MIN_MESSAGES_FOR_EXTRACTION) return []
 
   const result = await callIntelligence({
@@ -184,7 +187,10 @@ export async function extractPatterns(messages: string[], source: "self" | "oper
 /**
  * Detect phrases ANIMA may have adopted from the operator's messages.
  */
-export async function detectOperatorAdoption(operatorMessages: string[], currentState: IdiolectState): Promise<IdiolectPattern[]> {
+export async function detectOperatorAdoption(
+  operatorMessages: string[],
+  currentState: IdiolectState
+): Promise<IdiolectPattern[]> {
   if (operatorMessages.length < 3) return []
 
   const patterns = await extractPatterns(operatorMessages, "operator")

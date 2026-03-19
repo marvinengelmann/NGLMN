@@ -40,6 +40,7 @@ import { computeSomaticUpdate } from "@/affect/soma/update.ts"
 import { computeForecastAnticipation } from "@/cognition/forecasting/compute.ts"
 import { DREAM_AFTERGLOW } from "@/expression/dream/constants.ts"
 import { getFreeEnergyState } from "@/fep/state.ts"
+import { log } from "@/infra/lib/logger.ts"
 import { applyClampedDeltas } from "@/infra/lib/math.ts"
 import { setEmotionContext } from "@/infra/lib/sentry.ts"
 import { elapsedMinutesSince, nowISO, nowLocal } from "@/infra/lib/time.ts"
@@ -264,7 +265,9 @@ export async function runEmotionChain(sense: SenseResult, prefetch: FeelPrefetch
   )
 
   if (episodicHits.length > 0) {
-    processReconsolidation(episodicHits, emotion, neuromodulatoryState).catch(() => {})
+    processReconsolidation(episodicHits, emotion, neuromodulatoryState).catch((e) =>
+      log.error("processReconsolidation failed", { error: String(e) })
+    )
   }
 
   const emotionTrigger = nostalgia ? "nostalgia_wave" : (sense.rawTriggers[0]?.trigger ?? "ambient")

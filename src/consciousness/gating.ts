@@ -91,12 +91,8 @@ export async function computeSkipProbability(
  * Consume one burst cooldown tick. Call only when a heartbeat is actually skipped.
  */
 export async function consumeBurstCooldownTick(): Promise<void> {
-  const cooldown = await redis.get(BURST_COOLDOWN_KEY)
-  if (cooldown == null) return
-  const remaining = Number(cooldown)
-  if (remaining > 1) {
-    await redis.set(BURST_COOLDOWN_KEY, remaining - 1, { ex: (remaining - 1) * SECONDS_PER_TICK })
-  } else {
+  const remaining = await redis.decr(BURST_COOLDOWN_KEY)
+  if (remaining <= 0) {
     await redis.del(BURST_COOLDOWN_KEY)
   }
 }

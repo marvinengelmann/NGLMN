@@ -65,8 +65,10 @@ export async function maintainCommunication(
 
   const idiolectState = await getIdiolectState()
 
-  const selfPatterns = animaTexts.length > 0 ? await extractPatterns(animaTexts) : []
-  const adoptedPatterns = operatorTexts.length > 0 ? await detectOperatorAdoption(operatorTexts, idiolectState) : []
+  const selfPatterns: Awaited<ReturnType<typeof extractPatterns>> =
+    animaTexts.length > 0 ? await extractPatterns(animaTexts) : []
+  const adoptedPatterns: Awaited<ReturnType<typeof detectOperatorAdoption>> =
+    operatorTexts.length > 0 ? await detectOperatorAdoption(operatorTexts, idiolectState) : []
   const allNewPatterns = [...selfPatterns, ...adoptedPatterns]
 
   const { mergeModifier, driftModifier } = computeIdiolectModifiers(emotion)

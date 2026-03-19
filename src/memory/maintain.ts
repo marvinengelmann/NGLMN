@@ -103,10 +103,10 @@ async function maintainRelationalMemory(
 
 async function maintainGoals(): Promise<void> {
   const staleGoals = await detectStaleGoals()
-  await Promise.all(staleGoals.map((goal) => markGoalStale(goal.id)))
+  await Promise.allSettled(staleGoals.map((goal) => markGoalStale(goal.id)))
 
   const overdueGoals = await detectOverdueGoals()
-  await Promise.all(overdueGoals.map((goal) => markGoalOverdue(goal.id)))
+  await Promise.allSettled(overdueGoals.map((goal) => markGoalOverdue(goal.id)))
 
   await applyGoalPriorityDecay()
 }

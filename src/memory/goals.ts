@@ -92,20 +92,16 @@ export function createGoal(
     const first = rows[0]
     if (!first) throw new Error("Expected row from goal creation")
 
-    try {
-      await vectorIndex.upsert({
-        id: `goal-${first.id}`,
-        data: `${title} ${description}`,
-        metadata: {
-          category: "task",
-          timestamp: nowISO(),
-          relevanceScore: priority,
-          tickId: first.id
-        }
-      })
-    } catch (e) {
-      log.warn("Goal vector upsert failed", { error: String(e) })
-    }
+    await vectorIndex.upsert({
+      id: `goal-${first.id}`,
+      data: `${title} ${description}`,
+      metadata: {
+        category: "task",
+        timestamp: nowISO(),
+        relevanceScore: priority,
+        tickId: first.id
+      }
+    })
 
     await recordEvent({ type: "goal_created", detail: title, metadata: { goalId: first.id, source } })
 

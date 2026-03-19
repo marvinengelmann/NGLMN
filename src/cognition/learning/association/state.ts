@@ -25,7 +25,7 @@ export async function saveActiveAssociations(associations: HebbianAssociation[],
     .sort((a, b) => b.strength - a.strength)
     .slice(0, 50)
   if (buffer) {
-    buffer.stage(KEYS.ACTIVE_ASSOCIATIONS, top)
+    buffer.stageWithExpiry(KEYS.ACTIVE_ASSOCIATIONS, top, 3600)
   } else {
     await redis.set(KEYS.ACTIVE_ASSOCIATIONS, top, { ex: 3600 })
   }

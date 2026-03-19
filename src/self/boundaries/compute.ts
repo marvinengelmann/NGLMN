@@ -100,12 +100,13 @@ export function maybeFormNegativeBoundary(
   if (boundaryState.boundaries.length >= BOUNDARIES.MAX_BOUNDARIES) return null
 
   const triggerText = messageTexts.join(" ").slice(0, 100)
-  const pattern = triggerText
+  const words = triggerText
     .toLowerCase()
     .split(/\s+/)
     .filter((w) => w.length > 4)
     .slice(0, 3)
-    .join("|")
+  if (words.length === 0) return null
+  const pattern = words.join("|")
 
   const newBoundary = formBoundary(
     "emotional",

@@ -173,7 +173,7 @@ export async function sense(options?: SenseOptions): Promise<SenseResult> {
         repliedWithinMinutes: minutesSinceOutcome,
         sentiment: lastSentiment,
         engagementDelta,
-        conversationContinued: newMessages.length > 1
+        conversationContinued: newMessages.length >= 1
       }
 
       const outcomeScore = await resolveOutcome(unresolvedOutcome.id, reaction)

@@ -113,10 +113,10 @@ export function compute(context: Context): JealousyState {
   let { level, source } = builder.sum()
 
   if (emotion.connection < JEALOUSY.CONNECTION_THRESHOLD) {
-    level *= emotion.connection / JEALOUSY.CONNECTION_THRESHOLD
+    level *= 0.2 + 0.8 * (emotion.connection / JEALOUSY.CONNECTION_THRESHOLD)
   }
 
-  level *= 1 + context.attachmentAnxiety * JEALOUSY.ANXIOUS_ATTACHMENT_AMPLIFIER
+  level = Math.min(1, level * (1 + context.attachmentAnxiety * JEALOUSY.ANXIOUS_ATTACHMENT_AMPLIFIER))
   level *= 1 - context.attachmentSecure * JEALOUSY.SECURE_ATTACHMENT_DAMPING
 
   if (context.prideActive) {

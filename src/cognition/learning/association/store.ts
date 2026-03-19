@@ -100,9 +100,7 @@ export async function upsertAssociation(association: HebbianAssociation): Promis
  * Batch upsert multiple associations.
  */
 export async function batchUpsertAssociations(associations: HebbianAssociation[]): Promise<void> {
-  for (const assoc of associations) {
-    await upsertAssociation(assoc)
-  }
+  await Promise.all(associations.map((assoc) => upsertAssociation(assoc)))
 }
 
 /**
