@@ -73,7 +73,9 @@ export type CoreValue = z.infer<typeof CoreValue>
 
 export const Interest = z.object({
   name: z.string(),
-  fascination: z.string()
+  fascination: z.string(),
+  priority: z.number().min(0).max(1),
+  emotionalWeight: z.number().min(0).max(1)
 })
 export type Interest = z.infer<typeof Interest>
 

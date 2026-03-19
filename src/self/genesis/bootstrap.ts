@@ -12,7 +12,7 @@ import type { GenesisRecord } from "./types.ts"
  * and creates exploration goals for each interest.
  */
 export async function bootstrapDNAMemory(record: GenesisRecord): Promise<void> {
-  const { dna, identity } = record
+  const { identity } = record
 
   for (const interest of identity.interests) {
     const result = await storeKnowledge(
@@ -44,14 +44,13 @@ export async function bootstrapDNAMemory(record: GenesisRecord): Promise<void> {
     return
   }
 
-  const priority = 0.4 + dna.bigFive.openness * 0.4
   for (const interest of identity.interests) {
     await db.insert(goals).values({
       title: `Explore ${interest.name}`,
       description: `${interest.fascination} — born from genesis`,
       source: "genesis",
-      priority,
-      emotionalWeight: 0.3 + dna.bigFive.openness * 0.3
+      priority: interest.priority,
+      emotionalWeight: interest.emotionalWeight
     })
   }
 
