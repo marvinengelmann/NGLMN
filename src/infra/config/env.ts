@@ -28,7 +28,7 @@ const EnvSchema = z.object({
   OPENWEATHER_API_KEY: z.string().optional(),
   OPENWEATHER_DEFAULT_LOCATION: z.string().optional(),
 
-  DAYTONA_API_KEY: z.string().optional(),
+  UPSTASH_BOX_API_KEY: z.string().optional(),
 
   CONTEXT7_API_KEY: z.string().optional(),
 

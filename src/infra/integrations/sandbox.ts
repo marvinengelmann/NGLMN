@@ -1,49 +1,12 @@
-import type { Sandbox } from "@daytonaio/sdk"
-import { Daytona, Image } from "@daytonaio/sdk"
+import { Box } from "@upstash/box"
 import { env } from "@/infra/config/env.ts"
 import type { SandboxResult } from "@/infra/integrations/types.ts"
 import { log } from "@/infra/lib/logger.ts"
 import { extractErrorMessage } from "@/infra/lib/result.ts"
 
-const SANDBOX_IMAGE = Image.base("ubuntu:22.04")
-  .runCommands("apt-get update && apt-get install -y git curl unzip")
-  .runCommands("curl -fsSL https://bun.sh/install | bash")
-  .runCommands("ln -sf $HOME/.bun/bin/bun /usr/local/bin/bun && ln -sf $HOME/.bun/bin/bunx /usr/local/bin/bunx")
+const EXIT_MARKER = "___EXIT___"
 
-const daytona = new Daytona()
-
-export async function createSandbox(): Promise<Sandbox> {
-  return daytona.create(
-    {
-      image: SANDBOX_IMAGE,
-      resources: { cpu: 2, memory: 4 },
-      autoStopInterval: 0,
-      autoDeleteInterval: 0
-    },
-    { timeout: 300 }
-  )
-}
-
-interface RunInSandboxOptions {
-  sandbox: Sandbox
-  command: string
-  cwd?: string
-  timeoutSec?: number
-}
-
-export async function runInSandbox({
-  sandbox,
-  command,
-  cwd,
-  timeoutSec = 120
-}: RunInSandboxOptions): Promise<{ result: string; exitCode: number }> {
-  const response = await sandbox.process.executeCommand(command, cwd, undefined, timeoutSec)
-  return { result: response.result, exitCode: response.exitCode }
-}
-
-export async function destroySandbox(sandbox: Sandbox): Promise<void> {
-  await sandbox.delete()
-}
+type BoxInstance = Awaited<ReturnType<typeof Box.create>>
 
 function sanitizeBranchName(branch: string): string {
   if (!/^[a-zA-Z0-9._\-/]+$/.test(branch)) {
@@ -52,84 +15,88 @@ function sanitizeBranchName(branch: string): string {
   return branch
 }
 
+async function execWithExit(box: BoxInstance, command: string): Promise<{ output: string; exitCode: number }> {
+  const run = await box.exec.command(`(${command}) 2>&1; echo "${EXIT_MARKER}:$?"`)
+  const match = run.result.match(new RegExp(`${EXIT_MARKER}:(\\d+)\\s*$`))
+  const exitCode = match?.[1] ? Number.parseInt(match[1], 10) : 1
+  const output = run.result.replace(new RegExp(`\\n?${EXIT_MARKER}:\\d+\\s*$`), "")
+  return { output, exitCode }
+}
+
+function repoUrl(): string {
+  return `https://github.com/${env().GITHUB_OWNER}/${env().GITHUB_REPO}.git`
+}
+
+async function setupBox(box: BoxInstance, branch: string): Promise<void> {
+  await box.exec.command("curl -fsSL https://bun.sh/install | bash")
+  await box.exec.command(
+    "ln -sf $HOME/.bun/bin/bun /usr/local/bin/bun && ln -sf $HOME/.bun/bin/bunx /usr/local/bin/bunx"
+  )
+  await box.git.clone({ repo: repoUrl(), branch })
+  const repo = env().GITHUB_REPO
+  if (!repo) throw new Error("GITHUB_REPO is required for sandbox validation")
+  await box.cd(repo)
+  await box.exec.command("bun install")
+}
+
+function failedResult(overrides: Partial<SandboxResult>, start: number): SandboxResult {
+  return {
+    passed: false,
+    biomeCheckPassed: false,
+    tscCheckPassed: false,
+    testsPassed: 0,
+    testsFailed: 0,
+    healthCheckPassed: false,
+    stdout: "",
+    stderr: "",
+    durationMs: Date.now() - start,
+    ...overrides
+  }
+}
+
 export async function validateInSandbox(branch: string): Promise<SandboxResult> {
   const safeBranch = sanitizeBranchName(branch)
-  const repoUrl = `https://github.com/${env().GITHUB_OWNER}/${env().GITHUB_REPO}.git`
-  const appDir = "/app/anima"
   const start = Date.now()
-  let sandbox: Sandbox | null = null
+  let box: BoxInstance | null = null
 
   try {
-    sandbox = await createSandbox()
-    log.info("Sandbox created", { branch: safeBranch })
+    box = await Box.create({ runtime: "node" })
+    log.info("Box created", { branch: safeBranch })
 
-    await runInSandbox({
-      sandbox,
-      command: `mkdir -p /app && git clone --branch '${safeBranch}' --single-branch '${repoUrl}' '${appDir}'`,
-      timeoutSec: 60
-    })
+    await setupBox(box, safeBranch)
+    log.info("Box setup complete", { branch })
 
-    await runInSandbox({ sandbox, command: "bun install", cwd: appDir })
-    log.info("Sandbox setup complete", { branch })
-
-    const biomeResult = await runInSandbox({ sandbox, command: "bunx biome check src/ 2>&1", cwd: appDir })
-    const biomeCheckPassed = biomeResult.exitCode === 0
-
-    if (!biomeCheckPassed) {
-      log.warn("Sandbox biome check failed", {
+    const biomeResult = await execWithExit(box, "bunx biome check src/")
+    if (biomeResult.exitCode !== 0) {
+      log.warn("Box biome check failed", {
         branch,
         durationMs: Date.now() - start,
-        stdout: biomeResult.result.slice(-2000)
+        stdout: biomeResult.output.slice(-2000)
       })
-      return {
-        passed: false,
-        biomeCheckPassed: false,
-        tscCheckPassed: false,
-        testsPassed: 0,
-        testsFailed: 0,
-        healthCheckPassed: false,
-        stdout: biomeResult.result.slice(-5000),
-        stderr: biomeResult.result.slice(-2000),
-        durationMs: Date.now() - start
-      }
+      return failedResult({ stdout: biomeResult.output.slice(-5000), stderr: biomeResult.output.slice(-2000) }, start)
     }
 
-    const tscResult = await runInSandbox({ sandbox, command: "bunx tsc --noEmit 2>&1", cwd: appDir })
-    const tscCheckPassed = tscResult.exitCode === 0
-
-    if (!tscCheckPassed) {
-      log.warn("Sandbox tsc check failed", {
+    const tscResult = await execWithExit(box, "bunx tsc --noEmit")
+    if (tscResult.exitCode !== 0) {
+      log.warn("Box tsc check failed", {
         branch,
         durationMs: Date.now() - start,
-        stdout: tscResult.result.slice(-2000)
+        stdout: tscResult.output.slice(-2000)
       })
-      return {
-        passed: false,
-        biomeCheckPassed: true,
-        tscCheckPassed: false,
-        testsPassed: 0,
-        testsFailed: 0,
-        healthCheckPassed: false,
-        stdout: tscResult.result.slice(-5000),
-        stderr: tscResult.result.slice(-2000),
-        durationMs: Date.now() - start
-      }
+      return failedResult(
+        { biomeCheckPassed: true, stdout: tscResult.output.slice(-5000), stderr: tscResult.output.slice(-2000) },
+        start
+      )
     }
 
-    const testResult = await runInSandbox({ sandbox, command: "bun run test:run 2>&1", cwd: appDir, timeoutSec: 180 })
-
-    const passMatch = testResult.result.match(/Tests\s+(\d+) passed/)
-    const failMatch = testResult.result.match(/(\d+) failed/)
-    const testsPassed = passMatch?.[1] ? parseInt(passMatch[1], 10) : 0
-    const testsFailed = failMatch?.[1] ? parseInt(failMatch[1], 10) : 0
+    const testResult = await execWithExit(box, "bun run test:run")
+    const passMatch = testResult.output.match(/Tests\s+(\d+) passed/)
+    const failMatch = testResult.output.match(/(\d+) failed/)
+    const testsPassed = passMatch?.[1] ? Number.parseInt(passMatch[1], 10) : 0
+    const testsFailed = failMatch?.[1] ? Number.parseInt(failMatch[1], 10) : 0
     const passed = testResult.exitCode === 0 && testsFailed === 0
-    log.info("Sandbox validation complete", {
-      branch,
-      passed,
-      testsPassed,
-      testsFailed,
-      durationMs: Date.now() - start
-    })
+
+    log.info("Box validation complete", { branch, passed, testsPassed, testsFailed, durationMs: Date.now() - start })
 
     return {
       passed,
@@ -138,34 +105,23 @@ export async function validateInSandbox(branch: string): Promise<SandboxResult> 
       testsPassed,
       testsFailed,
       healthCheckPassed: passed,
-      stdout: testResult.result.slice(-5000),
+      stdout: testResult.output.slice(-5000),
       stderr: "",
       durationMs: Date.now() - start
     }
   } catch (error) {
-    log.error("Sandbox validation crashed", {
+    log.error("Box validation crashed", {
       branch,
       error: extractErrorMessage(error),
       durationMs: Date.now() - start
     })
-    return {
-      passed: false,
-      biomeCheckPassed: false,
-      tscCheckPassed: false,
-      testsPassed: 0,
-      testsFailed: 0,
-      healthCheckPassed: false,
-      stdout: "",
-      stderr: extractErrorMessage(error),
-      durationMs: Date.now() - start
-    }
+    return failedResult({ stderr: extractErrorMessage(error) }, start)
   } finally {
-    if (sandbox) {
-      await destroySandbox(sandbox)
-        .then(() => log.debug("Sandbox destroyed", { branch }))
-        .catch((e) => {
-          log.error("Failed to destroy sandbox", { branch, error: extractErrorMessage(e) })
-        })
+    if (box) {
+      await box
+        .delete()
+        .then(() => log.debug("Box destroyed", { branch }))
+        .catch((e: unknown) => log.error("Failed to destroy box", { branch, error: extractErrorMessage(e) }))
     }
   }
 }

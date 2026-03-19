@@ -23,11 +23,11 @@
   },
   "dependencies": {
     "@date-fns/tz": "^1.4.1",
-    "@daytonaio/sdk": "^0.152.1",
     "@modelcontextprotocol/sdk": "^1.27.1",
     "@neondatabase/serverless": "^1.0.2",
     "@sentry/node": "^10.44.0",
     "@trigger.dev/sdk": "4.4.3",
+    "@upstash/box": "^0.1.26",
     "@upstash/redis": "^1.37.0",
     "@upstash/vector": "^1.2.3",
     "@vercel/blob": "^2.3.1",
