@@ -146,8 +146,21 @@ describe("inferSatisfiedDrives", () => {
     expect(satisfied.has("mastery")).toBe(true)
   })
 
-  it("should satisfy expression for create action", () => {
+  it("should satisfy expression and autonomy for create action", () => {
     const satisfied = inferSatisfiedDrives(false, 0, "create")
+    expect(satisfied.has("expression")).toBe(true)
+    expect(satisfied.has("autonomy")).toBe(true)
+  })
+
+  it("should satisfy autonomy and expression for life_event action", () => {
+    const satisfied = inferSatisfiedDrives(false, 0, "life_event")
+    expect(satisfied.has("autonomy")).toBe(true)
+    expect(satisfied.has("expression")).toBe(true)
+  })
+
+  it("should satisfy autonomy and expression for social_media action", () => {
+    const satisfied = inferSatisfiedDrives(false, 0, "social_media")
+    expect(satisfied.has("autonomy")).toBe(true)
     expect(satisfied.has("expression")).toBe(true)
   })
 

@@ -150,9 +150,16 @@ export function inferSatisfiedDrives(
 
   if (action === "social_media") {
     satisfied.add("expression")
+    satisfied.add("autonomy")
   }
 
   if (action === "create") {
+    satisfied.add("expression")
+    satisfied.add("autonomy")
+  }
+
+  if (action === "life_event") {
+    satisfied.add("autonomy")
     satisfied.add("expression")
   }
 
