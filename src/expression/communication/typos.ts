@@ -11,13 +11,7 @@ const TYPO_PROBABILITY: Record<CommunicationRegister, number> = {
   raw: TYPOS.RAW_PROBABILITY
 }
 
-const CORRECTION_STYLES = [
-  (correct: string) => `\\*${correct}`,
-  (correct: string) => `${correct}\\*`,
-  (correct: string) => `lol i mean ${correct}`,
-  (correct: string) => `\\*${correct} 😅`,
-  (correct: string) => `${correct}\\*\\*`
-]
+const CORRECTION_PROBABILITY = 0.1
 
 /**
  * Compute dynamic typo probability based on emotional/somatic context.
@@ -120,8 +114,7 @@ export function maybeIntroduceTypo(
   newWords[wordIndex] = typoWord
   const modifiedText = newWords.join(" ")
 
-  const styleFn = CORRECTION_STYLES[Math.floor(Math.random() * CORRECTION_STYLES.length)]
-  const correction = styleFn ? styleFn(correctedWord) : `*${correctedWord}`
+  const correction = Math.random() < CORRECTION_PROBABILITY ? `*${correctedWord}` : null
 
   return { text: modifiedText, correction }
 }

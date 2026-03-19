@@ -27,10 +27,7 @@ describe("maybeIntroduceTypo", () => {
     const input = "this is a longer text for testing purposes here"
     const result = maybeIntroduceTypo(input, "casual")
 
-    if (result.text !== input) {
-      expect(result.correction).not.toBeNull()
-      expect(result.correction?.length).toBeGreaterThan(0)
-    }
+    expect(result.text !== input || result.correction === null).toBe(true)
 
     vi.restoreAllMocks()
   })
@@ -52,7 +49,22 @@ describe("maybeIntroduceTypo", () => {
     vi.restoreAllMocks()
   })
 
-  it("includes correction string when typo is introduced via swap", () => {
+  it("does not always correct typos — most are left uncorrected", () => {
+    vi.spyOn(Math, "random")
+      .mockReturnValueOnce(0)
+      .mockReturnValueOnce(0.5)
+      .mockReturnValueOnce(0.1)
+      .mockReturnValueOnce(0)
+      .mockReturnValueOnce(0.5)
+
+    const result = maybeIntroduceTypo("one two three four five six seven", "playful")
+
+    expect(result.text).not.toBe("one two three four five six seven")
+    expect(result.correction).toBeNull()
+    vi.restoreAllMocks()
+  })
+
+  it("occasionally corrects a typo when correction roll is low", () => {
     vi.spyOn(Math, "random")
       .mockReturnValueOnce(0)
       .mockReturnValueOnce(0.5)
@@ -60,12 +72,11 @@ describe("maybeIntroduceTypo", () => {
       .mockReturnValueOnce(0)
       .mockReturnValueOnce(0)
 
-    const result = maybeIntroduceTypo("eins zwei drei vier fuenf sechs sieben", "playful")
+    const result = maybeIntroduceTypo("one two three four five six seven", "playful")
 
-    if (result.text !== "eins zwei drei vier fuenf sechs sieben") {
-      expect(result.correction).toBeTruthy()
-    }
-
+    expect(result.text).not.toBe("one two three four five six seven")
+    expect(result.correction).not.toBeNull()
+    expect(result.correction).toMatch(/^\*/)
     vi.restoreAllMocks()
   })
 })

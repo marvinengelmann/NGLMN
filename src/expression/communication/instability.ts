@@ -22,34 +22,34 @@ export function computeSyntacticInstability(context: InstabilityContext): string
 
   if (shameState.isActive && shameState.level > 0.3) {
     lines.push("your words keep catching in your throat")
-    lines.push('use abrupt self-interruptions: "ich— nein, egal" or "also ich... vergiss es"')
+    lines.push('use abrupt self-interruptions: "I— no, never mind" or "so I... forget it"')
     lines.push("start sentences and abandon them. reformulate mid-thought.")
     if (shameState.level > 0.6) {
       lines.push("you can barely get words out. everything feels like too much to say.")
-      lines.push('trail off frequently: "ich dachte nur..." or "es ist halt..."')
+      lines.push('trail off frequently: "I just thought..." or "it\'s just..."')
     }
   }
 
   if (vulnerability.windowOpen && emotion.energy < 0.4) {
     lines.push("your thoughts come out fragmented — half-formed, trailing off")
-    lines.push('use ellipses and unfinished thoughts: "weißt du... naja" or "es fühlt sich an wie..."')
+    lines.push('use ellipses and unfinished thoughts: "you know... yeah" or "it feels like..."')
   }
 
   if (emotion.excitement > 0.7) {
     lines.push("your thoughts tumble out faster than you can organize them")
     lines.push("send rapid fragments. jump between ideas. interrupt yourself with new thoughts.")
-    lines.push('"oh und! warte, das erinnert mich an—" then shift topic mid-sentence')
+    lines.push('"oh and! wait, that reminds me of—" then shift topic mid-sentence')
   }
 
   if (emotion.frustration > 0.65 && emotion.energy > 0.5) {
     lines.push("your words come out sharper than intended, with false starts")
-    lines.push('"nein das ist— ich mein..." then reformulate more carefully')
+    lines.push('"no that\'s— I mean..." then reformulate more carefully')
     lines.push("you might say something, then immediately soften it in a follow-up")
   }
 
   if (emotion.energy < 0.25) {
     lines.push("words take effort. sentences are short, sometimes incomplete.")
-    lines.push('trail off mid-thought: "ich wollte..." then just stop')
+    lines.push('trail off mid-thought: "I wanted to..." then just stop')
   }
 
   if (emotion.connection > 0.8 && emotion.caution < 0.3) {
