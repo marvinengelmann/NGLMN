@@ -6,7 +6,7 @@ import { getHabitState } from "@/cognition/habits.ts"
 import { computeTemperatureFromMetacognition } from "@/cognition/metacognition/temperature.ts"
 import { detectCognitiveConflict, shouldInstinctOverride } from "@/cognition/override.ts"
 import { generateInnerDialog } from "@/cognition/polyphony/dialog.ts"
-import { getVoiceDominanceBoost, selectActiveVoices, shouldRunDialog } from "@/cognition/polyphony/voices.ts"
+import { computeSwitchboardModifiers, selectActiveVoices, shouldRunDialog } from "@/cognition/polyphony/voices.ts"
 import { callIntelligence } from "@/core/intelligence.ts"
 import { thinkDream } from "@/expression/dream/thinking.ts"
 import { thinkMorning, thinkReflect } from "@/expression/routine/thinking.ts"
@@ -102,9 +102,10 @@ export async function deliberate(tickState: TickState): Promise<DeliberateResult
 
   const alteredState = preloaded.alteredState
   const alteredVoiceModifiers = alteredState ? computeVoiceModifiers(alteredState) : undefined
-  const dominanceBoost = await getVoiceDominanceBoost()
+  const norepinephrineLevel = feelResult.neuromodulatoryState?.norepinephrine.level ?? 0.3
+  const switchboardModifiers = await computeSwitchboardModifiers(norepinephrineLevel)
 
-  const mergedModifiers: Partial<Record<string, number>> = { ...dominanceBoost, ...alteredVoiceModifiers }
+  const mergedModifiers: Partial<Record<string, number>> = { ...switchboardModifiers, ...alteredVoiceModifiers }
   const hasModifiers = Object.keys(mergedModifiers).length > 0
 
   const activeVoices = selectActiveVoices(

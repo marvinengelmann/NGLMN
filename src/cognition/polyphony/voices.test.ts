@@ -1,7 +1,14 @@
-import { describe, expect, it } from "vitest"
+import { describe, expect, it, vi } from "vitest"
 import type { EmotionalState } from "@/affect/emotion/types.ts"
 import type { BigFive } from "@/self/genesis/types.ts"
-import { selectActiveVoices, shouldRunDialog } from "./voices.ts"
+import { computeSwitchboardModifiers, selectActiveVoices, shouldRunDialog } from "./voices.ts"
+
+vi.mock("./state.ts", () => ({
+  getDominanceHistory: vi.fn()
+}))
+
+import { getDominanceHistory } from "./state.ts"
+const mockedGetDominanceHistory = vi.mocked(getDominanceHistory)
 
 const baseEmotion: EmotionalState = {
   curiosity: 0.5,
@@ -80,6 +87,64 @@ describe("selectActiveVoices", () => {
     const hasNoveltyLow = voicesLow.includes("seeking")
     const hasNoveltyHigh = voicesHigh.includes("seeking")
     expect(hasNoveltyHigh || !hasNoveltyLow).toBe(true)
+  })
+})
+
+describe("computeSwitchboardModifiers", () => {
+  it("returns empty modifiers when history is too short", async () => {
+    mockedGetDominanceHistory.mockResolvedValue(["seeking", "care"])
+    const result = await computeSwitchboardModifiers(0.5)
+    expect(result).toEqual({})
+  })
+
+  it("penalizes perseverating voice and boosts under-represented voices", async () => {
+    mockedGetDominanceHistory.mockResolvedValue([
+      "seeking", "seeking", "seeking", "seeking", "seeking",
+      "seeking", "seeking", "seeking", "seeking", "care"
+    ])
+
+    const result = await computeSwitchboardModifiers(0.8)
+
+    expect(result.seeking).toBeDefined()
+    expect(result.seeking!).toBeLessThan(0)
+
+    expect(result.fear).toBeDefined()
+    expect(result.fear!).toBeGreaterThan(0)
+
+    expect(result.play).toBeDefined()
+    expect(result.play!).toBeGreaterThan(0)
+  })
+
+  it("gives maximum novelty boost to completely absent voices", async () => {
+    mockedGetDominanceHistory.mockResolvedValue([
+      "seeking", "seeking", "seeking", "care", "care"
+    ])
+
+    const result = await computeSwitchboardModifiers(1.0)
+
+    expect(result.fear!).toBeGreaterThan(result.care!)
+    expect(result.play!).toBeGreaterThan(result.care!)
+  })
+
+  it("scales switching intensity with norepinephrine level", async () => {
+    const history = Array.from({ length: 10 }, () => "seeking" as const)
+    mockedGetDominanceHistory.mockResolvedValue(history)
+
+    const lowNE = await computeSwitchboardModifiers(0.1)
+    const highNE = await computeSwitchboardModifiers(0.9)
+
+    expect(Math.abs(highNE.seeking!)).toBeGreaterThan(Math.abs(lowNE.seeking!))
+    expect(highNE.fear!).toBeGreaterThan(lowNE.fear!)
+  })
+
+  it("does not penalize voices with fewer than 3 consecutive dominances", async () => {
+    mockedGetDominanceHistory.mockResolvedValue([
+      "seeking", "seeking", "care", "play", "executive"
+    ])
+
+    const result = await computeSwitchboardModifiers(0.5)
+
+    expect(result.seeking!).toBeGreaterThanOrEqual(0)
   })
 })
 

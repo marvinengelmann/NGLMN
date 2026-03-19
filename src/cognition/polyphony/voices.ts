@@ -9,8 +9,11 @@ interface VoiceContext {
   hasMessages: boolean
 }
 
+const ALL_VOICES: InnerVoice[] = ["seeking", "fear", "care", "executive", "play", "monitoring"]
+
 /**
  * Select 2-4 active competing goal-directed systems based on emotion, personality, and context.
+ * Grounded in Panksepp's affective neuroscience with switchboard-inspired diversity mechanism.
  */
 export function selectActiveVoices(
   emotion: EmotionalState,
@@ -72,28 +75,72 @@ export function selectActiveVoices(
   return sorted.slice(0, 4)
 }
 
-const DOMINANCE_FREQUENCY_BOOST = 0.1
+const NOVELTY_BOOST_MAX = 0.2
+const PERSEVERATION_PENALTY_MAX = 0.25
 
 /**
- * Get a frequency-based boost for voices that have recently been dominant.
+ * Compute switchboard modifiers inspired by the median raphe nucleus mechanism (Nature 2025):
+ * - Voices that have been UNDER-represented get a novelty boost (exploration signal)
+ * - The currently perseverating voice gets a penalty that grows with consecutive dominance
+ * - Norepinephrine level scales the switching intensity (Aston-Jones & Cohen, 2005)
+ *
+ * High NE → strong switching pressure (exploration mode)
+ * Low NE → weak switching pressure (exploitation mode)
  */
-export async function getVoiceDominanceBoost(): Promise<Partial<Record<InnerVoice, number>>> {
+export async function computeSwitchboardModifiers(
+  norepinephrineLevel: number
+): Promise<Partial<Record<InnerVoice, number>>> {
   const history = await getDominanceHistory()
 
-  if (history.length === 0) return {}
+  if (history.length < 3) return {}
 
-  const counts = history.reduce<Partial<Record<InnerVoice, number>>>((acc, voice) => {
-    acc[voice] = (acc[voice] ?? 0) + 1
-    return acc
-  }, {})
+  const counts = history.reduce<Record<InnerVoice, number>>(
+    (acc, voice) => {
+      acc[voice] += 1
+      return acc
+    },
+    { seeking: 0, fear: 0, care: 0, executive: 0, play: 0, monitoring: 0 }
+  )
 
-  const maxCount = Math.max(...Object.values(counts))
-  const boost = Object.entries(counts).reduce<Partial<Record<InnerVoice, number>>>((acc, [voice, count]) => {
-    acc[voice as InnerVoice] = (count / maxCount) * DOMINANCE_FREQUENCY_BOOST
-    return acc
-  }, {})
+  const total = history.length
+  const switchingGain = Math.max(0.2, norepinephrineLevel)
 
-  return boost
+  const consecutiveDominance = countConsecutiveLeader(history)
+  const perseverationPenalty = Math.min(
+    PERSEVERATION_PENALTY_MAX,
+    (consecutiveDominance / total) * PERSEVERATION_PENALTY_MAX * 2
+  ) * switchingGain
+
+  const modifiers: Partial<Record<InnerVoice, number>> = {}
+
+  for (const voice of ALL_VOICES) {
+    const frequency = counts[voice] / total
+    const underRepresentation = 1 - frequency
+
+    if (voice === history[0] && consecutiveDominance >= 3) {
+      modifiers[voice] = -perseverationPenalty
+    } else if (counts[voice] === 0) {
+      modifiers[voice] = NOVELTY_BOOST_MAX * switchingGain
+    } else {
+      modifiers[voice] = underRepresentation * NOVELTY_BOOST_MAX * switchingGain * 0.5
+    }
+  }
+
+  return modifiers
+}
+
+/**
+ * Count how many times the most recent dominant voice appears consecutively from the front.
+ */
+function countConsecutiveLeader(history: InnerVoice[]): number {
+  if (history.length === 0) return 0
+  const leader = history[0]
+  let count = 0
+  for (const voice of history) {
+    if (voice !== leader) break
+    count++
+  }
+  return count
 }
 
 function getBigFiveWeights(bigFive: BigFive): Partial<Record<InnerVoice, number>> {
