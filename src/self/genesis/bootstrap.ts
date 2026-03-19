@@ -6,9 +6,16 @@ import { logAndCaptureError } from "@/infra/lib/result.ts"
 import { storeKnowledge } from "@/memory/semantic.ts"
 import type { GenesisRecord } from "./types.ts"
 
+function slugify(text: string): string {
+  return text
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "")
+}
+
 /**
  * Bootstrap DNA-derived knowledge and goals into memory after genesis.
- * Stores interest seeds as knowledge, value hierarchy as insights,
+ * Stores interest seeds as preferences, value hierarchy as insights,
  * and creates exploration goals for each interest.
  */
 export async function bootstrapDNAMemory(record: GenesisRecord): Promise<void> {
@@ -16,8 +23,8 @@ export async function bootstrapDNAMemory(record: GenesisRecord): Promise<void> {
 
   for (const interest of identity.interests) {
     const result = await storeKnowledge(
-      "knowledge",
-      `interest:${interest.name}`,
+      "preference",
+      slugify(interest.name),
       { name: interest.name, fascination: interest.fascination },
       "genesis",
       0.6,
@@ -29,7 +36,7 @@ export async function bootstrapDNAMemory(record: GenesisRecord): Promise<void> {
   for (const value of identity.coreValues) {
     const result = await storeKnowledge(
       "insight",
-      `value:${value.name}`,
+      slugify(value.name),
       { name: value.name, reason: value.reason },
       "genesis",
       0.7,
