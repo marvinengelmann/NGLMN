@@ -26,7 +26,7 @@ export async function getConversationBuffer(): Promise<ConversationSlot[]> {
 }
 
 async function setConversationBuffer(slots: ConversationSlot[]): Promise<void> {
-  await redis.set(CONV_KEYS.CONVERSATION_BUFFER, JSON.stringify(slots))
+  await redis.set(CONV_KEYS.CONVERSATION_BUFFER, JSON.stringify(slots), { ex: 86400 })
 }
 
 export async function getActiveConversation(): Promise<ConversationSlot | null> {

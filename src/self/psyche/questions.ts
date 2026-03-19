@@ -64,7 +64,7 @@ export async function addExistentialQuestion(question: string, source = "unknown
   })
 
   if (current.length > MAX_QUESTIONS) current.shift()
-  await redis.set(KEY, current)
+  await redis.set(KEY, current, { ex: 2592000 })
 }
 
 /**
@@ -75,7 +75,7 @@ export async function resolveExistentialQuestion(question: string): Promise<void
   const filtered = current.filter((q) => q.question !== question)
 
   if (filtered.length < current.length) {
-    await redis.set(KEY, filtered)
+    await redis.set(KEY, filtered, { ex: 2592000 })
     await addGrowthArc({
       observation: `resolved an existential question: "${question}"`,
       fromState: "questioning",

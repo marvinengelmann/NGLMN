@@ -13,7 +13,7 @@ export async function getActiveEvolution(): Promise<ActiveEvolution | null> {
 }
 
 export async function setActiveEvolution(evolution: ActiveEvolution): Promise<void> {
-  await redis.set(KEYS.EVOLUTION_ACTIVE, evolution)
+  await redis.set(KEYS.EVOLUTION_ACTIVE, evolution, { ex: 86400 })
 }
 
 export async function clearActiveEvolution(): Promise<void> {

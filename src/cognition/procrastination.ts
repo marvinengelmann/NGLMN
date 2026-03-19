@@ -27,7 +27,7 @@ export async function getProcrastinationState(): Promise<ProcrastinationState> {
 }
 
 export async function saveProcrastinationState(state: ProcrastinationState): Promise<void> {
-  await redis.set(REDIS_KEY, state)
+  await redis.set(REDIS_KEY, state, { ex: 3600 })
 }
 
 export interface ProcrastinationContext {

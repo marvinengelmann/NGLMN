@@ -19,6 +19,6 @@ export async function saveBiasState(state: BiasState, buffer?: WriteBuffer): Pro
   if (buffer) {
     buffer.stage(KEY, state)
   } else {
-    await redis.set(KEY, state)
+    await redis.set(KEY, state, { ex: 3600 })
   }
 }

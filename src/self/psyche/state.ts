@@ -31,7 +31,7 @@ export async function getSelfConcept(): Promise<SelfConcept> {
   if (rows[0]) {
     const parsed = SelfConcept.safeParse(rows[0].selfConcept)
     if (parsed.success) {
-      await redis.set(KEYS.CURRENT, parsed.data)
+      await redis.set(KEYS.CURRENT, parsed.data, { ex: 3600 })
       return parsed.data
     }
   }
@@ -53,10 +53,10 @@ export async function savePsycheSnapshot(snapshot: PsycheSnapshot): Promise<void
     narrativeSummary: snapshot.narrativeSummary
   })
   await Promise.all([
-    redis.set(KEYS.CURRENT, snapshot.selfConcept),
-    redis.set(KEYS.ASPIRATIONS, snapshot.aspirations),
-    redis.set(KEYS.FEARS, snapshot.fears),
-    redis.set(KEYS.NARRATIVE_SUMMARY, snapshot.narrativeSummary)
+    redis.set(KEYS.CURRENT, snapshot.selfConcept, { ex: 604800 }),
+    redis.set(KEYS.ASPIRATIONS, snapshot.aspirations, { ex: 604800 }),
+    redis.set(KEYS.FEARS, snapshot.fears, { ex: 604800 }),
+    redis.set(KEYS.NARRATIVE_SUMMARY, snapshot.narrativeSummary, { ex: 604800 })
   ])
 }
 
@@ -64,7 +64,7 @@ export async function savePsycheSnapshot(snapshot: PsycheSnapshot): Promise<void
  * Save just the self concept to Redis (for incremental updates).
  */
 export async function saveSelfConcept(concept: SelfConcept): Promise<void> {
-  await redis.set(KEYS.CURRENT, concept)
+  await redis.set(KEYS.CURRENT, concept, { ex: 604800 })
 }
 
 export async function getIdentityStatements(): Promise<string[]> {
@@ -72,7 +72,7 @@ export async function getIdentityStatements(): Promise<string[]> {
 }
 
 export async function saveIdentityStatements(statements: string[]): Promise<void> {
-  await redis.set(KEYS.IDENTITY_STATEMENTS, statements.slice(0, MAX_IDENTITY_STATEMENTS))
+  await redis.set(KEYS.IDENTITY_STATEMENTS, statements.slice(0, MAX_IDENTITY_STATEMENTS), { ex: 604800 })
 }
 
 export async function getGrowthArcs(): Promise<GrowthArc[]> {
@@ -82,7 +82,7 @@ export async function getGrowthArcs(): Promise<GrowthArc[]> {
 export async function addGrowthArc(arc: GrowthArc): Promise<void> {
   const existing = await getGrowthArcs()
   const updated = [...existing, arc].slice(-MAX_GROWTH_ARCS)
-  await redis.set(KEYS.GROWTH_ARCS, updated)
+  await redis.set(KEYS.GROWTH_ARCS, updated, { ex: 2592000 })
 }
 
 export async function getRecentNarratives(): Promise<NarrativeEntry[]> {
@@ -92,5 +92,5 @@ export async function getRecentNarratives(): Promise<NarrativeEntry[]> {
 export async function addNarrativeEntry(entry: NarrativeEntry): Promise<void> {
   const existing = await getRecentNarratives()
   const updated = [...existing, entry].slice(-MAX_RECENT_NARRATIVES)
-  await redis.set(KEYS.RECENT_NARRATIVES, updated)
+  await redis.set(KEYS.RECENT_NARRATIVES, updated, { ex: 2592000 })
 }

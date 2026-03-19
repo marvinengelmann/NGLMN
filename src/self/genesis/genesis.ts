@@ -66,7 +66,7 @@ export async function runGenesis(): Promise<GenesisRecord> {
     identity,
     voiceId
   })
-  await redis.set(GENESIS_REDIS_KEY, record)
+  await redis.set(GENESIS_REDIS_KEY, record, { ex: 604800 })
   cacheGenesisRecord(record)
 
   await addNarrativeEntry({

@@ -24,7 +24,7 @@ export async function getLastTickSummary(): Promise<TickSummary | null> {
 }
 
 export async function setLastTickSummary(summary: TickSummary): Promise<void> {
-  await redis.set(KEYS.TICK_LAST, summary)
+  await redis.set(KEYS.TICK_LAST, summary, { ex: 3600 })
 }
 
 /**
@@ -93,7 +93,7 @@ export async function getLastUpdateId(): Promise<number | null> {
 }
 
 export async function setLastUpdateId(updateId: number): Promise<void> {
-  await redis.set(KEYS.TELEGRAM_LAST_UPDATE_ID, updateId)
+  await redis.set(KEYS.TELEGRAM_LAST_UPDATE_ID, updateId, { ex: 604800 })
 }
 
 export async function pushRollbackEvent(action: string): Promise<void> {
@@ -153,7 +153,7 @@ export async function incrementConsecutiveIdleTicks(): Promise<void> {
 }
 
 export async function resetConsecutiveIdleTicks(): Promise<void> {
-  await redis.set(KEYS.CONSECUTIVE_IDLE_TICKS, 0)
+  await redis.set(KEYS.CONSECUTIVE_IDLE_TICKS, 0, { ex: 86400 })
 }
 
 export async function getConsecutiveConversationTicks(): Promise<number> {
@@ -166,7 +166,7 @@ export async function incrementConsecutiveConversationTicks(): Promise<void> {
 }
 
 export async function resetConsecutiveConversationTicks(): Promise<void> {
-  await redis.set(KEYS.CONSECUTIVE_CONVERSATION_TICKS, 0)
+  await redis.set(KEYS.CONSECUTIVE_CONVERSATION_TICKS, 0, { ex: 86400 })
 }
 
 export async function isTaskActive(): Promise<boolean> {
@@ -187,5 +187,5 @@ export async function getReflectionLastAt(): Promise<string | null> {
 }
 
 export async function setReflectionLastAt(isoTimestamp: string): Promise<void> {
-  await redis.set(KEYS.REFLECTION_LAST_AT, isoTimestamp)
+  await redis.set(KEYS.REFLECTION_LAST_AT, isoTimestamp, { ex: 604800 })
 }

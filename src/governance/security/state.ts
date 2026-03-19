@@ -7,7 +7,7 @@ const KEYS = {
 } as const
 
 export async function setGuardianResult(result: GuardianResult): Promise<void> {
-  await redis.set(KEYS.GUARDIAN_LAST_RESULT, result)
+  await redis.set(KEYS.GUARDIAN_LAST_RESULT, result, { ex: 3600 })
 }
 
 export async function getGuardianResult(): Promise<GuardianResult | null> {

@@ -12,7 +12,7 @@ export async function getTrustEventLog(actionType: ActionType): Promise<TrustEve
 
 async function setTrustEventLog(actionType: ActionType, events: TrustEvent[]): Promise<void> {
   const capped = events.slice(-100)
-  await redis.set(KEYS.trustLevel(actionType), capped)
+  await redis.set(KEYS.trustLevel(actionType), capped, { ex: 2592000 })
 }
 
 export async function pushTrustEvent(actionType: ActionType, event: TrustEvent): Promise<void> {

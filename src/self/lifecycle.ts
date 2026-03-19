@@ -2,11 +2,11 @@ import { differenceInHours, getDay, getHours, parseISO } from "date-fns"
 import { z } from "zod"
 import { getDreamLastRun } from "@/expression/dream/state.ts"
 import { getValidatedRedis, redis } from "@/infra/integrations/redis.ts"
+import { setBotStatus } from "@/infra/integrations/telegram.ts"
 import { log } from "@/infra/lib/logger.ts"
 import { nowISO, nowLocal } from "@/infra/lib/time.ts"
 import { storeEpisode } from "@/memory/episodic.ts"
 import { recordEvent } from "@/memory/events.ts"
-import { setBotStatus } from "@/infra/integrations/telegram.ts"
 import { computePostHaircutLength } from "@/self/appearance/compute.ts"
 import { getAppearanceState, saveAppearanceState } from "@/self/appearance/state.ts"
 import { getGenesisName } from "@/self/genesis/state.ts"
@@ -189,10 +189,7 @@ export async function startSleepEvent(): Promise<void> {
   const ttlSeconds = Math.round(durationHours * 3600)
 
   await redis.set(LIFECYCLE_EVENT_KEY, "sleep", { ex: ttlSeconds })
-  await Promise.all([
-    recordEvent({ type: "sleep_started", metadata: { durationHours } }),
-    setBotStatus("sleeping 💤")
-  ])
+  await Promise.all([recordEvent({ type: "sleep_started", metadata: { durationHours } }), setBotStatus("sleeping 💤")])
   log.info("Sleep event started", { durationHours: durationHours.toFixed(1) })
 }
 
@@ -265,7 +262,7 @@ export async function rollMidEventNotification(event: EventType, maxUpdateId: nu
     return false
   }
 
-  await redis.set(LIFECYCLE_LAST_ROLLED_KEY, maxUpdateId)
+  await redis.set(LIFECYCLE_LAST_ROLLED_KEY, maxUpdateId, { ex: 86400 })
   log.info("Mid-event phone check passed", { type: event.type, probability: event.notifyProbability })
   return true
 }

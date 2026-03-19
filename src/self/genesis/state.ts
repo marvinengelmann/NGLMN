@@ -32,7 +32,7 @@ export async function getGenesisRecord(): Promise<GenesisRecord | null> {
     })
     if (record.success) {
       memoryCache = record.data
-      await redis.set(GENESIS_REDIS_KEY, record.data)
+      await redis.set(GENESIS_REDIS_KEY, record.data, { ex: 604800 })
       return record.data
     }
   }
@@ -125,6 +125,6 @@ export async function updateGenesisDNA(updates: {
   const updatedRecord: GenesisRecord = { ...record, dna: updatedDNA }
 
   await db.update(genesis).set({ dna: updatedDNA }).where(eq(genesis.seed, record.seed))
-  await redis.set(GENESIS_REDIS_KEY, updatedRecord)
+  await redis.set(GENESIS_REDIS_KEY, updatedRecord, { ex: 604800 })
   memoryCache = updatedRecord
 }

@@ -15,5 +15,5 @@ export async function getEmotionRegulationState(): Promise<EmotionRegulationStat
  * Save emotion regulation state to Redis.
  */
 export async function saveEmotionRegulationState(state: EmotionRegulationState): Promise<void> {
-  await redis.set(KEY, state)
+  await redis.set(KEY, state, { ex: 3600 })
 }

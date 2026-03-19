@@ -17,7 +17,7 @@ export async function getDreamState(): Promise<DreamState> {
 }
 
 export async function setDreamState(state: DreamState): Promise<void> {
-  await redis.set(KEYS.DREAM_STATE, state)
+  await redis.set(KEYS.DREAM_STATE, state, { ex: 3600 })
 }
 
 export async function getDreamLastRun(): Promise<string | null> {
@@ -25,7 +25,7 @@ export async function getDreamLastRun(): Promise<string | null> {
 }
 
 export async function setDreamLastRun(isoTimestamp: string): Promise<void> {
-  await redis.set(KEYS.DREAM_LAST_RUN, isoTimestamp)
+  await redis.set(KEYS.DREAM_LAST_RUN, isoTimestamp, { ex: 604800 })
 }
 
 export async function getDreamInsights(): Promise<string[] | null> {
@@ -33,7 +33,7 @@ export async function getDreamInsights(): Promise<string[] | null> {
 }
 
 export async function setDreamInsights(insights: string[]): Promise<void> {
-  await redis.set(KEYS.DREAM_INSIGHTS, insights)
+  await redis.set(KEYS.DREAM_INSIGHTS, insights, { ex: 604800 })
 }
 
 export async function clearDreamInsights(): Promise<void> {
@@ -45,7 +45,7 @@ export async function getDreamNarrative(): Promise<string | null> {
 }
 
 export async function setDreamNarrative(narrative: string): Promise<void> {
-  await redis.set(KEYS.DREAM_NARRATIVE, narrative)
+  await redis.set(KEYS.DREAM_NARRATIVE, narrative, { ex: 604800 })
 }
 
 export async function clearDreamNarrative(): Promise<void> {

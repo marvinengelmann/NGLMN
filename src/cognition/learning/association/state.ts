@@ -27,7 +27,7 @@ export async function saveActiveAssociations(associations: HebbianAssociation[],
   if (buffer) {
     buffer.stage(KEYS.ACTIVE_ASSOCIATIONS, top)
   } else {
-    await redis.set(KEYS.ACTIVE_ASSOCIATIONS, top)
+    await redis.set(KEYS.ACTIVE_ASSOCIATIONS, top, { ex: 3600 })
   }
 }
 
@@ -49,6 +49,6 @@ export async function pushStimuliHistory(stimuli: string[], buffer?: WriteBuffer
   if (buffer) {
     buffer.stage(KEYS.STIMULI_HISTORY, trimmed)
   } else {
-    await redis.set(KEYS.STIMULI_HISTORY, trimmed)
+    await redis.set(KEYS.STIMULI_HISTORY, trimmed, { ex: 3600 })
   }
 }

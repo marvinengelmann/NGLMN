@@ -32,7 +32,7 @@ export async function getAttachmentStyle(): Promise<AttachmentStyle> {
   if (rows[0]) {
     const parsed = AttachmentStyle.safeParse(rows[0].style)
     if (parsed.success) {
-      await redis.set(KEYS.CURRENT, parsed.data)
+      await redis.set(KEYS.CURRENT, parsed.data, { ex: 604800 })
       return parsed.data
     }
   }
@@ -79,9 +79,9 @@ export async function saveRelationshipPhase(
     buffer.stagePostgres(relationshipPhaseLog, { phase, previousPhase, trigger })
   } else {
     await Promise.all([
-      redis.set(KEYS.PHASE, phase),
-      redis.set(KEYS.PHASE_SINCE, nowISO()),
-      redis.set(KEYS.PHASE_TICK_COUNT, 0)
+      redis.set(KEYS.PHASE, phase, { ex: 2592000 }),
+      redis.set(KEYS.PHASE_SINCE, nowISO(), { ex: 2592000 }),
+      redis.set(KEYS.PHASE_TICK_COUNT, 0, { ex: 2592000 })
     ])
     await db.insert(relationshipPhaseLog).values({ phase, previousPhase, trigger })
   }

@@ -13,6 +13,6 @@ export async function saveGranularityState(state: GranularityState, buffer?: Wri
   if (buffer) {
     buffer.stage(KEY, state)
   } else {
-    await redis.set(KEY, state)
+    await redis.set(KEY, state, { ex: 3600 })
   }
 }

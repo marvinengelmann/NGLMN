@@ -12,5 +12,5 @@ export async function getFlowQualifyingTicks(): Promise<number> {
 }
 
 export async function saveFlowQualifyingTicks(count: number): Promise<void> {
-  await redis.set(KEY, count)
+  await redis.set(KEY, count, { ex: 86400 })
 }

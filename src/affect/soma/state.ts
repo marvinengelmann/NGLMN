@@ -24,7 +24,7 @@ export async function getSomaticState(): Promise<SomaticState> {
   if (rows[0]) {
     const parsed = SomaticState.safeParse(rows[0].state)
     if (parsed.success) {
-      await redis.set(KEYS.CURRENT, parsed.data)
+      await redis.set(KEYS.CURRENT, parsed.data, { ex: 3600 })
       return parsed.data
     }
   }
@@ -36,8 +36,8 @@ export async function getSomaticState(): Promise<SomaticState> {
  * Save somatic state to Redis and DB history.
  */
 export async function saveSomaticState(state: SomaticState, trigger: string, tickId?: string): Promise<void> {
-  await redis.set(KEYS.CURRENT, state)
-  await redis.set(KEYS.LAST_TIMESTAMP, new Date().toISOString())
+  await redis.set(KEYS.CURRENT, state, { ex: 3600 })
+  await redis.set(KEYS.LAST_TIMESTAMP, new Date().toISOString(), { ex: 3600 })
   await db.insert(somaticHistory).values({
     state,
     trigger,

@@ -55,7 +55,10 @@ export async function updateDeepProfile(moodHistory: MoodHistoryEntry[]): Promis
     updatedAt: nowISO()
   }
 
-  await Promise.all([redis.set(REDIS_KEY, profile), redis.set(LAST_UPDATE_KEY, nowISO())])
+  await Promise.all([
+    redis.set(REDIS_KEY, profile, { ex: 604800 }),
+    redis.set(LAST_UPDATE_KEY, nowISO(), { ex: 604800 })
+  ])
 
   log.info("Deep operator profile updated", {
     temporalPatterns: temporalPatterns.length,

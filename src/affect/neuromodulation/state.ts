@@ -11,5 +11,5 @@ export async function getNeuromodulatoryState(): Promise<NeuromodulatoryState> {
 }
 
 export async function saveNeuromodulatoryState(state: NeuromodulatoryState): Promise<void> {
-  await redis.set(KEYS.CURRENT, state)
+  await redis.set(KEYS.CURRENT, state, { ex: 3600 })
 }

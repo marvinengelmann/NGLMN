@@ -113,7 +113,7 @@ export async function runConsolidation(context: {
 
   const autobiographyUpdated = await rebuildAutobiography(context)
 
-  await Promise.all([redis.del(REDIS.MEMORY_PRESSURE), redis.set(REDIS.LAST_CONSOLIDATION, nowISO())])
+  await Promise.all([redis.del(REDIS.MEMORY_PRESSURE), redis.set(REDIS.LAST_CONSOLIDATION, nowISO(), { ex: 604800 })])
 
   log.info("Memory consolidation complete", { autobiographyUpdated })
 
@@ -196,7 +196,7 @@ export async function rebuildAutobiography(context: {
     updatedAt: nowISO()
   }
 
-  await redis.set(REDIS.AUTOBIOGRAPHY, autobiography)
+  await redis.set(REDIS.AUTOBIOGRAPHY, autobiography, { ex: 2592000 })
   log.info("Autobiography rebuilt", {
     chapters: autobiography.chapters.length,
     themes: autobiography.coreThemes.length,

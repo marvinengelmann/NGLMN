@@ -37,7 +37,15 @@ vi.mock("@/self/appearance/compute.ts", () => ({
 }))
 
 vi.mock("@/self/appearance/state.ts", () => ({
-  getAppearanceState: vi.fn().mockResolvedValue({ hairLengthCm: 30, hairStyle: "wavy", hairColor: "brown", lastHaircutAt: null, lastProfilePhotoAt: null, profilePhotoReason: null, seasonalLook: null }),
+  getAppearanceState: vi.fn().mockResolvedValue({
+    hairLengthCm: 30,
+    hairStyle: "wavy",
+    hairColor: "brown",
+    lastHaircutAt: null,
+    lastProfilePhotoAt: null,
+    profilePhotoReason: null,
+    seasonalLook: null
+  }),
   saveAppearanceState: vi.fn().mockResolvedValue(undefined)
 }))
 
@@ -141,7 +149,7 @@ describe("rollMidEventNotification", () => {
     )
 
     expect(result).toBe(true)
-    expect(redis.set).toHaveBeenCalledWith("working:lifecycle:lastRolledUpdateId", 100)
+    expect(redis.set).toHaveBeenCalledWith("working:lifecycle:lastRolledUpdateId", 100, { ex: 86400 })
 
     vi.restoreAllMocks()
   })
@@ -190,7 +198,7 @@ describe("rollMidEventNotification", () => {
     )
 
     expect(result).toBe(true)
-    expect(redis.set).toHaveBeenCalledWith("working:lifecycle:lastRolledUpdateId", 200)
+    expect(redis.set).toHaveBeenCalledWith("working:lifecycle:lastRolledUpdateId", 200, { ex: 86400 })
 
     vi.restoreAllMocks()
   })

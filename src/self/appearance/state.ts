@@ -18,7 +18,7 @@ export async function getAppearanceState(): Promise<AppearanceState> {
 }
 
 export async function saveAppearanceState(state: AppearanceState): Promise<void> {
-  await redis.set(APPEARANCE_KEY, state)
+  await redis.set(APPEARANCE_KEY, state, { ex: 604800 })
 }
 
 export async function initAppearanceState(hairStyle: string, hairColor: string, hairLengthCm: number): Promise<void> {
@@ -31,5 +31,5 @@ export async function initAppearanceState(hairStyle: string, hairColor: string, 
     profilePhotoReason: "genesis",
     seasonalLook: null
   }
-  await redis.set(APPEARANCE_KEY, state)
+  await redis.set(APPEARANCE_KEY, state, { ex: 604800 })
 }

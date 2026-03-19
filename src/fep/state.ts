@@ -20,7 +20,7 @@ export async function saveFreeEnergyState(state: FreeEnergyState, buffer?: Write
   if (buffer) {
     buffer.stage(KEYS.STATE, state)
   } else {
-    await redis.set(KEYS.STATE, JSON.stringify(state))
+    await redis.set(KEYS.STATE, JSON.stringify(state), { ex: 3600 })
   }
 }
 
@@ -40,7 +40,7 @@ export async function pushFreeEnergyHistory(totalFE: number, buffer?: WriteBuffe
   if (buffer) {
     buffer.stage(KEYS.HISTORY, history)
   } else {
-    await redis.set(KEYS.HISTORY, JSON.stringify(history))
+    await redis.set(KEYS.HISTORY, JSON.stringify(history), { ex: 3600 })
   }
 }
 
@@ -55,7 +55,7 @@ export async function getPriorSnapshots(): Promise<{
 
 export async function savePriorSnapshots(emotion: Record<string, number>, soma: Record<string, number>): Promise<void> {
   await Promise.all([
-    redis.set(KEYS.PRIOR_EMOTION, JSON.stringify(emotion)),
-    redis.set(KEYS.PRIOR_SOMA, JSON.stringify(soma))
+    redis.set(KEYS.PRIOR_EMOTION, JSON.stringify(emotion), { ex: 3600 }),
+    redis.set(KEYS.PRIOR_SOMA, JSON.stringify(soma), { ex: 3600 })
   ])
 }

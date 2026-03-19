@@ -42,7 +42,7 @@ export async function getLessons(): Promise<Lesson[]> {
   }))
 
   if (lessons.length > 0) {
-    await redis.set(REDIS_KEY, lessons)
+    await redis.set(REDIS_KEY, lessons, { ex: 3600 })
   }
 
   return lessons
@@ -181,7 +181,7 @@ export async function getLastAnalysisTimestamp(): Promise<string | null> {
  * Record that strategy analysis just ran.
  */
 export async function setLastAnalysisTimestamp(): Promise<void> {
-  await redis.set(LAST_ANALYSIS_KEY, nowISO())
+  await redis.set(LAST_ANALYSIS_KEY, nowISO(), { ex: 86400 })
 }
 
 /**
@@ -197,7 +197,7 @@ export async function pruneOldLessons(): Promise<number> {
   if (deleted.length > 0) {
     const lessons = await getLessons()
     const remaining = lessons.filter((l) => !deleted.some((d) => d.id === l.id))
-    await redis.set(REDIS_KEY, remaining)
+    await redis.set(REDIS_KEY, remaining, { ex: 3600 })
     log.info("Old lessons pruned", { count: deleted.length })
   }
 
@@ -216,7 +216,7 @@ function matchesContext(lessonCtx: LessonContext, strategy: Record<string, strin
 
 async function persistLessons(lessons: Lesson[]): Promise<void> {
   const sorted = lessons.sort((a, b) => b.confidence - a.confidence).slice(0, MAX_REDIS_LESSONS)
-  await redis.set(REDIS_KEY, sorted)
+  await redis.set(REDIS_KEY, sorted, { ex: 3600 })
 }
 
 const ANALYSIS_COOLDOWN_HOURS = 4

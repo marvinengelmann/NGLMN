@@ -14,7 +14,7 @@ export async function getSocialMediaLastBrowse(): Promise<string | null> {
 }
 
 export async function setSocialMediaLastBrowse(isoTimestamp: string): Promise<void> {
-  await redis.set(KEYS.SOCIAL_LAST_BROWSE, isoTimestamp)
+  await redis.set(KEYS.SOCIAL_LAST_BROWSE, isoTimestamp, { ex: 604800 })
 }
 
 export async function getSocialMediaLastPost(): Promise<string | null> {
@@ -22,7 +22,7 @@ export async function getSocialMediaLastPost(): Promise<string | null> {
 }
 
 export async function setSocialMediaLastPost(isoTimestamp: string): Promise<void> {
-  await redis.set(KEYS.SOCIAL_LAST_POST, isoTimestamp)
+  await redis.set(KEYS.SOCIAL_LAST_POST, isoTimestamp, { ex: 604800 })
 }
 
 /**
@@ -45,7 +45,7 @@ export async function getEmailLastCheck(): Promise<string | null> {
 }
 
 export async function setEmailLastCheck(isoTimestamp: string): Promise<void> {
-  await redis.set(KEYS.EMAIL_LAST_CHECK, isoTimestamp)
+  await redis.set(KEYS.EMAIL_LAST_CHECK, isoTimestamp, { ex: 604800 })
 }
 
 export async function canCheckEmail(): Promise<boolean> {
@@ -58,7 +58,7 @@ export async function getCalendarLastCheck(): Promise<string | null> {
 }
 
 export async function setCalendarLastCheck(isoTimestamp: string): Promise<void> {
-  await redis.set(KEYS.CALENDAR_LAST_CHECK, isoTimestamp)
+  await redis.set(KEYS.CALENDAR_LAST_CHECK, isoTimestamp, { ex: 604800 })
 }
 
 export async function canCheckCalendar(): Promise<boolean> {

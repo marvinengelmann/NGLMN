@@ -2,7 +2,7 @@ import type * as z from "zod"
 import { getValidatedRedis, redis } from "@/infra/integrations/redis.ts"
 import type { WriteBuffer } from "@/infra/lib/buffer.ts"
 
-export function createStateManager<S>(redisKey: string, schema: z.ZodType<S>, defaultState: S) {
+export function createStateManager<S>(redisKey: string, schema: z.ZodType<S>, defaultState: S, ttl = 3600) {
   return {
     get: async (): Promise<S> => {
       const stored = await getValidatedRedis(redisKey, schema)
@@ -12,7 +12,7 @@ export function createStateManager<S>(redisKey: string, schema: z.ZodType<S>, de
       if (buffer) {
         buffer.stage(redisKey, state)
       } else {
-        await redis.set(redisKey, state)
+        await redis.set(redisKey, state, { ex: ttl })
       }
     }
   }

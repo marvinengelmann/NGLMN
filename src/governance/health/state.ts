@@ -8,7 +8,7 @@ const KEYS = {
 } as const
 
 export async function setHealthCheck(result: HealthCheckResult): Promise<void> {
-  await redis.set(KEYS.HEALTH_LAST_CHECK, result)
+  await redis.set(KEYS.HEALTH_LAST_CHECK, result, { ex: 3600 })
 }
 
 export async function getHealthCheck(): Promise<HealthCheckResult | null> {
@@ -29,7 +29,7 @@ export async function getLastHealthyCommit(): Promise<string | null> {
 }
 
 export async function setLastHealthyCommit(sha: string): Promise<void> {
-  await redis.set(KEYS.HEALTH_LAST_HEALTHY_COMMIT, sha)
+  await redis.set(KEYS.HEALTH_LAST_HEALTHY_COMMIT, sha, { ex: 604800 })
 }
 
 export async function incrementConsecutiveCritical(): Promise<number> {

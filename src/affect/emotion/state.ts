@@ -133,7 +133,7 @@ export async function getCurrentEmotion(): Promise<EmotionalState | null> {
 }
 
 export async function setCurrentEmotion(state: EmotionalState): Promise<void> {
-  await redis.set(WORKING_KEYS.EMOTION_CURRENT, state)
+  await redis.set(WORKING_KEYS.EMOTION_CURRENT, state, { ex: 3600 })
 }
 
 export async function getRawTriggerTimestamps(): Promise<Record<string, string>> {

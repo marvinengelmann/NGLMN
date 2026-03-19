@@ -13,7 +13,7 @@ const KEYS = {
 const WEATHER_TTL_SECONDS = 1800
 
 export async function setPerceptionSummary(summary: PerceptionSummary): Promise<void> {
-  await redis.set(KEYS.PERCEPTION_LATEST, summary)
+  await redis.set(KEYS.PERCEPTION_LATEST, summary, { ex: 3600 })
 }
 
 export async function getOperatorLocation(): Promise<OperatorLocation | null> {
@@ -32,7 +32,7 @@ export async function getOperatorLastActivity(): Promise<string | null> {
 }
 
 export async function setOperatorLastActivity(isoTimestamp: string): Promise<void> {
-  await redis.set(KEYS.OPERATOR_LAST_ACTIVITY, isoTimestamp)
+  await redis.set(KEYS.OPERATOR_LAST_ACTIVITY, isoTimestamp, { ex: 86400 })
 }
 
 export async function getWeatherData(): Promise<WeatherData | null> {
@@ -60,7 +60,7 @@ export async function getOperatorSilentFlag(): Promise<boolean> {
 }
 
 export async function setOperatorSilentFlag(): Promise<void> {
-  await redis.set(SENSE_KEYS.OPERATOR_SILENT_FIRED, "true")
+  await redis.set(SENSE_KEYS.OPERATOR_SILENT_FIRED, "true", { ex: 3600 })
 }
 
 export async function clearOperatorSilentFlag(): Promise<void> {
@@ -72,7 +72,7 @@ export async function getLastSystemStatus(): Promise<string | null> {
 }
 
 export async function setLastSystemStatus(status: string): Promise<void> {
-  await redis.set(SENSE_KEYS.LAST_SYSTEM_STATUS, status)
+  await redis.set(SENSE_KEYS.LAST_SYSTEM_STATUS, status, { ex: 3600 })
 }
 
 export async function getLastWeatherCondition(): Promise<string | null> {
@@ -80,7 +80,7 @@ export async function getLastWeatherCondition(): Promise<string | null> {
 }
 
 export async function setLastWeatherCondition(condition: string): Promise<void> {
-  await redis.set(SENSE_KEYS.LAST_WEATHER_CONDITION, condition)
+  await redis.set(SENSE_KEYS.LAST_WEATHER_CONDITION, condition, { ex: 1800 })
 }
 
 export async function getLastGitCommitSha(): Promise<string | null> {
@@ -88,5 +88,5 @@ export async function getLastGitCommitSha(): Promise<string | null> {
 }
 
 export async function setLastGitCommitSha(sha: string): Promise<void> {
-  await redis.set(SENSE_KEYS.LAST_GIT_COMMIT_SHA, sha)
+  await redis.set(SENSE_KEYS.LAST_GIT_COMMIT_SHA, sha, { ex: 86400 })
 }
