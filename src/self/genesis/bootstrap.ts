@@ -25,7 +25,7 @@ export async function bootstrapDNAMemory(record: GenesisRecord): Promise<void> {
     const result = await storeKnowledge(
       "preference",
       slugify(interest.name),
-      { name: interest.name, fascination: interest.fascination },
+      interest.fascination,
       "genesis",
       0.6,
       "self"
@@ -34,14 +34,7 @@ export async function bootstrapDNAMemory(record: GenesisRecord): Promise<void> {
   }
 
   for (const value of identity.coreValues) {
-    const result = await storeKnowledge(
-      "insight",
-      slugify(value.name),
-      { name: value.name, reason: value.reason },
-      "genesis",
-      0.7,
-      "self"
-    )
+    const result = await storeKnowledge("insight", slugify(value.name), value.reason, "genesis", 0.7, "self")
     if (result.isErr()) logAndCaptureError(result.error)
   }
 
