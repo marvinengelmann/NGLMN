@@ -28,6 +28,23 @@ vi.mock("@/memory/events.ts", () => ({
   recordEvent: vi.fn().mockResolvedValue(undefined)
 }))
 
+vi.mock("@/infra/integrations/telegram.ts", () => ({
+  setBotStatus: vi.fn().mockResolvedValue(undefined)
+}))
+
+vi.mock("@/self/appearance/compute.ts", () => ({
+  computePostHaircutLength: vi.fn().mockReturnValue(15)
+}))
+
+vi.mock("@/self/appearance/state.ts", () => ({
+  getAppearanceState: vi.fn().mockResolvedValue({ hairLengthCm: 30, hairStyle: "wavy", hairColor: "brown", lastHaircutAt: null, lastProfilePhotoAt: null, profilePhotoReason: null, seasonalLook: null }),
+  saveAppearanceState: vi.fn().mockResolvedValue(undefined)
+}))
+
+vi.mock("@/self/genesis/state.ts", () => ({
+  getGenesisName: vi.fn().mockResolvedValue("Luna")
+}))
+
 vi.mock("@/infra/lib/time.ts", () => ({
   nowISO: vi.fn().mockReturnValue("2026-03-06T12:00:00.000Z"),
   nowLocal: vi.fn().mockReturnValue(new Date(2026, 2, 6, 12, 0, 0))

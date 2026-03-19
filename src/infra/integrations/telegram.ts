@@ -310,6 +310,17 @@ export async function sendUploadPhotoAction(): Promise<void> {
 }
 
 /**
+ * Set the bot's short description (bio/status shown in profile).
+ */
+export async function setBotStatus(text: string): Promise<void> {
+  try {
+    await bot.setMyShortDescription(text)
+  } catch (error) {
+    log.error("Failed to set bot status", { error: error instanceof Error ? error.message : String(error) })
+  }
+}
+
+/**
  * Set the bot's own Telegram profile photo.
  */
 export async function setBotProfilePhoto(imageBuffer: Buffer): Promise<boolean> {

@@ -6,8 +6,10 @@ import { log } from "@/infra/lib/logger.ts"
 import { nowISO, nowLocal } from "@/infra/lib/time.ts"
 import { storeEpisode } from "@/memory/episodic.ts"
 import { recordEvent } from "@/memory/events.ts"
+import { setBotStatus } from "@/infra/integrations/telegram.ts"
 import { computePostHaircutLength } from "@/self/appearance/compute.ts"
 import { getAppearanceState, saveAppearanceState } from "@/self/appearance/state.ts"
+import { getGenesisName } from "@/self/genesis/state.ts"
 import { LIFECYCLE } from "./constants.ts"
 
 const LIFECYCLE_EVENT_KEY = "working:lifecycle:event"
@@ -187,7 +189,10 @@ export async function startSleepEvent(): Promise<void> {
   const ttlSeconds = Math.round(durationHours * 3600)
 
   await redis.set(LIFECYCLE_EVENT_KEY, "sleep", { ex: ttlSeconds })
-  await recordEvent({ type: "sleep_started", metadata: { durationHours } })
+  await Promise.all([
+    recordEvent({ type: "sleep_started", metadata: { durationHours } }),
+    setBotStatus("sleeping 💤")
+  ])
   log.info("Sleep event started", { durationHours: durationHours.toFixed(1) })
 }
 
@@ -217,6 +222,9 @@ export async function maybeStoreLifecycleEpisode(): Promise<void> {
   })
   await redis.del(LIFECYCLE_EVENT_META_KEY)
   await redis.del(LIFECYCLE_LAST_ROLLED_KEY)
+
+  const name = await getGenesisName()
+  await setBotStatus(name)
 
   if (meta.type === "haircut") {
     await applyHaircutToAppearance()
@@ -319,7 +327,8 @@ export async function startChosenLifeEvent(type: string, detail?: string, chosen
       type: "lifecycle_started",
       detail: resolvedDetail,
       metadata: { eventType: event.type, durationHours }
-    })
+    }),
+    setBotStatus(resolvedDetail)
   ])
 
   log.info("Life event started", { type: event.type, detail: resolvedDetail, durationHours: durationHours.toFixed(1) })
