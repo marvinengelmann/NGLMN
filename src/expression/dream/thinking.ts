@@ -38,7 +38,7 @@ export async function thinkDream(): Promise<DreamThinkResult> {
         ...consolidation.connections.map((c) => c.description)
       )
     } else {
-      log.warn("thinkDream: consolidation LLM failed", { error: consolidationResult.error.message })
+      log.error("thinkDream: consolidation LLM failed", { error: consolidationResult.error.message })
     }
   }
 
@@ -55,7 +55,7 @@ export async function thinkDream(): Promise<DreamThinkResult> {
       creative = creativeResult.value
       allInsights.push(...creative.connections.filter((c) => c.confidence >= 0.5).map((c) => c.insight))
     } else {
-      log.warn("thinkDream: creative LLM failed", { error: creativeResult.error.message })
+      log.error("thinkDream: creative LLM failed", { error: creativeResult.error.message })
     }
   }
 
@@ -70,7 +70,7 @@ export async function thinkDream(): Promise<DreamThinkResult> {
     if (narrativeResult.isOk()) {
       narrative = narrativeResult.value.narrative
     } else {
-      log.warn("thinkDream: narrative LLM failed", { error: narrativeResult.error.message })
+      log.error("thinkDream: narrative LLM failed", { error: narrativeResult.error.message })
     }
   }
 

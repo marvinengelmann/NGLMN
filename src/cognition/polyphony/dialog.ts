@@ -66,7 +66,7 @@ Let each active voice speak.`
   })
 
   if (result.isErr()) {
-    log.warn("Failed to generate inner dialog", { error: result.error.message })
+    log.error("Failed to generate inner dialog", { error: result.error.message })
     return null
   }
 

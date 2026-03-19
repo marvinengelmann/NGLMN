@@ -106,7 +106,7 @@ export async function updateOperatorModel(context: OperatorModelContext): Promis
 
     model.predictions = makePrediction(model)
   } else {
-    log.warn("Operator analysis LLM failed, keeping previous model", { error: result.error.message })
+    log.error("Operator analysis LLM failed, keeping previous model", { error: result.error.message })
   }
 
   return model

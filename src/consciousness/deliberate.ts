@@ -290,7 +290,7 @@ export async function deliberate(tickState: TickState): Promise<DeliberateResult
 
   if (callResult.isErr()) {
     captureError(callResult.error.cause, { phase: "deliberate" })
-    log.warn("Deliberate LLM call failed, falling back to idle", { error: callResult.error.message })
+    log.error("Deliberate LLM call failed, falling back to idle", { error: callResult.error.message })
     return {
       decision: {
         reasoning: "LLM call failed, defaulting to idle",

@@ -68,7 +68,7 @@ export async function checkDissonance(
         })
       })
     } else {
-      log.warn("Value-action analysis LLM failed", { error: result.error.message })
+      log.error("Value-action analysis LLM failed", { error: result.error.message })
     }
   }
 

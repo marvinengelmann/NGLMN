@@ -33,7 +33,7 @@ export async function thinkMorning(
 
   const reflection = reflectionResult.isOk() ? reflectionResult.value : { insights: [], existentialQuestions: [] }
   if (reflectionResult.isErr()) {
-    log.warn("thinkMorning: reflection LLM failed", { error: reflectionResult.error.message })
+    log.error("thinkMorning: reflection LLM failed", { error: reflectionResult.error.message })
   }
 
   const [dreamInsights, operatorLanguage] = await Promise.all([getDreamInsights(), getOperatorLanguage()])
@@ -50,7 +50,7 @@ export async function thinkMorning(
 
   const morningMessage = messageResult.isOk() ? messageResult.value.text : ""
   if (messageResult.isErr()) {
-    log.warn("thinkMorning: morning message LLM failed", { error: messageResult.error.message })
+    log.error("thinkMorning: morning message LLM failed", { error: messageResult.error.message })
   }
 
   log.info("thinkMorning complete", {
@@ -74,7 +74,7 @@ export async function thinkReflect(systemPrompt: string): Promise<ReflectionOutp
   })
 
   if (result.isErr()) {
-    log.warn("thinkReflect: LLM failed", { error: result.error.message })
+    log.error("thinkReflect: LLM failed", { error: result.error.message })
     return { insights: [], existentialQuestions: [] }
   }
 
