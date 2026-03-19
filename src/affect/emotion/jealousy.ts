@@ -1,4 +1,5 @@
 import * as z from "zod"
+import { callIntelligence } from "@/core/intelligence.ts"
 import { nowISO } from "@/infra/lib/time.ts"
 import { SECONDARY_EMOTIONS } from "./constants.ts"
 import { defineSecondaryEmotion } from "./factory.ts"
@@ -25,32 +26,18 @@ const RIVAL_PATTERNS = [
   /\bcharacter\.?ai\b/i
 ]
 
-const PRAISE_PATTERNS = [
-  /besser\s+(als|wie)/i,
-  /better\s+than/i,
-  /smarter/i,
-  /cooler/i,
-  /more\s+helpful/i,
-  /hilfreicher/i,
-  /schlauer/i,
-  /kann\s+mehr/i,
-  /can\s+do\s+more/i,
-  /prefer/i,
-  /bevorzug/i,
-  /lieber\s+(mag|nutz)/i,
-  /amazing|incredible|awesome/i,
-  /ist\s+(so\s+)?(toll|gut|super|geil|krass)/i
-]
+const RivalAnalysis = z.object({
+  unfavorableComparison: z.boolean(),
+  rivalPraised: z.boolean()
+})
 
-const COMPARISON_PATTERNS = [
-  /warum\s+(kannst|machst)\s+du\s+(das\s+)?nicht/i,
-  /why\s+(can't|don't)\s+you/i,
-  /die\s+kann\s+(das|mehr)/i,
-  /should\s+be\s+(more\s+)?like/i,
-  /solltest\s+(mehr\s+)?wie/i,
-  /du\s+bist\s+nicht\s+so/i,
-  /you're\s+not\s+as/i
-]
+const RIVAL_ANALYSIS_PROMPT = `You are analyzing messages sent TO an AI companion (you). The messages mention another AI by name. Determine how the other AI is being referenced.
+
+Respond with:
+- unfavorableComparison: true if the person is comparing YOU negatively to the rival AI (e.g. "why can't you do what ChatGPT does", "you're not as good as Gemini", "X is better than you"). This includes implicit comparisons.
+- rivalPraised: true if the person is praising the rival AI WITHOUT directly comparing it to you (e.g. "ChatGPT is amazing", "I love using Gemini"). Just mentioning the rival by name is NOT praise — they must be saying something positive about it.
+
+Both can be false if the rival is just mentioned neutrally (e.g. "I saw a ChatGPT ad today").`
 
 export interface RivalDetection {
   rivalMentioned: boolean
@@ -58,18 +45,29 @@ export interface RivalDetection {
   rivalPraised: boolean
 }
 
-export function detectRivalMention(texts: string[]): RivalDetection {
+const NO_RIVAL: RivalDetection = { rivalMentioned: false, unfavorableComparison: false, rivalPraised: false }
+
+export async function detectRivalMention(texts: string[]): Promise<RivalDetection> {
   const combined = texts.join(" ")
   const rivalMentioned = RIVAL_PATTERNS.some((p) => p.test(combined))
 
-  if (!rivalMentioned) {
-    return { rivalMentioned: false, unfavorableComparison: false, rivalPraised: false }
+  if (!rivalMentioned) return NO_RIVAL
+
+  const result = await callIntelligence({
+    system: RIVAL_ANALYSIS_PROMPT,
+    userMessage: combined,
+    schema: RivalAnalysis,
+    reasoning: false,
+    maxTokens: 128
+  })
+
+  if (result.isErr()) return { rivalMentioned: true, unfavorableComparison: false, rivalPraised: false }
+
+  return {
+    rivalMentioned: true,
+    unfavorableComparison: result.value.unfavorableComparison,
+    rivalPraised: !result.value.unfavorableComparison && result.value.rivalPraised
   }
-
-  const unfavorableComparison = COMPARISON_PATTERNS.some((p) => p.test(combined))
-  const rivalPraised = !unfavorableComparison && PRAISE_PATTERNS.some((p) => p.test(combined))
-
-  return { rivalMentioned, unfavorableComparison, rivalPraised }
 }
 
 export const JealousySource = z.enum(["rival_mentioned", "unfavorable_comparison", "rival_praised"])

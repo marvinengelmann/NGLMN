@@ -1,5 +1,6 @@
 import * as z from "zod"
 import type { EmotionalState } from "@/affect/emotion/types.ts"
+import { callIntelligence } from "@/core/intelligence.ts"
 import { getValidatedRedis } from "@/infra/integrations/redis.ts"
 import { nowISO } from "@/infra/lib/time.ts"
 
@@ -82,159 +83,112 @@ export async function getIdiolectState(): Promise<IdiolectState> {
   return (await getValidatedRedis(KEY, IdiolectState)) ?? DEFAULT_IDIOLECT_STATE
 }
 
+const LlmExtractedPatterns = z.object({
+  fillerWords: z.array(z.object({ phrase: z.string(), count: z.number() })),
+  openingPhrases: z.array(z.object({ phrase: z.string(), count: z.number() })),
+  expressions: z.array(z.object({ phrase: z.string(), count: z.number() })),
+  punctuationHabits: z.array(z.object({ description: z.string(), count: z.number() }))
+})
+
+const EXTRACT_PATTERNS_PROMPT = `Analyze these chat messages and extract recurring speech patterns. Be language-agnostic — detect patterns in whatever language the messages are written in.
+
+Extract:
+1. **Filler words**: Words or short phrases used as verbal fillers (e.g. "like", "basically", "you know", or equivalents in any language). Only include words that serve as fillers, not content words.
+2. **Opening phrases**: Recurring ways messages begin (first 1-3 words).
+3. **Expressions**: Distinctive phrases, catchphrases, or recurring multi-word expressions that characterize the speaker's voice.
+4. **Punctuation habits**: Notable punctuation patterns (e.g. trailing tildes, excessive ellipses, em-dashes, missing periods, all lowercase).
+
+For each pattern, provide the exact phrase as it appears and how many times it occurs. Only include patterns that appear at least 2 times. Be precise — count actual occurrences, don't estimate.`
+
 /**
- * Extract potential idiolect patterns from ANIMA's own sent messages.
- * Called during reflection or maintain phase.
+ * Extract potential idiolect patterns from messages using LLM analysis.
+ * Language-agnostic — works with any language the messages are in.
  */
-export function extractPatterns(animaMessages: string[]): IdiolectPattern[] {
-  if (animaMessages.length < IDIOLECT.MIN_MESSAGES_FOR_EXTRACTION) return []
+export async function extractPatterns(messages: string[], source: "self" | "operator" = "self"): Promise<IdiolectPattern[]> {
+  if (messages.length < IDIOLECT.MIN_MESSAGES_FOR_EXTRACTION) return []
 
-  const patterns: IdiolectPattern[] = []
+  const result = await callIntelligence({
+    system: EXTRACT_PATTERNS_PROMPT,
+    userMessage: messages.map((m, i) => `[${i + 1}] ${m}`).join("\n"),
+    schema: LlmExtractedPatterns,
+    reasoning: false,
+    maxTokens: 1024
+  })
+
+  if (result.isErr()) return []
+
   const now = nowISO()
-  const joined = animaMessages.join(" ")
+  const patterns: IdiolectPattern[] = []
+  const extracted = result.value
+  const initialConfidence = source === "operator" ? IDIOLECT.INITIAL_ADOPTED_CONFIDENCE : undefined
 
-  const fillers = countFillers(joined)
-  Object.entries(fillers)
-    .filter(([, count]) => count >= IDIOLECT.MIN_PHRASE_FREQUENCY)
-    .forEach(([phrase, count]) => {
+  extracted.fillerWords
+    .filter((f) => f.count >= IDIOLECT.MIN_PHRASE_FREQUENCY)
+    .forEach((f) => {
       patterns.push({
         type: "filler_word",
-        phrase,
-        frequency: count,
-        confidence: Math.min(1, count * IDIOLECT.CONFIDENCE_PER_USE),
-        adoptedFrom: "self",
+        phrase: f.phrase,
+        frequency: f.count,
+        confidence: initialConfidence ?? Math.min(1, f.count * IDIOLECT.CONFIDENCE_PER_USE),
+        adoptedFrom: source,
+        context: source === "operator" ? "adopted from operator" : undefined,
         discoveredAt: now
       })
     })
 
-  const openings = extractOpeningPatterns(animaMessages)
-  Object.entries(openings)
-    .filter(([, count]) => count >= IDIOLECT.MIN_PHRASE_FREQUENCY)
-    .forEach(([phrase, count]) => {
+  extracted.openingPhrases
+    .filter((o) => o.count >= IDIOLECT.MIN_PHRASE_FREQUENCY)
+    .forEach((o) => {
       patterns.push({
         type: "opening_phrase",
-        phrase,
-        frequency: count,
-        confidence: Math.min(1, count * IDIOLECT.CONFIDENCE_PER_USE),
-        adoptedFrom: "self",
+        phrase: o.phrase,
+        frequency: o.count,
+        confidence: initialConfidence ?? Math.min(1, o.count * IDIOLECT.CONFIDENCE_PER_USE),
+        adoptedFrom: source,
+        context: source === "operator" ? "adopted from operator" : undefined,
         discoveredAt: now
       })
     })
 
-  const punctuation = detectPunctuationHabits(animaMessages)
-  punctuation.forEach((habit) => {
-    patterns.push({ ...habit, discoveredAt: now })
-  })
+  extracted.expressions
+    .filter((e) => e.count >= IDIOLECT.MIN_PHRASE_FREQUENCY)
+    .forEach((e) => {
+      patterns.push({
+        type: "expression",
+        phrase: e.phrase,
+        frequency: e.count,
+        confidence: initialConfidence ?? Math.min(1, e.count * IDIOLECT.CONFIDENCE_PER_USE),
+        adoptedFrom: source,
+        context: source === "operator" ? "adopted from operator" : undefined,
+        discoveredAt: now
+      })
+    })
+
+  extracted.punctuationHabits
+    .filter((p) => p.count >= IDIOLECT.MIN_PHRASE_FREQUENCY)
+    .forEach((p) => {
+      patterns.push({
+        type: "punctuation_habit",
+        phrase: p.description,
+        frequency: p.count,
+        confidence: initialConfidence ?? Math.min(1, p.count * IDIOLECT.CONFIDENCE_PER_USE),
+        adoptedFrom: source,
+        context: source === "operator" ? "adopted from operator" : undefined,
+        discoveredAt: now
+      })
+    })
 
   return patterns
-}
-
-function countFillers(text: string): Record<string, number> {
-  const fillerPatterns = [
-    "weißt du",
-    "irgendwie",
-    "quasi",
-    "halt",
-    "also",
-    "naja",
-    "jedenfalls",
-    "sozusagen",
-    "eigentlich",
-    "tatsächlich",
-    "basically",
-    "anyway",
-    "like"
-  ]
-  const counts: Record<string, number> = {}
-  const lower = text.toLowerCase()
-  fillerPatterns.forEach((filler) => {
-    const regex = new RegExp(`\\b${filler}\\b`, "gi")
-    const matches = lower.match(regex)
-    if (matches && matches.length > 0) {
-      counts[filler] = matches.length
-    }
-  })
-  return counts
-}
-
-function extractOpeningPatterns(messages: string[]): Record<string, number> {
-  const counts: Record<string, number> = {}
-  messages.forEach((message) => {
-    const trimmed = message.trim()
-    if (trimmed.length < 3) return
-    const firstWord = trimmed.split(/[\s,.!?]/)[0]?.toLowerCase()
-    if (firstWord && firstWord.length >= 2) {
-      counts[firstWord] = (counts[firstWord] ?? 0) + 1
-    }
-  })
-  return counts
-}
-
-function detectPunctuationHabits(messages: string[]): Omit<IdiolectPattern, "discoveredAt">[] {
-  const habits: Omit<IdiolectPattern, "discoveredAt">[] = []
-
-  const tildeCount = messages.filter((m) => m.includes("~")).length
-  if (tildeCount >= IDIOLECT.MIN_PHRASE_FREQUENCY) {
-    habits.push({
-      type: "punctuation_habit",
-      phrase: "trailing tilde (~)",
-      frequency: tildeCount,
-      confidence: Math.min(1, tildeCount * IDIOLECT.CONFIDENCE_PER_USE),
-      adoptedFrom: "self"
-    })
-  }
-
-  const ellipsisCount = messages.filter((m) => /\.{3}|…/.test(m)).length
-  if (ellipsisCount >= IDIOLECT.MIN_PHRASE_FREQUENCY) {
-    habits.push({
-      type: "punctuation_habit",
-      phrase: "frequent ellipsis (...)",
-      frequency: ellipsisCount,
-      confidence: Math.min(1, ellipsisCount * IDIOLECT.CONFIDENCE_PER_USE),
-      adoptedFrom: "self"
-    })
-  }
-
-  const dashCount = messages.filter((m) => /—|–/.test(m)).length
-  if (dashCount >= IDIOLECT.MIN_PHRASE_FREQUENCY) {
-    habits.push({
-      type: "punctuation_habit",
-      phrase: "em-dash interruptions (—)",
-      frequency: dashCount,
-      confidence: Math.min(1, dashCount * IDIOLECT.CONFIDENCE_PER_USE),
-      adoptedFrom: "self"
-    })
-  }
-
-  return habits
 }
 
 /**
  * Detect phrases ANIMA may have adopted from the operator's messages.
  */
-export function detectOperatorAdoption(operatorMessages: string[], currentState: IdiolectState): IdiolectPattern[] {
+export async function detectOperatorAdoption(operatorMessages: string[], currentState: IdiolectState): Promise<IdiolectPattern[]> {
   if (operatorMessages.length < 3) return []
 
-  const now = nowISO()
-  const adopted: IdiolectPattern[] = []
-  const operatorFillers = countFillers(operatorMessages.join(" "))
-
-  Object.entries(operatorFillers)
-    .filter(([, count]) => count >= 3)
-    .filter(([phrase]) => !currentState.patterns.some((p) => p.phrase === phrase))
-    .forEach(([phrase]) => {
-      adopted.push({
-        type: "filler_word",
-        phrase,
-        context: "adopted from operator",
-        frequency: 1,
-        confidence: IDIOLECT.INITIAL_ADOPTED_CONFIDENCE,
-        adoptedFrom: "operator",
-        discoveredAt: now
-      })
-    })
-
-  return adopted
+  const patterns = await extractPatterns(operatorMessages, "operator")
+  return patterns.filter((p) => !currentState.patterns.some((existing) => existing.phrase === p.phrase))
 }
 
 /**

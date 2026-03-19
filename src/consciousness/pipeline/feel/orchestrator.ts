@@ -66,7 +66,7 @@ export async function runFeelPipeline(senseResult: SenseResult, buffer: WriteBuf
   const operatorSilenceMinutes = senseResult.moodContext.operatorSilenceMinutes
   const operatorJustReturned = isOperatorReturning(senseResult.pendingMessages.length, operatorSilenceMinutes)
 
-  const secondary = runSecondaryEmotions({
+  const secondary = await runSecondaryEmotions({
     emotion: emotionAfterBoundary,
     shameState: vulnerabilityResult.shameState,
     vulnerability: vulnerabilityResult.vulnerability,

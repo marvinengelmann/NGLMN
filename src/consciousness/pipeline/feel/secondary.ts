@@ -29,7 +29,7 @@ function capSecondaryEffects(pre: EmotionalState, post: EmotionalState, cap: num
   return result
 }
 
-export function runSecondaryEmotions(shared: SharedEmotionInput): SecondaryResult {
+export async function runSecondaryEmotions(shared: SharedEmotionInput): Promise<SecondaryResult> {
   const previousStates = shared.previousSecondaryEmotionStates
   const computedStates = new Map<string, SecondaryEmotionState>()
   computedStates.set("shame", shared.shameState)
@@ -37,30 +37,30 @@ export function runSecondaryEmotions(shared: SharedEmotionInput): SecondaryResul
   let emotion = shared.emotion
   const preSecondaryEmotion = { ...emotion }
 
-  getRegisteredEmotions()
-    .filter((entry) => entry.name !== "shame")
-    .forEach((entry) => {
-      const previous = previousStates.get(entry.name) ?? entry.defaultState
-      const context = buildEmotionContext(entry.name, { ...shared, emotion }, previous, previousStates, computedStates)
-      const state = entry.compute(context)
-      computedStates.set(entry.name, state)
-      if (entry.computeEffect && state.isActive) {
-        const damping = computeSaturationDamping(emotion)
-        const rawEffects = entry.computeEffect(state)
-        const energyDrain = rawEffects.energy
-        const hasEnergyDrain = typeof energyDrain === "number" && energyDrain < 0
-        const energyScale = hasEnergyDrain ? emotion.energy : 1
-        const scaledEffects = Object.fromEntries(
-          Object.entries(rawEffects).map(([k, v]) => {
-            if (typeof v !== "number") return [k, v]
-            let scaled = damping < 1 ? v * damping : v
-            if (k === "energy" && scaled < 0) scaled *= energyScale
-            return [k, scaled]
-          })
-        ) as Partial<Record<keyof EmotionalState, number>>
-        emotion = applyClampedDeltas(emotion, scaledEffects)
-      }
-    })
+  const entries = getRegisteredEmotions().filter((entry) => entry.name !== "shame")
+
+  for (const entry of entries) {
+    const previous = previousStates.get(entry.name) ?? entry.defaultState
+    const context = await buildEmotionContext(entry.name, { ...shared, emotion }, previous, previousStates, computedStates)
+    const state = entry.compute(context)
+    computedStates.set(entry.name, state)
+    if (entry.computeEffect && state.isActive) {
+      const damping = computeSaturationDamping(emotion)
+      const rawEffects = entry.computeEffect(state)
+      const energyDrain = rawEffects.energy
+      const hasEnergyDrain = typeof energyDrain === "number" && energyDrain < 0
+      const energyScale = hasEnergyDrain ? emotion.energy : 1
+      const scaledEffects = Object.fromEntries(
+        Object.entries(rawEffects).map(([k, v]) => {
+          if (typeof v !== "number") return [k, v]
+          let scaled = damping < 1 ? v * damping : v
+          if (k === "energy" && scaled < 0) scaled *= energyScale
+          return [k, scaled]
+        })
+      ) as Partial<Record<keyof EmotionalState, number>>
+      emotion = applyClampedDeltas(emotion, scaledEffects)
+    }
+  }
 
   emotion = capSecondaryEffects(preSecondaryEmotion, emotion, SECONDARY_EFFECT_CAP)
   emotion = enforceEmotionFloors(emotion)

@@ -137,7 +137,7 @@ export async function sendMessages(decision: AnimaDecision, context?: MessagingC
 
       const slipResult =
         context?.heldBackBuffer && context.emotion && context.soma
-          ? maybeIntroduceSlip(possiblyTypoed, {
+          ? await maybeIntroduceSlip(possiblyTypoed, {
               emotion: context.emotion,
               soma: context.soma,
               heldBackBuffer: context.heldBackBuffer

@@ -1,4 +1,5 @@
-import { describe, expect, it } from "vitest"
+import { describe, expect, it, vi } from "vitest"
+import { okAsync } from "neverthrow"
 import { makeEmotionalState } from "@/test/factories.ts"
 import {
   applyIdiolectDrift,
@@ -12,62 +13,96 @@ import {
   mergePatterns
 } from "./idiolect.ts"
 
+vi.mock("@/core/intelligence.ts", () => ({
+  callIntelligence: vi.fn()
+}))
+
+async function mockLlmResponse(response: {
+  fillerWords?: { phrase: string; count: number }[]
+  openingPhrases?: { phrase: string; count: number }[]
+  expressions?: { phrase: string; count: number }[]
+  punctuationHabits?: { description: string; count: number }[]
+}) {
+  const { callIntelligence } = await import("@/core/intelligence.ts")
+  vi.mocked(callIntelligence).mockReturnValue(
+    okAsync({
+      fillerWords: response.fillerWords ?? [],
+      openingPhrases: response.openingPhrases ?? [],
+      expressions: response.expressions ?? [],
+      punctuationHabits: response.punctuationHabits ?? []
+    }) as ReturnType<typeof callIntelligence>
+  )
+}
+
 describe("extractPatterns", () => {
-  it("returns empty when too few messages", () => {
-    const result = extractPatterns(["hi", "hey"])
+  it("returns empty when too few messages", async () => {
+    const result = await extractPatterns(["hi", "hey"])
     expect(result).toHaveLength(0)
   })
 
-  it("detects filler words", () => {
-    const messages = [
-      "also ich weiß du, das ist halt so",
-      "weißt du was ich meine halt",
-      "also naja halt",
-      "es ist halt irgendwie komisch",
-      "also dann halt"
-    ]
-    const result = extractPatterns(messages)
-    expect(result.some((p) => p.phrase === "halt")).toBe(true)
+  it("detects filler words via LLM", async () => {
+    await mockLlmResponse({ fillerWords: [{ phrase: "basically", count: 4 }] })
+    const messages = ["basically I think so", "yeah basically", "basically right", "so basically yeah", "okay then"]
+    const result = await extractPatterns(messages)
+    expect(result.some((p) => p.phrase === "basically" && p.type === "filler_word")).toBe(true)
   })
 
-  it("detects punctuation habits", () => {
-    const messages = ["hey~", "das ist süß~", "okay~", "naja~", "schon klar~"]
-    const result = extractPatterns(messages)
+  it("detects punctuation habits via LLM", async () => {
+    await mockLlmResponse({ punctuationHabits: [{ description: "trailing tilde (~)", count: 5 }] })
+    const messages = ["hey~", "cool~", "okay~", "nice~", "sure~"]
+    const result = await extractPatterns(messages)
     expect(result.some((p) => p.type === "punctuation_habit" && p.phrase.includes("tilde"))).toBe(true)
   })
 
-  it("detects ellipsis habits", () => {
-    const messages = ["hmm...", "naja...", "okay...", "ich weiß nicht...", "vielleicht..."]
-    const result = extractPatterns(messages)
-    expect(result.some((p) => p.phrase.includes("ellipsis"))).toBe(true)
+  it("detects opening patterns via LLM", async () => {
+    await mockLlmResponse({ openingPhrases: [{ phrase: "so", count: 4 }] })
+    const messages = ["so anyway", "so I was thinking", "so yeah", "so basically", "okay then"]
+    const result = await extractPatterns(messages)
+    expect(result.some((p) => p.type === "opening_phrase" && p.phrase === "so")).toBe(true)
   })
 
-  it("detects opening patterns", () => {
-    const messages = ["also das ist spannend", "also ich dachte mir", "also naja", "also eigentlich", "also dann halt"]
-    const result = extractPatterns(messages)
-    expect(result.some((p) => p.type === "opening_phrase" && p.phrase === "also")).toBe(true)
+  it("detects expressions via LLM", async () => {
+    await mockLlmResponse({ expressions: [{ phrase: "you know what I mean", count: 3 }] })
+    const messages = [
+      "it was weird you know what I mean",
+      "you know what I mean right",
+      "yeah you know what I mean",
+      "so that happened",
+      "anyway"
+    ]
+    const result = await extractPatterns(messages)
+    expect(result.some((p) => p.type === "expression")).toBe(true)
+  })
+
+  it("filters out patterns below minimum frequency", async () => {
+    await mockLlmResponse({ fillerWords: [{ phrase: "like", count: 1 }] })
+    const messages = ["like okay", "sure thing", "got it", "alright", "cool"]
+    const result = await extractPatterns(messages)
+    expect(result).toHaveLength(0)
   })
 })
 
 describe("detectOperatorAdoption", () => {
-  it("detects frequently used operator phrases", () => {
+  it("detects operator patterns and marks them as adopted", async () => {
+    await mockLlmResponse({ fillerWords: [{ phrase: "literally", count: 5 }] })
     const operatorMessages = [
-      "quasi genau das meine ich",
-      "ja quasi",
-      "das ist quasi perfekt",
-      "quasi halt",
-      "quasi so"
+      "literally the best",
+      "I literally can't",
+      "that's literally it",
+      "literally what",
+      "so literally yeah"
     ]
-    const result = detectOperatorAdoption(operatorMessages, DEFAULT_IDIOLECT_STATE)
-    expect(result.some((p) => p.phrase === "quasi" && p.adoptedFrom === "operator")).toBe(true)
+    const result = await detectOperatorAdoption(operatorMessages, DEFAULT_IDIOLECT_STATE)
+    expect(result.some((p) => p.phrase === "literally" && p.adoptedFrom === "operator")).toBe(true)
   })
 
-  it("does not adopt already known patterns", () => {
+  it("does not adopt already known patterns", async () => {
+    await mockLlmResponse({ fillerWords: [{ phrase: "basically", count: 4 }] })
     const state: IdiolectState = {
       patterns: [
         {
           type: "filler_word",
-          phrase: "quasi",
+          phrase: "basically",
           frequency: 5,
           confidence: 0.5,
           adoptedFrom: "self",
@@ -76,13 +111,13 @@ describe("detectOperatorAdoption", () => {
       ],
       lastDriftAt: undefined
     }
-    const operatorMessages = ["quasi genau", "quasi halt", "quasi so", "ja quasi", "quasi naja"]
-    const result = detectOperatorAdoption(operatorMessages, state)
-    expect(result.some((p) => p.phrase === "quasi")).toBe(false)
+    const operatorMessages = ["basically yes", "basically no", "basically right", "basically okay", "sure"]
+    const result = await detectOperatorAdoption(operatorMessages, state)
+    expect(result.some((p) => p.phrase === "basically")).toBe(false)
   })
 
-  it("returns empty when too few messages", () => {
-    const result = detectOperatorAdoption(["hi"], DEFAULT_IDIOLECT_STATE)
+  it("returns empty when too few messages", async () => {
+    const result = await detectOperatorAdoption(["hi"], DEFAULT_IDIOLECT_STATE)
     expect(result).toHaveLength(0)
   })
 })
@@ -91,7 +126,7 @@ describe("mergePatterns", () => {
   it("adds new patterns", () => {
     const pattern = {
       type: "filler_word" as const,
-      phrase: "halt",
+      phrase: "basically",
       frequency: 3,
       confidence: 0.24,
       adoptedFrom: "self" as const,
@@ -99,7 +134,7 @@ describe("mergePatterns", () => {
     }
     const result = mergePatterns(DEFAULT_IDIOLECT_STATE, [pattern])
     expect(result.patterns).toHaveLength(1)
-    expect(result.patterns[0]?.phrase).toBe("halt")
+    expect(result.patterns[0]?.phrase).toBe("basically")
   })
 
   it("increases confidence for existing patterns", () => {
@@ -107,7 +142,7 @@ describe("mergePatterns", () => {
       patterns: [
         {
           type: "filler_word",
-          phrase: "halt",
+          phrase: "basically",
           frequency: 3,
           confidence: 0.3,
           adoptedFrom: "self",
@@ -118,7 +153,7 @@ describe("mergePatterns", () => {
     }
     const incoming = {
       type: "filler_word" as const,
-      phrase: "halt",
+      phrase: "basically",
       frequency: 2,
       confidence: 0.16,
       adoptedFrom: "self" as const,
@@ -150,7 +185,7 @@ describe("applyIdiolectDrift", () => {
       patterns: [
         {
           type: "filler_word",
-          phrase: "halt",
+          phrase: "basically",
           frequency: 3,
           confidence: 0.3,
           adoptedFrom: "self",
@@ -168,7 +203,7 @@ describe("applyIdiolectDrift", () => {
       patterns: [
         {
           type: "filler_word",
-          phrase: "halt",
+          phrase: "basically",
           frequency: 1,
           confidence: 0.03,
           adoptedFrom: "self",
@@ -192,7 +227,7 @@ describe("buildIdiolectSection", () => {
       patterns: [
         {
           type: "filler_word",
-          phrase: "halt",
+          phrase: "basically",
           frequency: 1,
           confidence: 0.1,
           adoptedFrom: "self",
@@ -209,7 +244,7 @@ describe("buildIdiolectSection", () => {
       patterns: [
         {
           type: "filler_word",
-          phrase: "halt",
+          phrase: "basically",
           frequency: 5,
           confidence: 0.5,
           adoptedFrom: "self",
@@ -228,7 +263,7 @@ describe("buildIdiolectSection", () => {
     }
     const result = buildIdiolectSection(state)
     expect(result).toContain("# Your Voice")
-    expect(result).toContain("halt")
+    expect(result).toContain("basically")
     expect(result).toContain("tilde")
   })
 
@@ -237,7 +272,7 @@ describe("buildIdiolectSection", () => {
       patterns: [
         {
           type: "filler_word",
-          phrase: "quasi",
+          phrase: "literally",
           frequency: 3,
           confidence: 0.4,
           adoptedFrom: "operator",
@@ -253,10 +288,10 @@ describe("buildIdiolectSection", () => {
   it("filters patterns by emotion context when provided", () => {
     const state: IdiolectState = {
       patterns: [
-        { type: "filler_word", phrase: "halt", frequency: 5, confidence: 0.8, adoptedFrom: "self", discoveredAt: "" },
+        { type: "filler_word", phrase: "basically", frequency: 5, confidence: 0.8, adoptedFrom: "self", discoveredAt: "" },
         {
           type: "filler_word",
-          phrase: "quasi",
+          phrase: "literally",
           frequency: 3,
           confidence: 0.4,
           adoptedFrom: "operator",
@@ -269,14 +304,14 @@ describe("buildIdiolectSection", () => {
       emotion: makeEmotionalState({ frustration: 0.8 }),
       coherenceState: { regressionActive: false, regressionDepth: 0 }
     })
-    expect(result).toContain("halt")
-    expect(result).not.toContain("quasi")
+    expect(result).toContain("basically")
+    expect(result).not.toContain("literally")
   })
 
   it("adds stress hint when under stress", () => {
     const state: IdiolectState = {
       patterns: [
-        { type: "filler_word", phrase: "halt", frequency: 5, confidence: 0.8, adoptedFrom: "self", discoveredAt: "" }
+        { type: "filler_word", phrase: "basically", frequency: 5, confidence: 0.8, adoptedFrom: "self", discoveredAt: "" }
       ],
       lastDriftAt: undefined
     }
@@ -291,7 +326,7 @@ describe("buildIdiolectSection", () => {
 describe("filterPatternsForEmotion", () => {
   const selfPattern: IdiolectPattern = {
     type: "filler_word",
-    phrase: "halt",
+    phrase: "basically",
     frequency: 5,
     confidence: 0.8,
     adoptedFrom: "self",
@@ -299,7 +334,7 @@ describe("filterPatternsForEmotion", () => {
   }
   const adoptedPattern: IdiolectPattern = {
     type: "filler_word",
-    phrase: "quasi",
+    phrase: "literally",
     frequency: 3,
     confidence: 0.4,
     adoptedFrom: "operator",
@@ -307,7 +342,7 @@ describe("filterPatternsForEmotion", () => {
   }
   const weakSelfPattern: IdiolectPattern = {
     type: "expression",
-    phrase: "naja",
+    phrase: "anyway",
     frequency: 2,
     confidence: 0.25,
     adoptedFrom: "self",
@@ -319,7 +354,7 @@ describe("filterPatternsForEmotion", () => {
       emotion: makeEmotionalState({ frustration: 0.7 })
     })
     expect(result.filtered).toHaveLength(1)
-    expect(result.filtered[0]?.phrase).toBe("halt")
+    expect(result.filtered[0]?.phrase).toBe("basically")
     expect(result.hint).toContain("core voice")
   })
 
@@ -373,14 +408,14 @@ describe("filterPatternsForEmotion", () => {
 describe("mergePatterns with emotionalModifier", () => {
   const makeState = (): IdiolectState => ({
     patterns: [
-      { type: "filler_word", phrase: "halt", frequency: 3, confidence: 0.3, adoptedFrom: "self", discoveredAt: "" }
+      { type: "filler_word", phrase: "basically", frequency: 3, confidence: 0.3, adoptedFrom: "self", discoveredAt: "" }
     ],
     lastDriftAt: undefined
   })
 
   const makeIncoming = () => ({
     type: "filler_word" as const,
-    phrase: "halt",
+    phrase: "basically",
     frequency: 1,
     confidence: 0.1,
     adoptedFrom: "self" as const,
@@ -406,7 +441,7 @@ describe("applyIdiolectDrift with emotionalModifier", () => {
       patterns: [
         {
           type: "filler_word",
-          phrase: "quasi",
+          phrase: "literally",
           frequency: 3,
           confidence: 0.3,
           adoptedFrom: "operator",
@@ -425,7 +460,7 @@ describe("applyIdiolectDrift with emotionalModifier", () => {
       patterns: [
         {
           type: "filler_word",
-          phrase: "quasi",
+          phrase: "literally",
           frequency: 3,
           confidence: 0.3,
           adoptedFrom: "operator",

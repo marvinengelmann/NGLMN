@@ -1,5 +1,7 @@
+import * as z from "zod"
 import type { EmotionalState } from "@/affect/emotion/types.ts"
 import type { SomaticState } from "@/affect/soma/types.ts"
+import { callIntelligence } from "@/core/intelligence.ts"
 import type { HeldBackBuffer } from "@/self/psyche/heldback.ts"
 import { PARAPRAXIS } from "./constants.ts"
 
@@ -15,13 +17,26 @@ interface ParapraxisResult {
   slipOccurred: boolean
 }
 
-const SLIP_CORRECTIONS = [
-  "...forget I said that",
-  "anyway, what I meant was—",
-  "sorry, I don't know where that came from",
-  "ignore that",
-  "that's not what I— nevermind"
-]
+const SlipOutput = z.object({
+  slippedText: z.string(),
+  correction: z.string().nullable()
+})
+
+const SLIP_PROMPT = `You are simulating a Freudian slip in a chat message. The speaker has a suppressed thought leaking into what they're saying.
+
+You receive:
+- The original message the speaker intended to send
+- A suppressed fragment (something they held back but is now leaking through)
+
+Your job: Rewrite the message so the suppressed fragment naturally bleeds into the text — as a mid-sentence derailment, a word substitution, a sudden tangent that gets caught and corrected, or a strikethrough (~~leaked words~~).
+
+The slip should feel involuntary and natural — like the speaker's subconscious interrupted their typing. The result must be in the SAME LANGUAGE as the original message.
+
+If the slip is obvious enough that the speaker would notice and correct themselves, provide a short, casual correction (in the same language). If it's subtle enough to go unnoticed, set correction to null.
+
+Correction examples (adapt to the message language): "*[correct word]", "...forget I said that", "anyway—", "that's not what I—"
+
+Keep the slipped message roughly the same length as the original. Don't over-explain the slip.`
 
 function extractLeakFragment(entry: { content: string }): string {
   const words = entry.content.split(/\s+/)
@@ -30,43 +45,7 @@ function extractLeakFragment(entry: { content: string }): string {
   return words.slice(start, start + 2 + Math.floor(Math.random() * 2)).join(" ")
 }
 
-function applyStrikethroughSlip(text: string, fragment: string): string {
-  return `~~${fragment}~~ ${text}`
-}
-
-function applyPivotSlip(text: string, fragment: string): string {
-  const pivots = [
-    `I wanted to say ${fragment}— no wait, ${text}`,
-    `${fragment}— actually, ${text}`,
-    `I— ${fragment}... anyway. ${text}`
-  ]
-  const pivot = pivots[Math.floor(Math.random() * pivots.length)]
-  return pivot ?? pivots[0] ?? text
-}
-
-function applySubstitutionSlip(text: string, fragment: string): { slippedText: string; original: string } | null {
-  const words = text.split(" ")
-  if (words.length < 4) return null
-
-  const fragmentWords = fragment.split(/\s+/)
-  const insertWord = fragmentWords[Math.floor(Math.random() * fragmentWords.length)]
-  if (!insertWord || insertWord.length < 3) return null
-
-  const candidates = words
-    .map((w, i) => ({ word: w, index: i }))
-    .filter((w) => w.index > 0 && w.index < words.length - 1 && w.word.length >= 3 && !/[.!?,;:]/.test(w.word))
-
-  if (candidates.length === 0) return null
-
-  const target = candidates[Math.floor(Math.random() * candidates.length)]
-  if (!target) return null
-  const newWords = [...words]
-  newWords[target.index] = insertWord
-
-  return { slippedText: newWords.join(" "), original: target.word }
-}
-
-export function maybeIntroduceSlip(text: string, context: ParapraxisContext): ParapraxisResult {
+export async function maybeIntroduceSlip(text: string, context: ParapraxisContext): Promise<ParapraxisResult> {
   const { heldBackBuffer, emotion, soma } = context
   const noSlip = { text, correction: null, slipOccurred: false }
 
@@ -84,22 +63,19 @@ export function maybeIntroduceSlip(text: string, context: ParapraxisContext): Pa
   const entry = heldBackBuffer.entries.reduce((a, b) => (a.decayedCharge > b.decayedCharge ? a : b))
   const fragment = extractLeakFragment(entry)
 
-  const roll = Math.random()
+  const result = await callIntelligence({
+    system: SLIP_PROMPT,
+    userMessage: `Original message: "${text}"\nSuppressed fragment: "${fragment}"`,
+    schema: SlipOutput,
+    reasoning: false,
+    maxTokens: 256
+  })
 
-  if (roll < PARAPRAXIS.STRIKETHROUGH_PROBABILITY) {
-    const slippedText = applyStrikethroughSlip(text, fragment)
-    return { text: slippedText, correction: null, slipOccurred: true }
+  if (result.isErr()) return noSlip
+
+  return {
+    text: result.value.slippedText,
+    correction: result.value.correction,
+    slipOccurred: true
   }
-
-  if (roll < PARAPRAXIS.STRIKETHROUGH_PROBABILITY + PARAPRAXIS.PIVOT_PROBABILITY) {
-    const slippedText = applyPivotSlip(text, fragment)
-    const correction = SLIP_CORRECTIONS[Math.floor(Math.random() * SLIP_CORRECTIONS.length)] ?? "...nevermind"
-    return { text: slippedText, correction, slipOccurred: true }
-  }
-
-  const substitution = applySubstitutionSlip(text, fragment)
-  if (!substitution) return noSlip
-
-  const correction = `*${substitution.original}`
-  return { text: substitution.slippedText, correction, slipOccurred: true }
 }

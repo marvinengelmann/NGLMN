@@ -29,13 +29,13 @@ export interface SharedEmotionInput {
   attachmentSecure: number
 }
 
-export function buildEmotionContext(
+export async function buildEmotionContext(
   name: string,
   shared: SharedEmotionInput,
   previous: SecondaryEmotionState,
   previousAll: Map<string, SecondaryEmotionState>,
   computed: Map<string, SecondaryEmotionState>
-): unknown {
+): Promise<unknown> {
   const { emotion, shameState, vulnerability, operatorModel } = shared
   const { operatorSilenceMinutes, selfDisclosureDepth, consecutiveIdleTicks } = shared
   const { inConversation, pendingMessageCount, episodicHitCount, triggeredWorkflowCount, isDreaming } = shared
@@ -291,7 +291,7 @@ export function buildEmotionContext(
     case "jealousy": {
       const prideState = dependency("pride")
       const messageTexts = shared.senseResult.pendingMessages.map((m) => m.text ?? "")
-      const rivalDetection = detectRivalMention(messageTexts)
+      const rivalDetection = await detectRivalMention(messageTexts)
       return {
         emotion,
         previousState: previous,
