@@ -7,8 +7,8 @@ import type { VisualReferenceCategory } from "@/expression/image/types.ts"
  */
 export async function uploadVisualReference(category: VisualReferenceCategory, buffer: Buffer): Promise<string> {
   const path = `visual-references/${category}/${Date.now()}.png`
-  const { url } = await put(path, buffer, { access: "public" })
-  return url
+  const { downloadUrl } = await put(path, buffer, { access: "private" })
+  return downloadUrl
 }
 
 /**
