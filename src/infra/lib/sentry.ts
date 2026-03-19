@@ -49,7 +49,22 @@ function formatAlertMessage(error: unknown, context?: Record<string, unknown>): 
 export function captureError(error: unknown, context?: Record<string, unknown>): void {
   try {
     const exception = error instanceof Error ? error : new Error(String(error))
-    Sentry.captureException(exception, context ? { extra: context } : undefined)
+    const extra: Record<string, unknown> = { ...context }
+
+    if (error instanceof Error) {
+      for (const key of ["statusCode", "responseBody", "data", "url", "generationId"] as const) {
+        if (key in error) extra[key] = (error as unknown as Record<string, unknown>)[key]
+      }
+      if (error.cause instanceof Error) {
+        extra.causeName = error.cause.name
+        extra.causeMessage = error.cause.message
+        for (const key of ["statusCode", "responseBody", "data", "url"] as const) {
+          if (key in error.cause) extra[`cause_${key}`] = (error.cause as unknown as Record<string, unknown>)[key]
+        }
+      }
+    }
+
+    Sentry.captureException(exception, { extra })
   } catch {
     // Sentry must never crash the application
   }
