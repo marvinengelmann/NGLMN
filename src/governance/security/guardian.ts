@@ -215,7 +215,8 @@ const MAX_EVOLUTION_FILE_SIZE = 50 * 1024
 
 const SECRET_PATTERNS = [
   /postgresql:\/\/\S+/,
-  /AI_GATEWAY_API_KEY\s*=\s*\S+/,
+  /XAI_API_KEY\s*=\s*\S+/,
+  /BFL_API_KEY\s*=\s*\S+/,
   /GITHUB_TOKEN\s*=\s*\S+/,
   /TELEGRAM_BOT_TOKEN\s*=\s*\S+/,
   /X_API_KEY\s*=\s*\S+/,

@@ -2,7 +2,8 @@ import * as z from "zod"
 
 const EnvSchema = z.object({
   DATABASE_URL: z.string(),
-  AI_GATEWAY_API_KEY: z.string(),
+  XAI_API_KEY: z.string(),
+  BFL_API_KEY: z.string(),
 
   TELEGRAM_BOT_TOKEN: z.string(),
   TELEGRAM_OPERATOR_CHAT_ID: z.string(),

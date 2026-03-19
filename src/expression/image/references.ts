@@ -1,6 +1,5 @@
-import { experimental_generateImage as generateImage } from "ai"
 import { and, eq, inArray, sql } from "drizzle-orm"
-import { trackApiCost } from "@/core/budget.ts"
+import { callImaging } from "@/core/imaging.ts"
 import { db } from "@/infra/db/client.ts"
 import { visualReferences } from "@/infra/db/schema.ts"
 import { deleteVisualReference, uploadVisualReference } from "@/infra/integrations/blob.ts"
@@ -125,20 +124,10 @@ function generateReference(
       if (portraitUrl) referenceImages.push(portraitUrl)
     }
 
-    const result = await generateImage({
-      model: IMAGE.MODEL,
-      prompt: referenceImages.length > 0 ? { text: prompt, images: referenceImages } : prompt,
-      aspectRatio: "1:1"
-    })
+    const imageResult = await callImaging({ prompt, referenceImages })
+    if (imageResult.isErr()) throw imageResult.error.cause ?? new Error(imageResult.error.message)
 
-    const image = result.images[0]
-    if (!image) throw new Error(`No image returned for reference: ${category}`)
-
-    const buffer = Buffer.from(image.base64, "base64")
-    const blobUrl = await uploadVisualReference(category, buffer)
-
-    const cost = IMAGE.BASE_COST + referenceImages.length * IMAGE.REFERENCE_COST
-    await trackApiCost(cost)
+    const blobUrl = await uploadVisualReference(category, imageResult.value)
 
     const oldRefs = await db
       .select({ id: visualReferences.id, blobUrl: visualReferences.blobUrl })
@@ -154,7 +143,7 @@ function generateReference(
       category,
       blobUrl,
       promptUsed: prompt,
-      generationCost: cost,
+      generationCost: 0,
       active: true
     })
 

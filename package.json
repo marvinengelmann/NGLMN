@@ -22,6 +22,8 @@
     "dump": "bun run scripts/dump.ts"
   },
   "dependencies": {
+    "@ai-sdk/black-forest-labs": "^1.0.24",
+    "@ai-sdk/xai": "^3.0.67",
     "@date-fns/tz": "^1.4.1",
     "@modelcontextprotocol/sdk": "^1.27.1",
     "@neondatabase/serverless": "^1.0.2",

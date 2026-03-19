@@ -4,9 +4,7 @@ import { MAX_OUTPUT_TOKENS } from "@/infra/config/constants.ts"
 import type { AnimaResultAsync } from "@/infra/lib/result.ts"
 import { trySafe } from "@/infra/lib/result.ts"
 import { estimateCallCost, trackApiCost } from "./budget.ts"
-
-export const FAST = "xai/grok-4-1-fast-non-reasoning"
-export const REASONING = "xai/grok-4-1-fast-reasoning"
+import { FAST, REASONING, VISION } from "./providers.ts"
 
 interface CallIntelligenceOptions<T extends z.ZodType> {
   system: string
@@ -18,10 +16,8 @@ interface CallIntelligenceOptions<T extends z.ZodType> {
   temperature?: number
 }
 
-const VISION_MODEL = "xai/grok-2-vision-1212"
-
 /**
- * Unified LLM call — uses generateText with Output.object for structured output.
+ * Unified LLM call — direct xAI provider with structured output.
  * Tracks usage internally; callers receive only the typed result.
  */
 export function callIntelligence<T extends z.ZodType>(
@@ -29,7 +25,7 @@ export function callIntelligence<T extends z.ZodType>(
 ): AnimaResultAsync<z.infer<T>> {
   return trySafe("LLM_ERROR", async () => {
     const hasImages = options.images && options.images.length > 0
-    const model = hasImages ? VISION_MODEL : options.reasoning === false ? FAST : REASONING
+    const model = hasImages ? VISION : options.reasoning === false ? FAST : REASONING
 
     const messageContent: Array<{ type: "text"; text: string } | { type: "image"; image: string; mimeType?: string }> =
       [

@@ -19,8 +19,5 @@ export const CALENDAR = {
 } as const
 
 export const IMAGE = {
-  MODEL: "bfl/flux-2-max",
-  MAX_REFERENCES: 4,
-  BASE_COST: 0.07,
-  REFERENCE_COST: 0.03
+  MAX_REFERENCES: 4
 } as const
