@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { levenshteinRatio } from "./rituals.ts"
+import { levenshteinRatio } from "@/infra/lib/similarity.ts"
 
 describe("Ritual Detection", () => {
   describe("levenshteinRatio", () => {

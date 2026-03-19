@@ -2,6 +2,7 @@ import { db } from "@/infra/db/client.ts"
 import { episodeLinks } from "@/infra/db/schema.ts"
 import type { AnimaResultAsync } from "@/infra/lib/result.ts"
 import { trySafe } from "@/infra/lib/result.ts"
+import { wordOverlapRatio as computeWordOverlap } from "@/infra/lib/similarity.ts"
 import type { EpisodeLinkType } from "./graph/types.ts"
 
 export interface LinkedEpisodeRef {
@@ -90,26 +91,3 @@ export function detectAndLinkRelatedEpisodes(
   })
 }
 
-function computeWordOverlap(textA: string, textB: string): number {
-  const wordsA = new Set(
-    textA
-      .toLowerCase()
-      .split(/\s+/)
-      .filter((w) => w.length >= 3)
-  )
-  const wordsB = new Set(
-    textB
-      .toLowerCase()
-      .split(/\s+/)
-      .filter((w) => w.length >= 3)
-  )
-
-  if (wordsA.size === 0 || wordsB.size === 0) return 0
-
-  let overlap = 0
-  for (const word of wordsA) {
-    if (wordsB.has(word)) overlap++
-  }
-
-  return overlap / Math.min(wordsA.size, wordsB.size)
-}

@@ -6,6 +6,7 @@ import { interactionOutcomes, procedures } from "@/infra/db/schema.ts"
 import { log } from "@/infra/lib/logger.ts"
 import type { AnimaResultAsync } from "@/infra/lib/result.ts"
 import { trySafe } from "@/infra/lib/result.ts"
+import { isNearDuplicate } from "@/infra/lib/similarity.ts"
 import { PROCEDURE_CONSTANTS, ProcedureExtractionOutput, type ProcedureTrigger } from "./types.ts"
 
 /**
@@ -70,10 +71,9 @@ export function upsertProcedure(
   source: string = "interaction"
 ): AnimaResultAsync<string> {
   return trySafe("PROCEDURE_ERROR", async () => {
-    const prefix = strategy.slice(0, 60).toLowerCase()
     const existing = await db.select().from(procedures)
 
-    const match = existing.find((p) => p.strategy.slice(0, 60).toLowerCase() === prefix)
+    const match = existing.find((p) => isNearDuplicate(p.strategy, strategy))
 
     if (match) {
       await db

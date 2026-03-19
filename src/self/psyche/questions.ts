@@ -1,5 +1,6 @@
 import * as z from "zod"
 import { redis } from "@/infra/integrations/redis.ts"
+import { isNearDuplicate } from "@/infra/lib/similarity.ts"
 import { nowISO } from "@/infra/lib/time.ts"
 import { addGrowthArc } from "@/self/psyche/state.ts"
 import { EXISTENTIAL } from "./constants.ts"
@@ -53,7 +54,7 @@ export async function getStructuredExistentialQuestions(): Promise<ExistentialQu
  */
 export async function addExistentialQuestion(question: string, source = "unknown"): Promise<void> {
   const current = await getStructuredExistentialQuestions()
-  if (current.some((q) => q.question === question)) return
+  if (current.some((q) => isNearDuplicate(q.question, question))) return
 
   current.push({
     question,

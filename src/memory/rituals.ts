@@ -1,5 +1,6 @@
 import { getDay, getHours, parseISO } from "date-fns"
 import type { ConversationSlot } from "@/expression/communication/types.ts"
+import { levenshteinRatio } from "@/infra/lib/similarity.ts"
 import { nowISO } from "@/infra/lib/time.ts"
 import { RELATIONAL_MEMORY } from "./constants.ts"
 import type { RelationalRitual } from "./types.ts"
@@ -73,28 +74,6 @@ function detectTemporalPatterns(slots: ConversationSlot[]): DetectedRitual[] {
   })
 
   return rituals
-}
-
-function levenshteinRatio(a: string, b: string): number {
-  const longer = a.length >= b.length ? a : b
-  const shorter = a.length >= b.length ? b : a
-  if (longer.length === 0) return 1.0
-
-  const prevRow = Array.from({ length: shorter.length }, (_, i) => i + 1).reduce(
-    (prev, i) =>
-      Array.from({ length: longer.length }, (_, j) => j + 1).reduce(
-        (curr, j) => {
-          const cost = shorter[i - 1] === longer[j - 1] ? 0 : 1
-          curr[j] = Math.min((prev[j] ?? 0) + 1, (curr[j - 1] ?? 0) + 1, (prev[j - 1] ?? 0) + cost)
-          return curr
-        },
-        [i] as number[]
-      ),
-    Array.from({ length: longer.length + 1 }, (_, j) => j)
-  )
-
-  const distance = prevRow[longer.length] ?? 0
-  return 1 - distance / longer.length
 }
 
 function detectPhrasePatterns(slots: ConversationSlot[]): DetectedRitual[] {
@@ -288,4 +267,3 @@ export function detectRituals(slots: ConversationSlot[], existingRituals: Relati
   return mergeWithExisting(allNew, existingRituals)
 }
 
-export { levenshteinRatio }

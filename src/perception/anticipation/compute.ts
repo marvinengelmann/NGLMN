@@ -159,7 +159,12 @@ export function updateAnticipatoryState(
     .map((e) => ({ ...e, confidence: e.confidence * ANTICIPATION_SYSTEM.EXPECTATION_DECAY_PER_TICK }))
     .filter((e) => e.confidence > ANTICIPATION_SYSTEM.PATTERN_CONFIDENCE_THRESHOLD)
 
-  const mergedExpectations = [...decayedExpectations, ...newExpectations].slice(0, ANTICIPATION_SYSTEM.MAX_EXPECTATIONS)
+  const existingContents = new Set(decayedExpectations.map((e) => e.content))
+  const uniqueNewExpectations = newExpectations.filter((e) => !existingContents.has(e.content))
+  const mergedExpectations = [...decayedExpectations, ...uniqueNewExpectations].slice(
+    0,
+    ANTICIPATION_SYSTEM.MAX_EXPECTATIONS
+  )
 
   const violations = checkExpectationViolations(
     current.activeExpectations,

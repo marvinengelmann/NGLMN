@@ -5,6 +5,7 @@ import { lessons as lessonsTable } from "@/infra/db/schema.ts"
 import { redis } from "@/infra/integrations/redis.ts"
 import { log } from "@/infra/lib/logger.ts"
 import { clamp01 } from "@/infra/lib/math.ts"
+import { isNearDuplicate } from "@/infra/lib/similarity.ts"
 import { nowISO } from "@/infra/lib/time.ts"
 import type { Lesson, LessonContext, LessonSource } from "./types.ts"
 
@@ -74,11 +75,7 @@ export async function addLesson(
 ): Promise<Lesson> {
   const existing = await getLessons()
 
-  const duplicate = existing.find(
-    (l) =>
-      l.insight.toLowerCase().includes(insight.toLowerCase().slice(0, 40)) ||
-      insight.toLowerCase().includes(l.insight.toLowerCase().slice(0, 40))
-  )
+  const duplicate = existing.find((l) => isNearDuplicate(l.insight, insight))
   if (duplicate) {
     duplicate.confidence = clamp01(duplicate.confidence + POSITIVE_BOOST)
     duplicate.validationCount += 1
