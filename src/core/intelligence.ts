@@ -3,6 +3,7 @@ import type * as z from "zod"
 import { MAX_OUTPUT_TOKENS } from "@/infra/config/constants.ts"
 import type { AnimaResultAsync } from "@/infra/lib/result.ts"
 import { trySafe } from "@/infra/lib/result.ts"
+import { sanitizeForXai } from "@/infra/lib/sanitize.ts"
 import { estimateCallCost, trackApiCost } from "./budget.ts"
 import { FAST, REASONING, VISION } from "./providers.ts"
 
@@ -27,9 +28,12 @@ export function callIntelligence<T extends z.ZodType>(
     const hasImages = options.images && options.images.length > 0
     const model = hasImages ? VISION : options.reasoning === false ? FAST : REASONING
 
+    const system = sanitizeForXai(options.system)
+    const userMessage = sanitizeForXai(options.userMessage)
+
     const messageContent: Array<{ type: "text"; text: string } | { type: "image"; image: string; mimeType?: string }> =
       [
-        { type: "text", text: options.userMessage },
+        { type: "text", text: userMessage },
         ...(options.images ?? []).map((img) => ({
           type: "image" as const,
           image: img.base64,
@@ -39,10 +43,10 @@ export function callIntelligence<T extends z.ZodType>(
 
     const result = await generateText({
       model,
-      system: options.system,
+      system,
       ...(hasImages
         ? { messages: [{ role: "user" as const, content: messageContent }] }
-        : { prompt: options.userMessage }),
+        : { prompt: userMessage }),
       output: Output.object({ schema: options.schema }),
       maxOutputTokens: options.maxTokens ?? MAX_OUTPUT_TOKENS,
       ...(options.temperature !== undefined && !hasImages ? { temperature: options.temperature } : {})
