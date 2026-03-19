@@ -266,4 +266,3 @@ export function detectRituals(slots: ConversationSlot[], existingRituals: Relati
   const allNew = [...temporal, ...phrase, ...behavioral]
   return mergeWithExisting(allNew, existingRituals)
 }
-

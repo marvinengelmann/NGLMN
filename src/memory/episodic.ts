@@ -331,53 +331,47 @@ export async function getRecentByCategory(
   return mapped.slice(0, limit)
 }
 
-const FORGET_QUERY_ANCHORS = ["old memories to forget", "forgotten past events", "stale historical records"]
-
 /**
  * Delete old, low-relevance episodes to implement a forgetting curve.
  * Skips relationship and humor categories to preserve meaningful bonds.
- * Uses multiple query anchors per category to scan more of the vector space.
+ * Runs one query per category in parallel for efficiency.
  */
 export async function forgetOldEpisodes(
   ageThresholdDays: number = 90,
   relevanceThreshold: number = 0.2
 ): Promise<number> {
   const categories: EpisodicCategory[] = ["interaction", "task", "observation", "dream", "evolution", "activity"]
-  const idsToDelete = new Set<string>()
 
-  await categories.reduce(
-    async (catPromise, category) =>
-      FORGET_QUERY_ANCHORS.reduce(async (anchorPromise, anchor) => {
-        await catPromise
-        await anchorPromise
-        const results = await vectorIndex.query({
-          data: `${anchor} ${category}`,
-          topK: 200,
-          includeMetadata: true,
-          filter: `category = '${category}'`
-        })
+  const categoryResults = await Promise.all(
+    categories.map(async (category) => {
+      const results = await vectorIndex.query({
+        data: `old ${category} episodes`,
+        topK: 200,
+        includeMetadata: true,
+        filter: `category = '${category}'`
+      })
 
-        results.forEach((r) => {
+      return results
+        .filter((r) => {
           const meta = r.metadata as EpisodeMetadata | undefined
-          if (!meta) return
-          if ((meta.relevanceScore ?? 1) >= relevanceThreshold) return
+          if (!meta) return false
+          if ((meta.relevanceScore ?? 1) >= relevanceThreshold) return false
           try {
-            if (differenceInDays(new Date(), parseISO(meta.timestamp)) >= ageThresholdDays) {
-              idsToDelete.add(r.id as string)
-            }
+            return differenceInDays(new Date(), parseISO(meta.timestamp)) >= ageThresholdDays
           } catch (e) {
             log.warn("Failed to parse episode timestamp during forgetting", {
               id: r.id,
               timestamp: meta.timestamp,
               error: extractErrorMessage(e)
             })
+            return false
           }
         })
-      }, Promise.resolve()),
-    Promise.resolve()
+        .map((r) => r.id as string)
+    })
   )
 
-  const deleteIds = [...idsToDelete]
+  const deleteIds = categoryResults.flat()
   if (deleteIds.length > 0) {
     await vectorIndex.delete(deleteIds)
     log.info("Forgot old episodes", { count: deleteIds.length })

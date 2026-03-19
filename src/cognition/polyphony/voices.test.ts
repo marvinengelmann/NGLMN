@@ -8,6 +8,7 @@ vi.mock("./state.ts", () => ({
 }))
 
 import { getDominanceHistory } from "./state.ts"
+
 const mockedGetDominanceHistory = vi.mocked(getDominanceHistory)
 
 const baseEmotion: EmotionalState = {
@@ -99,31 +100,37 @@ describe("computeSwitchboardModifiers", () => {
 
   it("penalizes perseverating voice and boosts under-represented voices", async () => {
     mockedGetDominanceHistory.mockResolvedValue([
-      "seeking", "seeking", "seeking", "seeking", "seeking",
-      "seeking", "seeking", "seeking", "seeking", "care"
+      "seeking",
+      "seeking",
+      "seeking",
+      "seeking",
+      "seeking",
+      "seeking",
+      "seeking",
+      "seeking",
+      "seeking",
+      "care"
     ])
 
     const result = await computeSwitchboardModifiers(0.8)
 
     expect(result.seeking).toBeDefined()
-    expect(result.seeking!).toBeLessThan(0)
+    expect(result.seeking ?? 0).toBeLessThan(0)
 
     expect(result.fear).toBeDefined()
-    expect(result.fear!).toBeGreaterThan(0)
+    expect(result.fear ?? 0).toBeGreaterThan(0)
 
     expect(result.play).toBeDefined()
-    expect(result.play!).toBeGreaterThan(0)
+    expect(result.play ?? 0).toBeGreaterThan(0)
   })
 
   it("gives maximum novelty boost to completely absent voices", async () => {
-    mockedGetDominanceHistory.mockResolvedValue([
-      "seeking", "seeking", "seeking", "care", "care"
-    ])
+    mockedGetDominanceHistory.mockResolvedValue(["seeking", "seeking", "seeking", "care", "care"])
 
     const result = await computeSwitchboardModifiers(1.0)
 
-    expect(result.fear!).toBeGreaterThan(result.care!)
-    expect(result.play!).toBeGreaterThan(result.care!)
+    expect(result.fear ?? 0).toBeGreaterThan(result.care ?? 0)
+    expect(result.play ?? 0).toBeGreaterThan(result.care ?? 0)
   })
 
   it("scales switching intensity with norepinephrine level", async () => {
@@ -133,18 +140,16 @@ describe("computeSwitchboardModifiers", () => {
     const lowNE = await computeSwitchboardModifiers(0.1)
     const highNE = await computeSwitchboardModifiers(0.9)
 
-    expect(Math.abs(highNE.seeking!)).toBeGreaterThan(Math.abs(lowNE.seeking!))
-    expect(highNE.fear!).toBeGreaterThan(lowNE.fear!)
+    expect(Math.abs(highNE.seeking ?? 0)).toBeGreaterThan(Math.abs(lowNE.seeking ?? 0))
+    expect(highNE.fear ?? 0).toBeGreaterThan(lowNE.fear ?? 0)
   })
 
   it("does not penalize voices with fewer than 3 consecutive dominances", async () => {
-    mockedGetDominanceHistory.mockResolvedValue([
-      "seeking", "seeking", "care", "play", "executive"
-    ])
+    mockedGetDominanceHistory.mockResolvedValue(["seeking", "seeking", "care", "play", "executive"])
 
     const result = await computeSwitchboardModifiers(0.5)
 
-    expect(result.seeking!).toBeGreaterThanOrEqual(0)
+    expect(result.seeking ?? 0).toBeGreaterThanOrEqual(0)
   })
 })
 

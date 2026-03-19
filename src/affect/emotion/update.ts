@@ -322,23 +322,27 @@ function clampBaseline(value: number): number {
   )
 }
 
+const MOOD_BASELINE_HALF_LIFE_MINUTES = 480
+
 /**
- * Blend current emotion into the long-term mood baseline via exponential moving average.
+ * Blend current emotion into the long-term mood baseline via half-life decay.
+ * Uses the same exponential decay model as applyDrift for consistency.
+ * The baseline slowly tracks the current emotion with a configurable half-life.
  * Each dimension is clamped to [0.2, 0.8] to prevent pathological baseline drift.
  */
-export function blendMoodBaseline(current: EmotionalState, oldBaseline: EmotionalState): EmotionalState {
-  const alpha = MOMENTUM.MOOD_BASELINE_ALPHA
-  return clampState({
-    curiosity: clampBaseline(alpha * current.curiosity + (1 - alpha) * oldBaseline.curiosity),
-    satisfaction: clampBaseline(alpha * current.satisfaction + (1 - alpha) * oldBaseline.satisfaction),
-    frustration: clampBaseline(alpha * current.frustration + (1 - alpha) * oldBaseline.frustration),
-    boredom: clampBaseline(alpha * current.boredom + (1 - alpha) * oldBaseline.boredom),
-    excitement: clampBaseline(alpha * current.excitement + (1 - alpha) * oldBaseline.excitement),
-    caution: clampBaseline(alpha * current.caution + (1 - alpha) * oldBaseline.caution),
-    connection: clampBaseline(alpha * current.connection + (1 - alpha) * oldBaseline.connection),
-    confidence: clampBaseline(alpha * current.confidence + (1 - alpha) * oldBaseline.confidence),
-    energy: clampBaseline(alpha * current.energy + (1 - alpha) * oldBaseline.energy)
-  })
+export function blendMoodBaseline(
+  current: EmotionalState,
+  oldBaseline: EmotionalState,
+  elapsedMinutes = 1.5
+): EmotionalState {
+  const retention = halfLifeDecay(elapsedMinutes, MOOD_BASELINE_HALF_LIFE_MINUTES)
+  const alpha = 1 - retention
+
+  const blended = Object.fromEntries(
+    EMOTION_DIMENSIONS.map((dim) => [dim, clampBaseline(alpha * current[dim] + retention * oldBaseline[dim])])
+  )
+
+  return clampState({ ...oldBaseline, ...blended })
 }
 
 /**

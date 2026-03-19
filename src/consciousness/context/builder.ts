@@ -2,6 +2,7 @@ import { getPhenomenologicalText, isExpired } from "@/affect/altered/compute.ts"
 import { ALTERED_EVENT_TYPES } from "@/affect/altered/events.ts"
 import { DRIVE_ACTION_HINTS } from "@/affect/drive/constants.ts"
 import type { DriveState } from "@/affect/drive/types.ts"
+import { CONTEXT_TOKEN_BUDGET } from "@/infra/config/constants.ts"
 import "@/affect/emotion/init.ts"
 import { computeEmotionalIntensity } from "@/affect/emotion/update.ts"
 import type { MetacognitiveState } from "@/cognition/types.ts"
@@ -187,7 +188,34 @@ export async function buildContext(
     }
   }
 
-  return sections.filter(Boolean).join("\n\n")
+  return truncateToTokenBudget(sections.filter(Boolean))
+}
+
+const CHARS_PER_TOKEN = 4
+const SECTION_BUDGET = CONTEXT_TOKEN_BUDGET * 0.6
+
+function estimateTokens(text: string): number {
+  return Math.ceil(text.length / CHARS_PER_TOKEN)
+}
+
+function truncateToTokenBudget(sections: string[]): string {
+  let totalTokens = 0
+  const included: string[] = []
+
+  for (const section of sections) {
+    const sectionTokens = estimateTokens(section)
+    if (totalTokens + sectionTokens > SECTION_BUDGET) {
+      const remainingTokens = SECTION_BUDGET - totalTokens
+      if (remainingTokens > 200) {
+        included.push(section.slice(0, remainingTokens * CHARS_PER_TOKEN))
+      }
+      break
+    }
+    included.push(section)
+    totalTokens += sectionTokens
+  }
+
+  return included.join("\n\n")
 }
 
 function classifyDriveUrgency(

@@ -1,3 +1,4 @@
+import { subHours } from "date-fns"
 import { and, desc, eq, inArray, lt, or, type SQL } from "drizzle-orm"
 import { env } from "@/infra/config/env.ts"
 import { db } from "@/infra/db/client.ts"
@@ -75,8 +76,12 @@ export function getKnowledge(options: GetKnowledgeOptions = {}): AnimaResultAsyn
     const rows = await query
 
     if (rows.length > 0) {
-      const ids = rows.map((r) => r.id)
-      await db.update(semanticMemory).set({ lastAccessedAt: new Date() }).where(inArray(semanticMemory.id, ids))
+      const staleIds = rows
+        .filter((r) => !r.lastAccessedAt || r.lastAccessedAt < subHours(new Date(), 1))
+        .map((r) => r.id)
+      if (staleIds.length > 0) {
+        await db.update(semanticMemory).set({ lastAccessedAt: new Date() }).where(inArray(semanticMemory.id, staleIds))
+      }
     }
 
     return rows
@@ -182,8 +187,7 @@ export function applyOpinionDrift(): AnimaResultAsync<void> {
     const count = Math.min(preferences.length, 1 + Math.floor(Math.random() * 2))
     const shuffled = shuffle(preferences).slice(0, count)
 
-    await shuffled.reduce(async (prev, pref) => {
-      await prev
+    for (const pref of shuffled) {
       const drift = 0.05 + Math.random() * 0.05
       const newConfidence = Math.max(0.1, (pref.confidence ?? 0.5) - drift)
       await db
@@ -191,6 +195,6 @@ export function applyOpinionDrift(): AnimaResultAsync<void> {
         .set({ confidence: newConfidence, updatedAt: new Date() })
         .where(eq(semanticMemory.id, pref.id))
       log.debug("Opinion drift applied", { key: pref.key, oldConfidence: pref.confidence, newConfidence })
-    }, Promise.resolve())
+    }
   })
 }

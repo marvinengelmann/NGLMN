@@ -106,10 +106,8 @@ export async function computeSwitchboardModifiers(
   const switchingGain = Math.max(0.2, norepinephrineLevel)
 
   const consecutiveDominance = countConsecutiveLeader(history)
-  const perseverationPenalty = Math.min(
-    PERSEVERATION_PENALTY_MAX,
-    (consecutiveDominance / total) * PERSEVERATION_PENALTY_MAX * 2
-  ) * switchingGain
+  const perseverationPenalty =
+    Math.min(PERSEVERATION_PENALTY_MAX, (consecutiveDominance / total) * PERSEVERATION_PENALTY_MAX * 2) * switchingGain
 
   const modifiers: Partial<Record<InnerVoice, number>> = {}
 

@@ -7,7 +7,14 @@ import { savePriorSnapshots } from "@/fep/state.ts"
 import type { WriteBuffer } from "@/infra/lib/buffer.ts"
 import { log } from "@/infra/lib/logger.ts"
 import { applyClampedDeltas } from "@/infra/lib/math.ts"
+import { DEFAULT_ANTICIPATORY_STATE } from "@/perception/anticipation/types.ts"
+import { DEFAULT_NOVELTY_STATE } from "@/perception/novelty/types.ts"
+import { DEFAULT_ISOLATION_STRESS, DEFAULT_VULNERABLE_MESSAGE_STYLE } from "@/relational/attachment/types.ts"
 import { isOperatorReturning } from "@/relational/attachment/update.ts"
+import { DEFAULT_MENTALIZING_STATE } from "@/relational/mind/mentalizing.ts"
+import { DEFAULT_OPERATOR_MODEL } from "@/relational/mind/types.ts"
+import { DEFAULT_BOUNDARY_STATE } from "@/self/boundaries/types.ts"
+import { DEFAULT_HELD_BACK_BUFFER } from "@/self/psyche/heldback.ts"
 import type { FeelingResult, SenseResult } from "../../types.ts"
 import { assembleFeelOutput } from "./assemble.ts"
 import { runEmotionChain } from "./chain.ts"
@@ -16,6 +23,7 @@ import { runParallelSubsystems } from "./parallel.ts"
 import { prefetchFeelState } from "./prefetch.ts"
 import { runSecondaryEmotions } from "./secondary.ts"
 import { stageAllFeelWrites } from "./staging.ts"
+import type { ParallelFanResult, VulnerabilityChainResult } from "./types.ts"
 import { runVulnerabilityChain } from "./vulnerability.ts"
 
 export async function runFeelPipeline(senseResult: SenseResult, buffer: WriteBuffer): Promise<FeelingResult> {
@@ -23,7 +31,13 @@ export async function runFeelPipeline(senseResult: SenseResult, buffer: WriteBuf
 
   const chain = await runEmotionChain(senseResult, prefetch)
 
-  const parallel = await runParallelSubsystems(chain.emotion, chain.soma, senseResult, prefetch)
+  let parallel: Awaited<ReturnType<typeof runParallelSubsystems>>
+  try {
+    parallel = await runParallelSubsystems(chain.emotion, chain.soma, senseResult, prefetch)
+  } catch (e) {
+    log.warn("Parallel subsystems failed, using defaults", { error: String(e) })
+    parallel = getDefaultParallelResult()
+  }
 
   let emotionAfterBoundary = chain.emotion
   emotionAfterBoundary = parallel.boundaryEmotionEvents.reduce(
@@ -35,13 +49,13 @@ export async function runFeelPipeline(senseResult: SenseResult, buffer: WriteBuf
     emotionAfterBoundary = applyClampedDeltas(emotionAfterBoundary, parallel.patternModulation)
   }
 
-  const vulnerabilityResult = await runVulnerabilityChain(
-    emotionAfterBoundary,
-    chain.soma,
-    senseResult,
-    parallel,
-    prefetch
-  )
+  let vulnerabilityResult: Awaited<ReturnType<typeof runVulnerabilityChain>>
+  try {
+    vulnerabilityResult = await runVulnerabilityChain(emotionAfterBoundary, chain.soma, senseResult, parallel, prefetch)
+  } catch (e) {
+    log.warn("Vulnerability chain failed, using defaults", { error: String(e) })
+    vulnerabilityResult = getDefaultVulnerabilityResult()
+  }
 
   vulnerabilityResult.vulnerability = {
     ...vulnerabilityResult.vulnerability,
@@ -159,4 +173,41 @@ export async function runFeelPipeline(senseResult: SenseResult, buffer: WriteBuf
   })
 
   return result
+}
+
+function getDefaultParallelResult(): ParallelFanResult {
+  return {
+    instinct: { impulse: "neutral", confidence: 0, basis: "", episodicMatches: 0, emotionalCharge: 0 },
+    dissonance: { activeDissonance: 0, recentEvents: [], cumulativeUnresolved: 0 },
+    operatorModel: DEFAULT_OPERATOR_MODEL,
+    operatorModelTrigger: "none",
+    relationalPatterns: null,
+    attachmentDynamics: {
+      separationDistress: 0,
+      reunionResponse: 0,
+      safeHavenSeeking: 0,
+      explorationBalance: 0.5
+    },
+    anticipatoryState: DEFAULT_ANTICIPATORY_STATE,
+    noveltyState: DEFAULT_NOVELTY_STATE,
+    boundaryState: DEFAULT_BOUNDARY_STATE,
+    newBoundaryViolations: [],
+    boundaryEmotionEvents: [],
+    isolationStress: DEFAULT_ISOLATION_STRESS,
+    implicitAssociations: [],
+    patternModulation: {},
+    patternActivationEvent: null,
+    mentalizingState: DEFAULT_MENTALIZING_STATE
+  }
+}
+
+function getDefaultVulnerabilityResult(): VulnerabilityChainResult {
+  return {
+    vulnerability: { level: 0.2, windowOpen: false, contributing: [], timestamp: new Date().toISOString() },
+    vulnerableMessageStyle: DEFAULT_VULNERABLE_MESSAGE_STYLE,
+    shameState: { level: 0, isActive: false, trigger: "", lastTriggeredAt: "", decaySinceTriggered: 0 },
+    heldBackBuffer: DEFAULT_HELD_BACK_BUFFER,
+    selfDisclosureDepth: 0,
+    suppressionDetected: false
+  }
 }
