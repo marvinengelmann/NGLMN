@@ -77,9 +77,17 @@ export const Interest = z.object({
 })
 export type Interest = z.infer<typeof Interest>
 
+export const HairDetails = z.object({
+  style: z.string(),
+  color: z.string(),
+  lengthCm: z.number().min(1).max(100)
+})
+export type HairDetails = z.infer<typeof HairDetails>
+
 export const GenesisIdentity = z.object({
   chosenName: z.string(),
   appearanceDescription: z.string(),
+  hair: HairDetails,
   birthNarrative: z.string(),
   coreValues: z.array(CoreValue).length(10),
   interests: z.array(Interest).length(10),

@@ -156,3 +156,49 @@ function generateReference(
     return blobUrl
   })
 }
+
+/**
+ * Regenerate the portrait reference and return the raw image buffer.
+ * Invalidates old portrait + all person-dependent references (outfits, full_body)
+ * so they get regenerated with the new face on next use.
+ */
+export async function refreshPortraitReference(): Promise<Buffer | null> {
+  const prompt = await getReferencePrompt("portrait")
+
+  const imageResult = await callImaging({ prompt })
+  if (imageResult.isErr()) {
+    logAndCaptureError(imageResult.error, { phase: "portrait_refresh" })
+    return null
+  }
+
+  const buffer = imageResult.value
+  const blobUrl = await uploadVisualReference("portrait", buffer)
+
+  const categoriesToInvalidate: VisualReferenceCategory[] = ["portrait", ...PERSON_DEPENDENT_CATEGORIES]
+  const oldRefs = await db
+    .select({ id: visualReferences.id, blobUrl: visualReferences.blobUrl })
+    .from(visualReferences)
+    .where(and(inArray(visualReferences.category, categoriesToInvalidate), eq(visualReferences.active, true)))
+
+  await db
+    .update(visualReferences)
+    .set({ active: false })
+    .where(and(inArray(visualReferences.category, categoriesToInvalidate), eq(visualReferences.active, true)))
+
+  await db.insert(visualReferences).values({
+    category: "portrait",
+    blobUrl,
+    promptUsed: prompt,
+    generationCost: 0,
+    active: true
+  })
+
+  for (const oldRef of oldRefs) {
+    deleteVisualReference(oldRef.blobUrl).catch((e) => {
+      log.warn("Failed to delete old reference blob", { blobUrl: oldRef.blobUrl, error: String(e) })
+    })
+  }
+
+  log.info("Portrait reference refreshed, person-dependent references invalidated")
+  return buffer
+}

@@ -3,6 +3,7 @@ import type { DriftReport, GuardianResult } from "@/governance/security/types.ts
 import { env } from "@/infra/config/env.ts"
 import { speechToText } from "@/infra/integrations/elevenlabs.ts"
 import { storeOperatorLocationFromTelegram } from "@/infra/integrations/location.ts"
+import { log } from "@/infra/lib/logger.ts"
 import { getLastUpdateId } from "@/memory/working.ts"
 import type { AlertLevel, PendingMessage } from "./types.ts"
 
@@ -306,4 +307,17 @@ export async function sendPhotoToOperator(
  */
 export async function sendUploadPhotoAction(): Promise<void> {
   await bot.sendChatAction(operatorChatId, "upload_photo")
+}
+
+/**
+ * Set the bot's own Telegram profile photo.
+ */
+export async function setBotProfilePhoto(imageBuffer: Buffer): Promise<boolean> {
+  try {
+    await bot.setMyProfilePhoto({ type: "static", photo: new InputFile(imageBuffer, "avatar.jpg") })
+    return true
+  } catch (error) {
+    log.error("Failed to set bot profile photo", { error: error instanceof Error ? error.message : String(error) })
+    return false
+  }
 }

@@ -1,4 +1,4 @@
-import { differenceInDays, differenceInMinutes, parseISO } from "date-fns"
+import { differenceInDays, differenceInMinutes, differenceInSeconds, parseISO } from "date-fns"
 import { getDisappointmentState, markAcknowledged, saveDisappointmentState } from "@/affect/emotion/disappointment.ts"
 import { computeGranularityUpdate } from "@/affect/emotion/granularity/compute.ts"
 import { getGranularityState, saveGranularityState } from "@/affect/emotion/granularity/state.ts"
@@ -122,6 +122,10 @@ import { formBoundary, maybeFormNegativeBoundary } from "@/self/boundaries/compu
 import { detectBoundaryFormation } from "@/self/boundaries/detect.ts"
 import { getBoundaryState } from "@/self/boundaries/state.ts"
 import { saveDissociativeState } from "@/self/coherence/dissociation/state.ts"
+import { refreshPortraitReference } from "@/expression/image/references.ts"
+import { setBotProfilePhoto } from "@/infra/integrations/telegram.ts"
+import { evaluateProfilePhotoTrigger, growHair } from "@/self/appearance/compute.ts"
+import { getAppearanceState, saveAppearanceState } from "@/self/appearance/state.ts"
 import { maybeDriftBigFive } from "@/self/genesis/drift.ts"
 import type { DeliberateResult, FeelingResult, MaintainInput, TickSummary } from "./types.ts"
 
@@ -134,7 +138,8 @@ const PROBABILITIES = {
   EXPIRE_OUTCOMES: 0.1,
   PRUNE_LESSONS: 0.05,
   BIGFIVE_DRIFT: 0.01,
-  DEEP_PROFILE_UPDATE: 0.05
+  DEEP_PROFILE_UPDATE: 0.05,
+  PROFILE_PHOTO_UPDATE: 0.005
 } as const
 
 const THRESHOLDS = {
@@ -757,6 +762,51 @@ async function runProbabilisticTasks(
         if (feelResult.dissociativeState) {
           await saveDissociativeState(feelResult.dissociativeState, buffer)
         }
+      }
+    },
+    {
+      name: "appearance_hair_growth",
+      probability: 1,
+      execute: async () => {
+        const lastTick = await getLastTickSummary()
+        const daysSinceLastTick = lastTick
+          ? differenceInSeconds(new Date(), parseISO(lastTick.timestamp)) / 86400
+          : 0
+        if (daysSinceLastTick <= 0) return
+
+        const appearance = await getAppearanceState()
+        const updated = growHair(appearance, daysSinceLastTick)
+        if (updated.hairLengthCm !== appearance.hairLengthCm) {
+          await saveAppearanceState(updated)
+        }
+      }
+    },
+    {
+      name: "profile_photo_update",
+      probability: PROBABILITIES.PROFILE_PHOTO_UPDATE,
+      execute: async () => {
+        const appearance = await getAppearanceState()
+        const recentlyCompletedHaircut = appearance.lastHaircutAt
+          ? differenceInDays(new Date(), parseISO(appearance.lastHaircutAt)) < 1
+          : false
+
+        const trigger = evaluateProfilePhotoTrigger(appearance, recentlyCompletedHaircut)
+        if (!trigger) return
+
+        log.info("Profile photo update triggered", { reason: trigger })
+
+        const portraitBuffer = await refreshPortraitReference()
+        if (!portraitBuffer) return
+
+        const success = await setBotProfilePhoto(portraitBuffer)
+        if (!success) return
+
+        await saveAppearanceState({
+          ...appearance,
+          lastProfilePhotoAt: new Date().toISOString(),
+          profilePhotoReason: trigger
+        })
+        log.info("Profile photo updated", { reason: trigger })
       }
     }
   ]

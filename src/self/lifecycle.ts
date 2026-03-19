@@ -6,6 +6,8 @@ import { log } from "@/infra/lib/logger.ts"
 import { nowISO, nowLocal } from "@/infra/lib/time.ts"
 import { storeEpisode } from "@/memory/episodic.ts"
 import { recordEvent } from "@/memory/events.ts"
+import { computePostHaircutLength } from "@/self/appearance/compute.ts"
+import { getAppearanceState, saveAppearanceState } from "@/self/appearance/state.ts"
 import { LIFECYCLE } from "./constants.ts"
 
 const LIFECYCLE_EVENT_KEY = "working:lifecycle:event"
@@ -216,7 +218,22 @@ export async function maybeStoreLifecycleEpisode(): Promise<void> {
   await redis.del(LIFECYCLE_EVENT_META_KEY)
   await redis.del(LIFECYCLE_LAST_ROLLED_KEY)
 
+  if (meta.type === "haircut") {
+    await applyHaircutToAppearance()
+  }
+
   log.info("Lifecycle episode stored", { type: meta.type, detail: meta.detail })
+}
+
+async function applyHaircutToAppearance(): Promise<void> {
+  const appearance = await getAppearanceState()
+  const newLength = computePostHaircutLength(appearance.hairLengthCm)
+  await saveAppearanceState({
+    ...appearance,
+    hairLengthCm: newLength,
+    lastHaircutAt: new Date().toISOString()
+  })
+  log.info("Haircut applied to appearance", { oldLength: appearance.hairLengthCm, newLength })
 }
 
 /**

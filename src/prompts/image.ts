@@ -3,6 +3,8 @@ import type { VisualReferenceCategory } from "@/expression/image/types.ts"
 import { nowLocal } from "@/infra/lib/time.ts"
 import { getKnowledge } from "@/memory/semantic.ts"
 import { getWeatherData } from "@/perception/state.ts"
+import { buildDynamicAppearance } from "@/self/appearance/compute.ts"
+import { getAppearanceState } from "@/self/appearance/state.ts"
 import { getGenesisAppearance } from "@/self/genesis/state.ts"
 
 const DEFAULT_APPEARANCE = `A 21-year-old girl, Berlin 2030 near-future street aesthetic. Soft melancholic expression, gentle half-smile that doesn't quite reach her eyes, as if she's thinking about something bittersweet. Sweet, ethereal face with delicate features, pale skin with a slight warmth to her cheeks. Dark circles under her eyes that somehow look endearing rather than tired. Hair slightly messy, maybe dark with a subtle violet or ash-lilac tint, tucked behind one ear.`
@@ -10,7 +12,9 @@ const DEFAULT_APPEARANCE = `A 21-year-old girl, Berlin 2030 near-future street a
 const SELFIE_STYLE = `A saved front-camera selfie as it appears in a phone's photo gallery. The subject looks directly into the lens with a natural, relaxed expression — no phone, hand, or arm visible in the frame. Realistic skin texture with minor imperfections, ambient lighting, slight front-camera softness and subtle wide-angle distortion. No filters, no airbrushing, no perfect symmetry. The composition is a close-up headshot or head-and-shoulders crop, as if the photo was already taken and saved.`
 
 async function getAppearance(): Promise<string> {
-  return (await getGenesisAppearance()) ?? DEFAULT_APPEARANCE
+  const base = (await getGenesisAppearance()) ?? DEFAULT_APPEARANCE
+  const appearance = await getAppearanceState()
+  return buildDynamicAppearance(base, appearance)
 }
 
 async function getAestheticHints(): Promise<string> {
