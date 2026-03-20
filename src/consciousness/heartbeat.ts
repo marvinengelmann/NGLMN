@@ -21,16 +21,13 @@ import { sense } from "./sense.ts"
 import type { SenseData } from "./types.ts"
 
 /**
- * Run the heartbeat loop: SENSE → FEEL → DELIBERATE → ACT, repeat while in conversation.
- * MAINTAIN runs once at the end.
+ * Run the heartbeat loop: each iteration is a full SENSE → FEEL → DELIBERATE → ACT → MAINTAIN cycle.
+ * State is flushed per tick so emotions, memory, and cognition update between conversation turns.
  */
 export async function runHeartbeat() {
   log.info("Heartbeat starting")
   const lockId = `tick-${Date.now()}`
-  let tickId = lockId
-  let startTime = Date.now()
-  let timestamp = nowISO()
-  setTickContext({ tickId })
+  setTickContext({ tickId: lockId })
 
   const acquired = await tryAcquireBusy(lockId)
   if (!acquired) {
@@ -38,21 +35,18 @@ export async function runHeartbeat() {
     return
   }
 
-  const buffer = createWriteBuffer()
-
   try {
-    let lastTickState: TickState | null = null
-    let lastDecision: Awaited<ReturnType<typeof deliberate>> | null = null
-    let lastActResult: Awaited<ReturnType<typeof act>> | null = null
     let previousSendInterrupted = false
     let lastKnownUpdateId: number | null = null
     let sentWithoutReply = false
 
     while (true) {
-      tickId = `tick-${Date.now()}`
-      startTime = Date.now()
-      timestamp = nowISO()
+      const tickId = `tick-${Date.now()}`
+      const startTime = Date.now()
+      const timestamp = nowISO()
       setTickContext({ tickId })
+
+      const buffer = createWriteBuffer()
 
       const senseResult = await sense({
         interruptedPreviousSend: previousSendInterrupted,
@@ -132,13 +126,28 @@ export async function runHeartbeat() {
 
       const actResult = await act(deliberateResult, senseResult, feelResult, buffer, tickId)
 
-      lastTickState = tickState
-      lastDecision = deliberateResult
-      lastActResult = actResult
-
       if (actResult.responseSent) {
         sentWithoutReply = true
       }
+
+      await maintain(
+        {
+          tickId,
+          startTime,
+          timestamp,
+          decision: deliberateResult.decision,
+          actResult,
+          senseResult
+        },
+        deliberateResult,
+        feelResult,
+        buffer
+      )
+
+      const stagedRedis = buffer.stagedRedisCount
+      const stagedPostgres = buffer.stagedPostgresCount
+      await buffer.flush()
+      log.info("WriteBuffer flushed", { redisKeys: stagedRedis, postgresRows: stagedPostgres })
 
       if (actResult.interrupted) {
         previousSendInterrupted = true
@@ -165,30 +174,6 @@ export async function runHeartbeat() {
         break
       }
     }
-
-    if (lastTickState && lastDecision && lastActResult) {
-      await maintain(
-        {
-          tickId,
-          startTime,
-          timestamp,
-          decision: lastDecision.decision,
-          actResult: lastActResult,
-          senseResult: lastTickState.sense
-        },
-        lastDecision,
-        lastTickState.feel,
-        buffer
-      )
-    }
-
-    const stagedRedis = buffer.stagedRedisCount
-    const stagedPostgres = buffer.stagedPostgresCount
-    await buffer.flush()
-    log.info("WriteBuffer flushed", { redisKeys: stagedRedis, postgresRows: stagedPostgres })
-  } catch (error) {
-    buffer.discard()
-    throw error
   } finally {
     await clearConversationWaitingSince()
     await clearBusy(lockId)

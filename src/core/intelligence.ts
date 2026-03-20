@@ -44,9 +44,7 @@ export function callIntelligence<T extends z.ZodType>(
     const result = await generateText({
       model,
       system,
-      ...(hasImages
-        ? { messages: [{ role: "user" as const, content: messageContent }] }
-        : { prompt: userMessage }),
+      ...(hasImages ? { messages: [{ role: "user" as const, content: messageContent }] } : { prompt: userMessage }),
       output: Output.object({ schema: options.schema }),
       maxOutputTokens: options.maxTokens ?? MAX_OUTPUT_TOKENS,
       ...(options.temperature !== undefined && !hasImages ? { temperature: options.temperature } : {})
