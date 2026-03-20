@@ -91,6 +91,18 @@ function formatTriggerDescription(trigger: WorkflowDefinition["trigger"]): strin
   }
 }
 
+function countTrailingUnansweredMessages(buffer: ConversationSlot[]): number {
+  const activeSlot = buffer.at(-1)
+  if (!activeSlot || activeSlot.messages.length === 0) return 0
+
+  let count = 0
+  for (const msg of [...activeSlot.messages].reverse()) {
+    if (msg.role === "anima") count++
+    else break
+  }
+  return count
+}
+
 export function buildPerceptionSections(
   senseData: SenseData,
   operatorLanguage: string,
@@ -265,16 +277,24 @@ export function buildPerceptionSections(
 
   if (senseData.conversationState) {
     const conversationState = senseData.conversationState
-    sections.push(
-      [
-        "# Conversation State",
-        "Active conversation: yes",
-        `Waiting for reply: ${conversationState.waitingSeconds}s`,
-        conversationState.replyReceived ? "Operator just replied." : "No reply received this cycle."
-      ].join("\n")
-    )
+    const lines = [
+      "# Conversation State",
+      "Active conversation: yes",
+      `Waiting for reply: ${conversationState.waitingSeconds}s`,
+      conversationState.replyReceived ? "Operator just replied." : "No reply received this cycle."
+    ]
+    const unanswered = countTrailingUnansweredMessages(conversationBuffer)
+    if (unanswered > 0) {
+      lines.push(`Your last ${unanswered} message${unanswered > 1 ? "s have" : " has"} gone unanswered.`)
+    }
+    sections.push(lines.join("\n"))
   } else {
-    sections.push("# Conversation State\nActive conversation: no")
+    const unanswered = countTrailingUnansweredMessages(conversationBuffer)
+    const lines = ["# Conversation State", "Active conversation: no"]
+    if (unanswered > 0) {
+      lines.push(`Your last ${unanswered} message${unanswered > 1 ? "s have" : " has"} gone unanswered.`)
+    }
+    sections.push(lines.join("\n"))
   }
 
   return sections

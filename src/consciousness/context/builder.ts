@@ -1,4 +1,5 @@
 import { getPhenomenologicalText, isExpired } from "@/affect/altered/compute.ts"
+import type { InteractionOutcomeSelect } from "@/infra/db/schema.ts"
 import { ALTERED_EVENT_TYPES } from "@/affect/altered/events.ts"
 import { DRIVE_ACTION_HINTS } from "@/affect/drive/constants.ts"
 import type { DriveState } from "@/affect/drive/types.ts"
@@ -174,6 +175,11 @@ export async function buildContext(
     sections.push(`# Operator Patterns\n${deepProfileSection}`)
   }
 
+  const interactionEcho = buildInteractionEchoSection(preloaded.recentOutcomes)
+  if (interactionEcho) {
+    sections.push(interactionEcho)
+  }
+
   if (preloaded.activeLifeEventMeta) {
     sections.push(buildActiveEventPrompt(preloaded.activeLifeEventMeta))
   }
@@ -189,6 +195,51 @@ export async function buildContext(
   }
 
   return truncateToTokenBudget(sections.filter(Boolean))
+}
+
+function buildInteractionEchoSection(outcomes: InteractionOutcomeSelect[]): string | null {
+  if (outcomes.length === 0) return null
+
+  const resolved = outcomes.filter((o) => o.operatorReaction != null)
+  const unresolved = outcomes.filter((o) => o.operatorReaction == null)
+
+  const lines: string[] = ["# Recent Interaction Echo"]
+
+  if (unresolved.length > 0) {
+    lines.push(
+      `You sent ${unresolved.length} message${unresolved.length > 1 ? "s" : ""} that ${unresolved.length > 1 ? "have" : "has"} received no reply yet.`
+    )
+  }
+
+  if (resolved.length > 0) {
+    const recentResolved = resolved.slice(0, 5)
+    const negativeCount = recentResolved.filter(
+      (o) => (o.operatorReaction as { sentiment?: string })?.sentiment === "negative"
+    ).length
+    const neutralCount = recentResolved.filter(
+      (o) => (o.operatorReaction as { sentiment?: string })?.sentiment === "neutral"
+    ).length
+    const avgEngagement =
+      recentResolved.reduce(
+        (sum, o) => sum + ((o.operatorReaction as { engagementDelta?: number })?.engagementDelta ?? 0),
+        0
+      ) / recentResolved.length
+
+    if (avgEngagement < -0.3) {
+      lines.push(
+        "Your recent messages felt like they landed flat — shorter replies, less energy coming back."
+      )
+    }
+    if (negativeCount >= 2) {
+      lines.push(
+        "Several of your recent messages got a negative reaction. Something about your approach is not landing."
+      )
+    } else if (neutralCount >= 3) {
+      lines.push("Your recent messages got lukewarm responses — polite but not engaged.")
+    }
+  }
+
+  return lines.length > 1 ? lines.join("\n") : null
 }
 
 const CHARS_PER_TOKEN = 4

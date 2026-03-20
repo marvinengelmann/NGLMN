@@ -11,6 +11,7 @@ import type {
   EntitySelect,
   EvolutionLogSelect,
   GoalSelect,
+  InteractionOutcomeSelect,
   ProcedureSelect
 } from "@/infra/db/schema.ts"
 import type { AnimaResult } from "@/infra/lib/result.ts"
@@ -83,4 +84,5 @@ export interface PreloadedState {
   graphRelations: EntityRelationSelect[]
   procedures: ProcedureSelect[]
   activeLifeEventMeta: ActiveLifeEventMeta | null
+  recentOutcomes: InteractionOutcomeSelect[]
 }

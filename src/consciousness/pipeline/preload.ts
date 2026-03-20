@@ -3,6 +3,7 @@ import { getEmotionHistory } from "@/affect/emotion/state.ts"
 import type { EmotionalState } from "@/affect/emotion/types.ts"
 import { computeEmotionalIntensity } from "@/affect/emotion/update.ts"
 import { getRelevantLessons } from "@/cognition/learning/lessons.ts"
+import { getRecentOutcomes } from "@/cognition/learning/outcomes.ts"
 import { getMatchingProcedures } from "@/cognition/learning/procedures/store.ts"
 import { getLastInnerDialog } from "@/cognition/polyphony/state.ts"
 import { getIdiolectState } from "@/expression/communication/idiolect.ts"
@@ -114,7 +115,8 @@ export async function preloadContextState(senseData: SenseData, emotion: Emotion
     autobiography,
     deepOperatorProfile,
     graphEntitiesResult,
-    proceduresResult
+    proceduresResult,
+    recentOutcomes
   ] = await Promise.all([
     getRecentTickDurations(),
     getConsecutiveIdleTicks(),
@@ -143,7 +145,8 @@ export async function preloadContextState(senseData: SenseData, emotion: Emotion
               : "evening",
       operatorMood: senseData.moodContext.operatorMood !== "unknown" ? senseData.moodContext.operatorMood : undefined,
       topic: messageText.length > 10 ? messageText.slice(0, 100) : undefined
-    })
+    }),
+    getRecentOutcomes(1)
   ])
 
   const relevantEntities = graphEntitiesResult.unwrapOr([])
@@ -198,6 +201,7 @@ export async function preloadContextState(senseData: SenseData, emotion: Emotion
     graphEntities: graphSubgraph.entities,
     graphRelations: graphSubgraph.relations,
     procedures: proceduresResult.unwrapOr([]),
-    activeLifeEventMeta
+    activeLifeEventMeta,
+    recentOutcomes
   }
 }
