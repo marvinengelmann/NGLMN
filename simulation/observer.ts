@@ -21,6 +21,8 @@ export interface StateSnapshot {
   cortisol: number
   consecutiveIdleTicks: number
   action: string
+  messageCount: number
+  triggerCounts: Record<string, number>
 }
 
 export interface Anomaly {
@@ -35,6 +37,7 @@ export interface SimulationObserver {
   snapshots: StateSnapshot[]
   anomalies: Anomaly[]
   record(state: SimulationState, action: string): void
+  recordEvents(triggers: string[], messageCount: number): void
   detectAnomalies(state: SimulationState, previousState: SimulationState | null): void
 }
 
@@ -42,9 +45,19 @@ export function createObserver(snapshotInterval: number): SimulationObserver {
   const snapshots: StateSnapshot[] = []
   const anomalies: Anomaly[] = []
 
+  let pendingTriggerCounts: Record<string, number> = {}
+  let pendingMessageCount = 0
+
   return {
     snapshots,
     anomalies,
+
+    recordEvents(triggers: string[], messageCount: number) {
+      pendingMessageCount += messageCount
+      for (const trigger of triggers) {
+        pendingTriggerCounts[trigger] = (pendingTriggerCounts[trigger] ?? 0) + 1
+      }
+    },
 
     record(state: SimulationState, action: string) {
       if (state.tickCount % snapshotInterval !== 0 && state.tickCount !== 1) return
@@ -63,8 +76,13 @@ export function createObserver(snapshotInterval: number): SimulationObserver {
         allostaticLoad: state.freeEnergyState.allostaticLoad,
         cortisol: state.neuromodulatoryState.cortisol.level,
         consecutiveIdleTicks: state.consecutiveIdleTicks,
-        action
+        action,
+        messageCount: pendingMessageCount,
+        triggerCounts: { ...pendingTriggerCounts }
       })
+
+      pendingTriggerCounts = {}
+      pendingMessageCount = 0
     },
 
     detectAnomalies(state: SimulationState, previousState: SimulationState | null) {

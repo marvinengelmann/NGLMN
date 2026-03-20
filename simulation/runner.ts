@@ -49,6 +49,10 @@ export async function runSimulation(config: SimulationConfig): Promise<Simulatio
 
     state = await computeTick(state, context, decision, clock)
 
+    observer.recordEvents(
+      context.triggers.map((t) => t.trigger),
+      context.pendingMessages.length
+    )
     observer.record(state, decision.action)
     observer.detectAnomalies(state, previousState)
 
@@ -64,7 +68,7 @@ export async function runSimulation(config: SimulationConfig): Promise<Simulatio
   process.stdout.write(`\r  Simulating... 100% (${totalTicks} ticks)            \n\n`)
 
   const durationMs = performance.now() - runStart
-  const report = generateReport(observer, durationMs)
+  const report = generateReport(observer, durationMs, config.scenario.tickIntervalMinutes, config.snapshotEveryNTicks)
 
   return { finalState: state, observer, report, durationMs, totalTicks }
 }
