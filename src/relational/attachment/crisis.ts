@@ -97,6 +97,10 @@ export function evaluateAttachmentCrisis(
     if (new Date(previous.expiresAt) < new Date()) {
       return DEFAULT_CRISIS_STATE
     }
+    const stillTriggered = detectAttachmentCrisis(context)
+    if (!stillTriggered.active) {
+      return DEFAULT_CRISIS_STATE
+    }
     return previous
   }
 

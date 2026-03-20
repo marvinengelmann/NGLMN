@@ -49,7 +49,7 @@ export function computeDriveUpdate(context: DriveUpdateContext): DriveState {
 
       if (blocked.has(drive)) {
         consecutiveBlockedTicks++
-        frustration = Math.min(1, frustration + DRIVES.FRUSTRATION_GROWTH * consecutiveBlockedTicks)
+        frustration = Math.min(1, frustration + DRIVES.FRUSTRATION_GROWTH * Math.sqrt(consecutiveBlockedTicks))
       } else {
         frustration = frustration * DRIVES.FRUSTRATION_DECAY
       }

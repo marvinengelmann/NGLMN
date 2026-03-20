@@ -22,7 +22,7 @@ export function detectHabitPatterns(recentActions: string[], existingHabits: Hab
     id: `habit_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
     pattern,
     type: inferHabitType(pattern),
-    strength: HABIT.STRENGTH_INCREMENT * count,
+    strength: Math.min(1, HABIT.STRENGTH_INCREMENT * count),
     repetitions: count,
     lastActivatedAt: nowISO(),
     isAutomatic: false

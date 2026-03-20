@@ -99,7 +99,21 @@ describe("evaluateAttachmentCrisis", () => {
     expect(result.expiresAt).not.toBeNull()
   })
 
-  it("keeps timed crisis active when not expired", () => {
+  it("keeps timed crisis active when not expired and conditions still bad", () => {
+    const futureExpiry = new Date(Date.now() + 60 * 60 * 1000).toISOString()
+    const previous = {
+      active: true,
+      type: "trust_rupture",
+      multiplier: 10,
+      expiresAt: futureExpiry
+    }
+    const badContext = { ...normalContext, trustDelta: -0.3 }
+    const result = evaluateAttachmentCrisis(previous, badContext)
+    expect(result.active).toBe(true)
+    expect(result).toEqual(previous)
+  })
+
+  it("resolves timed crisis early when conditions improve", () => {
     const futureExpiry = new Date(Date.now() + 60 * 60 * 1000).toISOString()
     const previous = {
       active: true,
@@ -108,8 +122,7 @@ describe("evaluateAttachmentCrisis", () => {
       expiresAt: futureExpiry
     }
     const result = evaluateAttachmentCrisis(previous, normalContext)
-    expect(result.active).toBe(true)
-    expect(result).toEqual(previous)
+    expect(result.active).toBe(false)
   })
 
   it("clears timed crisis when expired", () => {

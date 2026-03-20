@@ -81,6 +81,53 @@ describe("computeNeuromodulatorUpdate", () => {
     }
   })
 
+  it("saturation prevents levels from locking at ceiling under sustained positive input", () => {
+    const euphoric = makeEmotion({ satisfaction: 1, excitement: 1, confidence: 1, curiosity: 1, connection: 1 })
+    const calmSoma = makeSoma({ warmth: 0.8, openness: 0.8 })
+
+    let state = DEFAULT_NEUROMODULATORY_STATE
+    for (let i = 0; i < 200; i++) {
+      state = computeNeuromodulatorUpdate(state, euphoric, calmSoma, 2)
+    }
+
+    for (const mod of ["dopamine", "serotonin", "endorphins", "gaba"] as const) {
+      expect(state[mod].level).toBeLessThan(1)
+    }
+  })
+
+  it("saturation prevents levels from locking at floor under sustained negative input", () => {
+    const depressed = makeEmotion({ satisfaction: 0, excitement: 0, confidence: 0, curiosity: 0, connection: 0 })
+    const tenseSoma = makeSoma({ tension: 0.9, openness: 0.1, warmth: 0.1 })
+
+    let state = DEFAULT_NEUROMODULATORY_STATE
+    for (let i = 0; i < 200; i++) {
+      state = computeNeuromodulatorUpdate(state, depressed, tenseSoma, 2)
+    }
+
+    for (const mod of ["dopamine", "serotonin", "endorphins", "gaba", "oxytocin"] as const) {
+      expect(state[mod].level).toBeGreaterThan(0)
+    }
+  })
+
+  it("levels recover toward baseline after extreme input stops", () => {
+    const extreme = makeEmotion({ satisfaction: 1, excitement: 1, confidence: 1, curiosity: 1 })
+    const calmSoma = makeSoma()
+
+    let state = DEFAULT_NEUROMODULATORY_STATE
+    for (let i = 0; i < 50; i++) {
+      state = computeNeuromodulatorUpdate(state, extreme, calmSoma, 2)
+    }
+    const peakDopamine = state.dopamine.level
+
+    const neutral = makeEmotion()
+    for (let i = 0; i < 50; i++) {
+      state = computeNeuromodulatorUpdate(state, neutral, calmSoma, 2)
+    }
+
+    expect(state.dopamine.level).toBeLessThan(peakDopamine)
+    expect(state.dopamine.level).toBeCloseTo(NEURO_BASELINES.dopamine, 0)
+  })
+
   it("cross-modulator: high cortisol suppresses serotonin over time", () => {
     const stressed = makeEmotion({ frustration: 0.9, caution: 0.8 })
     const soma = makeSoma({ tension: 0.8 })

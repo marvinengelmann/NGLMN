@@ -65,7 +65,9 @@ function applyCrossModulatorInteractions(
 
   const result = { ...levels }
   for (const mod of NEUROMODULATOR_TYPES) {
-    result[mod] = clamp01(result[mod] + (deltas[mod] ?? 0))
+    const delta = deltas[mod] ?? 0
+    const headroom = delta > 0 ? 1 - result[mod] : result[mod]
+    result[mod] = clamp01(result[mod] + delta * headroom)
   }
   return result
 }
@@ -135,7 +137,13 @@ export function computeNeuromodulatorUpdate(
     const newProductionRate = clamp01(current[mod].productionRate * 0.9 + (0.5 + totalProduction) * 0.1)
     const newReuptakeRate = current[mod].reuptakeRate
 
-    levels[mod] = clamp01(decayed + totalProduction)
+    const headroom =
+      totalProduction > 0
+        ? Math.pow(1 - decayed, 1 + newReuptakeRate)
+        : Math.pow(decayed, 1 + newReuptakeRate)
+    const effectiveProduction = totalProduction * headroom
+
+    levels[mod] = clamp01(decayed + effectiveProduction)
     productionRates[mod] = newProductionRate
     reuptakeRates[mod] = newReuptakeRate
   }
