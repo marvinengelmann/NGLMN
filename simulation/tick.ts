@@ -41,7 +41,16 @@ import {
   computeSomaticTrajectory,
   predictSomaticState
 } from "@/affect/soma/prediction.ts"
+import {
+  amplifySomaticPerception,
+  computeMisinterpretationTriggers,
+  computeSomaticAttentionFocus
+} from "@/affect/soma/amplification.ts"
+import { computeInflammationSomaticShifts, computeInflammationUpdate } from "@/affect/soma/inflammation.ts"
+import { applyRegionalHysteresis, computeRegionalTarget } from "@/affect/soma/regions.ts"
+import { applySensitizationAmplification, updateSensitization } from "@/affect/soma/sensitization.ts"
 import { computeSomaticUpdate, drainSocialBattery, rechargeSocialBattery } from "@/affect/soma/update.ts"
+import { applyVulnerabilityPattern, updateVulnerabilityProfile } from "@/affect/soma/vulnerability-memory.ts"
 import { computeAttentionState } from "@/cognition/attention.ts"
 import { updateBiasModifiers } from "@/cognition/bias/compute.ts"
 import { computeDMNState } from "@/cognition/dmn/compute.ts"
@@ -72,6 +81,7 @@ import { computeCoherenceEffect, updateCoherenceState } from "@/self/coherence/c
 import { DISSOCIATION } from "@/self/coherence/dissociation/constants.ts"
 import { checkDissociationTriggers, computeDissociativeState } from "@/self/coherence/dissociation/compute.ts"
 import { processRegulationCycle } from "@/self/defense/compute.ts"
+import { computeConversionSignal } from "@/self/defense/conversion.ts"
 import { compute as computeShame } from "@/affect/emotion/shame.ts"
 import { decayBuffer, detectSuppression } from "@/self/psyche/heldback.ts"
 import { applyGrowthArcMomentum, detectGrowthArc, updateSelfConcept } from "@/self/psyche/update.ts"
@@ -124,6 +134,9 @@ export async function computeTick(
     attachmentAvoidance: state.attachmentStyle.avoidant
   }
 
+  const somaticAttentionFocus = computeSomaticAttentionFocus(state.emotion, state.consecutiveIdleTicks)
+  const perceivedSoma = amplifySomaticPerception(state.soma, somaticAttentionFocus, state.interoceptiveAccuracy)
+
   const appraisalContext: AppraisalContext = {
     noveltyLevel: state.noveltyState.level,
     hasActiveGoals: true,
@@ -147,7 +160,7 @@ export async function computeTick(
         trustExperience: state.trustExperience,
         hourOfDay,
         appraisalContext,
-        soma: state.soma,
+        soma: perceivedSoma,
         episodicContext: toEpisodicContext([]),
         neuromodulatoryState: state.neuromodulatoryState
       }
@@ -238,6 +251,11 @@ export async function computeTick(
   const driveTriggers = computeDriveEmotionTriggers(driveState)
   emotion = driveTriggers.reduce((acc, trigger) => applyEvent(acc, trigger), emotion)
 
+  const misinterpretationTriggers = computeMisinterpretationTriggers(
+    state.soma, perceivedSoma, state.interoceptiveAccuracy, somaticAttentionFocus
+  )
+  emotion = misinterpretationTriggers.reduce((acc, t) => applyEvent(acc, t), emotion)
+
   const somaticTrajectory = computeSomaticTrajectory(state.somaticHistory)
   const predictedSoma = predictSomaticState({
     currentSoma: state.soma,
@@ -253,17 +271,52 @@ export async function computeTick(
     }
   })
 
+  const cortisolLevel = state.neuromodulatoryState.cortisol.level
+
   let soma = computeSomaticUpdate({
     current: state.soma,
     emotion,
     elapsedMinutes: somaticElapsed,
     hourOfDay,
-    memories: []
+    memories: [],
+    cortisolLevel,
+    allostaticLoad: state.freeEnergyState.allostaticLoad
   })
+
+  const somaExcludeKeys = new Set(["socialBattery", "immuneResilience"])
+
+  const inflammationShifts = computeInflammationSomaticShifts(state.inflammationLevel)
+  if (Object.keys(inflammationShifts).length > 0) {
+    soma = applyClampedDeltas(soma, inflammationShifts, somaExcludeKeys)
+  }
+
+  if (Object.keys(state.conversionSignal.somaticDeltas).length > 0) {
+    soma = applyClampedDeltas(soma, state.conversionSignal.somaticDeltas, somaExcludeKeys)
+  }
+
+  const stressLevel = Math.max(0, (emotion.frustration + emotion.caution - 1.0) * 2)
+
+  let enrichedRegionalTarget = computeRegionalTarget(emotion, hourOfDay)
+  enrichedRegionalTarget = applyVulnerabilityPattern(enrichedRegionalTarget, state.vulnerabilityProfile, stressLevel)
+  enrichedRegionalTarget = applySensitizationAmplification(enrichedRegionalTarget, state.sensitizationProfile)
+
+  if (Object.keys(state.conversionSignal.regionalDeltas).length > 0) {
+    for (const [region, delta] of Object.entries(state.conversionSignal.regionalDeltas)) {
+      if (region in enrichedRegionalTarget && typeof delta === "number") {
+        const current = (enrichedRegionalTarget as Record<string, number>)[region] ?? 0
+        ;(enrichedRegionalTarget as Record<string, number>)[region] = Math.max(0, Math.min(1, current + delta))
+      }
+    }
+  }
+
+  const regionalActivation = applyRegionalHysteresis(state.regionalActivation, enrichedRegionalTarget, somaticElapsed)
+  const sensitizationProfile = updateSensitization(state.sensitizationProfile, regionalActivation, somaticElapsed)
+  const vulnerabilityProfile = updateVulnerabilityProfile(state.vulnerabilityProfile, regionalActivation)
+  const inflammationLevel = computeInflammationUpdate(state.inflammationLevel, cortisolLevel, somaticElapsed)
 
   if (alteredState) {
     const somaMods = computeSomaModifiers(alteredState)
-    soma = applyClampedDeltas(soma, somaMods, new Set(["socialBattery"]))
+    soma = applyClampedDeltas(soma, somaMods, somaExcludeKeys)
   }
 
   if (decision.responseSent && context.pendingMessages.length > 0) {
@@ -464,6 +517,8 @@ export async function computeTick(
     isDreaming: moodContext.isDreaming,
     isReflecting: decision.action === "reflect"
   })
+
+  const conversionSignal = computeConversionSignal(updatedRegulation.activeStrategies, cortisolLevel)
 
   const updatedBias = updateBiasModifiers(state.biasState, neuromodulatoryState)
 
@@ -674,6 +729,11 @@ export async function computeTick(
     ultradianState,
     deferredQueue: updatedDeferredQueue,
     freeEnergyState,
+    regionalActivation,
+    sensitizationProfile,
+    vulnerabilityProfile,
+    inflammationLevel,
+    conversionSignal,
     interoceptiveAccuracy: interoceptivePrediction.accuracy,
     freeEnergyHistory: updatedFEHistory,
     triggerTimestamps: mergedTimestamps,

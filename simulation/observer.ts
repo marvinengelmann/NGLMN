@@ -1,10 +1,10 @@
 import type { EmotionalState } from "@/affect/emotion/types.ts"
 import { EMOTION_CEILINGS, EMOTION_FLOORS } from "@/affect/emotion/update.ts"
 import type { NeuromodulatoryState } from "@/affect/neuromodulation/types.ts"
-import type { SomaticState } from "@/affect/soma/types.ts"
+import type { BodyRegionMap, SomaticState } from "@/affect/soma/types.ts"
 import type { AttachmentStyle } from "@/relational/attachment/types.ts"
-import type { SelfConcept } from "@/self/psyche/types.ts"
 import type { CoherenceState } from "@/self/coherence/types.ts"
+import type { SelfConcept } from "@/self/psyche/types.ts"
 import type { SimulationState } from "./state.ts"
 
 export interface StateSnapshot {
@@ -16,6 +16,10 @@ export interface StateSnapshot {
   attachment: AttachmentStyle
   selfConcept: SelfConcept
   coherence: CoherenceState
+  regionalActivation: BodyRegionMap
+  inflammationLevel: number
+  sensitizationPeak: number
+  vulnerabilityPeak: number
   autonomicZone: string
   isolationCost: number
   allostaticLoad: number
@@ -74,6 +78,10 @@ export function createObserver(snapshotInterval: number): SimulationObserver {
         attachment: { ...state.attachmentStyle },
         selfConcept: { ...state.selfConcept },
         coherence: { ...state.coherenceState },
+        regionalActivation: { ...state.regionalActivation },
+        inflammationLevel: state.inflammationLevel,
+        sensitizationPeak: Math.max(...Object.values(state.sensitizationProfile)),
+        vulnerabilityPeak: Math.max(...Object.values(state.vulnerabilityProfile)),
         autonomicZone: state.autonomicState.zone,
         isolationCost: state.isolationStress.isolationCost,
         allostaticLoad: state.freeEnergyState.allostaticLoad,
@@ -98,6 +106,7 @@ export function createObserver(snapshotInterval: number): SimulationObserver {
       checkCoherenceCollapse(state, tick, ts, anomalies)
       checkAutonomicStuck(state, tick, ts, anomalies)
       checkSomaticExtremes(state, tick, ts, anomalies)
+      checkPsychosomaticExtremes(state, tick, ts, anomalies)
       checkAttachmentDrift(state, tick, ts, anomalies)
 
       if (previousState) {
@@ -224,6 +233,44 @@ function checkAttachmentDrift(state: SimulationState, tick: number, ts: string, 
     anomalies.push({
       tick, timestamp: ts, type: "attachment_insecure",
       description: `Secure attachment critically low (${state.attachmentStyle.secure.toFixed(3)})`,
+      severity: "high"
+    })
+  }
+}
+
+function checkPsychosomaticExtremes(state: SimulationState, tick: number, ts: string, anomalies: Anomaly[]) {
+  if (state.inflammationLevel > 0.8) {
+    anomalies.push({
+      tick, timestamp: ts, type: "inflammation_runaway",
+      description: `Inflammation level critically high (${state.inflammationLevel.toFixed(3)})`,
+      severity: state.inflammationLevel > 0.9 ? "critical" : "high"
+    })
+  }
+
+  const sensitizationMax = Math.max(...Object.values(state.sensitizationProfile))
+  if (sensitizationMax > 0.9) {
+    const region = Object.entries(state.sensitizationProfile).find(([, v]) => v === sensitizationMax)?.[0]
+    anomalies.push({
+      tick, timestamp: ts, type: "sensitization_saturation",
+      description: `Sensitization saturated in ${region} (${sensitizationMax.toFixed(3)})`,
+      severity: "high"
+    })
+  }
+
+  if (state.soma.immuneResilience < 0.3) {
+    anomalies.push({
+      tick, timestamp: ts, type: "immune_depletion",
+      description: `Immune resilience critically low (${state.soma.immuneResilience.toFixed(3)})`,
+      severity: state.soma.immuneResilience < 0.15 ? "critical" : "high"
+    })
+  }
+
+  const regionalMax = Math.max(...Object.values(state.regionalActivation))
+  if (regionalMax > 0.9) {
+    const region = Object.entries(state.regionalActivation).find(([, v]) => v === regionalMax)?.[0]
+    anomalies.push({
+      tick, timestamp: ts, type: "regional_activation_ceiling",
+      description: `Regional activation saturated in ${region} (${regionalMax.toFixed(3)})`,
       severity: "high"
     })
   }

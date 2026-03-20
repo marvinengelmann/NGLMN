@@ -16,8 +16,8 @@ import {
 } from "@/affect/emotion/types.ts"
 import type { NeuromodulatoryState } from "@/affect/neuromodulation/types.ts"
 import { DEFAULT_NEUROMODULATORY_STATE } from "@/affect/neuromodulation/types.ts"
-import type { AutonomicState, RegulationConstraints, SomaticState } from "@/affect/soma/types.ts"
-import { DEFAULT_AUTONOMIC_STATE, DEFAULT_SOMATIC_STATE } from "@/affect/soma/types.ts"
+import type { AutonomicState, BodyRegionMap, RegulationConstraints, SomaticState } from "@/affect/soma/types.ts"
+import { DEFAULT_AUTONOMIC_STATE, DEFAULT_BODY_REGION_MAP, DEFAULT_SOMATIC_STATE } from "@/affect/soma/types.ts"
 import type { BiasState } from "@/cognition/bias/types.ts"
 import { DEFAULT_BIAS_STATE } from "@/cognition/bias/types.ts"
 import type { DefaultModeNetworkState } from "@/cognition/dmn/types.ts"
@@ -52,8 +52,8 @@ import type { CoherenceState } from "@/self/coherence/types.ts"
 import { DEFAULT_COHERENCE_STATE } from "@/self/coherence/types.ts"
 import type { DeceptionState } from "@/self/deception/types.ts"
 import { DEFAULT_DECEPTION_STATE } from "@/self/deception/types.ts"
-import type { EmotionRegulationState } from "@/self/defense/types.ts"
-import { DEFAULT_EMOTION_REGULATION_STATE } from "@/self/defense/types.ts"
+import type { ConversionSignal, EmotionRegulationState } from "@/self/defense/types.ts"
+import { DEFAULT_CONVERSION_SIGNAL, DEFAULT_EMOTION_REGULATION_STATE } from "@/self/defense/types.ts"
 import type { HeldBackBuffer } from "@/self/psyche/heldback.ts"
 import { DEFAULT_HELD_BACK_BUFFER } from "@/self/psyche/heldback.ts"
 import type { GrowthArc, SelfConcept } from "@/self/psyche/types.ts"
@@ -99,6 +99,11 @@ export interface SimulationState {
   ultradianState: UltradianState
   deferredQueue: DeferredQueue
   freeEnergyState: FreeEnergyState
+  regionalActivation: BodyRegionMap
+  sensitizationProfile: BodyRegionMap
+  vulnerabilityProfile: BodyRegionMap
+  inflammationLevel: number
+  conversionSignal: ConversionSignal
   interoceptiveAccuracy: number
   freeEnergyHistory: number[]
   triggerTimestamps: Record<string, number>
@@ -164,6 +169,11 @@ export function createInitialState(clock: SimulationClock): SimulationState {
     ultradianState: { ...DEFAULT_ULTRADIAN_STATE, cycleStartedAt: now },
     deferredQueue: { events: [] },
     freeEnergyState: structuredClone(DEFAULT_FREE_ENERGY_STATE),
+    regionalActivation: { ...DEFAULT_BODY_REGION_MAP },
+    sensitizationProfile: { head: 0, chest: 0, gut: 0, throat: 0, shoulders: 0, skin: 0, limbs: 0 },
+    vulnerabilityProfile: { head: 0, chest: 0, gut: 0, throat: 0, shoulders: 0, skin: 0, limbs: 0 },
+    inflammationLevel: 0.05,
+    conversionSignal: structuredClone(DEFAULT_CONVERSION_SIGNAL),
     interoceptiveAccuracy: 0.5,
     freeEnergyHistory: [],
     triggerTimestamps: {},

@@ -86,6 +86,14 @@ export function extractAllMetrics(snapshots: StateSnapshot[]): Map<string, numbe
     metrics.set(`selfConcept.${key}`, snapshots.map((s) => s.selfConcept[key]))
   }
 
+  const regionKeys = Object.keys(snapshots[0]!.regionalActivation) as (keyof typeof snapshots[0]["regionalActivation"])[]
+  for (const key of regionKeys) {
+    metrics.set(`region.${key}`, snapshots.map((s) => s.regionalActivation[key]))
+  }
+
+  metrics.set("inflammationLevel", snapshots.map((s) => s.inflammationLevel))
+  metrics.set("sensitizationPeak", snapshots.map((s) => s.sensitizationPeak))
+  metrics.set("vulnerabilityPeak", snapshots.map((s) => s.vulnerabilityPeak))
   metrics.set("coherence", snapshots.map((s) => s.coherence.integrationScore))
   metrics.set("isolationCost", snapshots.map((s) => s.isolationCost))
   metrics.set("allostaticLoad", snapshots.map((s) => s.allostaticLoad))
