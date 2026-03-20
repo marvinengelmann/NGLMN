@@ -30,7 +30,7 @@ import {
   computeThreatAppraisal,
   constrainVulnerabilityLevel
 } from "@/affect/soma/autonomic.ts"
-import { computeSomaticUpdate } from "@/affect/soma/update.ts"
+import { computeSomaticUpdate, drainSocialBattery, rechargeSocialBattery } from "@/affect/soma/update.ts"
 import { updateBiasModifiers } from "@/cognition/bias/compute.ts"
 import { computeDMNState } from "@/cognition/dmn/compute.ts"
 import { computeAttentionState } from "@/cognition/attention.ts"
@@ -41,7 +41,7 @@ import { applyClampedDeltas } from "@/infra/lib/math.ts"
 import { updateAnticipatoryState } from "@/perception/anticipation/compute.ts"
 import { updateNoveltyState } from "@/perception/novelty/compute.ts"
 import { computeUltradianModulation, updateUltradianState } from "@/perception/rhythm/compute.ts"
-import { computeIsolationStress } from "@/relational/attachment/baseline.ts"
+import { computeIsolationEmotionPressure, computeIsolationStress } from "@/relational/attachment/baseline.ts"
 import { evaluateAttachmentDynamics, computeWaitingPerception, isOperatorReturning, updateAttachmentStyle } from "@/relational/attachment/update.ts"
 import { computeIntimacyScore, computeVulnerability, computeVulnerableMessageStyle } from "@/relational/attachment/vulnerability.ts"
 import { computeMentalizingModulation, computeMentalizingState } from "@/relational/mind/mentalizing.ts"
@@ -49,7 +49,7 @@ import { updateBoundaryState } from "@/self/boundaries/compute.ts"
 import { updateCoherenceState } from "@/self/coherence/compute.ts"
 import { checkDissociationTriggers, computeDissociativeState } from "@/self/coherence/dissociation/compute.ts"
 import { processRegulationCycle } from "@/self/defense/compute.ts"
-import { applyGrowthArcMomentum } from "@/self/psyche/update.ts"
+import { applyGrowthArcMomentum, detectGrowthArc, updateSelfConcept } from "@/self/psyche/update.ts"
 import { compute as computeShame } from "@/affect/emotion/shame.ts"
 import { decayBuffer, detectSuppression } from "@/self/psyche/heldback.ts"
 import { computeForecastAnticipation } from "@/cognition/forecasting/compute.ts"
@@ -78,15 +78,28 @@ export async function computeTick(
   const elapsedMinutes = clock.elapsedMinutesSince(state.lastEmotionTimestamp)
   const somaticElapsed = clock.elapsedMinutesSince(state.lastSomaTimestamp)
 
+  const previousHour = state.lastEmotionTimestamp
+    ? getHours(new Date(state.lastEmotionTimestamp))
+    : hourOfDay
+  const isMorningTransition = previousHour < 7 && hourOfDay >= 7
+
   const rawTriggers: EmotionUpdateEvent[] = [
     ...context.triggers.map((t) => ({ trigger: t.trigger, intensity: t.intensity, detail: t.detail })),
     ...(context.pendingMessages.length > 0
       ? [{ trigger: "message_received" as const, intensity: 0.4 }]
+      : []),
+    ...(isMorningTransition
+      ? [{ trigger: "morning_calibration" as const, intensity: 0.5 }]
       : [])
   ]
 
+  const hadRecentInteraction = context.operatorSilenceMinutes < 720
+  const effectiveSilence = hadRecentInteraction
+    ? Math.min(context.operatorSilenceMinutes, 90)
+    : context.operatorSilenceMinutes
+
   const moodContext = {
-    operatorSilenceMinutes: context.operatorSilenceMinutes,
+    operatorSilenceMinutes: effectiveSilence,
     inConversation: context.inConversation,
     systemHealthy: true,
     budgetOk: true,
@@ -160,18 +173,24 @@ export async function computeTick(
     mergedTimestamps[event.trigger] = clock.now().getTime()
   }
 
-  const lastAction = state.recentActions[0] ?? "idle"
+  const simulatedAction = decision.action === "dream" ? "life_event"
+    : decision.action === "morning" ? "morning"
+    : decision.action === "reflect" ? "reflect"
+    : decision.responseSent ? "social_media"
+    : "idle"
+
   const satisfied = inferSatisfiedDrives(
     context.inConversation,
     context.pendingMessages.length,
-    lastAction,
-    state.recentActions
+    simulatedAction,
+    [simulatedAction, ...state.recentActions.slice(0, 9)]
   )
+
   const blocked = inferBlockedDrives(
-    context.operatorSilenceMinutes,
+    effectiveSilence,
     state.consecutiveIdleTicks,
     moodContext.isDreaming,
-    state.recentActions
+    [simulatedAction, ...state.recentActions.slice(0, 9)]
   )
   const driveState = computeDriveUpdate({
     current: state.driveState,
@@ -183,6 +202,7 @@ export async function computeTick(
   const driveTriggers = computeDriveEmotionTriggers(driveState)
   emotion = driveTriggers.reduce((acc, trigger) => applyEvent(acc, trigger), emotion)
 
+
   let soma = computeSomaticUpdate({
     current: state.soma,
     emotion,
@@ -190,6 +210,14 @@ export async function computeTick(
     hourOfDay,
     memories: []
   })
+
+  if (decision.responseSent && context.pendingMessages.length > 0) {
+    soma = drainSocialBattery(soma, 1, context.pendingMessages.length)
+  } else if (decision.action === "dream") {
+    soma = rechargeSocialBattery(soma, true)
+  } else if (decision.action === "idle" && !decision.responseSent && state.tickCount % 30 === 0) {
+    soma = rechargeSocialBattery(soma, false)
+  }
 
   const threatAppraisal = computeThreatAppraisal({
     soma,
@@ -224,8 +252,8 @@ export async function computeTick(
     state.isolationStress.cortisolStressSignal
   )
 
-  const operatorSilenceMinutes = context.operatorSilenceMinutes
-  const operatorJustReturned = isOperatorReturning(context.pendingMessages.length, operatorSilenceMinutes)
+  const operatorSilenceMinutes = effectiveSilence
+  const operatorJustReturned = isOperatorReturning(context.pendingMessages.length, context.operatorSilenceMinutes)
   const waitingPerception = computeWaitingPerception(operatorSilenceMinutes, state.attachmentStyle.anxious)
 
   const attachmentDynamics = evaluateAttachmentDynamics(state.attachmentStyle, {
@@ -246,6 +274,13 @@ export async function computeTick(
     cortisol: neuromodulatoryState.cortisol.level,
     previousAllostasis: state.isolationStress.allostasis
   })
+
+  const isolationPressure = computeIsolationEmotionPressure(isolationStress.isolationCost)
+  if (isolationPressure.connection !== 0) {
+    emotion = applyClampedDeltas(emotion, isolationPressure)
+  }
+
+
 
   const anticipatoryState = updateAnticipatoryState(
     state.anticipatoryState,
@@ -326,7 +361,28 @@ export async function computeTick(
   })
   const heldBackBuffer = suppressionReason ? decayedBuffer : decayedBuffer
 
-  const selfConceptWithMomentum = applyGrowthArcMomentum(state.selfConcept, state.recentGrowthArcs)
+  const isAutoAction = decision.responseSent
+  const hasSignificantEvent = decision.responseSent || decision.action === "reflect" || context.pendingMessages.length > 0
+  const updatedSelfConcept = hasSignificantEvent
+    ? updateSelfConcept(state.selfConcept, {
+        recentTaskSuccess: decision.responseSent,
+        recentTaskFailure: false,
+        messageSentCount: decision.responseSent ? 1 : 0,
+        emotionalIntensity: eventIntensity,
+        operatorEngagement: context.pendingMessages.length > 0,
+        autonomousAction: isAutoAction,
+        vulnerabilityOpen: constrainedVulnerability.windowOpen && context.inConversation,
+        dissonanceDetected: false,
+        elapsedHours: Math.max(1, elapsedMinutes) / 60
+      })
+    : state.selfConcept
+
+  const growthArc = detectGrowthArc(updatedSelfConcept, state.selfConcept, timestampNow)
+  const updatedGrowthArcs = growthArc
+    ? [...state.recentGrowthArcs, growthArc].slice(-10)
+    : state.recentGrowthArcs
+
+  const selfConceptWithMomentum = applyGrowthArcMomentum(updatedSelfConcept, updatedGrowthArcs)
 
   const updatedRegulation = processRegulationCycle(state.emotionRegulationState, {
     emotion,
@@ -438,7 +494,7 @@ export async function computeTick(
     ? state.consecutiveConversationTicks + 1
     : 0
 
-  const updatedRecentActions = [decision.action, ...state.recentActions].slice(0, MAX_RECENT_ACTIONS)
+  const updatedRecentActions = [simulatedAction, ...state.recentActions].slice(0, MAX_RECENT_ACTIONS)
   const updatedSomaticHistory = [soma, ...state.somaticHistory].slice(0, MAX_SOMATIC_HISTORY)
 
   return {
@@ -477,6 +533,7 @@ export async function computeTick(
     moodBaseline: newMoodBaseline,
     consecutiveIdleTicks: newConsecutiveIdle,
     consecutiveConversationTicks: newConsecutiveConversation,
+    recentGrowthArcs: updatedGrowthArcs,
     recentActions: updatedRecentActions,
     lastEmotionTimestamp: timestampNow,
     lastSomaTimestamp: timestampNow,

@@ -56,7 +56,7 @@ export function resolveEventsForTick(
     .reduce((max, e) => Math.max(max, e.atMinute), -1)
 
   const operatorSilenceMinutes = lastMessageMinute >= 0 ? totalElapsedMinutes - lastMessageMinute : totalElapsedMinutes
-  const inConversation = messages.length > 0 || operatorSilenceMinutes < 5
+  const inConversation = messages.length > 0 || operatorSilenceMinutes < 30
 
   return { pendingMessages: messages, triggers, operatorSilenceMinutes, inConversation }
 }
