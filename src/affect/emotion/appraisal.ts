@@ -221,7 +221,10 @@ export function applyConstructedEvents(
     const updated: Partial<EmotionalState> = {}
     for (const [dim, delta] of Object.entries(construction.deltas)) {
       const key = dim as keyof EmotionalState
-      updated[key] = (current[key] ?? 0) + (delta ?? 0)
+      const value = current[key] ?? 0
+      const d = delta ?? 0
+      const headroom = d > 0 ? 1 - value : value
+      updated[key] = value + d * headroom
     }
     current = clampState({ ...current, ...updated })
   }
