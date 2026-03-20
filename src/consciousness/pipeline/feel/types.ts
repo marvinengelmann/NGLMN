@@ -16,6 +16,7 @@ import type {
 import type { NeuromodulatoryState } from "@/affect/neuromodulation/types.ts"
 import type {
   AutonomicState,
+  BodyRegionMap,
   InteroceptivePrediction,
   RegulationConstraints,
   SomaticState
@@ -90,6 +91,7 @@ export interface FeelPrefetch {
   previousAutonomicState: AutonomicState
   interoceptiveAccuracy: number
   recentSomaHistory: SomaticState[]
+  previousRegionalState: BodyRegionMap
   previousNeuromodulatoryState: NeuromodulatoryState
   previousIsolationStress: IsolationStress
   previousBiasState: BiasState
@@ -127,6 +129,7 @@ export interface EmotionChainResult {
   appraisalResults: AppraisalResult[]
   neuromodulatoryState: NeuromodulatoryState
   constructionResults: EmotionConstructionResult[]
+  regionalActivation: BodyRegionMap
 }
 
 export interface ParallelFanResult {

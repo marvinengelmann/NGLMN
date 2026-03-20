@@ -17,10 +17,9 @@ export function computeSomaticTrajectory(recentHistory: SomaticState[]): Partial
 
   const trajectory: Partial<Record<SomaDimension, number>> = {}
   for (const dim of SOMA_DIMENSIONS) {
-    let totalDelta = 0
-    for (let i = 1; i < recentHistory.length; i++) {
-      totalDelta += (recentHistory[i]?.[dim] ?? 0) - (recentHistory[i - 1]?.[dim] ?? 0)
-    }
+    const totalDelta = recentHistory
+      .slice(1)
+      .reduce((sum, curr, idx) => sum + (curr[dim] ?? 0) - (recentHistory[idx]?.[dim] ?? 0), 0)
     trajectory[dim] = totalDelta / (recentHistory.length - 1)
   }
   return trajectory
@@ -85,7 +84,8 @@ export function predictSomaticState({
     breathing: 0,
     gravity: 0,
     openness: 0,
-    socialBattery: currentSoma.socialBattery
+    socialBattery: currentSoma.socialBattery,
+    immuneResilience: currentSoma.immuneResilience
   }
 
   for (const dim of SOMA_DIMENSIONS) {

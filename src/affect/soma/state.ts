@@ -4,13 +4,21 @@ import { somaticHistory } from "@/infra/db/schema.ts"
 import { getValidatedRedis, redis } from "@/infra/integrations/redis.ts"
 import { queryRelated } from "@/memory/episodic.ts"
 import { INTEROCEPTION, SOMA } from "./constants.ts"
-import { AutonomicState, DEFAULT_AUTONOMIC_STATE, DEFAULT_SOMATIC_STATE, SomaticState } from "./types.ts"
+import {
+  AutonomicState,
+  BodyRegionMap,
+  DEFAULT_AUTONOMIC_STATE,
+  DEFAULT_BODY_REGION_MAP,
+  DEFAULT_SOMATIC_STATE,
+  SomaticState
+} from "./types.ts"
 
 const KEYS = {
   CURRENT: "working:soma:current",
   LAST_TIMESTAMP: "working:soma:lastTimestamp",
   AUTONOMIC: "working:soma:autonomic",
-  INTEROCEPTIVE_ACCURACY: "working:soma:interoceptiveAccuracy"
+  INTEROCEPTIVE_ACCURACY: "working:soma:interoceptiveAccuracy",
+  REGIONAL: "working:soma:regional"
 } as const
 
 /**
@@ -124,4 +132,12 @@ export async function getAutonomicState(): Promise<AutonomicState> {
 export async function getInteroceptiveAccuracy(): Promise<number> {
   const raw = await redis.get<number>(KEYS.INTEROCEPTIVE_ACCURACY)
   return raw ?? INTEROCEPTION.ACCURACY_INITIAL
+}
+
+/**
+ * Get current body region activation map from Redis, falling back to default.
+ */
+export async function getRegionalState(): Promise<BodyRegionMap> {
+  const fromRedis = await getValidatedRedis(KEYS.REGIONAL, BodyRegionMap)
+  return fromRedis ?? DEFAULT_BODY_REGION_MAP
 }

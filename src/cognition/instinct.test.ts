@@ -9,7 +9,8 @@ const baseSoma = {
   breathing: 0.5,
   gravity: 0.5,
   openness: 0.5,
-  socialBattery: 0.8
+  socialBattery: 0.8,
+  immuneResilience: 0.7
 }
 
 const neutralImpression: InstinctImpression = {

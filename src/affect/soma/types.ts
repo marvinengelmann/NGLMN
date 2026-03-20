@@ -7,7 +7,8 @@ export const SomaticState = z.object({
   breathing: z.number().min(0).max(1),
   gravity: z.number().min(0).max(1),
   openness: z.number().min(0).max(1),
-  socialBattery: z.number().min(0).max(1).default(0.8)
+  socialBattery: z.number().min(0).max(1).default(0.8),
+  immuneResilience: z.number().min(0).max(1).default(0.7)
 })
 export type SomaticState = z.infer<typeof SomaticState>
 
@@ -18,7 +19,34 @@ export const DEFAULT_SOMATIC_STATE: SomaticState = {
   breathing: 0.5,
   gravity: 0.5,
   openness: 0.5,
-  socialBattery: 0.8
+  socialBattery: 0.8,
+  immuneResilience: 0.7
+}
+
+export const BodyRegion = z.enum(["head", "chest", "gut", "throat", "shoulders", "skin", "limbs"])
+export type BodyRegion = z.infer<typeof BodyRegion>
+
+export const BODY_REGIONS = BodyRegion.options
+
+export const BodyRegionMap = z.object({
+  head: z.number().min(0).max(1),
+  chest: z.number().min(0).max(1),
+  gut: z.number().min(0).max(1),
+  throat: z.number().min(0).max(1),
+  shoulders: z.number().min(0).max(1),
+  skin: z.number().min(0).max(1),
+  limbs: z.number().min(0).max(1)
+})
+export type BodyRegionMap = z.infer<typeof BodyRegionMap>
+
+export const DEFAULT_BODY_REGION_MAP: BodyRegionMap = {
+  head: 0.15,
+  chest: 0.15,
+  gut: 0.15,
+  throat: 0.1,
+  shoulders: 0.2,
+  skin: 0.1,
+  limbs: 0.15
 }
 
 export const RegulationZone = z.enum(["safe", "mobilized", "collapsed"])

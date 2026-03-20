@@ -35,6 +35,7 @@ import {
   computeSomaticTrajectory,
   predictSomaticState
 } from "@/affect/soma/prediction.ts"
+import { applyRegionalHysteresis, computeRegionalTarget } from "@/affect/soma/regions.ts"
 import { querySomaticMemories } from "@/affect/soma/state.ts"
 import { computeSomaticUpdate } from "@/affect/soma/update.ts"
 import { computeForecastAnticipation } from "@/cognition/forecasting/compute.ts"
@@ -199,11 +200,16 @@ export async function runEmotionChain(sense: SenseResult, prefetch: FeelPrefetch
     emotion,
     elapsedMinutes: elapsed,
     hourOfDay,
-    memories: somaticMemories
+    memories: somaticMemories,
+    cortisolLevel: prefetch.previousNeuromodulatoryState.cortisol.level,
+    allostaticLoad: prefetch.previousIsolationStress.allostasis
   })
+
+  const regionalTarget = computeRegionalTarget(emotion, hourOfDay)
+  const regionalActivation = applyRegionalHysteresis(prefetch.previousRegionalState, regionalTarget, elapsed)
   if (alteredState && !isExpired(alteredState)) {
     const somaMods = computeSomaModifiers(alteredState)
-    soma = applyClampedDeltas(soma, somaMods, new Set(["socialBattery"]))
+    soma = applyClampedDeltas(soma, somaMods, new Set(["socialBattery", "immuneResilience"]))
   }
 
   const dissociationPenalty = prefetch.previousDissociativeState.active
@@ -295,6 +301,7 @@ export async function runEmotionChain(sense: SenseResult, prefetch: FeelPrefetch
     interoceptivePrediction,
     appraisalResults,
     neuromodulatoryState,
-    constructionResults
+    constructionResults,
+    regionalActivation
   }
 }

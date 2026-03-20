@@ -87,3 +87,56 @@ export const INTEROCEPTION = {
     collapsed: { tension: 0.15, warmth: 0.2, heartRate: 0.2, breathing: 0.3, gravity: 0.8, openness: 0.1 }
   }
 } as const
+
+export const REGIONS = {
+  HALF_LIVES: {
+    head: 60,
+    chest: 120,
+    gut: 180,
+    throat: 45,
+    shoulders: 240,
+    skin: 90,
+    limbs: 60
+  },
+  BASELINES: {
+    head: 0.15,
+    chest: 0.15,
+    gut: 0.15,
+    throat: 0.1,
+    shoulders: 0.2,
+    skin: 0.1,
+    limbs: 0.15
+  },
+  EMOTION_WEIGHTS: {
+    frustration: { head: 0.15, chest: 0.25, gut: 0.35, throat: 0.1, shoulders: 0.3, skin: 0.0, limbs: 0.0 },
+    caution: { head: 0.15, chest: 0.35, gut: 0.25, throat: 0.2, shoulders: 0.15, skin: 0.1, limbs: 0.05 },
+    connection: { head: 0.0, chest: 0.3, gut: 0.0, throat: 0.0, shoulders: -0.1, skin: 0.25, limbs: 0.1 },
+    excitement: { head: 0.1, chest: 0.25, gut: 0.05, throat: 0.0, shoulders: 0.0, skin: 0.1, limbs: 0.25 },
+    satisfaction: { head: -0.05, chest: 0.1, gut: -0.1, throat: 0.0, shoulders: -0.15, skin: 0.05, limbs: -0.05 },
+    boredom: { head: 0.1, chest: 0.0, gut: 0.0, throat: 0.0, shoulders: 0.1, skin: 0.0, limbs: 0.15 },
+    curiosity: { head: 0.25, chest: 0.1, gut: 0.0, throat: 0.0, shoulders: 0.0, skin: 0.0, limbs: 0.05 },
+    confidence: { head: 0.05, chest: 0.15, gut: 0.0, throat: 0.0, shoulders: -0.1, skin: 0.0, limbs: 0.05 },
+    energy: { head: -0.1, chest: -0.05, gut: 0.0, throat: 0.0, shoulders: -0.15, skin: 0.0, limbs: -0.2 }
+  },
+  CIRCADIAN_FATIGUE: {
+    head: 0.15,
+    chest: 0.0,
+    gut: 0.0,
+    throat: 0.0,
+    shoulders: 0.1,
+    skin: 0.0,
+    limbs: 0.15
+  }
+} as const
+
+export const IMMUNE = {
+  HALF_LIFE: 2880,
+  BASELINE: 0.7,
+  CORTISOL_SUPPRESSION_WEIGHT: 0.2,
+  ALLOSTATIC_DRAIN_WEIGHT: 0.15,
+  CONNECTION_BOOST_WEIGHT: 0.1,
+  ENERGY_CORRELATION_WEIGHT: 0.1,
+  STRESS_EMOTION_WEIGHT: 0.15,
+  CORTISOL_THRESHOLD: 0.2,
+  ALLOSTATIC_THRESHOLD: 0.3
+} as const

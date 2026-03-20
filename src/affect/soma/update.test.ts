@@ -5,6 +5,7 @@ import {
   applySomaticHysteresis,
   applySomaticMemory,
   circadianFatigue,
+  computeImmuneTarget,
   computeSomaticTarget,
   computeSomaticUpdate,
   drainSocialBattery,
@@ -49,7 +50,7 @@ describe("circadianFatigue", () => {
   })
 
   it("clamps output to [0, 1]", () => {
-    for (let h = 0; h < 24; h++) {
+    for (const h of Array.from({ length: 24 }, (_, i) => i)) {
       const f = circadianFatigue(h)
       expect(f).toBeGreaterThanOrEqual(0)
       expect(f).toBeLessThanOrEqual(1)
@@ -120,7 +121,8 @@ describe("applySomaticHysteresis", () => {
       breathing: 0.8,
       gravity: 0.8,
       openness: 0.8,
-      socialBattery: 0.8
+      socialBattery: 0.8,
+      immuneResilience: 0.7
     }
     const result = applySomaticHysteresis(current, target, 60)
     expect(result.tension).toBeGreaterThan(current.tension)
@@ -135,7 +137,8 @@ describe("applySomaticHysteresis", () => {
       breathing: 0,
       gravity: 0,
       openness: 0,
-      socialBattery: 0.8
+      socialBattery: 0.8,
+      immuneResilience: 0.7
     }
     const target: SomaticState = {
       tension: 1,
@@ -144,7 +147,8 @@ describe("applySomaticHysteresis", () => {
       breathing: 1,
       gravity: 1,
       openness: 1,
-      socialBattery: 0.8
+      socialBattery: 0.8,
+      immuneResilience: 0.7
     }
     const after30min = applySomaticHysteresis(current, target, 30)
     expect(after30min.heartRate).toBeGreaterThan(after30min.gravity)
@@ -160,10 +164,18 @@ describe("applySomaticHysteresis", () => {
       breathing: 0.9,
       gravity: 0.9,
       openness: 0.9,
-      socialBattery: 0.65
+      socialBattery: 0.65,
+      immuneResilience: 0.7
     }
     const result = applySomaticHysteresis(current, target, 100000)
-    const somaDimensions: (keyof SomaticState)[] = ["tension", "warmth", "heartRate", "breathing", "gravity", "openness"]
+    const somaDimensions: (keyof SomaticState)[] = [
+      "tension",
+      "warmth",
+      "heartRate",
+      "breathing",
+      "gravity",
+      "openness"
+    ]
     for (const dimension of somaDimensions) {
       expect(result[dimension]).toBeCloseTo(target[dimension], 2)
     }
@@ -179,7 +191,16 @@ describe("applySomaticMemory", () => {
 
   it("blends toward memory average", () => {
     const memories: SomaticState[] = [
-      { tension: 0.8, warmth: 0.8, heartRate: 0.8, breathing: 0.8, gravity: 0.8, openness: 0.8, socialBattery: 0.8 }
+      {
+        tension: 0.8,
+        warmth: 0.8,
+        heartRate: 0.8,
+        breathing: 0.8,
+        gravity: 0.8,
+        openness: 0.8,
+        socialBattery: 0.8,
+        immuneResilience: 0.7
+      }
     ]
     const result = applySomaticMemory(DEFAULT_SOMATIC_STATE, memories)
     expect(result.tension).toBeGreaterThan(DEFAULT_SOMATIC_STATE.tension)
@@ -199,6 +220,76 @@ describe("computeSomaticUpdate", () => {
       expect(value).toBeGreaterThanOrEqual(0)
       expect(value).toBeLessThanOrEqual(1)
     })
+  })
+
+  it("applies immune resilience hysteresis toward target", () => {
+    const stressed = computeSomaticUpdate({
+      current: DEFAULT_SOMATIC_STATE,
+      emotion: { ...baseEmotion, frustration: 0.9, caution: 0.8 },
+      elapsedMinutes: 60,
+      hourOfDay: NOON,
+      cortisolLevel: 0.6,
+      allostaticLoad: 0.5
+    })
+    expect(stressed.immuneResilience).toBeLessThan(DEFAULT_SOMATIC_STATE.immuneResilience)
+  })
+
+  it("immune resilience moves very slowly due to long half-life", () => {
+    const short = computeSomaticUpdate({
+      current: DEFAULT_SOMATIC_STATE,
+      emotion: { ...baseEmotion, frustration: 1.0, caution: 1.0 },
+      elapsedMinutes: 10,
+      hourOfDay: NOON,
+      cortisolLevel: 0.8,
+      allostaticLoad: 0.7
+    })
+    const longer = computeSomaticUpdate({
+      current: DEFAULT_SOMATIC_STATE,
+      emotion: { ...baseEmotion, frustration: 1.0, caution: 1.0 },
+      elapsedMinutes: 120,
+      hourOfDay: NOON,
+      cortisolLevel: 0.8,
+      allostaticLoad: 0.7
+    })
+    const shortDelta = Math.abs(short.immuneResilience - DEFAULT_SOMATIC_STATE.immuneResilience)
+    const longerDelta = Math.abs(longer.immuneResilience - DEFAULT_SOMATIC_STATE.immuneResilience)
+    expect(shortDelta).toBeLessThan(longerDelta)
+    expect(shortDelta).toBeLessThan(0.05)
+  })
+})
+
+describe("computeImmuneTarget", () => {
+  it("returns baseline for neutral state", () => {
+    const target = computeImmuneTarget(baseEmotion, 0.2, 0)
+    expect(target).toBeCloseTo(0.7, 1)
+  })
+
+  it("decreases with high cortisol", () => {
+    const normal = computeImmuneTarget(baseEmotion, 0.2, 0)
+    const stressed = computeImmuneTarget(baseEmotion, 0.8, 0)
+    expect(stressed).toBeLessThan(normal)
+  })
+
+  it("decreases with high allostatic load", () => {
+    const normal = computeImmuneTarget(baseEmotion, 0.2, 0)
+    const loaded = computeImmuneTarget(baseEmotion, 0.2, 0.8)
+    expect(loaded).toBeLessThan(normal)
+  })
+
+  it("increases with high connection", () => {
+    const lonely = computeImmuneTarget({ ...baseEmotion, connection: 0.2 }, 0.2, 0)
+    const connected = computeImmuneTarget({ ...baseEmotion, connection: 0.9 }, 0.2, 0)
+    expect(connected).toBeGreaterThan(lonely)
+  })
+
+  it("clamps to [0, 1]", () => {
+    const extreme = computeImmuneTarget(
+      { ...baseEmotion, frustration: 1, caution: 1, connection: 0, energy: 0 },
+      1.0,
+      1.0
+    )
+    expect(extreme).toBeGreaterThanOrEqual(0)
+    expect(extreme).toBeLessThanOrEqual(1)
   })
 })
 

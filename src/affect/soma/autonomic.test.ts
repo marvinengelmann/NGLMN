@@ -15,7 +15,8 @@ const baseSoma: SomaticState = {
   breathing: 0.5,
   gravity: 0.5,
   openness: 0.5,
-  socialBattery: 0.8
+  socialBattery: 0.8,
+  immuneResilience: 0.7
 }
 
 const baseEmotion = {
@@ -80,10 +81,10 @@ describe("computeAutonomicTransition", () => {
   })
 
   it("transitions safe → mobilized with low enough threat appraisal after enough ticks", () => {
-    let state: AutonomicState = { ...DEFAULT_AUTONOMIC_STATE, zone: "safe", ticksInZone: 0 }
-    for (let i = 0; i < 10; i++) {
-      state = computeAutonomicTransition(state, 0.35, false)
-    }
+    const state = Array.from({ length: 10 }).reduce<AutonomicState>(
+      (acc) => computeAutonomicTransition(acc, 0.35, false),
+      { ...DEFAULT_AUTONOMIC_STATE, zone: "safe", ticksInZone: 0 }
+    )
     expect(state.zone).toBe("mobilized")
   })
 

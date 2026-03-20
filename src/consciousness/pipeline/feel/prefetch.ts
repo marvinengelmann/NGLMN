@@ -16,6 +16,7 @@ import {
   getAutonomicState,
   getInteroceptiveAccuracy,
   getRecentSomaHistory,
+  getRegionalState,
   getSomaticLastTimestamp,
   getSomaticState
 } from "@/affect/soma/state.ts"
@@ -85,6 +86,7 @@ export async function prefetchFeelState(): Promise<FeelPrefetch> {
     previousAutonomicState,
     interoceptiveAccuracy,
     recentSomaHistory,
+    previousRegionalState,
     previousNeuromodulatoryState,
     previousIsolationStress,
     previousBiasState,
@@ -126,6 +128,7 @@ export async function prefetchFeelState(): Promise<FeelPrefetch> {
     getAutonomicState(),
     getInteroceptiveAccuracy(),
     getRecentSomaHistory(),
+    getRegionalState(),
     getNeuromodulatoryState(),
     getIsolationStress(),
     getBiasState(),
@@ -191,6 +194,7 @@ export async function prefetchFeelState(): Promise<FeelPrefetch> {
     previousAutonomicState,
     interoceptiveAccuracy,
     recentSomaHistory,
+    previousRegionalState,
     previousNeuromodulatoryState,
     previousIsolationStress,
     previousBiasState,

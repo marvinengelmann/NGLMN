@@ -18,7 +18,8 @@ const baseSoma: SomaticState = {
   breathing: 0.5,
   gravity: 0.5,
   openness: 0.5,
-  socialBattery: 0.8
+  socialBattery: 0.8,
+  immuneResilience: 0.7
 }
 
 describe("computeSomaticTrajectory", () => {
@@ -100,10 +101,7 @@ describe("updateInteroceptiveAccuracy", () => {
   })
 
   it("slowly converges over many iterations", () => {
-    let accuracy = 0.5
-    for (let i = 0; i < 100; i++) {
-      accuracy = updateInteroceptiveAccuracy(accuracy, 0.1)
-    }
+    const accuracy = Array.from({ length: 100 }).reduce<number>((acc) => updateInteroceptiveAccuracy(acc, 0.1), 0.5)
     expect(accuracy).toBeGreaterThan(0.8)
   })
 })
@@ -168,7 +166,8 @@ describe("computeInteroceptiveEmotionTriggers", () => {
       breathing: 0,
       gravity: 1,
       openness: 0,
-      socialBattery: 0.8
+      socialBattery: 0.8,
+      immuneResilience: 0.7
     }
     const prediction = assembleInteroceptivePrediction(predicted, actual, 0.5, "safe")
     const triggers = computeInteroceptiveEmotionTriggers(prediction)

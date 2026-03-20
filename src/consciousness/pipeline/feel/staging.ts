@@ -54,6 +54,7 @@ const REDIS = {
   DEFERRED_QUEUE: "working:emotion:deferred_queue",
   AUTONOMIC_STATE: "working:soma:autonomic",
   INTEROCEPTIVE_ACCURACY: "working:soma:interoceptiveAccuracy",
+  REGIONAL_STATE: "working:soma:regional",
   LAST_PREDICTION: "working:soma:lastPrediction",
   LAST_APPRAISALS: "working:emotion:lastAppraisals",
   NEUROMODULATORY_STATE: "working:affect:neuromodulation",
@@ -89,6 +90,8 @@ function stageEmotionChainWrites(buffer: WriteBuffer, chain: EmotionChainResult)
     buffer.stage(REDIS.INTEROCEPTIVE_ACCURACY, chain.interoceptivePrediction.accuracy)
     buffer.stage(REDIS.LAST_PREDICTION, chain.interoceptivePrediction)
   }
+
+  buffer.stage(REDIS.REGIONAL_STATE, chain.regionalActivation)
 
   buffer.stagePostgres(somaticHistory, {
     state: chain.soma,
