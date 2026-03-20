@@ -84,6 +84,19 @@ ANIMA deploys automatically through Trigger.dev on every push to `master`.
 
 > **External watchdog:** [anima-watchdog](https://github.com/marvinengelmann/anima-watchdog) — Isolated recovery guardian that monitors and restores ANIMA on failure.
 
+## Simulation
+
+ANIMA ships with an offline simulation engine that runs the pure domain computation functions in-memory — no Redis, no Postgres, no LLM calls. Simulate days to weeks of runtime in seconds to find neurotransmitter drift, emotion ceiling locks, autonomic stuck states, and other emergent dynamics bugs.
+
+```bash
+bun simulation --scenario baseline --days 7      # No interaction
+bun simulation --scenario neglect --days 14      # Single message then silence
+bun simulation --scenario conversation --days 3  # Regular daily conversations
+bun simulation --scenario stress --days 7        # Emotional triggers and conflict
+```
+
+For architecture details and how to write custom scenarios, see [docs/simulation.md](docs/simulation.md).
+
 ## Project Structure
 
 ```
@@ -102,6 +115,7 @@ src/
 ├── infra/               Config, database, integrations, utilities
 ├── prompts/             System prompt templates
 └── trigger/             Trigger.dev task definitions
+simulation/              Offline simulation engine (not part of runtime)
 ```
 
 ## License
