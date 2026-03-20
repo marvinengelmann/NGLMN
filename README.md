@@ -95,7 +95,7 @@ bun simulation --scenario conversation --days 3  # Regular daily conversations
 bun simulation --scenario stress --days 7        # Emotional triggers and conflict
 ```
 
-For architecture details and how to write custom scenarios, see [docs/simulation.md](docs/simulation.md).
+For all available scenarios and options, see [docs/simulation.md](docs/simulation.md).
 
 ## Project Structure
 

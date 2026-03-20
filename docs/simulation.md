@@ -45,10 +45,10 @@ Custom scenarios go in `simulation/scenarios/` — see existing ones for the for
 
 ## What it computes
 
-Each tick calls the same pure domain functions as the live FEEL pipeline: emotion construction, momentum, afterglow, drives, somatic update, autonomic transitions, neuromodulation (including HPA-axis cortisol), attachment dynamics, vulnerability, coherence, dissociation, regulation, metacognition, and DMN state.
+Each tick calls the same pure domain functions as the live FEEL pipeline: emotion construction, momentum, afterglow, drives, somatic update (with regional body map, sensitization, inflammation, immune resilience), somatosensory amplification, defense-to-soma conversion, vulnerability memory, autonomic transitions, neuromodulation (including HPA-axis cortisol), attachment dynamics, vulnerability, coherence, dissociation, regulation, metacognition, and DMN state.
 
 Skipped: LLM calls, episodic memory queries, secondary emotions, external APIs.
 
 ## Anomaly detection
 
-The observer flags ceiling/floor locks on neurotransmitters and emotions, autonomic stuck states, coherence collapse, attachment drift, sudden jumps, and somatic extremes.
+The observer flags ceiling/floor locks on neurotransmitters and emotions, autonomic stuck states, coherence collapse, attachment drift, sudden jumps, somatic extremes, inflammation runaway, sensitization saturation, immune depletion, and regional activation ceiling locks.
