@@ -31,6 +31,7 @@ import {
 } from "@/self/coherence/dissociation/compute.ts"
 import { processDeceptionCycle } from "@/self/deception/compute.ts"
 import { computeRegulationExpressionModifiers, processRegulationCycle } from "@/self/defense/compute.ts"
+import { computeConversionSignal } from "@/self/defense/conversion.ts"
 import type { DissonanceState } from "@/self/dissonance/types.ts"
 import type { HeldBackBuffer } from "@/self/psyche/heldback.ts"
 import { applyGrowthArcMomentum } from "@/self/psyche/update.ts"
@@ -91,6 +92,10 @@ export async function runFinalSubsystems(
   })
 
   const regulationExpressionModifiers = computeRegulationExpressionModifiers(updatedRegulation.activeStrategies)
+  const conversionSignal = computeConversionSignal(
+    updatedRegulation.activeStrategies,
+    prefetch.previousNeuromodulatoryState.cortisol.level
+  )
 
   const updatedBias = updateBiasModifiers(prefetch.previousBiasState, prefetch.previousNeuromodulatoryState)
 
@@ -219,6 +224,7 @@ export async function runFinalSubsystems(
     microExpressionInstructions,
     dissociativeState,
     granularityLevel: prefetch.previousGranularity.level,
-    dmnState
+    dmnState,
+    conversionSignal
   }
 }

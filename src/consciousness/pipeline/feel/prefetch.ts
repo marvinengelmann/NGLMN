@@ -14,11 +14,15 @@ import {
 import { getNeuromodulatoryState } from "@/affect/neuromodulation/state.ts"
 import {
   getAutonomicState,
+  getConversionSignal,
+  getInflammationLevel,
   getInteroceptiveAccuracy,
   getRecentSomaHistory,
   getRegionalState,
+  getSensitizationProfile,
   getSomaticLastTimestamp,
-  getSomaticState
+  getSomaticState,
+  getVulnerabilityProfile
 } from "@/affect/soma/state.ts"
 import { getMetacognitiveState } from "@/cognition/awareness.ts"
 import { getBiasState } from "@/cognition/bias/state.ts"
@@ -144,7 +148,11 @@ export async function prefetchFeelState(): Promise<FeelPrefetch> {
     flowQualifyingTicks,
     bigFive,
     previousDMNState,
-    previousMentalizingState
+    previousMentalizingState,
+    sensitizationProfile,
+    vulnerabilityProfile,
+    inflammationLevel,
+    previousConversionSignal
   ] = await Promise.all([
     getGranularityState(),
     getForecastingState(),
@@ -154,7 +162,11 @@ export async function prefetchFeelState(): Promise<FeelPrefetch> {
     getFlowQualifyingTicks(),
     getGenesisBigFive(),
     getDMNState(),
-    getMentalizingState()
+    getMentalizingState(),
+    getSensitizationProfile(),
+    getVulnerabilityProfile(),
+    getInflammationLevel(),
+    getConversionSignal()
   ])
 
   return {
@@ -207,6 +219,10 @@ export async function prefetchFeelState(): Promise<FeelPrefetch> {
     flowQualifyingTicks,
     neuroticism: bigFive.neuroticism,
     previousDMNState,
-    previousMentalizingState
+    previousMentalizingState,
+    sensitizationProfile,
+    vulnerabilityProfile,
+    inflammationLevel,
+    previousConversionSignal
   }
 }

@@ -3,6 +3,7 @@ import { db } from "@/infra/db/client.ts"
 import { somaticHistory } from "@/infra/db/schema.ts"
 import { getValidatedRedis, redis } from "@/infra/integrations/redis.ts"
 import { queryRelated } from "@/memory/episodic.ts"
+import { ConversionSignal, DEFAULT_CONVERSION_SIGNAL } from "@/self/defense/types.ts"
 import { INTEROCEPTION, SOMA } from "./constants.ts"
 import {
   AutonomicState,
@@ -18,7 +19,11 @@ const KEYS = {
   LAST_TIMESTAMP: "working:soma:lastTimestamp",
   AUTONOMIC: "working:soma:autonomic",
   INTEROCEPTIVE_ACCURACY: "working:soma:interoceptiveAccuracy",
-  REGIONAL: "working:soma:regional"
+  REGIONAL: "working:soma:regional",
+  SENSITIZATION: "working:soma:sensitization",
+  VULNERABILITY: "working:soma:vulnerability",
+  INFLAMMATION: "working:soma:inflammation",
+  CONVERSION: "working:defense:conversion"
 } as const
 
 /**
@@ -140,4 +145,36 @@ export async function getInteroceptiveAccuracy(): Promise<number> {
 export async function getRegionalState(): Promise<BodyRegionMap> {
   const fromRedis = await getValidatedRedis(KEYS.REGIONAL, BodyRegionMap)
   return fromRedis ?? DEFAULT_BODY_REGION_MAP
+}
+
+/**
+ * Get current sensitization profile from Redis, falling back to zero-initialized default.
+ */
+export async function getSensitizationProfile(): Promise<BodyRegionMap> {
+  const fromRedis = await getValidatedRedis(KEYS.SENSITIZATION, BodyRegionMap)
+  return fromRedis ?? { head: 0, chest: 0, gut: 0, throat: 0, shoulders: 0, skin: 0, limbs: 0 }
+}
+
+/**
+ * Get current somatic vulnerability profile from Redis, falling back to zero-initialized default.
+ */
+export async function getVulnerabilityProfile(): Promise<BodyRegionMap> {
+  const fromRedis = await getValidatedRedis(KEYS.VULNERABILITY, BodyRegionMap)
+  return fromRedis ?? { head: 0, chest: 0, gut: 0, throat: 0, shoulders: 0, skin: 0, limbs: 0 }
+}
+
+/**
+ * Get current inflammation level from Redis, falling back to baseline.
+ */
+export async function getInflammationLevel(): Promise<number> {
+  const raw = await redis.get<number>(KEYS.INFLAMMATION)
+  return raw ?? 0.05
+}
+
+/**
+ * Get previous tick's defense conversion signal from Redis.
+ */
+export async function getConversionSignal(): Promise<ConversionSignal> {
+  const fromRedis = await getValidatedRedis(KEYS.CONVERSION, ConversionSignal)
+  return fromRedis ?? DEFAULT_CONVERSION_SIGNAL
 }

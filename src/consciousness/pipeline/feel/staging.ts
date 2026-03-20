@@ -55,6 +55,10 @@ const REDIS = {
   AUTONOMIC_STATE: "working:soma:autonomic",
   INTEROCEPTIVE_ACCURACY: "working:soma:interoceptiveAccuracy",
   REGIONAL_STATE: "working:soma:regional",
+  SENSITIZATION_PROFILE: "working:soma:sensitization",
+  VULNERABILITY_PROFILE: "working:soma:vulnerability",
+  INFLAMMATION_LEVEL: "working:soma:inflammation",
+  CONVERSION_SIGNAL: "working:defense:conversion",
   LAST_PREDICTION: "working:soma:lastPrediction",
   LAST_APPRAISALS: "working:emotion:lastAppraisals",
   NEUROMODULATORY_STATE: "working:affect:neuromodulation",
@@ -92,6 +96,9 @@ function stageEmotionChainWrites(buffer: WriteBuffer, chain: EmotionChainResult)
   }
 
   buffer.stage(REDIS.REGIONAL_STATE, chain.regionalActivation)
+  buffer.stage(REDIS.SENSITIZATION_PROFILE, chain.sensitizationProfile)
+  buffer.stage(REDIS.VULNERABILITY_PROFILE, chain.vulnerabilityProfile)
+  buffer.stage(REDIS.INFLAMMATION_LEVEL, chain.inflammationLevel)
 
   buffer.stagePostgres(somaticHistory, {
     state: chain.soma,
@@ -177,6 +184,7 @@ function stageFinalWrites(buffer: WriteBuffer, final: FinalFanResult): void {
   buffer.stage(REDIS.METACOGNITION_STATE, final.metacognitiveState)
 
   buffer.stage(REDIS.DMN_STATE, final.dmnState)
+  buffer.stage(REDIS.CONVERSION_SIGNAL, final.conversionSignal)
 
   buffer.stagePostgres(coherenceLog, {
     integrationScore: final.coherenceState.integrationScore,

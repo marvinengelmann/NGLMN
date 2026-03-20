@@ -49,7 +49,7 @@ import type { BoundaryState, BoundaryViolation } from "@/self/boundaries/types.t
 import type { DissociativeState } from "@/self/coherence/dissociation/types.ts"
 import type { CoherenceState } from "@/self/coherence/types.ts"
 import type { DeceptionState } from "@/self/deception/types.ts"
-import type { EmotionRegulationState } from "@/self/defense/types.ts"
+import type { ConversionSignal, EmotionRegulationState } from "@/self/defense/types.ts"
 import type { DissonanceState } from "@/self/dissonance/types.ts"
 import type { HeldBackBuffer } from "@/self/psyche/heldback.ts"
 import type { GrowthArc, SelfConcept } from "@/self/psyche/types.ts"
@@ -92,6 +92,10 @@ export interface FeelPrefetch {
   interoceptiveAccuracy: number
   recentSomaHistory: SomaticState[]
   previousRegionalState: BodyRegionMap
+  sensitizationProfile: BodyRegionMap
+  vulnerabilityProfile: BodyRegionMap
+  inflammationLevel: number
+  previousConversionSignal: ConversionSignal
   previousNeuromodulatoryState: NeuromodulatoryState
   previousIsolationStress: IsolationStress
   previousBiasState: BiasState
@@ -130,6 +134,9 @@ export interface EmotionChainResult {
   neuromodulatoryState: NeuromodulatoryState
   constructionResults: EmotionConstructionResult[]
   regionalActivation: BodyRegionMap
+  sensitizationProfile: BodyRegionMap
+  vulnerabilityProfile: BodyRegionMap
+  inflammationLevel: number
 }
 
 export interface ParallelFanResult {
@@ -186,4 +193,5 @@ export interface FinalFanResult {
   dissociativeState: DissociativeState
   granularityLevel: string
   dmnState: DefaultModeNetworkState
+  conversionSignal: ConversionSignal
 }

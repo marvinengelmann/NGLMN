@@ -24,11 +24,17 @@ import {
   computeNeuromodulatorUpdate
 } from "@/affect/neuromodulation/compute.ts"
 import {
+  amplifySomaticPerception,
+  computeMisinterpretationTriggers,
+  computeSomaticAttentionFocus
+} from "@/affect/soma/amplification.ts"
+import {
   applyRegulationEmotionConstraints,
   computeAutonomicTransition,
   computeRegulationConstraints,
   computeThreatAppraisal
 } from "@/affect/soma/autonomic.ts"
+import { computeInflammationSomaticShifts, computeInflammationUpdate } from "@/affect/soma/inflammation.ts"
 import {
   assembleInteroceptivePrediction,
   computeInteroceptiveEmotionTriggers,
@@ -36,8 +42,10 @@ import {
   predictSomaticState
 } from "@/affect/soma/prediction.ts"
 import { applyRegionalHysteresis, computeRegionalTarget } from "@/affect/soma/regions.ts"
+import { applySensitizationAmplification, updateSensitization } from "@/affect/soma/sensitization.ts"
 import { querySomaticMemories } from "@/affect/soma/state.ts"
 import { computeSomaticUpdate } from "@/affect/soma/update.ts"
+import { applyVulnerabilityPattern, updateVulnerabilityProfile } from "@/affect/soma/vulnerability-memory.ts"
 import { computeForecastAnticipation } from "@/cognition/forecasting/compute.ts"
 import { DREAM_AFTERGLOW } from "@/expression/dream/constants.ts"
 import { getFreeEnergyState } from "@/fep/state.ts"
@@ -59,6 +67,13 @@ export async function runEmotionChain(sense: SenseResult, prefetch: FeelPrefetch
 
   const episodicHits = messageText ? await queryRelated(messageText, 5) : []
   const episodicContext = toEpisodicContext(episodicHits)
+
+  const somaticAttentionFocus = computeSomaticAttentionFocus(prefetch.currentEmotion, prefetch.consecutiveIdleTicks)
+  const perceivedSoma = amplifySomaticPerception(
+    prefetch.currentSoma,
+    somaticAttentionFocus,
+    prefetch.interoceptiveAccuracy
+  )
 
   const appraisalContext: AppraisalContext = {
     noveltyLevel: prefetch.previousNovelty.level,
@@ -85,7 +100,7 @@ export async function runEmotionChain(sense: SenseResult, prefetch: FeelPrefetch
       isIdle: prefetch.consecutiveIdleTicks > 0,
       trustExperience: prefetch.trustExperience,
       appraisalContext,
-      soma: prefetch.currentSoma,
+      soma: perceivedSoma,
       episodicContext,
       neuromodulatoryState: prefetch.previousNeuromodulatoryState,
       hourOfDay
@@ -177,6 +192,14 @@ export async function runEmotionChain(sense: SenseResult, prefetch: FeelPrefetch
   const driveTriggers = computeDriveEmotionTriggers(driveState)
   emotion = driveTriggers.reduce((acc, trigger) => applyEvent(acc, trigger), emotion)
 
+  const misinterpretationTriggers = computeMisinterpretationTriggers(
+    prefetch.currentSoma,
+    perceivedSoma,
+    prefetch.interoceptiveAccuracy,
+    somaticAttentionFocus
+  )
+  emotion = misinterpretationTriggers.reduce((acc, t) => applyEvent(acc, t), emotion)
+
   const somaticTrajectory = computeSomaticTrajectory(prefetch.recentSomaHistory)
   const predictedSoma = predictSomaticState({
     currentSoma: prefetch.currentSoma,
@@ -205,11 +228,43 @@ export async function runEmotionChain(sense: SenseResult, prefetch: FeelPrefetch
     allostaticLoad: prefetch.previousIsolationStress.allostasis
   })
 
-  const regionalTarget = computeRegionalTarget(emotion, hourOfDay)
-  const regionalActivation = applyRegionalHysteresis(prefetch.previousRegionalState, regionalTarget, elapsed)
+  const somaExcludeKeys = new Set(["socialBattery", "immuneResilience"])
+
+  const inflammationShifts = computeInflammationSomaticShifts(prefetch.inflammationLevel)
+  if (Object.keys(inflammationShifts).length > 0) {
+    soma = applyClampedDeltas(soma, inflammationShifts, somaExcludeKeys)
+  }
+
+  const conversionSignal = prefetch.previousConversionSignal
+  if (Object.keys(conversionSignal.somaticDeltas).length > 0) {
+    soma = applyClampedDeltas(soma, conversionSignal.somaticDeltas, somaExcludeKeys)
+  }
+
+  const cortisolLevel = prefetch.previousNeuromodulatoryState.cortisol.level
+  const stressLevel = Math.max(0, (emotion.frustration + emotion.caution - 1.0) * 2)
+
+  let enrichedRegionalTarget = computeRegionalTarget(emotion, hourOfDay)
+  enrichedRegionalTarget = applyVulnerabilityPattern(enrichedRegionalTarget, prefetch.vulnerabilityProfile, stressLevel)
+  enrichedRegionalTarget = applySensitizationAmplification(enrichedRegionalTarget, prefetch.sensitizationProfile)
+
+  if (Object.keys(conversionSignal.regionalDeltas).length > 0) {
+    for (const [region, delta] of Object.entries(conversionSignal.regionalDeltas)) {
+      if (region in enrichedRegionalTarget && typeof delta === "number") {
+        const current = (enrichedRegionalTarget as Record<string, number>)[region] ?? 0
+        ;(enrichedRegionalTarget as Record<string, number>)[region] = Math.max(0, Math.min(1, current + delta))
+      }
+    }
+  }
+
+  const regionalActivation = applyRegionalHysteresis(prefetch.previousRegionalState, enrichedRegionalTarget, elapsed)
+
+  const sensitizationProfile = updateSensitization(prefetch.sensitizationProfile, regionalActivation, elapsed)
+  const vulnerabilityProfile = updateVulnerabilityProfile(prefetch.vulnerabilityProfile, regionalActivation)
+  const inflammationLevel = computeInflammationUpdate(prefetch.inflammationLevel, cortisolLevel, elapsed)
+
   if (alteredState && !isExpired(alteredState)) {
     const somaMods = computeSomaModifiers(alteredState)
-    soma = applyClampedDeltas(soma, somaMods, new Set(["socialBattery", "immuneResilience"]))
+    soma = applyClampedDeltas(soma, somaMods, somaExcludeKeys)
   }
 
   const dissociationPenalty = prefetch.previousDissociativeState.active
@@ -302,6 +357,9 @@ export async function runEmotionChain(sense: SenseResult, prefetch: FeelPrefetch
     appraisalResults,
     neuromodulatoryState,
     constructionResults,
-    regionalActivation
+    regionalActivation,
+    sensitizationProfile,
+    vulnerabilityProfile,
+    inflammationLevel
   }
 }

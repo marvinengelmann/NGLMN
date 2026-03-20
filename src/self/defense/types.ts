@@ -43,3 +43,14 @@ export const DEFAULT_EMOTION_REGULATION_STATE: EmotionRegulationState = {
   totalActivations: 0,
   totalBreakthroughs: 0
 }
+
+export const ConversionSignal = z.object({
+  somaticDeltas: z.record(z.string(), z.number()),
+  regionalDeltas: z.record(z.string(), z.number())
+})
+export type ConversionSignal = z.infer<typeof ConversionSignal>
+
+export const DEFAULT_CONVERSION_SIGNAL: ConversionSignal = {
+  somaticDeltas: {},
+  regionalDeltas: {}
+}
