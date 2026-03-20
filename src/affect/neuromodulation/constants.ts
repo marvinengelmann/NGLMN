@@ -22,16 +22,16 @@ export const NEURO_BASELINES: Record<NeuromodulatorType, number> = {
 
 export const CROSS_MODULATOR = {
   INTERACTIONS: [
-    { source: "cortisol", target: "serotonin", coefficient: -0.08 },
+    { source: "cortisol", target: "serotonin", coefficient: -0.05 },
     { source: "serotonin", target: "dopamine", coefficient: 0.06 },
-    { source: "cortisol", target: "dopamine", coefficient: -0.1 },
+    { source: "cortisol", target: "dopamine", coefficient: -0.06 },
     { source: "dopamine", target: "endorphins", coefficient: 0.08 },
-    { source: "norepinephrine", target: "cortisol", coefficient: 0.12 },
+    { source: "norepinephrine", target: "cortisol", coefficient: 0.06 },
     { source: "oxytocin", target: "cortisol", coefficient: -0.05 },
-    { source: "gaba", target: "norepinephrine", coefficient: -0.12 },
+    { source: "gaba", target: "norepinephrine", coefficient: -0.08 },
     { source: "gaba", target: "cortisol", coefficient: -0.08 }
   ] as Array<{ source: NeuromodulatorType; target: NeuromodulatorType; coefficient: number }>,
-  CLAMP_RATE: 0.05
+  CLAMP_RATE: 0.04
 } as const
 
 export const EMOTION_TO_NEURO = {
@@ -53,6 +53,8 @@ export const SOMA_TO_NEURO = {
 } as const
 
 export const NEURO_PRODUCTION_SCALE = 0.3
+
+export const HOMEOSTATIC_PRESSURE_SCALE = 0.08
 
 export const NEURO_SYSTEM_EFFECTS = {
   MOOD_BASELINE: {
@@ -108,8 +110,8 @@ export const HPA_AXIS = {
   CRH_TO_CORTISOL_TRANSFER: 0.4,
   DIURNAL_PEAK_HOUR: 8,
   DIURNAL_AMPLITUDE: 0.15,
-  CHRONIC_STRESS_CLEARANCE_REDUCTION: 0.4,
-  CHRONIC_STRESS_THRESHOLD: 0.6,
+  RECEPTOR_DOWNREGULATION_SCALE: 0.3,
+  RECEPTOR_DOWNREGULATION_THRESHOLD: 0.5,
   NONLINEAR_CLEARANCE_EXPONENT: 1.5,
   ALLOSTATIC_PRODUCTION_SCALE: 0.15
 } as const

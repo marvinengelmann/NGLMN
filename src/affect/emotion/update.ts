@@ -56,7 +56,7 @@ const TRIGGER_EFFECTS: Record<EmotionTrigger, EmotionDeltas> = {
   morning_calibration: { energy: 0.5 },
   nostalgia_wave: { connection: 0.08, satisfaction: 0.04, excitement: -0.03, boredom: -0.05, energy: -0.02 },
   relational_pattern_match: { connection: 0.03, caution: 0.02 },
-  drive_frustrated: { frustration: 0.06, energy: -0.03 },
+  drive_frustrated: { frustration: 0.06, energy: -0.01 },
   drive_conflict: { caution: 0.04, frustration: 0.03 },
   positive_anticipation: { excitement: 0.05, energy: 0.03 },
   expectation_violated: { frustration: 0.04, caution: 0.03, excitement: -0.02 },

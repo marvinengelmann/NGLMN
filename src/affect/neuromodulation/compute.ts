@@ -6,6 +6,7 @@ import {
   DEPRESSIVE_PATTERN,
   DOPAMINE_DETAIL,
   EMOTION_TO_NEURO,
+  HOMEOSTATIC_PRESSURE_SCALE,
   HPA_AXIS,
   NEURO_BASELINES,
   NEURO_HALF_LIVES,
@@ -93,11 +94,11 @@ function computeCortisolHPA(
   const cortisolRelease = newCrhBuffer * HPA_AXIS.CRH_TO_CORTISOL_TRANSFER * (elapsedMinutes / 60)
 
   const baseDecay = halfLifeDecay(elapsedMinutes, NEURO_HALF_LIVES.cortisol)
-  const chronicPenalty =
-    currentLevel > HPA_AXIS.CHRONIC_STRESS_THRESHOLD
-      ? (currentLevel - HPA_AXIS.CHRONIC_STRESS_THRESHOLD) * HPA_AXIS.CHRONIC_STRESS_CLEARANCE_REDUCTION
+  const downregulationBoost =
+    currentLevel > HPA_AXIS.RECEPTOR_DOWNREGULATION_THRESHOLD
+      ? (currentLevel - HPA_AXIS.RECEPTOR_DOWNREGULATION_THRESHOLD) * HPA_AXIS.RECEPTOR_DOWNREGULATION_SCALE
       : 0
-  const effectiveDecay = baseDecay + chronicPenalty * (1 - baseDecay)
+  const effectiveDecay = baseDecay * (1 - downregulationBoost)
 
   const decayed = diurnalBaseline + (currentLevel - diurnalBaseline) * effectiveDecay
 
@@ -143,7 +144,8 @@ export function computeNeuromodulatorUpdate(
         : Math.pow(decayed, 1 + newReuptakeRate)
     const effectiveProduction = totalProduction * headroom
 
-    levels[mod] = clamp01(decayed + effectiveProduction)
+    const homeostaticCorrection = (baseline - decayed) * HOMEOSTATIC_PRESSURE_SCALE * Math.min(elapsedMinutes, 5)
+    levels[mod] = clamp01(decayed + effectiveProduction + homeostaticCorrection)
     productionRates[mod] = newProductionRate
     reuptakeRates[mod] = newReuptakeRate
   }
