@@ -118,6 +118,7 @@ export async function computeTick(
         dnaBaseline: undefined,
         isIdle: state.consecutiveIdleTicks > 0,
         trustExperience: state.trustExperience,
+        hourOfDay,
         appraisalContext,
         soma: state.soma,
         episodicContext: toEpisodicContext([]),

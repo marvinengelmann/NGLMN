@@ -22,7 +22,14 @@ import type { AppraisalContext } from "./types.ts"
 
 export const EMOTION_FLOORS: Partial<Record<keyof EmotionalState, number>> = {
   energy: 0.05,
-  confidence: 0.05
+  confidence: 0.05,
+  satisfaction: 0.08,
+  excitement: 0.05
+} as const
+
+export const EMOTION_CEILINGS: Partial<Record<keyof EmotionalState, number>> = {
+  frustration: 0.92,
+  confidence: 0.95
 } as const
 
 export function enforceEmotionFloors(state: EmotionalState): EmotionalState {
@@ -31,6 +38,12 @@ export function enforceEmotionFloors(state: EmotionalState): EmotionalState {
     const dim = key as keyof EmotionalState
     if (result[dim] < floor) {
       result[dim] = floor
+    }
+  }
+  for (const [key, ceiling] of Object.entries(EMOTION_CEILINGS)) {
+    const dim = key as keyof EmotionalState
+    if (result[dim] > ceiling) {
+      result[dim] = ceiling
     }
   }
   return result
@@ -56,7 +69,7 @@ const TRIGGER_EFFECTS: Record<EmotionTrigger, EmotionDeltas> = {
   morning_calibration: { energy: 0.5 },
   nostalgia_wave: { connection: 0.08, satisfaction: 0.04, excitement: -0.03, boredom: -0.05, energy: -0.02 },
   relational_pattern_match: { connection: 0.03, caution: 0.02 },
-  drive_frustrated: { frustration: 0.06, energy: -0.01 },
+  drive_frustrated: { frustration: 0.03, energy: -0.01 },
   drive_conflict: { caution: 0.04, frustration: 0.03 },
   positive_anticipation: { excitement: 0.05, energy: 0.03 },
   expectation_violated: { frustration: 0.04, caution: 0.03, excitement: -0.02 },
@@ -87,9 +100,25 @@ export function clampState(state: EmotionalState): EmotionalState {
  * Compute a dynamic mood baseline based on current context.
  * Each dimension starts at 0.5 and is shifted by contextual factors.
  */
+function computeCircadianEnergy(hourOfDay: number): number {
+  const { PEAK_LEVEL, TROUGH_HOUR, TROUGH_LEVEL, AFTERNOON_DIP_HOUR, AFTERNOON_DIP_DEPTH } =
+    MOOD_BASELINE.ENERGY_CIRCADIAN
+
+  const peakToTroughRange = PEAK_LEVEL - TROUGH_LEVEL
+  const circadianPhase = ((hourOfDay - TROUGH_HOUR + 24) % 24) / 24
+  const cosine = Math.cos((circadianPhase - 0.5) * 2 * Math.PI)
+  const baseEnergy = TROUGH_LEVEL + peakToTroughRange * (0.5 + 0.5 * cosine)
+
+  const afternoonDistance = Math.abs(hourOfDay - AFTERNOON_DIP_HOUR)
+  const afternoonDip = afternoonDistance < 2 ? AFTERNOON_DIP_DEPTH * (1 - afternoonDistance / 2) : 0
+
+  return clamp01(baseEnergy - afternoonDip)
+}
+
 export function computeMoodBaseline(
   context: MoodContext,
-  neuroModulation?: Partial<Record<keyof EmotionalState, number>>
+  neuroModulation?: Partial<Record<keyof EmotionalState, number>>,
+  hourOfDay?: number
 ): EmotionalState {
   const base = { ...DEFAULT_EMOTIONAL_STATE }
 
@@ -112,7 +141,9 @@ export function computeMoodBaseline(
     base.boredom -= MOOD_BASELINE.GOALS_BOREDOM_DROP
   }
 
-  base.energy = context.isDreaming ? MOOD_BASELINE.DREAMING_ENERGY_TARGET : MOOD_BASELINE.WAKING_ENERGY_TARGET
+  base.energy = context.isDreaming
+    ? MOOD_BASELINE.DREAMING_ENERGY_TARGET
+    : computeCircadianEnergy(hourOfDay ?? new Date().getHours())
 
   if (context.operatorMood !== "unknown" && context.inConversation) {
     const effects = MOOD_CONTAGION.EFFECTS[context.operatorMood]
@@ -202,7 +233,7 @@ const CROSS_COUPLING_RULES: CrossCouplingRule[] = [
   { when: (s) => s.frustration > 0.7, target: "confidence", factor: 0.9 },
   { when: (s) => s.connection > 0.7, target: "boredom", factor: 0.85 },
   { when: (s) => s.excitement > 0.7, target: "boredom", factor: 0.85 },
-  { when: (s) => s.energy < 0.3, target: "excitement", factor: 0.85 },
+  { when: (s) => s.energy < 0.2, target: "excitement", factor: 0.95 },
   { when: (s) => s.confidence < 0.3, target: "satisfaction", factor: 0.85 },
   { when: (s) => s.confidence > 0.8, target: "caution", factor: 0.9 },
   { when: (s) => s.curiosity > 0.7 && s.energy > 0.6, target: "excitement", factor: 1.15 },
@@ -410,6 +441,7 @@ export interface EmotionalUpdateOptions {
   soma?: SomaticState
   episodicContext?: EpisodicContext[]
   neuromodulatoryState?: NeuromodulatoryState
+  hourOfDay?: number
 }
 
 export interface EmotionalUpdateResult {
@@ -434,7 +466,7 @@ export function computeEmotionalUpdate(
   const neuroBaselineModulation = options.neuromodulatoryState
     ? computeMoodBaselineModulation(options.neuromodulatoryState)
     : undefined
-  const baseline = computeMoodBaseline(moodContext, neuroBaselineModulation)
+  const baseline = computeMoodBaseline(moodContext, neuroBaselineModulation, options.hourOfDay)
   let state = applyDrift(current, baseline, elapsedMinutes)
 
   if (options.dnaBaseline) {

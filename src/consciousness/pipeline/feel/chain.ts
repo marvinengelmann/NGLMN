@@ -86,7 +86,8 @@ export async function runEmotionChain(sense: SenseResult, prefetch: FeelPrefetch
       appraisalContext,
       soma: prefetch.currentSoma,
       episodicContext,
-      neuromodulatoryState: prefetch.previousNeuromodulatoryState
+      neuromodulatoryState: prefetch.previousNeuromodulatoryState,
+      hourOfDay
     }
   )
 
