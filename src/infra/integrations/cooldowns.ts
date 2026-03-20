@@ -5,9 +5,27 @@ import { CALENDAR, EMAIL, SOCIAL_MEDIA } from "./constants.ts"
 const KEYS = {
   SOCIAL_LAST_BROWSE: "working:social:lastBrowse",
   SOCIAL_LAST_POST: "working:social:lastPost",
+  SOCIAL_PENDING_POST: "working:social:pendingPost",
   EMAIL_LAST_CHECK: "working:email:lastCheck",
   CALENDAR_LAST_CHECK: "working:calendar:lastCheck"
 } as const
+
+export interface PendingSocialPost {
+  text: string
+  timestamp: string
+}
+
+export async function getPendingSocialPost(): Promise<PendingSocialPost | null> {
+  return redis.get<PendingSocialPost>(KEYS.SOCIAL_PENDING_POST)
+}
+
+export async function setPendingSocialPost(post: PendingSocialPost): Promise<void> {
+  await redis.set(KEYS.SOCIAL_PENDING_POST, post, { ex: 86400 })
+}
+
+export async function clearPendingSocialPost(): Promise<void> {
+  await redis.del(KEYS.SOCIAL_PENDING_POST)
+}
 
 export async function getSocialMediaLastBrowse(): Promise<string | null> {
   return redis.get<string>(KEYS.SOCIAL_LAST_BROWSE)

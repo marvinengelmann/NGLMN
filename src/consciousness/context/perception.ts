@@ -109,7 +109,7 @@ export function buildPerceptionSections(
   lastTick: TickSummary | null,
   conversationBuffer: ConversationSlot[],
   timePerception: ReturnType<typeof computeTimePerception>,
-  xContext?: { canBrowse: boolean; canPost: boolean; timeline?: EnrichedTweet[] },
+  xContext?: { canBrowse: boolean; canPost: boolean; timeline?: EnrichedTweet[]; pendingPost?: string | null },
   emailContext?: { canCheck: boolean; unread?: EmailPreview[] },
   calendarContext?: { canCheck: boolean; upcoming?: CalendarEvent[] }
 ): string[] {
@@ -217,6 +217,11 @@ export function buildPerceptionSections(
         xLines.push(`  - [${author}]: ${text}`)
         xLines.push(`    ${post.url} | ❤ ${post.likeCount} 🔁 ${post.retweetCount}`)
       })
+    }
+
+    if (xContext.pendingPost) {
+      xLines.push(`\nPending post (awaiting operator approval): "${xContext.pendingPost}"`)
+      xLines.push("If the operator approves, choose action social_media with mode post and the exact same text.")
     }
 
     sections.push(xLines.join("\n"))

@@ -1,9 +1,9 @@
 import { getPhenomenologicalText, isExpired } from "@/affect/altered/compute.ts"
-import type { InteractionOutcomeSelect } from "@/infra/db/schema.ts"
 import { ALTERED_EVENT_TYPES } from "@/affect/altered/events.ts"
 import { DRIVE_ACTION_HINTS } from "@/affect/drive/constants.ts"
 import type { DriveState } from "@/affect/drive/types.ts"
 import { CONTEXT_TOKEN_BUDGET } from "@/infra/config/constants.ts"
+import type { InteractionOutcomeSelect } from "@/infra/db/schema.ts"
 import "@/affect/emotion/init.ts"
 import { computeEmotionalIntensity } from "@/affect/emotion/update.ts"
 import type { MetacognitiveState } from "@/cognition/types.ts"
@@ -43,7 +43,7 @@ import { buildSocialSections } from "./social.ts"
 export async function buildContext(
   tickState: TickState,
   senseData: SenseData,
-  xContext?: { canBrowse: boolean; canPost: boolean; timeline?: EnrichedTweet[] },
+  xContext?: { canBrowse: boolean; canPost: boolean; timeline?: EnrichedTweet[]; pendingPost?: string | null },
   emailContext?: { canCheck: boolean; unread?: EmailPreview[] },
   calendarContext?: { canCheck: boolean; upcoming?: CalendarEvent[] }
 ): Promise<string> {
@@ -226,9 +226,7 @@ function buildInteractionEchoSection(outcomes: InteractionOutcomeSelect[]): stri
       ) / recentResolved.length
 
     if (avgEngagement < -0.3) {
-      lines.push(
-        "Your recent messages felt like they landed flat — shorter replies, less energy coming back."
-      )
+      lines.push("Your recent messages felt like they landed flat — shorter replies, less energy coming back.")
     }
     if (negativeCount >= 2) {
       lines.push(

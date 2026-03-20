@@ -25,8 +25,11 @@ import { validatePublicContent } from "@/governance/security/privacy.ts"
 import { executeWorkflow } from "@/governance/workflow/engine.ts"
 import { emotionHistory, narrativeEntries, psycheSnapshots, somaticHistory } from "@/infra/db/schema.ts"
 import {
+  clearPendingSocialPost,
+  getPendingSocialPost,
   setCalendarLastCheck,
   setEmailLastCheck,
+  setPendingSocialPost,
   setSocialMediaLastBrowse,
   setSocialMediaLastPost
 } from "@/infra/integrations/cooldowns.ts"
@@ -41,6 +44,7 @@ import { recordEvent } from "@/memory/events.ts"
 import { executeGoalUpdate } from "@/memory/goals.ts"
 import { storeKnowledge } from "@/memory/semantic.ts"
 import { getLastTickSummary } from "@/memory/working.ts"
+import { canActAutonomously, recordOutcome } from "@/relational/trust/compute.ts"
 import { isDissonanceSignificant } from "@/self/dissonance/compute.ts"
 import { startChosenLifeEvent, startSleepEvent } from "@/self/lifecycle.ts"
 import { buildNarrativeSummary, generateNarrativeEntry } from "@/self/psyche/narrative.ts"
@@ -403,9 +407,27 @@ async function executeAction(
           break
         }
 
+        const pendingPost = await getPendingSocialPost()
+        const isApprovedPending = pendingPost?.text === xPostText
+
+        if (!isApprovedPending) {
+          const trustAssessment = await canActAutonomously("social_media_post")
+          if (trustAssessment.requiresApproval) {
+            await setPendingSocialPost({ text: xPostText, timestamp: nowISO() })
+            log.info("Social media post pending operator approval", {
+              text: xPostText.slice(0, 50),
+              reason: trustAssessment.reason
+            })
+            break
+          }
+        }
+
+        await clearPendingSocialPost()
+
         const postResult = await trySafe("X_ERROR", () => postToX(xPostText))
         if (postResult.isErr()) {
           logAndCaptureError(postResult.error, { phase: "act_social_media_post" })
+          await recordOutcome("social_media_post", 0.3)
         } else {
           await setSocialMediaLastPost(nowISO())
           await storeEpisode(`Posted to X: "${xPostText}" — ${postResult.value.url}`, "social_media", {
@@ -413,6 +435,7 @@ async function executeAction(
             valence: 0.3
           })
           await recordEvent({ type: "posted_to_x", detail: xPostText, tickId, metadata: { url: postResult.value.url } })
+          await recordOutcome("social_media_post", 1.0)
           log.info("Posted to X", { tweetId: postResult.value.id, url: postResult.value.url })
         }
       }

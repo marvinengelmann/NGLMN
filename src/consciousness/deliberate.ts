@@ -13,7 +13,12 @@ import { thinkMorning, thinkReflect } from "@/expression/routine/thinking.ts"
 import { computeActiveInferenceSignal } from "@/fep/active-inference.ts"
 import { fetchUpcomingEvents, isCaldavEnabled } from "@/infra/integrations/caldav.ts"
 import { CALENDAR, SOCIAL_MEDIA } from "@/infra/integrations/constants.ts"
-import { canCheckCalendar, canCheckEmail, canPerformSocialMedia } from "@/infra/integrations/cooldowns.ts"
+import {
+  canCheckCalendar,
+  canCheckEmail,
+  canPerformSocialMedia,
+  getPendingSocialPost
+} from "@/infra/integrations/cooldowns.ts"
 import { fetchUnreadEmails, isImapEnabled } from "@/infra/integrations/imap.ts"
 import type { CalendarEvent, EmailPreview } from "@/infra/integrations/types.ts"
 import { type EnrichedTweet, getHomeTimeline, isXEnabled } from "@/infra/integrations/x.ts"
@@ -45,9 +50,11 @@ export async function deliberate(tickState: TickState): Promise<DeliberateResult
     interruptedPreviousSend: senseResult.interruptedPreviousSend
   }
 
-  let xContext: { canBrowse: boolean; canPost: boolean; timeline?: EnrichedTweet[] } | undefined
+  let xContext:
+    | { canBrowse: boolean; canPost: boolean; timeline?: EnrichedTweet[]; pendingPost?: string | null }
+    | undefined
   if (isXEnabled()) {
-    const socialStatus = await canPerformSocialMedia()
+    const [socialStatus, pendingSocialPost] = await Promise.all([canPerformSocialMedia(), getPendingSocialPost()])
     let timeline: EnrichedTweet[] | undefined
     if (socialStatus.canBrowse) {
       try {
@@ -56,7 +63,7 @@ export async function deliberate(tickState: TickState): Promise<DeliberateResult
         log.warn("Failed to pre-fetch X timeline", { error: e instanceof Error ? e.message : String(e) })
       }
     }
-    xContext = { ...socialStatus, timeline }
+    xContext = { ...socialStatus, timeline, pendingPost: pendingSocialPost?.text ?? null }
   }
 
   let emailContext: { canCheck: boolean; unread?: EmailPreview[] } | undefined

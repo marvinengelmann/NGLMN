@@ -6,6 +6,7 @@ export const TRUST = {
     prompt_modification: 0.6,
     workflow_creation: 0.7,
     deployment: 0.8,
-    code_modification: 0.9
+    code_modification: 0.9,
+    social_media_post: 0.7
   }
 } as const
