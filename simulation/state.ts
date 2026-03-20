@@ -99,6 +99,8 @@ export interface SimulationState {
   ultradianState: UltradianState
   deferredQueue: DeferredQueue
   freeEnergyState: FreeEnergyState
+  interoceptiveAccuracy: number
+  freeEnergyHistory: number[]
   triggerTimestamps: Record<string, number>
   moodBaseline: EmotionalState
   consecutiveIdleTicks: number
@@ -162,6 +164,8 @@ export function createInitialState(clock: SimulationClock): SimulationState {
     ultradianState: { ...DEFAULT_ULTRADIAN_STATE, cycleStartedAt: now },
     deferredQueue: { events: [] },
     freeEnergyState: structuredClone(DEFAULT_FREE_ENERGY_STATE),
+    interoceptiveAccuracy: 0.5,
+    freeEnergyHistory: [],
     triggerTimestamps: {},
     moodBaseline: { ...DEFAULT_EMOTIONAL_STATE },
     consecutiveIdleTicks: 0,

@@ -1,15 +1,18 @@
 import { getHours } from "date-fns"
+import { computeEmotionModifiers, computeSomaModifiers, isExpired } from "@/affect/altered/compute.ts"
 import {
   computeDriveEmotionTriggers,
   computeDriveUpdate,
   inferBlockedDrives,
   inferSatisfiedDrives
 } from "@/affect/drive/compute.ts"
+import { DriveType } from "@/affect/drive/types.ts"
 import { toEpisodicContext } from "@/affect/emotion/construction.ts"
 import { checkMaturedEvents, maturedEventToTrigger, storeDeferredEvent } from "@/affect/emotion/deferred.ts"
 import type { AppraisalContext, EmotionUpdateEvent } from "@/affect/emotion/types.ts"
 import {
   applyAfterglow,
+  applyEmotionalDamping,
   applyEvent,
   applyMomentum,
   blendMoodBaseline,
@@ -28,16 +31,35 @@ import {
   computeAutonomicTransition,
   computeRegulationConstraints,
   computeThreatAppraisal,
+  constrainCognitiveFlexibility,
+  constrainCreativeUrge,
   constrainVulnerabilityLevel
 } from "@/affect/soma/autonomic.ts"
+import {
+  assembleInteroceptivePrediction,
+  computeInteroceptiveEmotionTriggers,
+  computeSomaticTrajectory,
+  predictSomaticState
+} from "@/affect/soma/prediction.ts"
 import { computeSomaticUpdate, drainSocialBattery, rechargeSocialBattery } from "@/affect/soma/update.ts"
+import { computeAttentionState } from "@/cognition/attention.ts"
 import { updateBiasModifiers } from "@/cognition/bias/compute.ts"
 import { computeDMNState } from "@/cognition/dmn/compute.ts"
-import { computeAttentionState } from "@/cognition/attention.ts"
+import { computeForecastAnticipation } from "@/cognition/forecasting/compute.ts"
 import { computeMetacognitiveModifiers, updateMetacognitiveState } from "@/cognition/metacognition.ts"
 import { updateCreativeUrgeState } from "@/expression/creativity/compute.ts"
-import { clamp01 } from "@/infra/lib/math.ts"
-import { applyClampedDeltas } from "@/infra/lib/math.ts"
+import { DREAM_AFTERGLOW } from "@/expression/dream/constants.ts"
+import {
+  computeAllostaticLoad,
+  computeFreeEnergyDecomposition,
+  computeTrend,
+  extractPredictionErrorChannels,
+  findDominantChannel,
+  type FreeEnergyInput
+} from "@/fep/compute.ts"
+import { applyHierarchicalPrecisionModulation } from "@/fep/hierarchy.ts"
+import { applyNeuromodulatorPrecisionEffects, computeBasePrecisionWeights } from "@/fep/precision.ts"
+import { applyClampedDeltas, clamp01 } from "@/infra/lib/math.ts"
 import { updateAnticipatoryState } from "@/perception/anticipation/compute.ts"
 import { updateNoveltyState } from "@/perception/novelty/compute.ts"
 import { computeUltradianModulation, updateUltradianState } from "@/perception/rhythm/compute.ts"
@@ -46,26 +68,23 @@ import { evaluateAttachmentDynamics, computeWaitingPerception, isOperatorReturni
 import { computeIntimacyScore, computeVulnerability, computeVulnerableMessageStyle } from "@/relational/attachment/vulnerability.ts"
 import { computeMentalizingModulation, computeMentalizingState } from "@/relational/mind/mentalizing.ts"
 import { updateBoundaryState } from "@/self/boundaries/compute.ts"
-import { updateCoherenceState } from "@/self/coherence/compute.ts"
+import { computeCoherenceEffect, updateCoherenceState } from "@/self/coherence/compute.ts"
+import { DISSOCIATION } from "@/self/coherence/dissociation/constants.ts"
 import { checkDissociationTriggers, computeDissociativeState } from "@/self/coherence/dissociation/compute.ts"
 import { processRegulationCycle } from "@/self/defense/compute.ts"
-import { applyGrowthArcMomentum, detectGrowthArc, updateSelfConcept } from "@/self/psyche/update.ts"
 import { compute as computeShame } from "@/affect/emotion/shame.ts"
 import { decayBuffer, detectSuppression } from "@/self/psyche/heldback.ts"
-import { computeForecastAnticipation } from "@/cognition/forecasting/compute.ts"
-import { applyEmotionalDamping } from "@/affect/emotion/update.ts"
-import { computeCoherenceEffect } from "@/self/coherence/compute.ts"
-import {
-  constrainCognitiveFlexibility,
-  constrainCreativeUrge
-} from "@/affect/soma/autonomic.ts"
+import { applyGrowthArcMomentum, detectGrowthArc, updateSelfConcept } from "@/self/psyche/update.ts"
 import type { SimulationClock } from "./clock.ts"
-import type { SimulationState } from "./state.ts"
-import type { ScenarioContext } from "./scenarios.ts"
 import type { SimulatedDecision } from "./decisions.ts"
+import type { ScenarioContext } from "./scenarios.ts"
+import type { SimulationState } from "./state.ts"
 
 const MAX_SOMATIC_HISTORY = 10
 const MAX_RECENT_ACTIONS = 20
+const MAX_FREE_ENERGY_HISTORY = 50
+const TRUST_INCREMENT = 0.005
+const TRUST_DECAY = 0.001
 
 export async function computeTick(
   state: SimulationState,
@@ -93,13 +112,8 @@ export async function computeTick(
       : [])
   ]
 
-  const hadRecentInteraction = context.operatorSilenceMinutes < 720
-  const effectiveSilence = hadRecentInteraction
-    ? Math.min(context.operatorSilenceMinutes, 90)
-    : context.operatorSilenceMinutes
-
   const moodContext = {
-    operatorSilenceMinutes: effectiveSilence,
+    operatorSilenceMinutes: context.operatorSilenceMinutes,
     inConversation: context.inConversation,
     systemHealthy: true,
     budgetOk: true,
@@ -139,14 +153,9 @@ export async function computeTick(
       }
     )
 
-  let postUpdate = computed
-  if (isMorningTransition) {
-    postUpdate = { ...postUpdate, energy: clamp01(0.55 + (postUpdate.energy - 0.55) * 0.3) }
-  }
-
-  const eventIntensity = computeEmotionalIntensity(postUpdate)
+  const eventIntensity = computeEmotionalIntensity(computed)
   const { state: momentumState, momentum: newMomentum } = applyMomentum(
-    postUpdate,
+    computed,
     state.emotion,
     eventIntensity,
     state.momentum
@@ -173,14 +182,36 @@ export async function computeTick(
     emotion = applyClampedDeltas(emotion, forecastAnticipation)
   }
 
+  let dreamAfterglow = state.dreamAfterglow
+  if (dreamAfterglow && dreamAfterglow.intensity >= DREAM_AFTERGLOW.MIN_INTENSITY) {
+    const scaledResidue = Object.fromEntries(
+      Object.entries(dreamAfterglow.emotionalResidue)
+        .filter(([, v]) => typeof v === "number")
+        .map(([k, v]) => [k, (v as number) * dreamAfterglow!.intensity * DREAM_AFTERGLOW.BLEND_WEIGHT])
+    )
+    emotion = applyClampedDeltas(emotion, scaledResidue)
+    const decayed = { ...dreamAfterglow, intensity: dreamAfterglow.intensity * DREAM_AFTERGLOW.DECAY_PER_TICK }
+    dreamAfterglow = decayed.intensity >= DREAM_AFTERGLOW.MIN_INTENSITY ? decayed : null
+  }
+
+  let alteredState = state.alteredState
+  if (alteredState) {
+    if (isExpired(alteredState, clock.now())) {
+      alteredState = null
+    } else {
+      const emotionMods = computeEmotionModifiers(alteredState)
+      emotion = applyClampedDeltas(emotion, emotionMods)
+    }
+  }
+
   const mergedTimestamps: Record<string, number> = { ...state.triggerTimestamps }
   for (const event of rawTriggers) {
     mergedTimestamps[event.trigger] = clock.now().getTime()
   }
 
-  const simulatedAction = decision.action === "dream" ? "life_event"
-    : decision.action === "morning" ? "morning"
+  const simulatedAction = decision.action === "morning" ? "morning"
     : decision.action === "reflect" ? "reflect"
+    : decision.action === "dream" ? "dream"
     : decision.responseSent ? "social_media"
     : "idle"
 
@@ -192,7 +223,7 @@ export async function computeTick(
   )
 
   const blocked = inferBlockedDrives(
-    effectiveSilence,
+    context.operatorSilenceMinutes,
     state.consecutiveIdleTicks,
     moodContext.isDreaming,
     [simulatedAction, ...state.recentActions.slice(0, 9)]
@@ -207,6 +238,20 @@ export async function computeTick(
   const driveTriggers = computeDriveEmotionTriggers(driveState)
   emotion = driveTriggers.reduce((acc, trigger) => applyEvent(acc, trigger), emotion)
 
+  const somaticTrajectory = computeSomaticTrajectory(state.somaticHistory)
+  const predictedSoma = predictSomaticState({
+    currentSoma: state.soma,
+    currentEmotion: emotion,
+    moodContext,
+    autonomicState: state.autonomicState,
+    trajectory: somaticTrajectory,
+    hourOfDay,
+    allostaticContext: {
+      allostaticLoad: state.freeEnergyState.allostaticLoad,
+      hasActiveGoals: true,
+      forecastIntensity: state.forecastingState.activeForecast?.predictedIntensity ?? 0
+    }
+  })
 
   let soma = computeSomaticUpdate({
     current: state.soma,
@@ -216,13 +261,31 @@ export async function computeTick(
     memories: []
   })
 
+  if (alteredState) {
+    const somaMods = computeSomaModifiers(alteredState)
+    soma = applyClampedDeltas(soma, somaMods, new Set(["socialBattery"]))
+  }
+
   if (decision.responseSent && context.pendingMessages.length > 0) {
     soma = drainSocialBattery(soma, 1, context.pendingMessages.length)
   } else if (decision.action === "dream") {
     soma = rechargeSocialBattery(soma, true)
-  } else if (decision.action === "idle" && !decision.responseSent && state.tickCount % 30 === 0) {
-    soma = rechargeSocialBattery(soma, false)
   }
+
+  const dissociationPenalty = state.dissociativeState.active
+    ? state.dissociativeState.depth * DISSOCIATION.INTEROCEPTION_CONFUSION_SCALE
+    : 0
+
+  const interoceptivePrediction = assembleInteroceptivePrediction(
+    predictedSoma,
+    soma,
+    state.interoceptiveAccuracy,
+    state.autonomicState.zone,
+    dissociationPenalty
+  )
+
+  const interoceptiveTriggers = computeInteroceptiveEmotionTriggers(interoceptivePrediction)
+  emotion = interoceptiveTriggers.reduce((acc, t) => applyEvent(acc, t), emotion)
 
   const threatAppraisal = computeThreatAppraisal({
     soma,
@@ -257,7 +320,7 @@ export async function computeTick(
     state.isolationStress.cortisolStressSignal
   )
 
-  const operatorSilenceMinutes = effectiveSilence
+  const operatorSilenceMinutes = context.operatorSilenceMinutes
   const operatorJustReturned = isOperatorReturning(context.pendingMessages.length, context.operatorSilenceMinutes)
   const waitingPerception = computeWaitingPerception(operatorSilenceMinutes, state.attachmentStyle.anxious)
 
@@ -284,8 +347,6 @@ export async function computeTick(
   if (isolationPressure.connection !== 0) {
     emotion = applyClampedDeltas(emotion, isolationPressure)
   }
-
-
 
   const anticipatoryState = updateAnticipatoryState(
     state.anticipatoryState,
@@ -492,6 +553,82 @@ export async function computeTick(
 
   const newMoodBaseline = blendMoodBaseline(finalEmotion, state.moodBaseline, Math.max(0.1, elapsedMinutes))
 
+  const driveFrustrations = DriveType.options.map((name) => driveState[name].frustration)
+
+  const freeEnergyInput: FreeEnergyInput = {
+    interoceptiveTotalError: interoceptivePrediction.totalError,
+    interoceptiveAccuracy: interoceptivePrediction.accuracy,
+    regulationZone: autonomicState.zone,
+    anticipatoryViolations: anticipatoryState.recentViolations,
+    patternConfidence: anticipatoryState.patternConfidence,
+    surpriseLevel: noveltyState.level,
+    operatorPredictionAccuracy: operatorModel.predictionAccuracy.runningAverage,
+    operatorModelConfidence: operatorModel.modelConfidence,
+    coherenceIntegrationScore: coherenceState.integrationScore,
+    activeDissonance: 0,
+    driveFrustrations,
+    forecastErrorLevel: 0.3,
+    metacognitiveClarity: metacognitiveState.cognitiveClarity,
+    cognitiveFatigue: metacognitiveState.cognitiveFatigue,
+    activeStrategyCount: updatedRegulation.activeStrategies.length,
+    neuromodulatoryState,
+    currentEmotion: finalEmotion as unknown as Record<string, number>,
+    currentSoma: soma as unknown as Record<string, number>
+  }
+
+  const forecastAccuracy = clamp01(1 - (0.3))
+  const basePrecisions = computeBasePrecisionWeights({
+    interoceptiveAccuracy: interoceptivePrediction.accuracy,
+    regulationZone: autonomicState.zone,
+    patternConfidence: anticipatoryState.patternConfidence,
+    metacognitiveClarity: metacognitiveState.cognitiveClarity,
+    operatorModelConfidence: operatorModel.modelConfidence,
+    coherenceIntegrationScore: coherenceState.integrationScore,
+    cognitiveFatigue: metacognitiveState.cognitiveFatigue,
+    forecastAccuracy
+  })
+  const precisionWeights = applyNeuromodulatorPrecisionEffects(basePrecisions, neuromodulatoryState)
+  const rawChannels = extractPredictionErrorChannels(freeEnergyInput, precisionWeights)
+  const hierarchicalPrecision = applyHierarchicalPrecisionModulation(rawChannels, precisionWeights)
+  const channels = extractPredictionErrorChannels(freeEnergyInput, hierarchicalPrecision)
+
+  const previousEmotionRecord = state.emotion as unknown as Record<string, number>
+  const previousSomaRecord = state.soma as unknown as Record<string, number>
+
+  const feDecomposition = computeFreeEnergyDecomposition(channels, {
+    coherenceScore: coherenceState.integrationScore,
+    dissonanceScore: 0,
+    activeStrategyCount: updatedRegulation.activeStrategies.length,
+    forecastAccuracy,
+    priorEmotion: previousEmotionRecord,
+    posteriorEmotion: finalEmotion as unknown as Record<string, number>,
+    priorSoma: previousSomaRecord,
+    posteriorSoma: soma as unknown as Record<string, number>
+  })
+
+  const updatedAllostaticLoad = computeAllostaticLoad(state.freeEnergyState.allostaticLoad, feDecomposition.total)
+  const updatedFEHistory = [...state.freeEnergyHistory, feDecomposition.total].slice(-MAX_FREE_ENERGY_HISTORY)
+  const feTrend = computeTrend(updatedFEHistory)
+  const dominantChannel = findDominantChannel(channels)
+
+  const freeEnergyState = {
+    ...state.freeEnergyState,
+    channels,
+    precisionWeights: hierarchicalPrecision,
+    decomposition: feDecomposition,
+    allostaticLoad: updatedAllostaticLoad,
+    trend: feTrend,
+    dominantChannel,
+    lastUpdatedAt: timestampNow
+  }
+
+  let updatedTrust = state.trustExperience
+  if (decision.responseSent && context.pendingMessages.length > 0) {
+    updatedTrust = clamp01(updatedTrust + TRUST_INCREMENT)
+  } else if (context.operatorSilenceMinutes > 360) {
+    updatedTrust = clamp01(updatedTrust - TRUST_DECAY)
+  }
+
   const newConsecutiveIdle = decision.action === "idle" && !decision.responseSent
     ? state.consecutiveIdleTicks + 1
     : 0
@@ -507,6 +644,8 @@ export async function computeTick(
     emotion: finalEmotion,
     momentum: newMomentum,
     afterglowEntries: allAfterglowEntries,
+    dreamAfterglow,
+    alteredState,
     driveState,
     soma,
     somaticHistory: updatedSomaticHistory,
@@ -534,12 +673,16 @@ export async function computeTick(
     boundaryState: boundaryResult.state,
     ultradianState,
     deferredQueue: updatedDeferredQueue,
+    freeEnergyState,
+    interoceptiveAccuracy: interoceptivePrediction.accuracy,
+    freeEnergyHistory: updatedFEHistory,
     triggerTimestamps: mergedTimestamps,
     moodBaseline: newMoodBaseline,
     consecutiveIdleTicks: newConsecutiveIdle,
     consecutiveConversationTicks: newConsecutiveConversation,
     recentGrowthArcs: updatedGrowthArcs,
     recentActions: updatedRecentActions,
+    trustExperience: updatedTrust,
     lastEmotionTimestamp: timestampNow,
     lastSomaTimestamp: timestampNow,
     tickCount: state.tickCount + 1

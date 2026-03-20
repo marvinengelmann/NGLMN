@@ -44,7 +44,9 @@ function renderOverview(
   lines.push("╚══════════════════════════════════════════════════════════════╝")
   lines.push("")
   lines.push(`  Ticks:       ${last.tickNumber}`)
-  lines.push(`  Duration:    ${(durationMs / 1000).toFixed(1)}s (${(durationMs / last.tickNumber).toFixed(1)}ms/tick)`)
+  const usPerTick = (durationMs * 1000) / last.tickNumber
+  const perTickStr = usPerTick >= 1000 ? `${(usPerTick / 1000).toFixed(1)}ms` : `${usPerTick.toFixed(0)}µs`
+  lines.push(`  Duration:    ${(durationMs / 1000).toFixed(1)}s (${perTickStr}/tick)`)
   lines.push(`  Period:      ${first.timestamp} → ${last.timestamp}`)
   lines.push(`  Days:        ${analysis.totalDays.toFixed(1)}`)
   lines.push(`  Snapshots:   ${snapshots.length}`)
