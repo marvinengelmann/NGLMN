@@ -1,7 +1,12 @@
 import { parseArgs } from "util"
+import { createAbandonmentScenario } from "./scenarios/abandonment.ts"
 import { createBaselineScenario } from "./scenarios/baseline.ts"
 import { createConversationScenario } from "./scenarios/conversation.ts"
+import { createDailyLifeScenario } from "./scenarios/daily-life.ts"
+import { createIrregularScenario } from "./scenarios/irregular.ts"
 import { createNeglectScenario } from "./scenarios/neglect.ts"
+import { createRecoveryScenario } from "./scenarios/recovery.ts"
+import { createSlowBuildScenario } from "./scenarios/slow-build.ts"
 import { createStressScenario } from "./scenarios/stress.ts"
 import { runSimulation } from "./runner.ts"
 import type { Scenario } from "./scenarios.ts"
@@ -10,7 +15,12 @@ const SCENARIOS: Record<string, (days: number) => Scenario> = {
   baseline: createBaselineScenario,
   neglect: createNeglectScenario,
   conversation: createConversationScenario,
-  stress: createStressScenario
+  stress: createStressScenario,
+  "daily-life": createDailyLifeScenario,
+  abandonment: createAbandonmentScenario,
+  irregular: createIrregularScenario,
+  "slow-build": createSlowBuildScenario,
+  recovery: createRecoveryScenario
 }
 
 const { values } = parseArgs({
@@ -40,7 +50,7 @@ const scenario = scenarioFactory(days)
 scenario.tickIntervalMinutes = tickInterval
 
 console.log("╔══════════════════════════════════════════════════════════════╗")
-console.log("║                   ANIMA SIMULATION ENGINE                   ║")
+console.log("║                   ANIMA SIMULATION ENGINE                    ║")
 console.log("╚══════════════════════════════════════════════════════════════╝")
 console.log("")
 console.log(`  Scenario:       ${scenario.name} — ${scenario.description}`)
