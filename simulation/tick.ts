@@ -139,9 +139,14 @@ export async function computeTick(
       }
     )
 
-  const eventIntensity = computeEmotionalIntensity(computed)
+  let postUpdate = computed
+  if (isMorningTransition) {
+    postUpdate = { ...postUpdate, energy: clamp01(0.55 + (postUpdate.energy - 0.55) * 0.3) }
+  }
+
+  const eventIntensity = computeEmotionalIntensity(postUpdate)
   const { state: momentumState, momentum: newMomentum } = applyMomentum(
-    computed,
+    postUpdate,
     state.emotion,
     eventIntensity,
     state.momentum

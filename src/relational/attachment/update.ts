@@ -94,23 +94,25 @@ export function updateAttachmentStyle(
 ): AttachmentStyle {
   let { secure, anxious, avoidant, disorganized } = current
 
-  if (dynamics.reunionResponse > 0.5 && dynamics.separationDistress < 0.5) {
-    secure += 0.001 * elapsedHours * crisisMultiplier
+  if (dynamics.reunionResponse > 0.3 && dynamics.separationDistress < 0.6) {
+    secure += 0.004 * elapsedHours * crisisMultiplier
+    anxious -= 0.003 * elapsedHours * crisisMultiplier
+    avoidant -= 0.002 * elapsedHours * crisisMultiplier
   }
 
-  if (dynamics.separationDistress > 0.7) {
-    anxious += 0.0005 * elapsedHours * crisisMultiplier
+  if (dynamics.separationDistress >= 0.4) {
+    const anxiousGain = 0.0003 * elapsedHours * crisisMultiplier * (1 - anxious)
+    anxious += anxiousGain
+    secure -= 0.0001 * elapsedHours * crisisMultiplier
   }
 
-  secure += 0.0002 * elapsedHours * crisisMultiplier
-
-  const total = secure + anxious + avoidant + disorganized
-  if (total > 0) {
-    secure = secure / total
-    anxious = anxious / total
-    avoidant = avoidant / total
-    disorganized = disorganized / total
+  if (dynamics.safeHavenSeeking < 0.15 && dynamics.separationDistress > 0.4) {
+    avoidant += 0.0004 * elapsedHours * crisisMultiplier * (1 - avoidant)
   }
+
+  secure += (0.5 - secure) * 0.001 * elapsedHours
+  anxious += (0.25 - anxious) * 0.0006 * elapsedHours
+  avoidant += (0.15 - avoidant) * 0.0006 * elapsedHours
 
   return {
     secure: clamp01(secure),

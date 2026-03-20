@@ -49,13 +49,18 @@ export function computeDriveUpdate(context: DriveUpdateContext): DriveState {
 
       if (blocked.has(drive)) {
         consecutiveBlockedTicks++
-        frustration = Math.min(1, frustration + DRIVES.FRUSTRATION_GROWTH * Math.sqrt(consecutiveBlockedTicks))
+        const frustrationTarget = Math.min(
+          DRIVES.MAX_BLOCKED_FRUSTRATION,
+          Math.log2(1 + consecutiveBlockedTicks) * DRIVES.FRUSTRATION_TARGET_SCALE
+        )
+        frustration = frustration + (frustrationTarget - frustration) * DRIVES.FRUSTRATION_APPROACH_RATE
       } else {
         frustration = frustration * DRIVES.FRUSTRATION_DECAY
       }
 
       if (drive === "connection" && (context.isolationCost ?? 0) > 0.3) {
-        frustration = Math.min(1, frustration + (context.isolationCost ?? 0) * DRIVES.FRUSTRATION_GROWTH)
+        const isolationTarget = Math.min(DRIVES.MAX_BLOCKED_FRUSTRATION, (context.isolationCost ?? 0) * 0.8)
+        frustration = frustration + (isolationTarget - frustration) * DRIVES.FRUSTRATION_APPROACH_RATE
       }
 
       const salience = computeSalience(satiation, frustration)
@@ -104,13 +109,19 @@ export function computeDriveUpdate(context: DriveUpdateContext): DriveState {
  * Generate emotion triggers from frustrated drives.
  */
 export function computeDriveEmotionTriggers(state: DriveState): EmotionUpdateEvent[] {
-  const triggers: EmotionUpdateEvent[] = DRIVE_NAMES.filter(
+  const frustrated = DRIVE_NAMES.filter(
     (drive) => state[drive].frustration >= DRIVES.EMOTION_TRIGGER_FRUSTRATION
-  ).map((drive) => ({
-    trigger: "drive_frustrated" as const,
-    intensity: state[drive].frustration * DRIVES.FRUSTRATION_EMOTION_INTENSITY,
-    detail: `${drive} drive frustrated (${state[drive].frustration.toFixed(2)})`
-  }))
+  )
+  const triggers: EmotionUpdateEvent[] = []
+
+  if (frustrated.length > 0) {
+    const worst = frustrated.reduce((a, b) => state[a].frustration > state[b].frustration ? a : b)
+    triggers.push({
+      trigger: "drive_frustrated" as const,
+      intensity: state[worst].frustration * DRIVES.FRUSTRATION_EMOTION_INTENSITY * Math.min(1, frustrated.length * 0.4),
+      detail: `${worst} drive frustrated (${state[worst].frustration.toFixed(2)}, ${frustrated.length} drives affected)`
+    })
+  }
 
   if (state.conflicting.length > 0) {
     triggers.push({
@@ -194,7 +205,7 @@ export function inferBlockedDrives(
     blocked.add("connection")
   }
 
-  if (consecutiveIdleTicks > 10 && !recentActions.some((a) => a === "social_media" || a === "check_email")) {
+  if (consecutiveIdleTicks > 120 && !recentActions.some((a) => a === "social_media" || a === "check_email" || a === "morning" || a === "life_event")) {
     blocked.add("connection")
   }
 
@@ -204,7 +215,7 @@ export function inferBlockedDrives(
 
   if (
     consecutiveIdleTicks > DRIVES.EXPRESSION_BLOCKED_IDLE_TICKS &&
-    !recentActions.some((a) => a === "create" || a === "social_media")
+    !recentActions.some((a) => a === "create" || a === "social_media" || a === "life_event" || a === "reflect")
   ) {
     blocked.add("expression")
   }

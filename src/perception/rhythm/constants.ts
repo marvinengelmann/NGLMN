@@ -13,9 +13,9 @@ export const ULTRADIAN = {
   ACTIVE_ENERGY_BOOST: 0.05,
 
   EMOTION_REST_SHIFTS: {
-    boredom: 0.05,
-    curiosity: 0.03,
-    energy: -0.08
+    boredom: 0.003,
+    curiosity: 0.002,
+    energy: -0.005
   } as Record<string, number>,
 
   NATURAL_VARIANCE_MINUTES: 15,

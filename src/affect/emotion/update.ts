@@ -21,15 +21,16 @@ import { CONTRADICTION, EMOTION, MOMENTUM, MOOD_BASELINE, MOOD_CONTAGION } from 
 import type { AppraisalContext } from "./types.ts"
 
 export const EMOTION_FLOORS: Partial<Record<keyof EmotionalState, number>> = {
-  energy: 0.05,
+  energy: 0.3,
   confidence: 0.05,
   satisfaction: 0.08,
-  excitement: 0.05
+  excitement: 0.05,
+  caution: 0.1
 } as const
 
 export const EMOTION_CEILINGS: Partial<Record<keyof EmotionalState, number>> = {
   frustration: 0.92,
-  confidence: 0.95
+  confidence: 0.75
 } as const
 
 export function enforceEmotionFloors(state: EmotionalState): EmotionalState {
@@ -50,10 +51,10 @@ export function enforceEmotionFloors(state: EmotionalState): EmotionalState {
 }
 
 const TRIGGER_EFFECTS: Record<EmotionTrigger, EmotionDeltas> = {
-  message_received: { connection: 0.1, boredom: -0.1, excitement: 0.05, energy: 0.03 },
+  message_received: { connection: 0.2, satisfaction: 0.15, boredom: -0.2, excitement: 0.1, energy: 0.05, frustration: -0.08 },
   message_sent: { satisfaction: 0.03, connection: 0.02 },
   task_success: { satisfaction: 0.08, confidence: 0.08, frustration: -0.05 },
-  task_failure: { frustration: 0.08, confidence: -0.1, caution: 0.05 },
+  task_failure: { frustration: 0.4, confidence: -0.3, satisfaction: -0.2, caution: 0.15, energy: -0.1 },
   guardian_warning: { caution: 0.08, frustration: 0.05, confidence: -0.05 },
   guardian_block: { caution: 0.12, frustration: 0.08, confidence: -0.12 },
   operator_went_silent: { connection: -0.08 },
@@ -66,15 +67,15 @@ const TRIGGER_EFFECTS: Record<EmotionTrigger, EmotionDeltas> = {
   weather_update: { curiosity: 0.03, excitement: 0.04, boredom: -0.03 },
   git_activity: { curiosity: 0.05, excitement: 0.03 },
   dream_correction: {},
-  morning_calibration: { energy: 0.5 },
+  morning_calibration: { energy: 2.0, satisfaction: 0.3, frustration: -0.2, boredom: -0.15 },
   nostalgia_wave: { connection: 0.08, satisfaction: 0.04, excitement: -0.03, boredom: -0.05, energy: -0.02 },
   relational_pattern_match: { connection: 0.03, caution: 0.02 },
-  drive_frustrated: { frustration: 0.03, energy: -0.01 },
+  drive_frustrated: { frustration: 0.02 },
   drive_conflict: { caution: 0.04, frustration: 0.03 },
   positive_anticipation: { excitement: 0.05, energy: 0.03 },
-  expectation_violated: { frustration: 0.04, caution: 0.03, excitement: -0.02 },
+  expectation_violated: { frustration: 0.2, caution: 0.1, satisfaction: -0.1, excitement: -0.1 },
   expectation_met: { satisfaction: 0.04, confidence: 0.02 },
-  boundary_violated: { caution: 0.12, frustration: 0.08, connection: -0.05, satisfaction: -0.04 },
+  boundary_violated: { caution: 0.4, frustration: 0.3, connection: -0.2, satisfaction: -0.15, confidence: -0.1 },
   memory_contradiction: { curiosity: 0.06, caution: 0.04, frustration: 0.03 },
   ambient: {}
 }
@@ -228,19 +229,19 @@ interface CrossCouplingRule {
 }
 
 const CROSS_COUPLING_RULES: CrossCouplingRule[] = [
-  { when: (s) => s.boredom > 0.7, target: "satisfaction", factor: 0.85 },
-  { when: (s) => s.frustration > 0.7, target: "satisfaction", factor: 0.85 },
-  { when: (s) => s.frustration > 0.7, target: "confidence", factor: 0.9 },
-  { when: (s) => s.connection > 0.7, target: "boredom", factor: 0.85 },
-  { when: (s) => s.excitement > 0.7, target: "boredom", factor: 0.85 },
-  { when: (s) => s.energy < 0.2, target: "excitement", factor: 0.95 },
-  { when: (s) => s.confidence < 0.3, target: "satisfaction", factor: 0.85 },
-  { when: (s) => s.confidence > 0.8, target: "caution", factor: 0.9 },
-  { when: (s) => s.curiosity > 0.7 && s.energy > 0.6, target: "excitement", factor: 1.15 },
-  { when: (s) => s.satisfaction > 0.7, target: "confidence", factor: 1.1 },
-  { when: (s) => s.connection > 0.7 && s.excitement > 0.6, target: "satisfaction", factor: 1.15 },
-  { when: (s) => s.energy > 0.7, target: "curiosity", factor: 1.1 },
-  { when: (s) => s.excitement > 0.7 && s.curiosity > 0.6, target: "energy", factor: 0.985 }
+  { when: (s) => s.boredom > 0.55, target: "satisfaction", factor: 0.998 },
+  { when: (s) => s.frustration > 0.55, target: "satisfaction", factor: 0.998 },
+  { when: (s) => s.frustration > 0.6, target: "confidence", factor: 0.999 },
+  { when: (s) => s.connection > 0.55, target: "boredom", factor: 0.998 },
+  { when: (s) => s.excitement > 0.55, target: "boredom", factor: 0.998 },
+  { when: (s) => s.energy < 0.3, target: "excitement", factor: 0.999 },
+  { when: (s) => s.confidence < 0.35, target: "satisfaction", factor: 0.999 },
+  { when: (s) => s.confidence > 0.7, target: "caution", factor: 0.999 },
+  { when: (s) => s.curiosity > 0.6 && s.energy > 0.5, target: "excitement", factor: 1.002 },
+  { when: (s) => s.satisfaction > 0.6, target: "confidence", factor: 1.001 },
+  { when: (s) => s.connection > 0.6 && s.excitement > 0.5, target: "satisfaction", factor: 1.002 },
+  { when: (s) => s.energy > 0.6, target: "curiosity", factor: 1.001 },
+  { when: (s) => s.excitement > 0.6 && s.curiosity > 0.5, target: "energy", factor: 0.9995 }
 ]
 
 /**

@@ -65,7 +65,7 @@ export function computeSomaticSignal(soma: SomaticState, pleasantness: number): 
       deltas.caution = arousal * 0.5
     }
   } else {
-    deltas.boredom = Math.abs(arousal) * 0.5
+    deltas.boredom = Math.abs(arousal) * 0.1
   }
 
   if (approach > 0) {
@@ -75,9 +75,9 @@ export function computeSomaticSignal(soma: SomaticState, pleasantness: number): 
   }
 
   if (withdrawal > 0) {
-    deltas.caution = (deltas.caution ?? 0) + withdrawal
-    deltas.boredom = (deltas.boredom ?? 0) + withdrawal * 0.6
-    deltas.connection = (deltas.connection ?? 0) - withdrawal * 0.4
+    deltas.caution = (deltas.caution ?? 0) + withdrawal * 0.3
+    deltas.boredom = (deltas.boredom ?? 0) + withdrawal * 0.15
+    deltas.connection = (deltas.connection ?? 0) - withdrawal * 0.1
   }
 
   return deltas
@@ -143,8 +143,8 @@ export function computeAppraisalSignal(appraisal: AppraisalResult): EmotionDelta
     deltas.satisfaction = (deltas.satisfaction ?? 0) + appraisal.pleasantness * 0.2
     deltas.energy = (deltas.energy ?? 0) + appraisal.pleasantness * 0.1
   } else if (appraisal.pleasantness < 0) {
-    deltas.frustration = (deltas.frustration ?? 0) + Math.abs(appraisal.pleasantness) * 0.15
-    deltas.energy = (deltas.energy ?? 0) + appraisal.pleasantness * 0.05
+    deltas.frustration = (deltas.frustration ?? 0) + Math.abs(appraisal.pleasantness) * 0.03
+    deltas.energy = (deltas.energy ?? 0) + appraisal.pleasantness * 0.01
   }
 
   if (appraisal.goalRelevance > 0.5) {

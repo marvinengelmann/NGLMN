@@ -56,23 +56,24 @@ interface SelfConceptContext {
 export function updateSelfConcept(current: SelfConcept, context: SelfConceptContext): SelfConcept {
   let { selfEfficacy, selfWorth, selfContinuity, agency, authenticity } = current
 
-  if (context.recentTaskSuccess) selfEfficacy += 0.02
-  if (context.recentTaskFailure) selfEfficacy -= 0.03
-  selfEfficacy += (0.5 - selfEfficacy) * 0.005
+  if (context.recentTaskSuccess) selfEfficacy += 0.015
+  if (context.recentTaskFailure) selfEfficacy -= 0.02
+  selfEfficacy += (0.5 - selfEfficacy) * 0.02
 
-  if (context.operatorEngagement) selfWorth += 0.01
-  if (context.emotionalIntensity > 0.6) selfWorth += 0.005
-  selfWorth += (0.5 - selfWorth) * 0.005
+  if (context.operatorEngagement) selfWorth += 0.008
+  if (context.emotionalIntensity > 0.6) selfWorth += 0.003
+  selfWorth += (0.5 - selfWorth) * 0.02
 
-  selfContinuity += 0.001 * Math.min(context.elapsedHours, 6)
+  selfContinuity += 0.0005 * Math.min(context.elapsedHours, 6)
   selfContinuity = Math.min(selfContinuity, 0.95)
   if (context.dissonanceDetected) selfContinuity -= 0.05
 
-  if (context.autonomousAction) agency += 0.02
-  agency += (0.5 - agency) * 0.005
+  if (context.autonomousAction) agency += 0.01
+  agency += (0.5 - agency) * 0.02
 
-  if (context.vulnerabilityOpen) authenticity += 0.01
+  if (context.vulnerabilityOpen) authenticity += 0.003
   if (context.dissonanceDetected) authenticity -= 0.02
+  authenticity += (0.6 - authenticity) * 0.01
   if (context.modelCorrected) {
     selfEfficacy -= 0.01
     authenticity += 0.01

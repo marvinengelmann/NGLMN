@@ -97,11 +97,11 @@ export function computeMetacognitiveModifiers(state: MetacognitiveState): {
   const hedgingLevel =
     state.cognitiveFatigue > METACOGNITION.HEDGING_FATIGUE_THRESHOLD ? state.cognitiveFatigue * 0.5 : 0
 
+  const clarityBoost = state.cognitiveClarity > 0.7 ? METACOGNITION.CONFIDENCE_MODIFIER_SCALE * 0.3 : 0
+  const fatiguePenalty = state.cognitiveFatigue > 0.3 ? -state.cognitiveFatigue * METACOGNITION.CONFIDENCE_MODIFIER_SCALE : 0
   const confidenceModifier = state.ruminationDetected
     ? -METACOGNITION.CONFIDENCE_MODIFIER_SCALE
-    : state.cognitiveClarity > 0.7
-      ? METACOGNITION.CONFIDENCE_MODIFIER_SCALE * 0.5
-      : 0
+    : clarityBoost + fatiguePenalty
 
   return { hedgingLevel, confidenceModifier }
 }

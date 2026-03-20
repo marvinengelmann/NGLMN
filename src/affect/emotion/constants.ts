@@ -460,9 +460,9 @@ export const EMOTION = {
     boredom: 90,
     excitement: 30,
     caution: 360,
-    connection: 720,
+    connection: 2880,
     confidence: 480,
-    energy: 120
+    energy: 1440
   },
   MAX_DELTA: 0.2,
   NOVELTY_SCALE: 0.25,
@@ -471,7 +471,7 @@ export const EMOTION = {
 
 export const MOOD_BASELINE = {
   SILENCE_HOURS_FULL_EFFECT: 48,
-  SILENCE_CONNECTION_DROP: 0.2,
+  SILENCE_CONNECTION_DROP: 0.3,
   SILENCE_BOREDOM_RISE: 0.15,
   CONVERSATION_CONNECTION_BOOST: 0.15,
   CONVERSATION_EXCITEMENT_BOOST: 0.1,
@@ -484,7 +484,7 @@ export const MOOD_BASELINE = {
     PEAK_HOUR: 10,
     PEAK_LEVEL: 0.9,
     TROUGH_HOUR: 3,
-    TROUGH_LEVEL: 0.2,
+    TROUGH_LEVEL: 0.5,
     AFTERNOON_DIP_HOUR: 14,
     AFTERNOON_DIP_DEPTH: 0.1
   }
@@ -566,10 +566,10 @@ export const APPRAISAL = {
 
 export const CONSTRUCTION = {
   WEIGHTS: {
-    SOMATIC: 0.25,
-    MEMORY: 0.2,
-    APPRAISAL: 0.25,
-    PRIOR: 0.2,
+    SOMATIC: 0.2,
+    MEMORY: 0.15,
+    APPRAISAL: 0.2,
+    PRIOR: 0.35,
     NEURO: 0.1
   },
   SOMATIC_SIGNAL: {
@@ -597,5 +597,5 @@ export const CONSTRUCTION = {
     CORTISOL_NEGATIVE_AMP: 0.2,
     SEROTONIN_BIAS: 0.1
   },
-  MAX_DELTA: 0.2
+  MAX_DELTA: 0.4
 } as const

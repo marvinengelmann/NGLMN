@@ -105,3 +105,12 @@ export function computeIsolationStress(context: IsolationStressContext): Isolati
 
   return { isolationCost, coregulationBenefit, allostasis, energyDrainRate, cortisolStressSignal }
 }
+
+export function computeIsolationEmotionPressure(isolationCost: number): { connection: number; satisfaction: number } {
+  if (isolationCost <= 0.1) return { connection: 0, satisfaction: 0 }
+  const pressure = (isolationCost - 0.1) * 0.08
+  return {
+    connection: -pressure,
+    satisfaction: -pressure * 0.3
+  }
+}
