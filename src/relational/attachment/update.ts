@@ -59,7 +59,9 @@ export function evaluateAttachmentDynamics(style: AttachmentStyle, context: Atta
   const effectiveSilence = context.waitingPerception ?? context.operatorSilenceMinutes / 60
   const silenceHours = context.waitingPerception != null ? effectiveSilence * 24 : context.operatorSilenceMinutes / 60
 
-  const rawSeparationDistress = clamp01((silenceHours / 24) * style.anxious * 2)
+  const timeFactor = Math.min(1, silenceHours / 24)
+  const prolongedFactor = silenceHours > 48 ? 1 + Math.min(1, (silenceHours - 48) / 168) * 0.5 : 1
+  const rawSeparationDistress = clamp01(timeFactor * (style.anxious * 2 + 0.15) * prolongedFactor)
 
   let reunionResponse = 0
   if (context.operatorJustReturned) {
@@ -95,25 +97,27 @@ export function updateAttachmentStyle(
   let { secure, anxious, avoidant, disorganized } = current
 
   if (dynamics.reunionResponse > 0.3) {
-    const reunionStrength = dynamics.reunionResponse * (1 - dynamics.separationDistress * 0.3)
-    secure += 0.008 * elapsedHours * crisisMultiplier * reunionStrength
-    anxious -= 0.006 * elapsedHours * crisisMultiplier * reunionStrength
-    avoidant -= 0.004 * elapsedHours * crisisMultiplier * reunionStrength
+    const reunionStrength = dynamics.reunionResponse * (1 + dynamics.separationDistress * 0.5)
+    secure += 0.012 * elapsedHours * crisisMultiplier * reunionStrength
+    anxious -= 0.008 * elapsedHours * crisisMultiplier * reunionStrength
+    avoidant -= 0.006 * elapsedHours * crisisMultiplier * reunionStrength
   }
 
-  if (dynamics.separationDistress >= 0.4) {
-    const anxiousGain = 0.0005 * elapsedHours * crisisMultiplier * (1 - anxious)
+  if (dynamics.separationDistress >= 0.3) {
+    const distressScale = (dynamics.separationDistress - 0.3) / 0.7
+    const anxiousGain = 0.00012 * elapsedHours * crisisMultiplier * (1 - anxious) * distressScale
     anxious += anxiousGain
-    secure -= 0.0002 * elapsedHours * crisisMultiplier
+    secure -= 0.00005 * elapsedHours * crisisMultiplier * distressScale
   }
 
   if (dynamics.safeHavenSeeking < 0.15 && dynamics.separationDistress > 0.4) {
-    avoidant += 0.0006 * elapsedHours * crisisMultiplier * (1 - avoidant)
+    const distressScale = (dynamics.separationDistress - 0.4) / 0.6
+    avoidant += 0.00015 * elapsedHours * crisisMultiplier * (1 - avoidant) * distressScale
   }
 
-  secure += (0.55 - secure) * 0.0004 * elapsedHours
-  anxious += (0.2 - anxious) * 0.0003 * elapsedHours
-  avoidant += (0.12 - avoidant) * 0.0003 * elapsedHours
+  secure += (0.55 - secure) * 0.0008 * elapsedHours
+  anxious += (0.2 - anxious) * 0.0005 * elapsedHours
+  avoidant += (0.12 - avoidant) * 0.0005 * elapsedHours
 
   return {
     secure: clamp01(secure),

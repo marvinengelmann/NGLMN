@@ -22,6 +22,7 @@ import type { AppraisalContext } from "./types.ts"
 
 export const EMOTION_FLOORS: Partial<Record<keyof EmotionalState, number>> = {
   energy: 0.3,
+  connection: 0.05,
   confidence: 0.05,
   satisfaction: 0.08,
   excitement: 0.05,
@@ -30,6 +31,7 @@ export const EMOTION_FLOORS: Partial<Record<keyof EmotionalState, number>> = {
 
 export const EMOTION_CEILINGS: Partial<Record<keyof EmotionalState, number>> = {
   frustration: 0.92,
+  caution: 0.90,
   confidence: 0.75
 } as const
 

@@ -1,4 +1,5 @@
 import type { EmotionalState } from "@/affect/emotion/types.ts"
+import { EMOTION_CEILINGS, EMOTION_FLOORS } from "@/affect/emotion/update.ts"
 import type { NeuromodulatoryState } from "@/affect/neuromodulation/types.ts"
 import type { SomaticState } from "@/affect/soma/types.ts"
 import type { AttachmentStyle } from "@/relational/attachment/types.ts"
@@ -41,10 +42,12 @@ export interface SimulationObserver {
   detectAnomalies(state: SimulationState, previousState: SimulationState | null): void
 }
 
+const STUCK_THRESHOLD_TICKS = 120
+
 export function createObserver(snapshotInterval: number): SimulationObserver {
   const snapshots: StateSnapshot[] = []
   const anomalies: Anomaly[] = []
-
+  const emotionStuckCounters: Record<string, number> = {}
   let pendingTriggerCounts: Record<string, number> = {}
   let pendingMessageCount = 0
 
@@ -91,8 +94,7 @@ export function createObserver(snapshotInterval: number): SimulationObserver {
 
       checkNeuromodulatorCeiling(state, tick, ts, anomalies)
       checkNeuromodulatorFloor(state, tick, ts, anomalies)
-      checkEmotionCeiling(state, tick, ts, anomalies)
-      checkEmotionFloor(state, tick, ts, anomalies)
+      checkEmotionStuck(state, tick, ts, anomalies, emotionStuckCounters)
       checkCoherenceCollapse(state, tick, ts, anomalies)
       checkAutonomicStuck(state, tick, ts, anomalies)
       checkSomaticExtremes(state, tick, ts, anomalies)
@@ -137,28 +139,31 @@ function checkNeuromodulatorFloor(state: SimulationState, tick: number, ts: stri
   }
 }
 
-function checkEmotionCeiling(state: SimulationState, tick: number, ts: string, anomalies: Anomaly[]) {
+function checkEmotionStuck(
+  state: SimulationState,
+  tick: number,
+  ts: string,
+  anomalies: Anomaly[],
+  counters: Record<string, number>
+) {
   for (const [dim, value] of Object.entries(state.emotion)) {
     if (typeof value !== "number") continue
-    if (value >= 0.98) {
-      anomalies.push({
-        tick, timestamp: ts, type: "emotion_ceiling",
-        description: `${dim} locked at ceiling (${value.toFixed(3)})`,
-        severity: "high"
-      })
-    }
-  }
-}
+    const floor = EMOTION_FLOORS[dim as keyof EmotionalState]
+    const ceiling = EMOTION_CEILINGS[dim as keyof EmotionalState]
+    const atLimit = (floor !== undefined && value <= floor) || (ceiling !== undefined && value >= ceiling)
 
-function checkEmotionFloor(state: SimulationState, tick: number, ts: string, anomalies: Anomaly[]) {
-  for (const [dim, value] of Object.entries(state.emotion)) {
-    if (typeof value !== "number") continue
-    if (value <= 0.02 && dim !== "frustration" && dim !== "boredom") {
-      anomalies.push({
-        tick, timestamp: ts, type: "emotion_floor",
-        description: `${dim} locked at floor (${value.toFixed(3)})`,
-        severity: "high"
-      })
+    if (atLimit) {
+      counters[dim] = (counters[dim] ?? 0) + 1
+      if (counters[dim] === STUCK_THRESHOLD_TICKS) {
+        const limitType = ceiling !== undefined && value >= ceiling ? "ceiling" : "floor"
+        anomalies.push({
+          tick, timestamp: ts, type: `emotion_stuck_${limitType}`,
+          description: `${dim} stuck at enforced ${limitType} (${value.toFixed(3)}) for ${STUCK_THRESHOLD_TICKS}+ ticks`,
+          severity: "high"
+        })
+      }
+    } else {
+      counters[dim] = 0
     }
   }
 }
