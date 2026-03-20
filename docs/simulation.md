@@ -22,12 +22,24 @@ bun simulation --scenario stress --days 7
 
 ## Scenarios
 
+### Edge cases
+
 | Name | Description |
 |------|-------------|
-| `baseline` | No operator interaction |
+| `baseline` | No operator interaction — pure isolation |
 | `neglect` | Single message then complete silence |
-| `conversation` | Regular daily conversations (7 messages/day) |
-| `stress` | Emotional triggers, conflict, and reconciliation |
+| `stress` | Daily emotional triggers, criticism, and conflict |
+
+### Realistic patterns
+
+| Name | Description |
+|------|-------------|
+| `daily-life` | Varying daily interaction density, weekday/weekend patterns, seeded randomization |
+| `conversation` | Regular daily conversations (7 messages/day, fixed pattern) |
+| `slow-build` | Cold start → warming → building trust → deep connection over weeks |
+| `irregular` | Unpredictable — 30% silent days, 15% burst days (8-23 messages), rest sparse |
+| `abandonment` | Active relationship building (30% of duration) then sudden complete silence |
+| `recovery` | Escalating stress/conflict → explicit reconciliation → return to normal |
 
 Custom scenarios go in `simulation/scenarios/` — see existing ones for the format.
 
