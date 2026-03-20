@@ -73,10 +73,6 @@ function noised(rng: PRNG, base: number, noiseRange = 0.1): number {
   return clamp01(base + (rng() - 0.5) * noiseRange * 2)
 }
 
-function sigmoid(x: number, center = 0.5, steepness = 10): number {
-  return 1 / (1 + Math.exp(-steepness * (x - center)))
-}
-
 function generateBigFive(rng: PRNG): BigFive {
   return {
     openness: rng(),
@@ -87,11 +83,14 @@ function generateBigFive(rng: PRNG): BigFive {
   }
 }
 
-function deriveMBTI(bigFive: BigFive, rng: PRNG): PersonalityType {
-  const e = rng() < sigmoid(bigFive.extraversion, 0.5, 6) ? "E" : "I"
-  const n = rng() < sigmoid(bigFive.openness, 0.5, 6) ? "N" : "S"
-  const f = rng() < sigmoid(bigFive.agreeableness, 0.5, 6) ? "F" : "T"
-  const j = rng() < sigmoid(bigFive.conscientiousness, 0.5, 6) ? "J" : "P"
+/**
+ * Derive MBTI personality type deterministically from BigFive scores.
+ */
+export function derivePersonalityType(bigFive: BigFive): PersonalityType {
+  const e = bigFive.extraversion > 0.5 ? "E" : "I"
+  const n = bigFive.openness > 0.5 ? "N" : "S"
+  const f = bigFive.agreeableness > 0.5 ? "F" : "T"
+  const j = bigFive.conscientiousness > 0.5 ? "J" : "P"
   return `${e}${n}${f}${j}` as PersonalityType
 }
 
@@ -211,7 +210,7 @@ export function generateDNA(seed: string): GenesisDNA {
   const rng = seedToRng(seed)
 
   const rawBigFive = generateBigFive(rng)
-  const personalityType = deriveMBTI(rawBigFive, rng)
+  const personalityType = derivePersonalityType(rawBigFive)
   const bigFive = nudgeBigFiveTowardMBTI(rawBigFive, personalityType)
 
   return {

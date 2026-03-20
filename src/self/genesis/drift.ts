@@ -2,6 +2,7 @@ import type { EmotionalState } from "@/affect/emotion/types.ts"
 import { log } from "@/infra/lib/logger.ts"
 import { clamp01 } from "@/infra/lib/math.ts"
 import type { PersonalityType } from "@/self/personality/types.ts"
+import { derivePersonalityType } from "./seed.ts"
 import { getGenesisDNA, updateGenesisDNA } from "./state.ts"
 import type { BigFive } from "./types.ts"
 
@@ -54,16 +55,6 @@ export function computeBigFiveDrift(
   return Object.fromEntries(significantDeltas)
 }
 
-/**
- * Derive MBTI personality type from BigFive scores.
- */
-export function derivePersonalityType(bigFive: BigFive): PersonalityType {
-  const e = bigFive.extraversion > 0.5 ? "E" : "I"
-  const n = bigFive.openness > 0.55 ? "N" : "S"
-  const f = bigFive.agreeableness > 0.5 ? "F" : "T"
-  const j = bigFive.conscientiousness > 0.5 ? "J" : "P"
-  return `${e}${n}${f}${j}` as PersonalityType
-}
 
 /**
  * Adjust the emotional baseline when BigFive drifts.
