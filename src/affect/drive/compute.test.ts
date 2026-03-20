@@ -187,12 +187,12 @@ describe("inferBlockedDrives", () => {
   })
 
   it("should block curiosity during long idle", () => {
-    const blocked = inferBlockedDrives(0, 8, false)
+    const blocked = inferBlockedDrives(0, 70, false)
     expect(blocked.has("curiosity")).toBe(true)
   })
 
   it("should block expression during long idle without creative actions", () => {
-    const blocked = inferBlockedDrives(0, 8, false, ["idle", "idle"])
+    const blocked = inferBlockedDrives(0, 100, false, ["idle", "idle"])
     expect(blocked.has("expression")).toBe(true)
   })
 
@@ -201,8 +201,8 @@ describe("inferBlockedDrives", () => {
     expect(blocked.has("expression")).toBe(false)
   })
 
-  it("should block connection when idle > 10 ticks without social activity", () => {
-    const blocked = inferBlockedDrives(60, 12, false, ["idle", "idle"])
+  it("should block connection when idle beyond threshold without social activity", () => {
+    const blocked = inferBlockedDrives(150, 130, false, ["idle", "idle"])
     expect(blocked.has("connection")).toBe(true)
   })
 

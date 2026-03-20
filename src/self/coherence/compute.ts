@@ -67,7 +67,8 @@ export function computeCoherence(context: CoherenceContext, previous: CoherenceS
     return bonus
   }, 0)
 
-  const target = clamp01(1 - sources.length * COHERENCE.FRAGMENTATION_WEIGHT - compoundingBonus)
+  const rawTarget = clamp01(1 - sources.length * COHERENCE.FRAGMENTATION_WEIGHT - compoundingBonus)
+  const target = Math.min(rawTarget, COHERENCE.NATURAL_CEILING)
   return clamp01(previous.integrationScore + (target - previous.integrationScore) * COHERENCE.CONVERGENCE_RATE)
 }
 

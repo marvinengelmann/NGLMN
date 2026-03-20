@@ -17,7 +17,7 @@ interface ThreatAppraisalInput {
 export function computeThreatAppraisal({ soma, emotion, operatorPresent }: ThreatAppraisalInput): number {
   const w = AUTONOMIC.SAFETY_APPRAISAL_WEIGHTS
   const raw =
-    0.6 +
+    0.7 +
     soma.tension * w.tension +
     soma.heartRate * w.heartRate +
     soma.openness * w.openness +

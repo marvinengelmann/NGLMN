@@ -52,7 +52,7 @@ export function computeSomaticTarget(emotion: EmotionalState, hourOfDay: number)
       CIRCADIAN.GRAVITY_WEIGHT * fatigue,
     openness:
       0.3 + 0.3 * emotion.connection + 0.2 * emotion.curiosity + 0.1 * emotion.confidence - 0.3 * emotion.caution,
-    socialBattery: 0.8
+    socialBattery: 0.65
   })
 }
 
@@ -74,7 +74,7 @@ export function applySomaticHysteresis(
   const result = { ...current, ...drifted }
 
   const batteryDecay = halfLifeDecay(elapsedMinutes, SOCIAL_BATTERY.HALF_LIFE)
-  result.socialBattery = 0.8 + (current.socialBattery - 0.8) * batteryDecay
+  result.socialBattery = 0.65 + (current.socialBattery - 0.65) * batteryDecay
 
   return clampState(result)
 }

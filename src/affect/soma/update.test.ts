@@ -160,12 +160,14 @@ describe("applySomaticHysteresis", () => {
       breathing: 0.9,
       gravity: 0.9,
       openness: 0.9,
-      socialBattery: 0.8
+      socialBattery: 0.65
     }
     const result = applySomaticHysteresis(current, target, 100000)
-    ;(Object.keys(target) as (keyof SomaticState)[]).forEach((dimension) => {
+    const somaDimensions: (keyof SomaticState)[] = ["tension", "warmth", "heartRate", "breathing", "gravity", "openness"]
+    for (const dimension of somaDimensions) {
       expect(result[dimension]).toBeCloseTo(target[dimension], 2)
-    })
+    }
+    expect(result.socialBattery).toBeCloseTo(0.65, 2)
   })
 })
 

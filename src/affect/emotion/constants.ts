@@ -454,17 +454,17 @@ export const DEFERRED_PROCESSING = {
 
 export const EMOTION = {
   HALF_LIVES: {
-    curiosity: 60,
-    satisfaction: 240,
-    frustration: 120,
-    boredom: 90,
-    excitement: 30,
-    caution: 360,
+    curiosity: 120,
+    satisfaction: 360,
+    frustration: 240,
+    boredom: 180,
+    excitement: 90,
+    caution: 180,
     connection: 2880,
     confidence: 480,
     energy: 1440
   },
-  MAX_DELTA: 0.2,
+  MAX_DELTA: 0.3,
   NOVELTY_SCALE: 0.25,
   NOVELTY_MAX_MULTIPLIER: 2.5
 } as const
@@ -472,10 +472,16 @@ export const EMOTION = {
 export const MOOD_BASELINE = {
   SILENCE_HOURS_FULL_EFFECT: 48,
   SILENCE_CONNECTION_DROP: 0.3,
-  SILENCE_BOREDOM_RISE: 0.15,
+  SILENCE_BOREDOM_RISE: 0.2,
+  SILENCE_FRUSTRATION_RISE: 0.12,
+  SILENCE_SATISFACTION_DROP: 0.15,
+  SILENCE_CAUTION_RISE: 0.1,
+  SILENCE_CURIOSITY_DROP: 0.08,
   CONVERSATION_CONNECTION_BOOST: 0.15,
   CONVERSATION_EXCITEMENT_BOOST: 0.1,
   CONVERSATION_BOREDOM_DROP: 0.2,
+  CONVERSATION_SATISFACTION_BOOST: 0.08,
+  CONVERSATION_CURIOSITY_BOOST: 0.06,
   HEALTHY_SATISFACTION_BOOST: 0.05,
   GOALS_CURIOSITY_BOOST: 0.05,
   GOALS_BOREDOM_DROP: 0.05,

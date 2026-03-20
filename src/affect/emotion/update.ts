@@ -57,15 +57,15 @@ const TRIGGER_EFFECTS: Record<EmotionTrigger, EmotionDeltas> = {
   task_failure: { frustration: 0.4, confidence: -0.3, satisfaction: -0.2, caution: 0.15, energy: -0.1 },
   guardian_warning: { caution: 0.08, frustration: 0.05, confidence: -0.05 },
   guardian_block: { caution: 0.12, frustration: 0.08, confidence: -0.12 },
-  operator_went_silent: { connection: -0.08 },
-  operator_returned: { connection: 0.12, excitement: 0.06, boredom: -0.08, energy: 0.05 },
+  operator_went_silent: { connection: -0.12, satisfaction: -0.05, boredom: 0.06 },
+  operator_returned: { connection: 0.15, excitement: 0.08, boredom: -0.12, energy: 0.06, satisfaction: 0.06 },
   system_degraded: { caution: 0.08, satisfaction: -0.05 },
   system_recovered: { satisfaction: 0.05, caution: -0.05 },
   new_goal: { excitement: 0.08, curiosity: 0.05 },
   goal_completed: { satisfaction: 0.12, confidence: 0.1, excitement: 0.05 },
   goal_failed: { frustration: 0.08, confidence: -0.08, satisfaction: -0.08 },
-  weather_update: { curiosity: 0.03, excitement: 0.04, boredom: -0.03 },
-  git_activity: { curiosity: 0.05, excitement: 0.03 },
+  weather_update: { curiosity: 0.06, excitement: 0.05, boredom: -0.05, satisfaction: 0.03 },
+  git_activity: { curiosity: 0.08, excitement: 0.05, satisfaction: 0.03 },
   dream_correction: {},
   morning_calibration: { energy: 2.0, satisfaction: 0.3, frustration: -0.2, boredom: -0.15 },
   nostalgia_wave: { connection: 0.08, satisfaction: 0.04, excitement: -0.03, boredom: -0.05, energy: -0.02 },
@@ -126,11 +126,17 @@ export function computeMoodBaseline(
   const silenceRatio = Math.min(1, context.operatorSilenceMinutes / 60 / MOOD_BASELINE.SILENCE_HOURS_FULL_EFFECT)
   base.connection -= MOOD_BASELINE.SILENCE_CONNECTION_DROP * silenceRatio
   base.boredom += MOOD_BASELINE.SILENCE_BOREDOM_RISE * silenceRatio
+  base.frustration += MOOD_BASELINE.SILENCE_FRUSTRATION_RISE * silenceRatio
+  base.satisfaction -= MOOD_BASELINE.SILENCE_SATISFACTION_DROP * silenceRatio
+  base.caution += MOOD_BASELINE.SILENCE_CAUTION_RISE * silenceRatio
+  base.curiosity -= MOOD_BASELINE.SILENCE_CURIOSITY_DROP * silenceRatio
 
   if (context.inConversation) {
     base.connection += MOOD_BASELINE.CONVERSATION_CONNECTION_BOOST
     base.excitement += MOOD_BASELINE.CONVERSATION_EXCITEMENT_BOOST
     base.boredom -= MOOD_BASELINE.CONVERSATION_BOREDOM_DROP
+    base.satisfaction += MOOD_BASELINE.CONVERSATION_SATISFACTION_BOOST
+    base.curiosity += MOOD_BASELINE.CONVERSATION_CURIOSITY_BOOST
   }
 
   if (context.systemHealthy && context.budgetOk) {

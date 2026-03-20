@@ -5,7 +5,7 @@ export const NEURO_HALF_LIVES: Record<NeuromodulatorType, number> = {
   serotonin: 360,
   norepinephrine: 20,
   oxytocin: 120,
-  cortisol: 180,
+  cortisol: 120,
   endorphins: 60,
   gaba: 240
 } as const
@@ -27,7 +27,7 @@ export const CROSS_MODULATOR = {
     { source: "cortisol", target: "dopamine", coefficient: -0.06 },
     { source: "dopamine", target: "endorphins", coefficient: 0.08 },
     { source: "norepinephrine", target: "cortisol", coefficient: 0.06 },
-    { source: "oxytocin", target: "cortisol", coefficient: -0.05 },
+    { source: "oxytocin", target: "cortisol", coefficient: -0.08 },
     { source: "gaba", target: "norepinephrine", coefficient: -0.08 },
     { source: "gaba", target: "cortisol", coefficient: -0.08 }
   ] as Array<{ source: NeuromodulatorType; target: NeuromodulatorType; coefficient: number }>,
@@ -52,9 +52,9 @@ export const SOMA_TO_NEURO = {
   gaba: { breathing: 0.2, openness: 0.15 }
 } as const
 
-export const NEURO_PRODUCTION_SCALE = 0.3
+export const NEURO_PRODUCTION_SCALE = 0.4
 
-export const HOMEOSTATIC_PRESSURE_SCALE = 0.08
+export const HOMEOSTATIC_PRESSURE_SCALE = 0.12
 
 export const NEURO_SYSTEM_EFFECTS = {
   MOOD_BASELINE: {
@@ -106,14 +106,14 @@ export const NEURO_SYSTEM_EFFECTS = {
 } as const
 
 export const HPA_AXIS = {
-  CRH_BUFFER_DECAY_RATE: 0.7,
-  CRH_TO_CORTISOL_TRANSFER: 0.4,
+  CRH_BUFFER_DECAY_RATE: 0.85,
+  CRH_TO_CORTISOL_TRANSFER: 0.2,
   DIURNAL_PEAK_HOUR: 8,
   DIURNAL_AMPLITUDE: 0.15,
   RECEPTOR_DOWNREGULATION_SCALE: 0.3,
   RECEPTOR_DOWNREGULATION_THRESHOLD: 0.5,
   NONLINEAR_CLEARANCE_EXPONENT: 1.5,
-  ALLOSTATIC_PRODUCTION_SCALE: 0.15
+  ALLOSTATIC_PRODUCTION_SCALE: 0.08
 } as const
 
 export const DOPAMINE_DETAIL = {
