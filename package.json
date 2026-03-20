@@ -19,7 +19,9 @@
     "reinstall": "rm -rf node_modules bun.lock && bun install",
     "reset": "bun run scripts/reset.ts",
     "reset:prod": "bun run scripts/reset.ts --prod",
-    "dump": "bun run scripts/dump.ts"
+    "dump": "bun run scripts/dump.ts",
+    "simulate": "bun run simulation/index.ts",
+    "x-auth": "bun run scripts/x-auth.ts"
   },
   "dependencies": {
     "@ai-sdk/black-forest-labs": "^1.0.24",
