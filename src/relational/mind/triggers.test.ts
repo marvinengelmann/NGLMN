@@ -78,7 +78,7 @@ describe("matchRelationalPatterns", () => {
 
   it("does not match when signals don't fit", () => {
     const signals = extractSignals([
-      "Das ist eine ausführliche Nachricht über ein wichtiges Thema das mich beschäftigt"
+      "This is a detailed message about an important topic that has been on my mind lately"
     ])
     const result = matchRelationalPatterns(signals, DEFAULT_OPERATOR_MODEL, libraryWithPatterns)
     expect(result).toHaveLength(0)

@@ -127,7 +127,7 @@ describe("detectColdResponse", () => {
 
   it("returns false when messages are long", () => {
     const model = { ...DEFAULT_OPERATOR_MODEL, estimatedMood: "neutral" as const }
-    const longMsg = "Das ist eine sehr ausführliche und liebevolle Antwort auf deine Nachricht mein Schatz"
+    const longMsg = "This is a very detailed and loving response to your message my dear sweetheart"
     expect(detectColdResponse(model, [longMsg], true)).toBe(false)
   })
 

@@ -12,11 +12,11 @@ describe("Ritual Detection", () => {
     })
 
     it("should detect high similarity for minor variants", () => {
-      expect(levenshteinRatio("guten morgen", "guten morgens")).toBeGreaterThan(0.7)
+      expect(levenshteinRatio("good morning", "good mornings")).toBeGreaterThan(0.7)
     })
 
     it("should detect low similarity for different phrases", () => {
-      expect(levenshteinRatio("guten morgen", "gute nacht")).toBeLessThan(0.7)
+      expect(levenshteinRatio("good morning", "good night")).toBeLessThan(0.7)
     })
 
     it("should handle empty strings", () => {
@@ -63,20 +63,20 @@ describe("Ritual Detection", () => {
     }
 
     it("should extract bigrams from text", () => {
-      const { bigrams } = extractNgrams("Guten Morgen wie gehts")
-      expect(bigrams).toContain("guten morgen")
-      expect(bigrams).toContain("morgen wie")
+      const { bigrams } = extractNgrams("Good morning how goes")
+      expect(bigrams).toContain("good morning")
+      expect(bigrams).toContain("morning how")
       expect(bigrams).toHaveLength(3)
     })
 
     it("should extract trigrams from text", () => {
-      const { trigrams } = extractNgrams("Guten Morgen wie gehts")
-      expect(trigrams).toContain("guten morgen wie")
+      const { trigrams } = extractNgrams("Good morning how goes")
+      expect(trigrams).toContain("good morning how")
       expect(trigrams).toHaveLength(2)
     })
 
     it("should handle single word input", () => {
-      const { bigrams, trigrams } = extractNgrams("Hallo")
+      const { bigrams, trigrams } = extractNgrams("Hello")
       expect(bigrams).toHaveLength(0)
       expect(trigrams).toHaveLength(0)
     })
