@@ -31,7 +31,9 @@ export function applyClampedDeltas<T extends Record<string, number>>(
   const result = { ...state }
   for (const [key, delta] of Object.entries(deltas)) {
     if (key in result && typeof delta === "number" && !excludeKeys?.has(key)) {
-      ;(result as Record<string, number>)[key] = clamp01((result[key as keyof T] as number) + delta)
+      const current = result[key as keyof T] as number
+      const headroom = delta > 0 ? 1 - current : current
+      ;(result as Record<string, number>)[key] = clamp01(current + delta * headroom)
     }
   }
   return result

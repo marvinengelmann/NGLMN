@@ -66,7 +66,6 @@ export async function maintain(
 
   await maintainMemory(
     input.decision.action,
-    input.decision.reasoning,
     feelResult.emotion.connection,
     input.actResult.responseSent,
     hasMessages,

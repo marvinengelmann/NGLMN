@@ -30,7 +30,6 @@ const THRESHOLDS = {
  */
 export async function maintainMemory(
   action: string,
-  reasoning: string,
   connection: number,
   responseSent: boolean,
   hasMessages: boolean,
@@ -40,7 +39,7 @@ export async function maintainMemory(
   buffer: WriteBuffer
 ): Promise<void> {
   if (responseSent && hasMessages) {
-    await maintainRelationalMemory(action, reasoning, connection, buffer)
+    await maintainRelationalMemory(action, responseText, connection, buffer)
   }
 
   await maintainGoals()
@@ -81,14 +80,15 @@ export async function maintainMemory(
 
 async function maintainRelationalMemory(
   action: string,
-  reasoning: string,
+  responseText: string | undefined,
   connection: number,
   buffer: WriteBuffer
 ): Promise<void> {
   let relationalState = await getRelationalMemoryState()
 
   if (connection > THRESHOLDS.STRONG_CONNECTION) {
-    relationalState = addKeyMoment(relationalState, `${action}: ${reasoning.slice(0, 100)}`, connection)
+    const description = responseText ? responseText.slice(0, 120) : action
+    relationalState = addKeyMoment(relationalState, description, connection)
     buffer.stage(REDIS_RELATIONAL_MEMORY, relationalState)
   }
 

@@ -181,7 +181,9 @@ export function applyEvent(
         scaledDelta = scaleByNovelty(scaledDelta, minutesSinceLastSimilar)
       }
       const clampedDelta = Math.max(-EMOTION.MAX_DELTA, Math.min(EMOTION.MAX_DELTA, scaledDelta))
-      return [key, (state[key as keyof EmotionalState] ?? 0) + clampedDelta]
+      const current = state[key as keyof EmotionalState] ?? 0
+      const headroom = clampedDelta > 0 ? 1 - current : current
+      return [key, current + clampedDelta * headroom]
     })
   )
 
@@ -527,7 +529,9 @@ export function applyMomentum(
   const { state, momentum } = EMOTION_DIMENSIONS.reduce(
     (acc, dimension) => {
       const continuationForce = previousMomentum[dimension] * MOMENTUM.INERTIA_WEIGHT
-      acc.state[dimension] = clamp01(computed[dimension] + continuationForce * alpha)
+      const nudge = continuationForce * alpha
+      const headroom = nudge > 0 ? 1 - computed[dimension] : computed[dimension]
+      acc.state[dimension] = clamp01(computed[dimension] + nudge * headroom)
       acc.momentum[dimension] = Math.max(-1, Math.min(1, acc.state[dimension] - previous[dimension]))
       return acc
     },
@@ -562,7 +566,9 @@ export function applyAfterglow(
     (acc, entry) => {
       const dimension = entry.dimension as keyof EmotionalState
       if (dimension in acc) {
-        acc[dimension] = clamp01(acc[dimension] + entry.delta * entry.intensity * 0.1)
+        const effectiveDelta = entry.delta * entry.intensity * 0.1
+        const headroom = effectiveDelta > 0 ? 1 - acc[dimension] : acc[dimension]
+        acc[dimension] = clamp01(acc[dimension] + effectiveDelta * headroom)
       }
       return acc
     },

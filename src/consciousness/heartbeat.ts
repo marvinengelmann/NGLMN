@@ -10,7 +10,7 @@ import { createWriteBuffer } from "@/infra/lib/buffer.ts"
 import { log } from "@/infra/lib/logger.ts"
 import { setTickContext } from "@/infra/lib/sentry.ts"
 import { nowISO } from "@/infra/lib/time.ts"
-import { clearBusy, tryAcquireBusy } from "@/memory/working.ts"
+import { clearBusy, setBusy, tryAcquireBusy } from "@/memory/working.ts"
 import { act } from "./act.ts"
 import { deliberate } from "./deliberate.ts"
 import { feel } from "./feel.ts"
@@ -45,6 +45,7 @@ export async function runHeartbeat() {
       const startTime = Date.now()
       const timestamp = nowISO()
       setTickContext({ tickId })
+      await setBusy(lockId)
 
       const buffer = createWriteBuffer()
 
